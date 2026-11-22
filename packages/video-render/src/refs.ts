@@ -1,8 +1,8 @@
 /**
  * What the weekly call and an ask both name (`call.ts`, `ask.ts`): a pull
  * request or an issue in a repository it may point to, and an option the
- * owner can choose. Its own module, so Studio's Asks on the phone (SFEED1)
- * read an ask without the call's template, which only the desktop's stage
+ * owner can choose. Its own module, so the desktop web's Asks page reads
+ * an ask without the call's template, which only the desktop's stage
  * draws.
  */
 

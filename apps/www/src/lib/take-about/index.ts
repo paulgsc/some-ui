@@ -4,8 +4,7 @@
  * stores the phone keeps. The notes are read as they are; the ideas and the
  * videos (this phone's stores, which the route hands in, `AboutStores`),
  * and the spoken cards' titles (`lib/studio-spoken`), each time a screen
- * opens, since neither tells of a change; the open asks
- * (GitHub's public list, as Studio's Asks reads it) once a page load. Each
+ * opens, since neither tells of a change. Each
  * screen is told when a read lands, and a read overtaken by a newer one is
  * dropped. A read that fails leaves the take saying what its ref says.
  * Phone-only (`build.paths.ts`).
@@ -15,7 +14,6 @@ import type { LibraryAbout } from "@some-ui/soundbites"
 
 import type { Note } from "@/lib/episode-feedback"
 import { episodeFeedback } from "@/lib/episode-feedback"
-import { readStudioAsks } from "@/lib/studio-asks/read"
 import { spokenStore } from "@/lib/studio-spoken/store"
 import { titleOf } from "@/lib/studio-spoken/words"
 import { browserLocalStorage } from "@/lib/tenant/storage"
@@ -52,7 +50,6 @@ export type AboutStores = {
 type Read = Omit<AboutSources, "notes">
 
 let read: Read = NO_SOURCES
-let asked = false
 /** The latest read of the videos; an answer to an earlier one is dropped. */
 let videoReads = 0
 let snapshot: readonly [Read, ReadonlyArray<Note>] | null = null
@@ -92,7 +89,7 @@ function videosOf(
   return videos
 }
 
-/** Reads the ideas and the videos again, and the asks once a page load. */
+/** Reads the ideas and the videos again. */
 function opened(stores: AboutStores): void {
   told({
     ideas: ideasOf(stores.ideas()),
@@ -112,19 +109,6 @@ function opened(stores: AboutStores): void {
     .catch((error: unknown) => {
       reportFailure({ port: "takes' videos", error: toIntentError(error) })
     })
-  if (asked) return
-  asked = true
-  readStudioAsks()
-    .then((asks) => {
-      told({
-        asks: new Map(
-          asks.map((ask) => [ask.id, ask.ask?.question ?? ask.title])
-        ),
-      })
-    })
-    // Ignored: out of reach is ordinary here, and the ask's take says its
-    // number instead, as it does for an ask no longer open.
-    .catch(() => undefined)
 }
 
 /** What each take was said for, as Takes asks it, over `stores`. */

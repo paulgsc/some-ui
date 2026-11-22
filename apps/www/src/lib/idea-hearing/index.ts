@@ -102,8 +102,8 @@ let home: TurnListener | null = null
 /**
  * Home hearing each take said on the phone's one desk of Studio's answers
  * (`hear`, soundbites' `homeHearing`, made on first use, so a route builds
- * no desk until it listens): an idea's (`phoneIdeaListener`) or an ask's
- * (SFEED5, `lib/ask-answer`), named by what the take answers.
+ * no desk until it listens): an idea's (`phoneIdeaListener`), named by
+ * what the take answers.
  */
 function phoneHomeListener(
   hear: (ports: HearingPorts) => TurnListener
@@ -115,23 +115,6 @@ function phoneHomeListener(
     onVisibility: onPageVisibility,
   })
   return home
-}
-
-/**
- * What an ask's answer listens through (SFEED5, `lib/ask-answer`): home's
- * hearing alone, since only home hears an answer, and the phone's pairing,
- * read once it has loaded.
- */
-export function phoneAskHearing(hear: (ports: HearingPorts) => TurnListener): {
-  readonly listener: TurnListener
-  readonly loaded: () => Promise<void>
-  readonly pairing: () => Pairing
-} {
-  return {
-    listener: phoneHomeListener(hear),
-    loaded: () => homeLink().load(),
-    pairing: () => pairing(),
-  }
 }
 
 /**

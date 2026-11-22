@@ -82,7 +82,11 @@ export type Pending = {
 
 const ASK = "ask:"
 
-/** The `ref` a take answering `ask` is kept under on home. */
+/**
+ * The `ref` a take answering `ask` is kept under on home. The phone no
+ * longer records one (asks left the Android app for the desktop web's
+ * Asks page, C1097); a take recorded before then is still filed.
+ */
 export const answerRef = (ask: {
   readonly repo: Repo
   readonly number: number

@@ -35,6 +35,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "What home does while it runs (Rust Rounds recording): a switch, not an offer.",
   },
   {
+    route: "/asks",
+    why: "What waits on the owner (docs/asks.md): a desk to decide and tick off steps at, and copy a receipt from, not an offer.",
+  },
+  {
     route: "/burn-ins",
     why: "A preview of what every video carries, on sample data, and the recorder's page.",
   },
@@ -66,8 +70,6 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
   },
   ...[
     "/journal",
-    "/journal/asks",
-    "/journal/asks/$ask",
     "/journal/clips",
     "/journal/clips/$clip",
     "/journal/episodes",
@@ -83,7 +85,7 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     "/journal/templates/release-promo",
   ].map((route) => ({
     route,
-    why: "Studio's index (SFEED1): a list or a page of what Studio keeps, a way to the rest. What each page offers is measured once the story that makes it an offer lands (answering an ask, a note on an episode).",
+    why: "Studio's index (SFEED1): a list or a page of what Studio keeps, a way to the rest. What each page offers is measured once the story that makes it an offer lands (a note on an episode).",
   })),
   {
     route: "/call",

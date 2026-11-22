@@ -30,7 +30,6 @@ const all = [
   ...strings(FEED_KEPT),
   ...strings(FEED_FACTS),
   ...STUDIO_KINDS.map(STUDIO_INDEX_WORDS.backTo),
-  STUDIO_INDEX_WORDS.asks.unblocks("the next story"),
   ...[1, 3, 12].flatMap((n) => [
     STUDIO_INDEX_WORDS.templates.version(n),
     STUDIO_INDEX_WORDS.templates.upTo(n),

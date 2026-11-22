@@ -1,13 +1,13 @@
 /**
  * @vitest-environment node
  *
- * Studio's asks (SFEED1): what GitHub's list reads as, and the order they
+ * The asks: what GitHub's list reads as, and the order they
  * are listed in, which ranks none.
  */
 import { describe, expect, it } from "vitest"
 
-import type { Issues } from "./model"
-import { asksOf, aToZ, questionOf } from "./model"
+import type { Issues } from "@/lib/asks/model"
+import { asksOf, aToZ, questionOf } from "@/lib/asks/model"
 
 const block = (question: string): string =>
   [
@@ -15,7 +15,8 @@ const block = (question: string): string =>
     "",
     "```json ask",
     JSON.stringify({
-      schema: "some-ui.ask/1",
+      schema: "some-ui.ask/2",
+      kind: "decision",
       question,
       whyYours: "Only you decide it.",
       options: [
@@ -47,7 +48,9 @@ describe("the asks", () => {
     ])
     expect(ask.id).toBe("some-ui-2673")
     expect(ask.title).toBe("Which music under the voice?")
-    expect(ask.ask?.options.map((o) => o.says)).toEqual(["Yes", "Not yet"])
+    expect(
+      ask.ask?.kind === "decision" && ask.ask.options.map((o) => o.says)
+    ).toEqual(["Yes", "Not yet"])
     expect(questionOf(ask)).toBe("Which music?")
   })
 

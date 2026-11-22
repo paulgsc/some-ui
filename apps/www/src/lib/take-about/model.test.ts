@@ -22,7 +22,6 @@ const SOURCES: AboutSources = {
   ideas: new Map([
     ["i1", { title: "Typing rounds", asked: new Map([["ask-1", "Why now?"]]) }],
   ]),
-  asks: new Map([["some-ui-2876", "Should a canned take show?"]]),
   spoken: new Map([["scabc12", "How I built Rust Rounds"]]),
 }
 
@@ -68,13 +67,8 @@ describe("what each take was said for, from what the phone keeps (TAKES2)", () =
     })
   })
 
-  it("names an ask by its question while it is open, else by its number", () => {
+  it("names an answer to an ask by the ask's number (C1097)", () => {
     expect(aboutOf("x", "ask:some-ui-2876", SOURCES)).toEqual({
-      kind: "ask",
-      ask: "Should a canned take show?",
-      number: 2876,
-    })
-    expect(aboutOf("x", "ask:some-ui-2876", NO_SOURCES)).toEqual({
       kind: "ask",
       ask: null,
       number: 2876,

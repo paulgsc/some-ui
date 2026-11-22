@@ -4,6 +4,7 @@ import {
   BookOpenText,
   Compass,
   FileText,
+  ListChecks,
   Puzzle,
   ShieldCheck,
   Sparkles,
@@ -36,6 +37,7 @@ export type Destination = {
     | "/lessons"
     | "/resume-build"
     | "/home-switches"
+    | "/asks"
   readonly title: string
   readonly blurb: string
   readonly icon: LucideIcon
@@ -96,6 +98,16 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     blurb:
       "What home does while it runs, and who last changed it: Rust Rounds recording, and whether home follows NFL games.",
     icon: ToggleRight,
+    audience: "lan",
+    purpose: "administration",
+    launcher: "running",
+  },
+  {
+    to: "/asks",
+    title: "Asks",
+    blurb:
+      "What waits on me: decisions only I can make, and checklists of steps only I can take, each with a receipt to hand back.",
+    icon: ListChecks,
     audience: "lan",
     purpose: "administration",
     launcher: "running",
