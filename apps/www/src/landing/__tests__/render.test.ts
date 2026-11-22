@@ -53,8 +53,14 @@ const page = renderLanding(
   EPISODES
 )
 
-const firstFaces = EPISODES[0].scenes[0].faces
-/** A build given the first scene's two faces (a clip and a still), the first gap's still and the photo. */
+/** The show's first scene with a clip on its left face and a still on its right. */
+const clipScene = EPISODES.flatMap((e) => e.scenes).find(
+  (s) => s.faces[0].key.endsWith(".mp4") && s.faces[1].key.endsWith(".png")
+)
+if (clipScene === undefined)
+  throw new Error("no scene shows a clip beside a still")
+const firstFaces = clipScene.faces
+/** A build given that scene's two faces, the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
   [firstFaces[0].key, { width: 1080, height: 1920 }],
   [firstFaces[1].key, { width: 800, height: 600 }],
@@ -256,12 +262,16 @@ describe("renderLanding", () => {
     }
     const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
     expect(outside).not.toMatch(/animation-name\s*:/)
-    expect(outside).toMatch(/\.show \{ --show: [\d.]+s; \}/)
+    expect(outside).toMatch(
+      /\.show \{ --show: [\d.]+s; --show-start: -[\d.]+s; \}/
+    )
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
-    expect(template).toMatch(/\.tk \{\s*animation-duration: var\(--show\);/)
+    expect(template).toMatch(
+      /\.tk \{\s*animation-delay: var\(--show-start\);\s*animation-duration: var\(--show\);/
+    )
   })
 
   it("moves only on a wide screen with motion allowed", () => {

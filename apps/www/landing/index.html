@@ -266,7 +266,11 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 20px;
         }
+        /* Every track on the one clock, started just past the copy block's
+           first turn (--show-start, render.ts), so the show opens on its
+           first episode, not on the last one leaving. */
         .tk {
+          animation-delay: var(--show-start);
           animation-duration: var(--show);
           animation-iteration-count: infinite;
           animation-fill-mode: both;

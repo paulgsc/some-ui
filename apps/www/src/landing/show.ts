@@ -119,27 +119,27 @@ export const SHOW: Show = {
           copy: {
             title: "Suspender Ledger",
             narration: [
-              "Suspender Ledger is a browser extension I wrote for the tabs I leave open.",
+              "Suspender Ledger is my TypeScript port of auto-tab-discard, for the tabs I leave open in Firefox.",
               "From its popup I can suspend a tab I've left idle, or tell it never to suspend a site.",
             ],
             draft: true,
           },
           faces: [
-            { cut: "hook", label: "Suspender Ledger" },
             { snip: 1, label: "The popup, on a tab left idle" },
+            { snip: 2, label: "Never suspend this site" },
           ],
         },
         {
           copy: {
             title: "Signed by Mozilla",
             narration: [
-              "Mozilla reviewed and signed it. It's unlisted on their add-ons site, so it's shared by link.",
+              "Mozilla's add-on reviewers approved it and signed it, on their unlisted channel: it has no public listing.",
             ],
             draft: true,
           },
           faces: [
+            { cut: "hook", label: "Signed on AMO" },
             { cut: "feature", label: "The popup, at work" },
-            { snip: 2, label: "Never suspend this site" },
           ],
         },
         {
@@ -147,7 +147,6 @@ export const SHOW: Show = {
             title: "Page Filter",
             narration: [
               "Page Filter is the extension I use most: it darkens the pages I read at night.",
-              "Some pages draw a part of themselves where no extension can reach, so that part stays white.",
             ],
             draft: true,
           },
@@ -199,20 +198,6 @@ export const SHOW: Show = {
       scenes: [
         { copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] },
         { copy: { chapter: 1 }, faces: [{ snip: 4 }, { snip: 5 }] },
-        {
-          copy: {
-            title: "Four cores",
-            narration: [
-              "All of it runs on one machine at home, with four CPU cores.",
-              "This panel splits their time into busy and waiting, so I can tell whether my code or the machine is the limit.",
-            ],
-            draft: true,
-          },
-          faces: [
-            { media: "stills/cores.png", label: "CPU, busy against waiting" },
-            { snip: 3 },
-          ],
-        },
       ],
     },
   ],
@@ -257,7 +242,9 @@ const oneLine = (caption: string): string =>
  * The show with every scene's copy and every face's label filled in from the
  * episodes' walkthroughs, or every problem that stops it: a chapter the
  * walkthrough lacks, a still outside its chapter's own screens (so a face
- * always shows what its copy names), a still with no caption and no label.
+ * always shows what its copy names), a still with no caption and no label,
+ * an empty line of copy, or a show of fewer than two episodes (the copy
+ * block turns between them).
  */
 export function resolveShow(
   show: Show,
@@ -304,6 +291,8 @@ export function resolveShow(
         }
         return { key: faceKey(episode.id, f), label: oneLine(label) }
       }
+      if (narration.some((line) => line.trim() === ""))
+        problems.push(`${where} has an empty line of copy`)
       return {
         title: oneLine(title),
         narration,
@@ -318,7 +307,25 @@ export function resolveShow(
       scenes,
     }
   })
+  if (episodes.length < 2) problems.push("the show needs two episodes or more")
   return problems.length > 0 ? { ok: false, problems } : { ok: true, episodes }
+}
+
+/**
+ * The episodes as the public site shows them: a scene the owner hasn't read
+ * yet (`draft`) is left out, and an episode left with none goes with it.
+ * A preview on the owner's machine shows them (`preview:pages`), so the
+ * owner reads them where they will appear; a draft never reaches Pages.
+ */
+export function publicEpisodes(
+  episodes: ReadonlyArray<ResolvedEpisode>,
+  withDrafts: boolean
+): ReadonlyArray<ResolvedEpisode> {
+  if (withDrafts) return episodes
+  return episodes.flatMap((episode) => {
+    const scenes = episode.scenes.filter((scene) => !scene.draft)
+    return scenes.length === 0 ? [] : [{ ...episode, scenes }]
+  })
 }
 
 /** Every asset key the show names, once each. */

@@ -15,7 +15,10 @@ fi
 
 echo "[preview:pages] building the site as Pages does"
 cd "$root"
+# The show's draft scenes (apps/www/src/landing/show.ts) are shown here, for
+# the owner to read; Pages leaves them out.
 NODE_ENV=production \
+  SITE_SHOW_DRAFTS=1 \
   VITE_BASE_PATH="$base" \
   VITE_STATIC_DATA=true \
   SOME_UI_PROFILE=pages \

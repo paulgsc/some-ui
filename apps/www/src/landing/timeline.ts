@@ -222,7 +222,12 @@ export function showTimeline(
     }
     const cubes: readonly [Track, Track] = [cube(), cube()]
     const scenes = e.scenes.map((s, i): SceneTracks => {
-      const following = e.scenes.at(i + 1)?.start ?? e.end
+      // The last scene's copy stays until the copy block has turned it
+      // edge-on to the reader, so the turning face is never blank: the last
+      // episode's, into the turn that begins the cycle again.
+      const isLastScene = i === e.scenes.length - 1
+      const wraps = isLast && isLastScene
+      const following = e.scenes.at(i + 1)?.start ?? e.end + gone
       const blockName = name()
       const titleName = name()
       const scene = episodes.at(k)?.scenes.at(i)
@@ -249,15 +254,21 @@ export function showTimeline(
         block: {
           name: blockName,
           keyframes: keyframes(blockName, cycleS, [
-            { at: 0, css: HIDDEN },
+            ...(wraps
+              ? [
+                  { at: 0, css: SHOWN },
+                  { at: gone, css: HIDDEN },
+                ]
+              : [{ at: 0, css: HIDDEN }]),
             { at: s.start, css: SHOWN },
-            { at: following, css: HIDDEN },
+            ...(wraps ? [] : [{ at: following, css: HIDDEN }]),
           ]),
         },
         title: {
           name: titleName,
+          // Whole outside its scene (where its block hides it), so a scene
+          // still shown into the next turn stays whole.
           keyframes: keyframes(titleName, cycleS, [
-            { at: 0, css: TYPED_NOT },
             {
               at: s.start,
               css: TYPED_NOT,
@@ -270,8 +281,9 @@ export function showTimeline(
           const lineName = name()
           return {
             name: lineName,
+            // Whole outside its scene, as the title is.
             keyframes: keyframes(lineName, cycleS, [
-              { at: 0, css: WIPED },
+              { at: s.start, css: WIPED },
               { at: from, css: WIPED, ease: "linear" },
               { at: to, css: WHOLE },
             ]),

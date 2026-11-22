@@ -16,7 +16,7 @@ import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
 import type { ResolvedEpisode, ResolvedFace } from "./show.ts"
 import { showMediaKeys } from "./show.ts"
 import type { Timeline, Track } from "./timeline.ts"
-import { num, showTimeline, tracksOf } from "./timeline.ts"
+import { EPISODE_TURN_S, num, showTimeline, tracksOf } from "./timeline.ts"
 import type { GapWords, LandingWords } from "./words.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -83,7 +83,7 @@ export const WIDE_MOTION =
 function showCss(timeline: Timeline): string {
   const tracks = tracksOf(timeline)
   return `${tracks.map((t) => t.keyframes).join("\n      ")}
-      .show { --show: ${num(timeline.cycleS)}s; }
+      .show { --show: ${num(timeline.cycleS)}s; --show-start: -${num(EPISODE_TURN_S)}s; }
       @media ${WIDE_MOTION} { ${tracks.map((t) => `.${t.name} { animation-name: ${t.name}; }`).join(" ")} }`
 }
 

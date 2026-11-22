@@ -3,16 +3,32 @@
  * walkthroughs it reads, the keys its faces are found by, and what each
  * producer makes for it.
  */
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import type { Show, WalkthroughCopy } from "@/landing/show"
 import {
   faceKey,
   facesToMake,
   isWalkthroughCopy,
+  publicEpisodes,
   resolveShow,
   SHOW,
   SHOW_SCHEMA,
 } from "@/landing/show"
 import { describe, expect, it } from "vitest"
+
+/** A walkthrough's copy from its file in the repo. */
+function walkthroughAt(path: string): WalkthroughCopy {
+  const read: unknown = JSON.parse(
+    readFileSync(join(import.meta.dirname, "../../../../..", path), "utf8")
+  )
+  const fill =
+    typeof read === "object" && read !== null && "fill" in read
+      ? read.fill
+      : undefined
+  if (!isWalkthroughCopy(fill)) throw new Error(`${path} is not a walkthrough`)
+  return fill
+}
 
 const WALK: WalkthroughCopy = {
   captions: ["One|two", "Three", "Four", "Five"],
@@ -22,10 +38,18 @@ const WALK: WalkthroughCopy = {
   ],
 }
 
+/** A show of `scenes` as its Android episode, beside a one-scene server episode. */
 const showOf = (scenes: Show["episodes"][number]["scenes"]): Show => ({
   schema: SHOW_SCHEMA,
   episodes: [
     { id: "android", kicker: "K", title: "T", walkthrough: "jobs", scenes },
+    {
+      id: "server",
+      kicker: "S",
+      title: "U",
+      walkthrough: "home-server",
+      scenes: [{ copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] }],
+    },
   ],
 })
 
@@ -42,23 +66,20 @@ describe("resolveShow", () => {
       ]),
       walks
     )
-    expect(got).toEqual({
-      ok: true,
-      episodes: [
+    expect(got.ok).toBe(true)
+    if (!got.ok) return
+    expect(got.episodes[0]).toEqual({
+      id: "android",
+      kicker: "K",
+      title: "T",
+      scenes: [
         {
-          id: "android",
-          kicker: "K",
-          title: "T",
-          scenes: [
-            {
-              title: "Second half",
-              narration: ["Line three."],
-              draft: false,
-              faces: [
-                { key: "stills/android/03.png", label: "Four" },
-                { key: "clips/android/stop-2.mp4", label: "Moving" },
-              ],
-            },
+          title: "Second half",
+          narration: ["Line three."],
+          draft: false,
+          faces: [
+            { key: "stills/android/03.png", label: "Four" },
+            { key: "clips/android/stop-2.mp4", label: "Moving" },
           ],
         },
       ],
@@ -81,6 +102,31 @@ describe("resolveShow", () => {
     ])
   })
 
+  it("refuses an empty line of copy, and a show of one episode", () => {
+    const empty = resolveShow(
+      showOf([
+        {
+          copy: { title: "Own", narration: ["Said.", " "], draft: true },
+          faces: [{ snip: 1 }, { snip: 2 }],
+        },
+      ]),
+      walks
+    )
+    expect(empty.ok ? [] : empty.problems).toEqual([
+      "android scene 1 has an empty line of copy",
+    ])
+    const both = showOf([
+      { copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] },
+    ])
+    const one = resolveShow(
+      { ...both, episodes: both.episodes.slice(1) },
+      walks
+    )
+    expect(one.ok ? [] : one.problems).toEqual([
+      "the show needs two episodes or more",
+    ])
+  })
+
   it("marks a scene that writes its own words as the owner's to read", () => {
     const got = resolveShow(
       showOf([
@@ -100,12 +146,29 @@ describe("resolveShow", () => {
         "chapter" in s.copy ? [] : [`${e.id} ${String(i + 1)}`]
       )
     )
-    expect(drafts).toEqual([
-      "extensions 1",
-      "extensions 2",
-      "extensions 3",
-      "server 3",
-    ])
+    expect(drafts).toEqual(["extensions 1", "extensions 2", "extensions 3"])
+  })
+})
+
+describe("the landing's own show", () => {
+  const resolved = resolveShow(SHOW, {
+    jobs: walkthroughAt("apps/www/tests/walk/jobs-walkthrough.json"),
+    "home-server": walkthroughAt(
+      "packages/video-motion/walks/home-server.json"
+    ),
+  })
+
+  it("resolves against the walkthroughs in the repo", () => {
+    expect(resolved.ok ? [] : resolved.problems).toEqual([])
+  })
+
+  it("leaves the owner's unread scenes off the public site, and shows them in a preview", () => {
+    if (!resolved.ok) throw new Error("unresolved")
+    const shown = publicEpisodes(resolved.episodes, false)
+    expect(shown.flatMap((e) => e.scenes).some((s) => s.draft)).toBe(false)
+    // The extensions' scenes are all drafts, so the episode waits whole.
+    expect(shown.map((e) => e.id)).toEqual(["android", "server"])
+    expect(publicEpisodes(resolved.episodes, true)).toBe(resolved.episodes)
   })
 })
 

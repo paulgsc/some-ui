@@ -87,7 +87,7 @@ what to paste.
       "paste": "The deploy's last lines"
     }
   ],
-  "unblocks": "the server card's clip on the public site",
+  "unblocks": "the server's dashboard pictures on the public site",
   "refs": [{ "repo": "some-ui", "kind": "issue", "number": 3415 }]
 }
 ```

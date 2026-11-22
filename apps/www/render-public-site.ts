@@ -37,7 +37,12 @@ import {
   renderLandingHead,
 } from "./src/landing/render.ts"
 import type { WalkthroughCopy } from "./src/landing/show.ts"
-import { isWalkthroughCopy, resolveShow, SHOW } from "./src/landing/show.ts"
+import {
+  isWalkthroughCopy,
+  publicEpisodes,
+  resolveShow,
+  SHOW,
+} from "./src/landing/show.ts"
 import type { ResumeComposition } from "./src/lib/resume-files.ts"
 import {
   DEFAULT_RESUME_COMPOSITION,
@@ -112,7 +117,24 @@ const resolved = resolveShow(SHOW, {
 if (!resolved.ok) {
   throw new Error(`the landing's show: ${resolved.problems.join("; ")}`)
 }
-const episodes = resolved.episodes
+// Scenes the owner hasn't read yet show only in a preview on their machine
+// (preview-pages.sh sets SITE_SHOW_DRAFTS); Pages never shows them.
+const withDrafts = process.env["SITE_SHOW_DRAFTS"] === "1"
+const episodes = publicEpisodes(resolved.episodes, withDrafts)
+if (episodes.length < 2) {
+  throw new Error("the landing's show has fewer than two episodes to show")
+}
+const drafts = resolved.episodes.reduce(
+  (n, e) => n + e.scenes.filter((s) => s.draft).length,
+  0
+)
+if (drafts > 0) {
+  process.stdout.write(
+    withDrafts
+      ? `[www] showing the show's ${String(drafts)} draft scenes, for the owner to read\n`
+      : `[www] leaving out the show's ${String(drafts)} draft scenes (SITE_SHOW_DRAFTS=1 shows them)\n`
+  )
+}
 
 const media: LandingMedia = new Map(
   landingMediaKeys(undefined, episodes).flatMap((key) => {

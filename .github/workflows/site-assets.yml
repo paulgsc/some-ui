@@ -1,21 +1,25 @@
 name: Site Assets
 # The public site's media that CI can render (PAGES #3401, C1059): each job
-# renders one of the landing's slot assets on sample data and uploads it as
-# `site-assets-<kind>-<sha>`, laid out by its key (`stills/page-filter.png`,
-# `clips/extensions.mp4`). pages.yml fetches the newest of each kind into
-# the build at its next deploy; a kind with none keeps its drawn placeholder.
-# Snips Capture uploads the APK clip the same way. Nothing here is committed
-# (C1029), and nothing here reads the owner's records: Page Filter is shot on
-# a page of ours, the promo walks Suspender Ledger's sample. The `home` job
-# fetches the two pictures home takes of its own dashboards (#3415, C1071,
-# C1073): the server card's clip and the cores card's still, counts, rates and
-# uptime only, from the Jobs mailbox, which home puts them in.
+# renders some of the landing's slot assets on sample data and uploads them as
+# `site-assets-<kind>-<sha>`, laid out by key (`stills/page-filter.png`,
+# `clips/extensions/hook.mp4`; the show's faces, C1183). pages.yml fetches the
+# newest of each kind into the build at its next deploy; a slot with none
+# keeps its drawn placeholder. Snips Capture uploads the Android faces the
+# same way. Nothing here is committed (C1029), and nothing here reads the
+# owner's records: Page Filter is shot on a page of ours, the promo walks
+# Suspender Ledger's sample. The `home` job fetches the pictures home takes of
+# its own dashboards (#3415, C1071, C1073), counts, rates and uptime only,
+# from the Jobs mailbox, which home puts them in: the cores gap's still, and
+# the server clip, which the landing no longer shows; the server episode's
+# panel stills (C1183) are to replace it from paulgsc/server.
 on:
   push:
     branches: [main]
     paths:
       - "extensions/some-filter/**"
       - "packages/video-motion/**"
+      - "apps/www/src/landing/show.ts"
+      - "apps/www/scripts/show-faces.ts"
       - "packages/video-render/**"
       - ".github/workflows/site-assets.yml"
   workflow_dispatch:

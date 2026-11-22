@@ -57,12 +57,19 @@ describe("showTimeline", () => {
     const second = EPISODE_TURN_S + scene
     const landed = second + TITLE_S + 114 / STREAM_CPS
     const [lineOne, lineTwo] = first.scenes[1].lines
-    expect(
-      frames(lineTwo.keyframes).find((f) =>
-        f.css.startsWith("clip-path: inset(0 0 0 0)")
-      )?.at
-    ).toBe(pct(landed))
-    expect(frames(lineOne.keyframes)[1].at).toBe(pct(second + TITLE_S))
+    // Whole outside its scene; wiped from the scene's start; streamed from
+    // its own start to its end.
+    const two = frames(lineTwo.keyframes)
+    expect(two.map((f) => f.css.includes("100%"))).toEqual([
+      false,
+      true,
+      true,
+      false,
+      false,
+    ])
+    expect(two[1].at).toBe(pct(second))
+    expect(two[3].at).toBe(pct(landed))
+    expect(frames(lineOne.keyframes)[2].at).toBe(pct(second + TITLE_S))
     for (const cube of first.cubes) {
       const turn = frames(cube.keyframes).find((f) =>
         f.css.includes("ease-in-out")
@@ -108,5 +115,59 @@ describe("showTimeline", () => {
     for (const t of tracks)
       for (const f of frames(t.keyframes))
         expect(f.css).toMatch(/animation-timing-function: [^;]+;$/)
+  })
+
+  it("fades the last episode's pair as the cycle wraps, its copy still shown into the turn", () => {
+    const last = timeline.episodes[2]
+    const pair = frames(last.pair.keyframes)
+    expect(pair[0]).toMatchObject({ at: 0 })
+    expect(pair[0].css).toContain("opacity: 1")
+    expect(pair[1].css).toContain("opacity: 0")
+    expect(pair[1].at).toBe(pct(EPISODE_TURN_S / 2))
+    const lastBlock = frames(last.scenes[1].block.keyframes)
+    expect(lastBlock[0].css).toContain("opacity: 1")
+    expect(lastBlock[1].at).toBe(pct(EPISODE_TURN_S / 2))
+    // Its cubes go back to their first face once out of view.
+    for (const cube of last.cubes) {
+      const back = frames(cube.keyframes).find(
+        (f) => f.at > 0 && f.css.includes("rotateX(0deg)")
+      )
+      expect(back?.at).toBeGreaterThan(pct(EPISODE_TURN_S / 2))
+      expect(back?.at).toBeLessThan(pct(EPISODE_TURN_S))
+    }
+  })
+})
+
+describe("showTimeline over any shape", () => {
+  const episodesOf = (counts: ReadonlyArray<number>): Array<ResolvedEpisode> =>
+    counts.map((n, k) => ({
+      id: (["extensions", "android", "server"] as const)[k % 3] ?? "server",
+      kicker: "k",
+      title: "t",
+      scenes: Array.from({ length: n }, (_, i) => ({
+        title: `s${String(i)}`,
+        narration: ["a line", "another line"],
+        draft: false,
+        faces: [face("a"), face("b")] as const,
+      })),
+    }))
+
+  it("keeps every track's keyframes in order, none at the same moment", () => {
+    for (const counts of [
+      [1, 1],
+      [4, 4],
+      [1, 4, 1],
+      [4, 1, 4],
+      [2, 2, 2, 2],
+    ]) {
+      for (const track of tracksOf(showTimeline(episodesOf(counts)))) {
+        const at = frames(track.keyframes).map((f) => f.at)
+        for (let i = 1; i < at.length; i++)
+          expect(
+            at[i] ?? 0,
+            `${track.name} in ${counts.join(",")}`
+          ).toBeGreaterThan(at[i - 1] ?? 0)
+      }
+    }
   })
 })
