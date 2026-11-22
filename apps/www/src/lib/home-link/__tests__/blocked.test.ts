@@ -11,20 +11,30 @@
  *   and said the same way (HR1, `./home-restart.test.ts`). A pairing 503 is
  *   read by its code: `service_overloaded` is home busy (or its cap on
  *   tries, with no `Retry-After`), anything else is pairing not set up.
+ *   Home's next answer by any way (a request, the live socket, a pairing's
+ *   or an Unpair's) clears what blocked a request; a pull asks at once,
+ *   inside the hold. A name is said as what the phone knows, its lookup
+ *   failing, never with a guess at why (#3411).
  * - Family: the kind of failure (a name not found, an untrusted
  *   certificate, a refused connection, a timeout, a TLS connection dropped
  *   or timed out, a missing plugin) × whether the phone is on any network
  *   × who says it (`native-http`'s error, the link's
  *   state, a lane's run and its words, the sign-in sheet, pairing's line);
- *   and a pairing 503's code × whether it has a `Retry-After`.
+ *   and a pairing 503's code × whether it has a `Retry-After`; and, once
+ *   blocked by a name, home answering again × how it is heard (a pull, a
+ *   lane's own try, another screen's read such as Studio's, the live
+ *   socket) and an app restart between (#3411).
  * - Proof: these tests, over `native-http`'s `classify` with the platform's
  *   own messages, the link's `heard` over the real runtime, a lane's run,
  *   `laneView` (`./words.test.ts`) and `signInView`.
  * - Tolerance: the platform's messages and exception classes are matched
  *   by their words; a failure Android words otherwise is home's silence. A
  *   request a router drops without a word is a timeout, so away. On mobile
- *   data, a name only the home router knows fails as a blocked name, said
- *   with "on your home network" so it reads true either way. The app's own
+ *   data, a name only the home router knows fails as a blocked name, which
+ *   "couldn't look up home's name on this network" says truly. While the
+ *   phone's own lookups keep failing (a failed lookup the phone or the
+ *   network remembers for a while, #3411), every try fails again and the
+ *   line stays: true, if unwelcome; the link does not try another way. The app's own
  *   deadline is `ForeignDeadlineError`, never matched, so a silence. The
  *   native log hears a stretch once, as it starts (AW1); a name or a
  *   certificate met later in a stretch a silence began, or a change from
@@ -45,6 +55,7 @@ import {
 import { createKept } from "@/lib/home-link/kept-runtime"
 import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
 import { INITIAL, step } from "@/lib/home-link/model"
+import type { PaceMemory } from "@/lib/home-link/pace"
 import { createHomeLink } from "@/lib/home-link/runtime"
 import { pairFailureLine, signInView } from "@/lib/home-link/sign-in-words"
 
@@ -293,6 +304,144 @@ describe("NA1: what the link makes of it", () => {
   })
 })
 
+/**
+ * #3411: a phone blocked by a name it couldn't look up, and then home
+ * answering. Over the real link and a lane's runtime, whose run sends what
+ * waits on the phone, as Practice's does.
+ */
+describe("NA1: once home answers again (#3411)", () => {
+  /** A paired link whose requests fail by name until `mend`, and a lane over it. */
+  const blockedByName = async (): Promise<{
+    link: ReturnType<typeof createHomeLink>
+    lane: ReturnType<typeof createKept>
+    sent: () => number
+    mend: () => void
+  }> => {
+    let mended = false
+    let sent = 0
+    const { link } = pairedLink((call) => {
+      if (!mended) return Promise.reject(blockedError("name"))
+      if (call.method === "PUT") sent += 1
+      return Promise.resolve({ status: 200, body: "{}" })
+    })
+    await link.load()
+    const lane = createKept({
+      exchange: async (send): Promise<HomeExchanged> => {
+        await send("PUT", "/sessions/s1", "{}")
+        return { kind: "synced" }
+      },
+      keep: link.drain,
+      pairing: (): Pairing => ({ kind: "paired", id: "p1" }),
+      homeBusy: () => false,
+      now: () => 1,
+    })
+    lane.want()
+    await vi.waitFor(() => expect(lane.getSnapshot().running).toBe(false))
+    expect(lane.getSnapshot().last?.kind).toBe("unreachable")
+    expect(link.getSnapshot().blocked).toMatchObject({ reason: "name" })
+    return {
+      link,
+      lane,
+      sent: () => sent,
+      mend: (): void => {
+        mended = true
+      },
+    }
+  }
+
+  it("a pull asks home at once inside the hold, sends what waits and clears what blocked it", async () => {
+    const { link, lane, sent, mend } = await blockedByName()
+    mend()
+    // A pull (`./pull`): the hold goes first, then the lane is asked.
+    link.lookAgain()
+    const end = await lane.pull()
+    expect(end.kind).toBe("synced")
+    expect(sent()).toBe(1)
+    expect(link.getSnapshot().blocked).toBeNull()
+    expect(link.getSnapshot().away).toBeNull()
+  })
+
+  it("another screen's read answered first (Studio's) clears it, and releases the lane to be asked", async () => {
+    const { link, mend } = await blockedByName()
+    mend()
+    const releases = link.getSnapshot().awayReleases
+    // Studio's reads are the person's own (`keep`), past the hold.
+    const read = await link.keep((send) => send("GET", "/takes"))
+    expect(read.kind).toBe("done")
+    expect(link.getSnapshot().blocked).toBeNull()
+    expect(link.getSnapshot().away).toBeNull()
+    // The lane's watch asks a lane whose run found no answer on a release.
+    expect(link.getSnapshot().awayReleases).toBe(releases + 1)
+  })
+
+  it("home answering by the live socket clears it, as a request's answer does", async () => {
+    const { link } = await blockedByName()
+    link.answered()
+    expect(link.getSnapshot().blocked).toBeNull()
+    expect(link.getSnapshot().away).toBeNull()
+  })
+
+  it("any answer clears it in the model, whatever way it came", () => {
+    const paired = step(INITIAL, {
+      type: "read",
+      found: { base: HOME.base, id: "p1", since: 1, name: null },
+    })
+    const held = [
+      { type: "unanswered", now: 5 } as const,
+      { type: "blocked", reason: "name", at: 5 } as const,
+    ].reduce(step, paired)
+    expect(held.blocked).not.toBeNull()
+    const after = step(held, { type: "answered" })
+    expect(after.blocked).toBeNull()
+    expect(after.away).toBeNull()
+  })
+
+  it("starts over after a restart: only the pace is kept, and the first run sends what waits", async () => {
+    // The one thing the link keeps across page loads (HERD1).
+    let kept: Parameters<PaceMemory["write"]>[0] | null = null
+    const memory: PaceMemory = {
+      read: () => kept,
+      write: (next) => {
+        kept = next
+      },
+    }
+    let mended = false
+    let sent = 0
+    const linkOver = (): ReturnType<typeof createHomeLink> => {
+      const clock = fakeClock()
+      return createHomeLink({
+        credential: {
+          read: () => Promise.resolve({ record: PAIRED, lost: false }),
+          write: () => Promise.resolve(),
+          clear: () => Promise.resolve(),
+        },
+        request: (call) => {
+          if (!mended) return Promise.reject(blockedError("name"))
+          if (call.method === "PUT") sent += 1
+          return Promise.resolve({ status: 200, body: "{}" })
+        },
+        onHidden: () => (): void => undefined,
+        now: clock.now,
+        after: clock.after,
+        paceMemory: memory,
+      })
+    }
+    const before = linkOver()
+    await before.load()
+    await before.send((send) => send("GET", "/x")).catch(() => undefined)
+    expect(before.getSnapshot().blocked).toMatchObject({ reason: "name" })
+    expect(kept).not.toBeNull()
+    // The app swiped away and opened again, home's name found by now.
+    mended = true
+    const after = linkOver()
+    await after.load()
+    expect(after.getSnapshot().blocked).toBeNull()
+    const run = await after.drain((send) => send("PUT", "/sessions/s1", "{}"))
+    expect(run.kind).toBe("done")
+    expect(sent).toBe(1)
+  })
+})
+
 describe("NA1: what the person reads", () => {
   const paired: HomeLinkState = step(INITIAL, {
     type: "read",
@@ -331,11 +480,15 @@ describe("NA1: what the person reads", () => {
     }
     // As native-http throws it, and as Android words it under any wrapper.
     expect(await pairingMeets(blockedError("name"))).toMatch(
-      /can't find home\.example on this network/
+      /couldn't look up home\.example on this network/
     )
     expect(
       await pairingMeets(new Error("couldn't", { cause: ANDROID.name }))
-    ).toMatch(/can't find home\.example on this network/)
+    ).toMatch(/couldn't look up home\.example on this network/)
+    // Only what the phone knows (#3411): never a guess at why.
+    expect(await pairingMeets(blockedError("name"))).not.toMatch(
+      /router|blocking/i
+    )
     expect(await pairingMeets(blockedError("trust"))).toMatch(
       /doesn't trust home\.example's certificate/
     )

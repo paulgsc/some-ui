@@ -90,7 +90,6 @@ const EVENTS = {
     { type: "lookAgain", fresh: false },
   ],
   blocked: [{ type: "blocked", reason: "name", at: 4 }],
-  unblocked: [{ type: "unblocked" }],
   parked: [
     { type: "parked", ticket: 1 },
     { type: "parked", ticket: 2 },
