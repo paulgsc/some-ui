@@ -219,7 +219,7 @@ function thrownFailureOf(error: unknown): PairFailure {
 
 /** What the native log says as a blocked stretch starts (NA1). */
 const BLOCKED_SUMMARY: Readonly<Record<HomeBlockedReason, string>> = {
-  name: "This phone couldn't find home's name on this network.",
+  name: "This phone couldn't look up home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
   door: "Home's address answered, but home's server didn't.",
 }
@@ -536,7 +536,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     summary = "Away from home: home didn't answer."
   ): void => {
     if (answered) {
-      if (state.away === null) return
+      // Any answer ends a stretch away and what blocked a request (NA1).
+      if (state.away === null && state.blocked === null) return
       cancelLapse?.()
       cancelLapse = null
       dispatch({ type: "answered" })
@@ -577,7 +578,6 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           throw error
         }
         reached(true)
-        if (state.blocked !== null) dispatch({ type: "unblocked" })
         return answer
       },
       (error: unknown) => {

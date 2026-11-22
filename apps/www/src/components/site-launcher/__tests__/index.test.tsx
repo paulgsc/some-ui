@@ -4,8 +4,8 @@
  * The launcher offers each build exactly the pages it serves and its
  * navigation offers: no LAN tool where "lan" is not bundled (A3,
  * packages/some-vite-config/AUDIENCES.md), administration first and no study
- * or making on the home network (ADM1, `lib/purpose`), Playoff Delta on the
- * public site, and nothing in the Android app.
+ * or making on the home network (ADM1, `lib/purpose`), Playoff Delta in the
+ * viewer build Snips photographs, and nothing in the Android app.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -89,7 +89,7 @@ describe("the site launcher", () => {
     expect(screen.queryByText("Passkey")).toBeNull()
   })
 
-  it("offers the public site Playoff Delta, no LAN tool and no administration", async () => {
+  it("offers the viewer build Playoff Delta, no LAN tool and no administration", async () => {
     const { SiteLauncher } = await load({ audiences: ["public", "web"] })
     render(<SiteLauncher />)
     expect(openTiles()).toEqual(["/playoff-delta", "/extensions", "/mission"])

@@ -335,13 +335,19 @@ declared (checked by reading every call site and by the tests named).
 - _Falsified by:_ a hunk in `apps/www/vite.config.ts` that widens
   `PAGES_CONNECT_POLICY` beyond `'self'`, removes `pagesConnectPolicy()` from the
   plugin list, changes its `injectTo` from `head-prepend`, or changes the profile
-  name it keys on; or one that adds another `<meta http-equiv>` policy to
-  `apps/www/index.html` or `apps/www/resume/index.html` ahead of it.
-- _Scope:_ `apps/www/vite.config.ts`, and the two HTML entries.
+  name it keys on; one that makes `publicSite` write a page from anything but a
+  template Vite's HTML plugin emitted, or put a page's own words ahead of the
+  template's `<head>`; or one that adds another `<meta http-equiv>` policy ahead
+  of it to a template the Pages build carries (`SITE_TEMPLATES` in
+  `apps/www/src/landing/output.ts`: `apps/www/landing/*.html`) or to a page
+  `apps/www/src/landing` renders.
+- _Scope:_ `apps/www/vite.config.ts`, the Pages build's templates, and
+  `apps/www/src/landing`.
 - _Why not enforced:_ a type or a lint rule cannot see a build's output. The
   claim is checked against the output by `tests/local-mode/no-egress.spec.ts`,
-  which finds the tag, shows the policy blocks a real request, and loads five
-  routes with no violation; `pr.yml` runs it on any change to `apps/www/src` or
+  which finds the tag, shows the policy blocks a real request, and loads the
+  site's pages (the landing, the résumé, the authorship record and the 404
+  page) with no violation; `pr.yml` runs it on any change to `apps/www/src` or
   the files above (wiring, not reviewable here). The lan and Docker builds are
   left out because they reach `file_host` on another port of the same host and
   a music-overlay socket, neither of which a `connect-src` can name without

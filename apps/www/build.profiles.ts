@@ -16,9 +16,9 @@ import type { Plugin } from "vite"
  *   `public` plus `web`.
  * - **`snips`** - the build Snips Capture photographs
  *   (.github/workflows/snips-capture.yml, `docs/snips.md`): the viewer's
- *   build, as `pages` is today, kept whole so every route an essay names by
- *   its snip still resolves when the public site is pruned to a CV (C1055,
- *   #3401). Built only by that capture and never deployed, so
+ *   build kept whole, every route the public site no longer serves (it is a
+ *   CV, C1055, #3401) included, so every route an essay names by its snip
+ *   still resolves. Built only by that capture and never deployed, so
  *   check-bundle-paths.ts does not check it (`CAPTURE_PROFILE`, build.paths.ts).
  * - **`mobile`** - the Android app (apps/mobile's `build:web`): `public` plus
  *   `apk` (workspaces that need the phone, e.g. the soundbite recorder), and

@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  The authorship record every published video's end card links to (STUDIO
+  ST16), on the public site (PAGES, #3401; C1055). A template of the Pages
+  build only (vite.config.ts, `publicSite`), written as authorship/index.html.
+  Its one script draws the record its link carries (`?r`) and keeps nothing:
+  src/landing/authorship.tsx, with no router and no app around it.
+-->
+<html lang="en" class="mochi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Who made each scene</title>
+    <meta
+      name="description"
+      content="What the mark in my videos means, and the record of one video: who chose, worded and made each scene."
+    />
+    <!-- The cascade layers' order, before any stylesheet names one: the
+         record stage's own CSS (in @layer utilities) loads ahead of the
+         site's stylesheet, and would otherwise put utilities below base. -->
+    <style>
+      @layer theme, base, components, utilities;
+    </style>
+    <link href="/src/landing/page.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="record"></div>
+    <script type="module" src="/src/landing/authorship.tsx"></script>
+  </body>
+</html>

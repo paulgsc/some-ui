@@ -28,6 +28,13 @@ interface ImportMetaEnv {
    * Typed as its one value, so a misspelled comparison is a type error.
    */
   readonly VITE_DEVICE_BACKEND?: "true"
+  /**
+   * `"true"` in the public site's build only (vite.config.ts `define`, the
+   * `pages` profile; C1055). Read inline by the web door
+   * (`@/lib/web-surface`), as `VITE_DEVICE_BACKEND` is, so the Pages bundle
+   * drops every branch but the authorship record's.
+   */
+  readonly VITE_PAGES_SITE?: "true" | ""
 
   /**
    * The commit this build is made from (`buildCommit` in vite.config.ts),

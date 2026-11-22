@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Deployment regression check for the /resume shell (apps/www/resume/index.html).
+// Deployment regression check for the public site's résumé page
+// (apps/www/src/landing/pages.ts, rendered by render-public-site.ts).
 //
-// Pages has no server-side rewrite, so without that shell /some-ui/resume/
-// would be the SPA's 404.html: HTTP 404 with the generic title, which a
-// crawler or link-preview bot reads as missing. This asserts a real 200,
+// Pages has no server-side rewrite, so without that page /some-ui/resume/
+// would be the site's 404.html: HTTP 404, which a crawler or link-preview
+// bot reads as missing. This asserts a real 200,
 // résumé-specific <title>/description, the canonical /resume/ URL, and a
 // stable identifier in the initial HTML.
 //

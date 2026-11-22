@@ -13,8 +13,7 @@ const PUBLIC_PATHS: ReadonlySet<string> = new Set([
 /**
  * Whether `pathname` is one of `PUBLIC_PATHS`, ignoring one trailing slash
  * (never for "/"): the router's basepath rewrite keeps it, and the canonical
- * shared résumé URL is `/resume/` (Pages' resume/index.html shell), which a
- * bare match would send to /auth.
+ * shared résumé URL is `/resume/`, which a bare match would send to /auth.
  */
 export function isPublicPath(pathname: string): boolean {
   const normalized =

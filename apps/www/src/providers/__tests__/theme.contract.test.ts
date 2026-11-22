@@ -1,7 +1,7 @@
 /**
  * The host adapter's half of the theme protocol, checked against the canonical
- * registry. Two hand-maintained duplicates of `@some-ui/styles/theme` in each
- * HTML entry (`index.html` and `resume/index.html`): the pre-paint no-flash
+ * registry. Two hand-maintained duplicates of `@some-ui/styles/theme` in the
+ * app's HTML entry (`index.html`): the pre-paint no-flash
  * script (it runs before any module loads, so cannot import the controller)
  * and the fallback `<style>` above it. Drift is invisible in dev and shows in production as a flash of the
  * wrong theme, or a silent fallback to light on reload.
@@ -22,7 +22,7 @@ import { z } from "zod"
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
 /** Every HTML entry that carries its own copy of the pre-paint script. */
-const ENTRIES = ["index.html", "resume/index.html"]
+const ENTRIES = ["index.html"]
 
 const prePaintEntrySchema = z.object({
   classes: z.array(z.string()),

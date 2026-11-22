@@ -83,7 +83,7 @@ class InsecureHomeError extends Error {
 
 /** What a `HomeBlockedReason` failure is, as the native log reads it. */
 const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
-  name: "This phone can't find home's name on this network.",
+  name: "This phone couldn't look up home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
   door: "Home's address answered, but home's server didn't.",
 }

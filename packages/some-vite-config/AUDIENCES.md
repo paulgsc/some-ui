@@ -174,7 +174,10 @@ checked against every existing link. What is left is inside such a file.
 - _Claim:_ in a door's `index.ts`, every `import()` of a gated workspace or of a module inside
   the door sits in the true branch of a conditional whose condition is written inline as
   `import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("<audience>")` (for `web`),
-  whose false branch loads nothing (an empty record, a component that renders `null`), and the
+  with `import.meta.env.VITE_PAGES_SITE !== "true" &&` written inline between the two for
+  every export but the authorship record (the public site is a CV, C1055, whose one script
+  draws that record), whose false branch
+  loads nothing (an empty record, a component that renders `null`), and the
   index has no static value import of a gated workspace; and no module outside the door
   imports one inside it except through its `index.ts`.
 - _Falsified by_ a hunk in a door's `index.ts` that adds such an `import()` or a static value
@@ -185,14 +188,21 @@ checked against every existing link. What is left is inside such a file.
   the door's own module); or a hunk to `apps/www/build.profiles.ts` that adds a directory to
   `doors` whose `index.ts` does not meet the claim, or to `profileBuildEnv` in
   `apps/www/build.paths.ts` that sets `VITE_DEVICE_BACKEND` to `"true"` in a profile carrying
-  `web`; or a hunk to `apps/www/eslint.config.js` that edits `DOOR_PATTERN`, drops it from a
-  block, adds a block setting `no-restricted-imports` for `src/` files without it, turns that
+  `web`; or a hunk to `apps/www/vite.config.ts` that drops `import.meta.env.VITE_PAGES_SITE` from
+  the `define`, or that changes what sets it to `"true"` (`isPagesSiteBuild`, or what it reads:
+  `isPagesBuild`, `isFitHarnessBuild`, `isStageBuild`) so that a build other than the public
+  site's gets it, or the public site's does not; or a hunk to `apps/www/eslint.config.js` that
+  edits `DOOR_PATTERN`, drops it from a block, adds a block setting `no-restricted-imports` for `src/` files without it, turns that
   rule off for some, or changes a block's `files` or `ignores` so a `src/` file is in no block
   that carries it; or one that adds a door to `doors` without a pattern of its own.
 - _Scope:_ the directories in `doors` (`apps/www/build.profiles.ts`), imports of them from the
-  rest of `apps/www`, `doors` itself, and `profileBuildEnv` in `apps/www/build.paths.ts`. Held
-  when written: `web-surface/index.ts`'s two exports (`WEB_PANELS`, `ExtensionsComb`) both sit
-  behind the condition; no file outside the door imports below its index
+  rest of `apps/www`, `doors` itself, `profileBuildEnv` in `apps/www/build.paths.ts`, and, in
+  `apps/www/vite.config.ts`, the `VITE_PAGES_SITE` define and `isPagesSiteBuild` with what it
+  reads. Held when written:
+  `web-surface/index.ts`'s two exports then (`WEB_PANELS`, `ExtensionsComb`) both sat behind the
+  condition; held again when amended for C1055: every export that loads code sits behind it, every one but
+  `AuthorshipRecord` with the `VITE_PAGES_SITE` clause, which `vite.config.ts` sets to `"true"`
+  in the public site's build only; no file outside the door imports below its index
   (`rg -e 'from "@/lib/web-surface/' -e 'import\("@/lib/web-surface/' apps/www` finds none
   outside it); and `VITE_DEVICE_BACKEND` is `"true"` only in `mobile`, which does not carry
   `web`.
@@ -272,14 +282,14 @@ What it cannot see, by construction:
 - **A module every profile ships**, but one of them never runs: the comparison has nothing to
   compare. It is caught only once `exclusive` names it.
 
-**Debt today** (`build.paths.ts`, `debt`): every profile builds the one route tree, so the
-routes off a profile's path ship there as stubs in the startup chunk and as page chunks
-(about 67 KiB in the APK; the `apk` gate's pages in `lan` and `pages`, and the `lan` gate's
-in `pages`). The gates and `keepToMobileSurface` keep them from rendering; the bytes are still
-paid. Each entry goes with the change that gives that deployable its own route tree. And
-`lan` and `pages` carry about 3.5 KiB of `@some-ui/voice-capture`, the take pattern's view and
-words, which LeetType's record screen draws only with a microphone the web builds do not give
-it (#2433).
+**Debt today** (`build.paths.ts`, `debt`): `lan` and the Android app build the one shared
+route tree, so the routes off their path ship there as stubs in the startup chunk and as page
+chunks (about 67 KiB in the APK; the `apk` gate's pages in `lan`). The gates and
+`keepToMobileSurface` keep them from rendering; the bytes are still paid. Each entry goes with
+the change that gives that deployable its own route tree. The public site carries no route
+tree (C1055: static pages, held whole by an allowlist instead). And `lan` carries about
+3.5 KiB of `@some-ui/voice-capture`, the take pattern's view and words, which LeetType's record
+screen draws only with a microphone the web builds do not give it (#2433).
 
 ## Known gaps
 

@@ -1,0 +1,15 @@
+/* The public site's one stylesheet (PAGES, #3401; C1055), for its pages
+ * besides the landing, whose styles are inline (landing/index.html): the
+ * résumé's pages and the authorship record. The shared layer in its light
+ * theme, over this build's own sources (style.context.ts, `pages`), so it
+ * carries the utilities these pages use and no others. */
+@import "@some-ui/styles/tailwind.css";
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Tailwind otherwise reads every file under apps/www for class names. */
+@source not "../..";

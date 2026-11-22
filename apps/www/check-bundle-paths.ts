@@ -21,6 +21,7 @@ import {
 } from "@some-ui/vite-config/bundle-paths"
 
 import {
+  ALLOWLISTED_PROFILES,
   offPathPublicFiles,
   paths,
   profileBuildEnv,
@@ -51,8 +52,8 @@ function run(
 
 // The résumé PDFs the build copies from public/ (`build` runs this first too).
 run("node", ["scripts/sync-resume.mjs"], process.env)
-// The Pages build reads the rendered landing (vite.config.ts, `landingPage`).
-run("node", ["render-landing.ts"], process.env)
+// The Pages build reads the rendered site (vite.config.ts, `publicSite`).
+run("node", ["render-public-site.ts"], process.env)
 const publicFiles = readdirSync(join(appRoot, "public"))
 
 // What a profile copies from public/ and never loads: not chunks, so this is
@@ -113,7 +114,12 @@ try {
     failed ||= violations.length > 0
   }
   // Across the builds: whatever ships in some profiles only must say so.
-  const undeclared = checkExclusivity(builds, paths)
+  // A profile held whole by an allowlist is left out of the comparison
+  // (build.paths.ts, `ALLOWLISTED_PROFILES`).
+  const compared = new Map(
+    [...builds].filter(([profile]) => !ALLOWLISTED_PROFILES.includes(profile))
+  )
+  const undeclared = checkExclusivity(compared, paths)
   for (const violation of undeclared) {
     err(`[bundle-paths] ${describePathViolation(violation)}`)
   }

@@ -191,12 +191,15 @@ jobs:
           # Nobody reaches this site from the home network, so it leaves out
           # the LAN-only workspaces entirely - see apps/www/build.profiles.ts.
           SOME_UI_PROFILE: pages
-      # No copy step for the SPA fallback: GitHub Pages has no server-side
-      # rewrite, so a deep link on a client-side route is served 404.html, and
-      # the Pages build writes the app's shell there itself. Its index.html
-      # is the landing (apps/www/vite.config.ts, `landingPage`; PAGES #3401).
-      - name: Check the build has the landing and the SPA fallback
-        run: test -f apps/www/dist/index.html && test -f apps/www/dist/404.html
+      # The site is static pages (apps/www/vite.config.ts, `publicSite`;
+      # PAGES #3401): the landing at index.html, the résumé, the authorship
+      # record, and 404.html, which GitHub Pages serves for any other path.
+      - name: Check the build has the landing, the résumé and the 404 page
+        run: |
+          test -f apps/www/dist/index.html
+          test -f apps/www/dist/resume/index.html
+          test -f apps/www/dist/authorship/index.html
+          test -f apps/www/dist/404.html
       # Uploaded here, inside this job's concurrency group, so a run's
       # deploy queues as soon as its own build ends while the next approved
       # run's build is only starting: concurrency does not order jobs, so a

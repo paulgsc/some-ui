@@ -14,17 +14,18 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { Download, Layers3, LayoutTemplate } from "lucide-react"
 
-import type { ResumeComposition } from "@/lib/resume-options"
+import type { ResumeComposition, ResumeTemplate } from "@/lib/resume-options"
 import {
+  DEFAULT_RESUME_COMPOSITION,
+  DEFAULT_RESUME_TEMPLATE,
   isResumeComposition,
   RESUME_COMPOSITIONS,
   RESUME_TEMPLATES,
+  resumeStem,
 } from "@/lib/resume-options"
 
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
-type ResumeTemplate = (typeof RESUME_TEMPLATES)[number]["id"]
-const DEFAULT_TEMPLATE: ResumeTemplate = "rail"
 const RESUME_TEMPLATE_KEY = "some-ui:resume-template"
 const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 // A phone held sideways. `pointer: coarse` is what keeps a merely short
@@ -51,7 +52,7 @@ function remember(key: string, value: string): void {
 
 function initialComposition(): ResumeComposition {
   const stored = remembered(RESUME_COMPOSITION_KEY)
-  return isResumeComposition(stored) ? stored : "backend"
+  return isResumeComposition(stored) ? stored : DEFAULT_RESUME_COMPOSITION
 }
 
 function isResumeTemplate(value: string | null): value is ResumeTemplate {
@@ -60,19 +61,7 @@ function isResumeTemplate(value: string | null): value is ResumeTemplate {
 
 function initialTemplate(): ResumeTemplate {
   const stored = remembered(RESUME_TEMPLATE_KEY)
-  return isResumeTemplate(stored) ? stored : DEFAULT_TEMPLATE
-}
-
-// Mirrors packages/ui/resume/scripts/typst.mjs's `stemFor` (a static site has
-// no renderer to ask): `rail`, the default, keeps the unsuffixed
-// `resume-<composition>` name; every other template's is suffixed.
-function resumeStem(
-  composition: ResumeComposition,
-  template: ResumeTemplate
-): string {
-  return template === DEFAULT_TEMPLATE
-    ? `resume-${composition}`
-    : `resume-${composition}-${template}`
+  return isResumeTemplate(stored) ? stored : DEFAULT_RESUME_TEMPLATE
 }
 
 const ResumeRoute = (): JSX.Element => {

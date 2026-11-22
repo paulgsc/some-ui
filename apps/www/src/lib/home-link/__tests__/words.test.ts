@@ -534,7 +534,11 @@ describe("a request that couldn't reach home, though home may be there (NA1)", (
       expect(view.line).not.toMatch(MACHINERY)
       expect(view.line).toMatch(/on this phone and go next time/)
     }
-    expect(views[0]?.line).toMatch(/can't find home's name on this network/)
+    expect(views[0]?.line).toMatch(
+      /couldn't look up home's name on this network/
+    )
+    // Only what the phone knows (#3411): its lookup failed, not why.
+    expect(views[0]?.line).not.toMatch(/router|blocking/i)
     expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
     expect(views[2]?.line).toMatch(/home itself isn't answering/)
     // Once nothing is blocked, the same run is away again.

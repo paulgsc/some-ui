@@ -13,6 +13,7 @@
  */
 import type { ResumeData } from "@some-ui/resume"
 
+import { SITE_URL } from "./output.ts"
 import type { GapWords, LandingWords, ProjectWords } from "./words.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -74,7 +75,7 @@ const role = (title: string, when: string, body: string): string => `
 export function renderLandingHead(words: LandingWords = LANDING_WORDS): string {
   return `<title>${e(words.title)}</title>
     <meta name="description" content="${e(words.description)}" />
-    <link rel="canonical" href="https://paulgsc.github.io/some-ui/" />`
+    <link rel="canonical" href="${SITE_URL}" />`
 }
 
 /**

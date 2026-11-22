@@ -7,13 +7,13 @@
  * VS1 (#3121): a bare import in www's `src/` (`import "@/lib/x"`, not CSS)
  * names a module listed here, and the release build keeps it. Held by
  * `src/lib/demo/__tests__/load-time-modules.test.ts` (every bare import is
- * listed) and `tests/local-mode/viewer-storage.spec.ts` (the built Pages app
- * keeps nothing a viewer wrote across a reload).
+ * listed) and `tests/local-mode/viewer-storage.spec.ts` (the built viewer app,
+ * the capture build, keeps nothing a viewer wrote across a reload).
  */
 
 /** www's modules that act on load, from www's root. */
 export const LOAD_TIME_MODULES: ReadonlyArray<string> = [
-  // On the Pages build, the page's storage becomes an in-memory copy before
+  // In a viewer build, the page's storage becomes an in-memory copy before
   // any module reads it (CLAUDE.md, "A viewer tries, and nothing is kept").
   "src/lib/demo/viewer-storage.ts",
 ]

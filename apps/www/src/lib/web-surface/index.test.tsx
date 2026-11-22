@@ -23,9 +23,15 @@ const SAMPLE_ESSAY = sample.value
 async function loadDoor({
   device = false,
   web = true,
-}: { device?: boolean; web?: boolean } = {}): Promise<typeof WebSurface> {
+  pagesSite = false,
+}: {
+  device?: boolean
+  web?: boolean
+  pagesSite?: boolean
+} = {}): Promise<typeof WebSurface> {
   vi.resetModules()
   vi.stubEnv("VITE_DEVICE_BACKEND", device ? "true" : "")
+  vi.stubEnv("VITE_PAGES_SITE", pagesSite ? "true" : "")
   vi.doMock("@/lib/build-profile", () => ({
     hasAudience: (audience: string): boolean =>
       audience === "public" || (audience === "web" && web),
@@ -66,6 +72,37 @@ describe("a web build", () => {
     expect(isLazy(CallStage)).toBe(true)
     expect(isLazy(EssayStage)).toBe(true)
     expect(isLazy(EssaySceneFrame)).toBe(true)
+  })
+})
+
+describe("the public site (a CV; C1055)", () => {
+  it("binds the authorship record and nothing else", async () => {
+    const {
+      AuthorshipRecord,
+      BurnInRecord,
+      BurnInsPreview,
+      CallStage,
+      EssaySceneFrame,
+      EssayStage,
+      ExtensionsComb,
+      PlayoffDeltaStage,
+      WEB_PANELS,
+    } = await loadDoor({ pagesSite: true })
+
+    expect(isLazy(AuthorshipRecord)).toBe(true)
+    expect(WEB_PANELS).toEqual({})
+    const { container } = render(
+      <>
+        <ExtensionsComb />
+        <PlayoffDeltaStage />
+        <BurnInsPreview />
+        <BurnInRecord />
+        <CallStage />
+        <EssayStage />
+        <EssaySceneFrame essay={SAMPLE_ESSAY} record />
+      </>
+    )
+    expect(container.innerHTML).toBe("")
   })
 })
 
