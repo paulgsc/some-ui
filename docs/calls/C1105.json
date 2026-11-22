@@ -1,0 +1,18 @@
+{
+  "id": "C1105",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/eslint/package.json",
+    "packages/eslint/tests/detect-changes.test.ts"
+  ],
+  "chose": "Take picomatch 2.3.2, the 2.x security release for CVE-2026-33671 and CVE-2026-33672, in place of Dependabot's 4.0.7 (#3392, #3393). The detect-changes test (CD1) reproduces dorny/paths-filter v4.0.3's matching, and that action compiles patterns with picomatch ^2.3.1, so the test stays on the action's major; @types/picomatch stays 2.3.4. Revisit when a paths-filter release moves to picomatch 4.",
+  "options": [
+    "picomatch 2.3.2, the same fix on the action's major (taken)",
+    "picomatch 4.0.7 as Dependabot proposed",
+    "leave picomatch at 2.3.1 and dismiss the advisory as test-only"
+  ],
+  "gray": "Dependabot's security update and CD1's pin pull opposite ways: 4.0.7 clears the advisory but stops the test from modelling the matcher CI actually runs, and no check says which one wins.",
+  "undo": "Set picomatch back to 2.3.1, or to 4.x with @types/picomatch 4.x, in packages/eslint/package.json and reinstall.",
+  "refs": ["#3392", "#3393", "#3388"]
+}

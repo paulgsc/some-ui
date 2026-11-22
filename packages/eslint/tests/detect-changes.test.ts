@@ -10,12 +10,18 @@
  * it), and every node-e2e filter, read by its step in pr.yml.
  *
  * The matching is the action's own: dorny/paths-filter v4.0.3 compiles each
- * pattern with picomatch 2.3.1 (its lockfile's, pinned here) under
+ * pattern with picomatch 2.3.1 (its lockfile's) under
  * `{ dot: true }`, under the step's `predicate-quantifier` (`some` for the
  * job flags, `some-with-excludes` for node-e2e's), as its src/filter.ts
  * does.
  * `findPathsFilterViolations` in workflow-guards.ts is the lexical half: it
  * fails the leading `!` that broke this under `some`.
+ *
+ * Pinned here at 2.3.2, the 2.x security release for CVE-2026-33671 and
+ * CVE-2026-33672 (#3392, #3393). It changes only nested or repeated extglob
+ * quantifiers and POSIX classes; these filters use neither (their only
+ * extglob is `!(*.md)`, a single negation), so it matches as the action's 2.3.1 does.
+ * Stay on the action's major: 4.x is a different matcher.
  */
 
 import { readFileSync } from "node:fs"
