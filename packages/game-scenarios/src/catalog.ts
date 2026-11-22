@@ -75,6 +75,70 @@ export type BigPlayAlgebra = {
   }>
 }
 
+/**
+ * What a claim measures (#3041, D26: the nine to start): each computed by
+ * home from the plays it keeps, about one unit of a team.
+ */
+export const MEASURES = [
+  "pass-rush",
+  "third-down",
+  "red-zone",
+  "fourth-down-go",
+  "two-minute",
+  "challenges-won",
+  "timeouts-at-half",
+  "takeaways",
+  "explosives-allowed",
+] as const
+export type Measure = (typeof MEASURES)[number]
+
+/** What a claim says of its measure, and the two sides each shape has (#3041). */
+export const CLAIM_SHAPES = ["rank", "vs-league", "vs-team", "trend"] as const
+export type ClaimShape = (typeof CLAIM_SHAPES)[number]
+
+export const CLAIM_SIDES = {
+  rank: ["best", "worst"],
+  "vs-league": ["better", "worse"],
+  "vs-team": ["better", "worse"],
+  trend: ["improving", "declining"],
+} as const satisfies Readonly<Record<ClaimShape, readonly [string, string]>>
+export type ClaimSide<S extends ClaimShape = ClaimShape> =
+  (typeof CLAIM_SIDES)[S][number]
+
+/** When a claim is settled (#3041). */
+export const DEADLINES = ["after-games", "by-week", "season-end"] as const
+export type Deadline = (typeof DEADLINES)[number]
+
+/**
+ * Where a claim stands, as home reads it each week (#3041); `withdrawn` for
+ * one whose bite the owner deleted (the owner, 2026-11-18).
+ */
+export const VERDICTS = [
+  "holding",
+  "against-so-far",
+  "too-early",
+  "settled-right",
+  "settled-wrong",
+  "withdrawn",
+] as const
+export type Verdict = (typeof VERDICTS)[number]
+
+/**
+ * The claim algebra (#3041, D24–D26): each measure's unit and which way is
+ * better (none for a style, such as how often a team goes for it), each
+ * shape's sides, the deadlines and the verdicts.
+ */
+export type ClaimAlgebra = {
+  readonly measures: ReadonlyArray<{
+    readonly id: Measure
+    readonly unit: Unit
+    readonly better: "higher" | "lower" | null
+  }>
+  readonly shapes: ReadonlyArray<ClaimShape>
+  readonly deadlines: ReadonlyArray<Deadline>
+  readonly verdicts: ReadonlyArray<Verdict>
+}
+
 export type CatalogEntry = {
   /** Dotted, `<phase>.<name>`, e.g. `in.third-long`. */
   readonly id: string
@@ -92,6 +156,7 @@ export type Catalog = {
   readonly halves: ReadonlyArray<Half>
   readonly bigPlay: BigPlayAlgebra
   readonly units: ReadonlyArray<Unit>
+  readonly claims: ClaimAlgebra
 }
 
 function oneOf<T extends string>(
@@ -139,6 +204,16 @@ export function parseCatalog(raw: {
     kinds: ReadonlyArray<{ id: string; least: string }>
   }
   units: ReadonlyArray<string>
+  claims: {
+    measures: ReadonlyArray<{
+      id: string
+      unit: string
+      better: string | null
+    }>
+    shapes: ReadonlyArray<{ id: string; sides: ReadonlyArray<string> }>
+    deadlines: ReadonlyArray<string>
+    verdicts: ReadonlyArray<string>
+  }
 }): Catalog {
   allOf(
     BIG_PLAY_SIZES,
@@ -150,6 +225,20 @@ export function parseCatalog(raw: {
     raw.big_play.kinds.map((kind) => kind.id),
     "big-play kind"
   )
+  allOf(
+    MEASURES,
+    raw.claims.measures.map((measure) => measure.id),
+    "measure"
+  )
+  const shapes = allOf(
+    CLAIM_SHAPES,
+    raw.claims.shapes.map((shape) => shape.id),
+    "claim shape"
+  )
+  for (const shape of raw.claims.shapes) {
+    const id = oneOf(CLAIM_SHAPES, shape.id, "claim shape")
+    allOf(CLAIM_SIDES[id], shape.sides, `sides of ${id}`)
+  }
   return {
     version: raw.version,
     scenarios: raw.scenarios.map((s) => ({
@@ -168,6 +257,23 @@ export function parseCatalog(raw: {
         id: oneOf(BIG_PLAY_KINDS, kind.id, "big-play kind"),
         least: oneOf(BIG_PLAY_SIZES, kind.least, `least size of ${kind.id}`),
       })),
+    },
+    claims: {
+      measures: raw.claims.measures.map((measure) => ({
+        id: oneOf(MEASURES, measure.id, "measure"),
+        unit: oneOf(UNITS, measure.unit, `unit of ${measure.id}`),
+        better:
+          measure.better === null
+            ? null
+            : oneOf(
+                ["higher", "lower"] as const,
+                measure.better,
+                `better of ${measure.id}`
+              ),
+      })),
+      shapes,
+      deadlines: allOf(DEADLINES, raw.claims.deadlines, "deadline"),
+      verdicts: allOf(VERDICTS, raw.claims.verdicts, "verdict"),
     },
   }
 }

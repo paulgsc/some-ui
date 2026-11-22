@@ -1,0 +1,20 @@
+{
+  "id": "C1240",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/game-scenarios/src/catalog.ts",
+    "packages/game-scenarios/src/words.ts",
+    "packages/game-scenarios/src/game-scenarios.snapshot.json",
+    "server:crates/game_scenarios"
+  ],
+  "chose": "The claims ledger's algebra (#3041, D24–D26) is catalog v3, a `claims` dimension of the one scenario catalog in paulgsc/server's crates/game_scenarios, copied here from its dump and checked as closed unions by parseCatalog, as v2's halves, units and big-play algebra are: the nine measures (each with its unit and which way is better, none for a style such as going for it on fourth down), the four claim shapes with their two sides, the three kinds of deadline and the verdicts, `withdrawn` among them for a claim whose bite was deleted. A claim's own fields (who, N, the named team or week, why) are the ledger's. Words stay here, in words.ts.",
+  "options": [
+    "Catalog v3 (chosen): home computes the measures and keeps the ledger, the phone, the routine and the essay read it, so one catalog read by both is the existing family and its fixture check keeps them together.",
+    "A client-only schema in some-ui: a second copy of what home computes against, which drifts without a check.",
+    "A server-only list home sends with each verdict: the phone and the routine would know a claim's shape only once home answered, so a proposal couldn't be checked before it is sent."
+  ],
+  "gray": "Where the claim algebra is defined decides which side owns a change to it and how the two are kept together; no earlier decision places it, and the owner would see it as which session can add a measure.",
+  "undo": "Drop `claims` from the catalog and its dump, CATALOG_VERSION back to 2, and remove MEASURES, CLAIM_SHAPES, CLAIM_SIDES, DEADLINES, VERDICTS and their words.",
+  "refs": ["#3041", "#2074"]
+}

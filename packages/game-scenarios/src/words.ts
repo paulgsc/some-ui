@@ -7,8 +7,10 @@ import type {
   BigPlayKind,
   BigPlaySize,
   Half,
+  Measure,
   Phase,
   Unit,
+  Verdict,
 } from "@game-scenarios/catalog"
 
 export const PHASE_TITLES: Readonly<Record<Phase, string>> = {
@@ -120,4 +122,27 @@ export const UNIT_WORDS: Readonly<Record<Unit, string>> = {
   defense: "Defense",
   "special-teams": "Special teams",
   coaching: "Coaching",
+}
+
+/** What each measure counts, as a claim and the essay say it (#3041, D26). */
+export const MEASURE_WORDS: Readonly<Record<Measure, string>> = {
+  "pass-rush": "Pass rush: sacks per opponent dropback",
+  "third-down": "Third-down conversions",
+  "red-zone": "Red-zone touchdowns per trip",
+  "fourth-down-go": "Going for it on fourth down",
+  "two-minute": "Points per two-minute drive",
+  "challenges-won": "Challenges won",
+  "timeouts-at-half": "Timeouts left at the half",
+  takeaways: "Turnovers forced",
+  "explosives-allowed": "Explosive plays allowed",
+}
+
+/** Where a claim stands, in the words the essay and Takes show (#3041). */
+export const VERDICT_WORDS: Readonly<Record<Verdict, string>> = {
+  holding: "Holding",
+  "against-so-far": "Against you so far",
+  "too-early": "Too early to tell",
+  "settled-right": "You were right",
+  "settled-wrong": "You were wrong",
+  withdrawn: "Withdrawn: its bite was deleted",
 }

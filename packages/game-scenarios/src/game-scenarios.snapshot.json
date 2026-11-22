@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "scenarios": [
     {
       "id": "pre.weather",
@@ -287,5 +287,81 @@
       }
     ]
   },
-  "units": ["offense", "defense", "special-teams", "coaching"]
+  "units": ["offense", "defense", "special-teams", "coaching"],
+  "claims": {
+    "measures": [
+      {
+        "id": "pass-rush",
+        "unit": "defense",
+        "better": "higher"
+      },
+      {
+        "id": "third-down",
+        "unit": "offense",
+        "better": "higher"
+      },
+      {
+        "id": "red-zone",
+        "unit": "offense",
+        "better": "higher"
+      },
+      {
+        "id": "fourth-down-go",
+        "unit": "coaching",
+        "better": null
+      },
+      {
+        "id": "two-minute",
+        "unit": "offense",
+        "better": "higher"
+      },
+      {
+        "id": "challenges-won",
+        "unit": "coaching",
+        "better": "higher"
+      },
+      {
+        "id": "timeouts-at-half",
+        "unit": "coaching",
+        "better": "higher"
+      },
+      {
+        "id": "takeaways",
+        "unit": "defense",
+        "better": "higher"
+      },
+      {
+        "id": "explosives-allowed",
+        "unit": "defense",
+        "better": "lower"
+      }
+    ],
+    "shapes": [
+      {
+        "id": "rank",
+        "sides": ["best", "worst"]
+      },
+      {
+        "id": "vs-league",
+        "sides": ["better", "worse"]
+      },
+      {
+        "id": "vs-team",
+        "sides": ["better", "worse"]
+      },
+      {
+        "id": "trend",
+        "sides": ["improving", "declining"]
+      }
+    ],
+    "deadlines": ["after-games", "by-week", "season-end"],
+    "verdicts": [
+      "holding",
+      "against-so-far",
+      "too-early",
+      "settled-right",
+      "settled-wrong",
+      "withdrawn"
+    ]
+  }
 }

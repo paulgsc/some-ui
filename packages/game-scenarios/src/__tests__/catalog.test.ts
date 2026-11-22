@@ -2,9 +2,14 @@ import {
   BIG_PLAY_KINDS,
   BIG_PLAY_SIZES,
   CATALOG,
+  CLAIM_SHAPES,
+  CLAIM_SIDES,
+  DEADLINES,
   HALVES,
+  MEASURES,
   parseCatalog,
   UNITS,
+  VERDICTS,
 } from "@game-scenarios/catalog"
 import { PRIMITIVES } from "@game-scenarios/icons"
 import { isScenarioId, scenarioOf, SCENARIOS } from "@game-scenarios/scenarios"
@@ -58,7 +63,15 @@ describe("the dimensions a bite is read along (#3048)", () => {
   })
 })
 
+type RawClaims = Parameters<typeof parseCatalog>[0]["claims"]
+
 describe("parseCatalog", () => {
+  const claims: RawClaims = {
+    measures: MEASURES.map((id) => ({ id, unit: "defense", better: "higher" })),
+    shapes: CLAIM_SHAPES.map((id) => ({ id, sides: [...CLAIM_SIDES[id]] })),
+    deadlines: [...DEADLINES],
+    verdicts: [...VERDICTS],
+  }
   const dimensions = {
     halves: [...HALVES],
     units: [...UNITS],
@@ -66,12 +79,51 @@ describe("parseCatalog", () => {
       sizes: BIG_PLAY_SIZES.map((id, i) => ({ id, yards: 20 * (i + 1) })),
       kinds: BIG_PLAY_KINDS.map((id) => ({ id, least: "big" })),
     },
+    claims,
   }
+
+  it("refuses a measure, shape, side, deadline or verdict this code does not know, or one it lacks", () => {
+    const with_ = (change: Partial<typeof claims>): void => {
+      parseCatalog({
+        version: 3,
+        scenarios: [],
+        ...dimensions,
+        claims: { ...claims, ...change },
+      })
+    }
+    expect(() => with_({})).not.toThrow()
+    expect(() => with_({ measures: claims.measures.slice(1) })).toThrow(
+      /^measure: third-down/
+    )
+    expect(() =>
+      with_({
+        measures: claims.measures.map((m) => ({ ...m, unit: "bench" })),
+      })
+    ).toThrow("unknown unit of pass-rush: bench")
+    expect(() =>
+      with_({
+        measures: claims.measures.map((m) => ({ ...m, better: "more" })),
+      })
+    ).toThrow("unknown better of pass-rush: more")
+    expect(() =>
+      with_({
+        shapes: claims.shapes.map((shape) =>
+          shape.id === "trend" ? { id: "trend", sides: ["up", "down"] } : shape
+        ),
+      })
+    ).toThrow("unknown sides of trend: up")
+    expect(() => with_({ deadlines: ["by-week", "season-end"] })).toThrow(
+      "deadline: by-week, season-end is not after-games, by-week, season-end"
+    )
+    expect(() =>
+      with_({ verdicts: claims.verdicts.filter((v) => v !== "withdrawn") })
+    ).toThrow(/^verdict: /)
+  })
 
   it("refuses a half, size, kind or unit this code does not know, or one it lacks", () => {
     expect(() =>
       parseCatalog({
-        version: 2,
+        version: 3,
         scenarios: [],
         ...dimensions,
         units: ["offense", "defense", "special-teams"],
@@ -79,7 +131,7 @@ describe("parseCatalog", () => {
     ).toThrow("unit: offense, defense, special-teams is not")
     expect(() =>
       parseCatalog({
-        version: 2,
+        version: 3,
         scenarios: [],
         ...dimensions,
         halves: ["first", "second"],
@@ -87,7 +139,7 @@ describe("parseCatalog", () => {
     ).toThrow("half: first, second is not first, second, overtime")
     expect(() =>
       parseCatalog({
-        version: 2,
+        version: 3,
         scenarios: [],
         ...dimensions,
         big_play: {
@@ -98,7 +150,7 @@ describe("parseCatalog", () => {
     ).toThrow("unknown big-play kind: lateral")
     expect(() =>
       parseCatalog({
-        version: 2,
+        version: 3,
         scenarios: [],
         ...dimensions,
         big_play: {
@@ -109,7 +161,7 @@ describe("parseCatalog", () => {
     ).toThrow("unknown least size of pass: vast")
     expect(() =>
       parseCatalog({
-        version: 2,
+        version: 3,
         scenarios: [],
         ...dimensions,
         big_play: {

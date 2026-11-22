@@ -28,6 +28,15 @@ big-play algebra's sizes (the fewest yards each starts at) and kinds (the
 smallest size each counts from). Each is a union here (`HALVES`, `UNITS`,
 `BIG_PLAY_SIZES`, `BIG_PLAY_KINDS`) with its words in `src/words.ts`.
 
+From version 3 it also lists `claims`, the claim algebra of the claims ledger
+(#3041, D24–D26): the `measures` home computes from the plays it keeps (each
+about one unit, with which way is better, or none for a style), the claim
+`shapes` with their two `sides`, the `deadlines` and the `verdicts`. They are
+`MEASURES`, `CLAIM_SHAPES` and `CLAIM_SIDES`, `DEADLINES` and `VERDICTS` here,
+with `MEASURE_WORDS` and `VERDICT_WORDS` in `src/words.ts`. A claim's own
+fields (who, N, the named team or week, why) are the ledger's, not the
+catalog's.
+
 ## What keeps the two sides together
 
 - The server's `scripts/check_client_fixtures.py` fails any server PR whose
