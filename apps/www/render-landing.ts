@@ -9,18 +9,20 @@
 // RI3) reads its imports as the packages the render image must build. The
 // landing is the Pages build's alone, so @some-ui/resume stays off that walk.
 //
-// Run with node (type stripping), from apps/www: node scripts/render-landing.ts
+// Run with node (type stripping), from apps/www: node render-landing.ts. It
+// sits beside vite.config.ts and check-bundle-paths.ts, so it reaches the
+// landing's modules by a same-directory path, as they do.
 
 import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { resumeData } from "@some-ui/resume"
 
-import { mochiSvg } from "../src/landing/mochi.ts"
-import type { RenderedLanding } from "../src/landing/output.ts"
-import { LANDING_FILE } from "../src/landing/output.ts"
-import { renderLanding, renderLandingHead } from "../src/landing/render.ts"
+import { mochiSvg } from "./src/landing/mochi.ts"
+import type { RenderedLanding } from "./src/landing/output.ts"
+import { LANDING_FILE } from "./src/landing/output.ts"
+import { renderLanding, renderLandingHead } from "./src/landing/render.ts"
 
-const out = resolve(import.meta.dirname, "..", LANDING_FILE)
+const out = resolve(import.meta.dirname, LANDING_FILE)
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(
   out,
@@ -29,4 +31,4 @@ writeFileSync(
     body: renderLanding(resumeData.fullstack, mochiSvg()),
   } satisfies RenderedLanding)
 )
-console.log(`[www] rendered the landing into ${LANDING_FILE}`)
+process.stdout.write(`[www] rendered the landing into ${LANDING_FILE}\n`)

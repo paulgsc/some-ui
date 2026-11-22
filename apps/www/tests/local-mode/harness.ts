@@ -49,7 +49,7 @@ const ENV: Record<BuildName, string> = {
 const HOW: Record<BuildName, string> = {
   lan: "pnpm --filter www exec vite build --outDir dist",
   pages:
-    "pnpm --filter www exec node scripts/render-landing.ts && SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-pages",
+    "pnpm --filter www exec node render-landing.ts && SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-pages",
   snips:
     "SOME_UI_PROFILE=snips VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-snips",
 }

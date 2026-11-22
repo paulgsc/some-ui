@@ -230,8 +230,9 @@ function pagesConnectPolicy(): Plugin {
 }
 
 // The public site's front page (PAGES, #3401; C1055): under the Pages profile
-// only, landing/index.html is a second HTML entry, filled at build time from
-// the résumé's data (src/landing/render.ts) and written as the output's
+// only, landing/index.html is a second HTML entry, filled with what
+// render-landing.ts rendered from the résumé's data (`LANDING_FILE`), and
+// written as the output's
 // index.html. The app's shell moves to 404.html, the fallback GitHub Pages
 // serves for every other path, where the app boots for /resume and
 // /authorship and sends anything else to the landing (lib/pages-surface).
@@ -251,7 +252,7 @@ function isPagesBuild(): boolean {
 }
 
 /**
- * The landing scripts/render-landing.ts rendered (the www build runs it
+ * The landing render-landing.ts rendered (the www build runs it
  * before vite). Read from a file rather than rendered here, so this config,
  * which every build loads, imports nothing of the résumé's: the recording
  * stage's walk (scripts/stage-packages.ts, RI3) reads its imports.
@@ -260,7 +261,7 @@ function readRenderedLanding(): RenderedLanding {
   const file = resolve(import.meta.dirname, LANDING_FILE)
   if (!fs.existsSync(file)) {
     throw new Error(
-      `The Pages build needs the rendered landing (${LANDING_FILE}): node scripts/render-landing.ts, which the www build runs first.`
+      `The Pages build needs the rendered landing (${LANDING_FILE}): node render-landing.ts, which the www build runs first.`
     )
   }
   const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))
