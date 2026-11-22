@@ -116,62 +116,40 @@
       .lede + .section-title {
         margin-top: 0;
       }
+      /* Cards in justified rows (C1064): each card takes its picture's own
+         shape (--ar, from the file, render.ts), asks its row for a width in
+         proportion (--r), and so every card in a row shares one height and
+         no picture is cropped or padded. A narrow window gives each card a
+         row of its own. */
       .grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-      }
-      .grid.gaps {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-      .card .body {
-        padding: 14px 18px 18px;
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-      }
-      .card h3 {
-        margin: 0;
-        font-size: 1.08rem;
-      }
-      .stack {
-        color: var(--muted);
-        font-size: 0.85rem;
-        margin: 0.15rem 0 0.4rem;
-      }
-      .card p {
-        margin: 0.2rem 0;
-      }
-      .links {
-        margin-top: auto;
-        padding-top: 0.7rem;
-        font-size: 0.92rem;
         display: flex;
         flex-wrap: wrap;
-        gap: 0.4rem 1rem;
-        font-weight: 500;
+        gap: 20px;
       }
-      .clip {
+      .card {
         position: relative;
-        aspect-ratio: 4 / 3;
-        background: var(--stage);
-        border-bottom: 1px solid var(--line);
+        flex: var(--r) 1 calc(var(--r) * 300px);
+        aspect-ratio: var(--ar);
+        border-radius: 12px;
         overflow: hidden;
-        margin: 0;
+        background: var(--stage);
+        border: 1px solid var(--line);
+        isolation: isolate;
       }
-      /* A slot's clip or still is the card's background (C1064): laid over
-         the placeholder, filling the slot, never something to click. */
+      /* The card's placeholder and its picture, under its words. */
+      .ground,
+      .drawing,
       .media {
         position: absolute;
         inset: 0;
+        z-index: 0;
+      }
+      .ground--server {
+        background: #111217;
+      }
+      /* A slot's clip or still is the card's background (C1064): filling
+         the card, never something to click. */
+      .media {
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -187,36 +165,80 @@
           display: none;
         }
       }
-      .title-card {
+      /* The card's words over its picture, on a scrim dark enough that white
+         text reads on any frame. */
+      .overlay {
         position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        text-align: center;
-        font-size: 1.5rem;
-        font-weight: 700;
-        line-height: 1.2;
-        color: var(--fg);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1;
+        padding: 48px 18px 16px;
+        color: #fff;
+        background: linear-gradient(
+          to bottom,
+          rgba(17, 18, 23, 0) 0,
+          rgba(17, 18, 23, 0.82) 40%,
+          rgba(17, 18, 23, 0.9) 100%
+        );
       }
-      .title-card--server {
-        background: #111217;
-        color: #d8d9da;
+      /* A gap's words sit at its left, so what its picture shows, at the
+         right (the widget that stays white), is never under them. */
+      .overlay--side {
+        top: 0;
+        right: auto;
+        width: 58%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 18px;
+        background: linear-gradient(
+          to right,
+          rgba(17, 18, 23, 0.9) 0,
+          rgba(17, 18, 23, 0.84) 75%,
+          rgba(17, 18, 23, 0) 100%
+        );
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .card p {
+        margin: 0.2rem 0;
+        font-size: 0.95rem;
+      }
+      .card .stack {
+        color: #e6e0d6;
+        font-size: 0.85rem;
+        margin: 0.15rem 0 0.4rem;
+      }
+      /* The overlay's entrance: one class (rise, render.ts) to take off. */
+      .rise {
+        animation: rise 0.6s ease-out both;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rise {
+          animation: none;
+        }
       }
       .note {
         position: absolute;
-        left: 8px;
-        bottom: 8px;
+        right: 8px;
+        top: 8px;
+        max-width: 40%;
+        z-index: 1;
+        margin: 0;
         font-size: 0.7rem;
         background: rgba(42, 33, 24, 0.82);
         color: #fff;
         padding: 2px 8px;
         border-radius: 999px;
-      }
-      .drawing {
-        position: absolute;
-        inset: 0;
       }
       .drawing--filter {
         display: grid;
@@ -307,8 +329,6 @@
         font-size: 0.85rem;
       }
       @media (max-width: 900px) {
-        .grid,
-        .grid.gaps,
         .two {
           grid-template-columns: 1fr;
         }
