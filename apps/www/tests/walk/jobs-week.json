@@ -1,0 +1,754 @@
+{
+  "$comment": "The Jobs walk's story sample (WALK2, #3282): one made-up week on the phone, as the stand-in home (apps/mobile/compat/stub-home.mjs) answers it, layered over stub-routes.json. Mock values only: the digest is job-desk's sample moved to the snips' frozen day (FROZEN_AT, 2026-11-02), an earlier application is on the record, and the interview week is invented. src/lib/snips/__tests__/walk-sample.test.ts reads every answer with the app's own readers.",
+  "schema": "some-ui.walk-sample/jobs/1",
+  "walk": {
+    "pickId": "nor-0b77",
+    "title": "Backend Engineer",
+    "company": "Harbourlight"
+  },
+  "routes": {
+    "GET /api/v1/jobs": {
+      "status": 200,
+      "body": {
+        "events": [
+          {
+            "id": "walk-e1",
+            "at": "2026-11-01T16:02:00.000Z",
+            "type": "taken",
+            "day": "2026-11-01",
+            "pickId": "lum-4c19",
+            "fingerprint": "lumen freight|platform engineer|remote"
+          },
+          {
+            "id": "walk-e2",
+            "at": "2026-11-01T16:40:00.000Z",
+            "type": "resume-ready",
+            "day": "2026-11-01",
+            "pickId": "lum-4c19",
+            "fingerprint": "lumen freight|platform engineer|remote"
+          },
+          {
+            "id": "walk-e3",
+            "at": "2026-11-01T17:05:00.000Z",
+            "type": "apply-opened",
+            "day": "2026-11-01",
+            "pickId": "lum-4c19",
+            "fingerprint": "lumen freight|platform engineer|remote"
+          },
+          {
+            "id": "walk-e4",
+            "at": "2026-11-01T17:31:00.000Z",
+            "type": "debrief",
+            "day": "2026-11-01",
+            "pickId": "lum-4c19",
+            "fingerprint": "lumen freight|platform engineer|remote",
+            "minutes": 25,
+            "friction": null,
+            "chips": [],
+            "what": "Their form wanted the cover letter pasted in.",
+            "voice": [],
+            "result": "submitted"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/jobs/digests": {
+      "status": 200,
+      "body": {
+        "digests": [
+          {
+            "day": "2026-11-02",
+            "digest": {
+              "schema": "some-ui.job-digest/1",
+              "day": "2026-11-02",
+              "createdAt": "2026-11-02T08:52:00Z",
+              "seen": 37,
+              "picks": [
+                {
+                  "id": "nor-0b77",
+                  "track": "software",
+                  "family": null,
+                  "fingerprint": "northwind avionics|backend engineer|remote",
+                  "posting": {
+                    "title": "Backend Engineer",
+                    "company": "Northwind Avionics",
+                    "location": "Remote",
+                    "compensation": "$95,000–$115,000 a year",
+                    "experience": null,
+                    "postedOn": "2026-10-05",
+                    "applyUrl": "https://jobs.example.com/nor-0b77"
+                  },
+                  "scores": {
+                    "fit": 0.66,
+                    "odds": 0.45,
+                    "fitWhy": "covers 8 of 12 requirements",
+                    "oddsWhy": "28 days old · remote"
+                  },
+                  "wants": "Backend services and event pipelines for a fleet-maintenance scheduling product, with automated tests and CI.",
+                  "fits": [
+                    {
+                      "title": "Pipelines and background jobs",
+                      "detail": "Redis coalescing in front of NATS JetStream; retryable failures are NAKed for redelivery.",
+                      "source": "server · crates"
+                    },
+                    {
+                      "title": "Data checks in CI",
+                      "detail": "Python checks hold dashboards to the metrics the services emit.",
+                      "source": "server · scripts/check_metric_contract.py"
+                    }
+                  ],
+                  "gaps": [
+                    {
+                      "kind": "learnable",
+                      "text": "Fleet-maintenance domain"
+                    },
+                    {
+                      "kind": "unknown",
+                      "text": "An on-call rotation"
+                    }
+                  ],
+                  "dontClaim": ["Managed cloud tenure", "Kubernetes"],
+                  "resume": {
+                    "kind": "build",
+                    "variant": "backend",
+                    "template": "safe",
+                    "ref": "cb503cb"
+                  },
+                  "kit": {
+                    "fields": [
+                      {
+                        "label": "Email",
+                        "value": "sam.rivera@example.com"
+                      },
+                      {
+                        "label": "Location",
+                        "value": "Springfield, IL"
+                      },
+                      {
+                        "label": "GitHub",
+                        "value": "https://github.example/sam-rivera"
+                      },
+                      {
+                        "label": "Portfolio",
+                        "value": "https://sam-rivera.example"
+                      }
+                    ],
+                    "answers": [
+                      {
+                        "label": "Authorized to work in the US",
+                        "value": "Yes, for any employer"
+                      },
+                      {
+                        "label": "Sponsorship",
+                        "value": "Not needed"
+                      }
+                    ],
+                    "coverLetter": "I build backend services and the pipelines behind them. On my own server, Redis coalesces work in front of NATS JetStream, and a retryable failure is NAKed so the stream redelivers it rather than dropping it. Python checks in CI hold the dashboards to the metrics the services actually emit, so a renamed metric fails a build instead of a chart. Scheduling maintenance for a fleet is the kind of event-driven work where that care pays off, and I would like to bring it to Northwind's backend.",
+                    "questions": [
+                      {
+                        "label": "What draws you to fleet-maintenance software?",
+                        "required": true,
+                        "draft": "It is backend work where a dropped event has a cost: a missed inspection, not a missed notification. I have built pipelines that redeliver a failed job instead of losing it, and I want that problem with real schedules behind it."
+                      },
+                      {
+                        "label": "Anything else you'd like us to know?",
+                        "required": false,
+                        "draft": null
+                      }
+                    ],
+                    "compensation": {
+                      "ask": "$110,000",
+                      "why": "Inside the posted $95,000 to $115,000 range, toward its top for a backend role with pipeline work."
+                    }
+                  }
+                },
+                {
+                  "id": "lar-5d19",
+                  "track": "software",
+                  "family": null,
+                  "fingerprint": "larkspur labs|software engineer product|remote",
+                  "posting": {
+                    "title": "Software Engineer, Product",
+                    "company": "Larkspur Labs",
+                    "location": "Remote",
+                    "compensation": "$105,000 a year",
+                    "experience": "2+ years",
+                    "postedOn": "2026-10-21",
+                    "applyUrl": "https://jobs.example.com/lar-5d19"
+                  },
+                  "scores": {
+                    "fit": 0.61,
+                    "odds": 0.55,
+                    "fitWhy": "covers 8 of 13 requirements",
+                    "oddsWhy": "12 days old · remote · asks 2+ years, no penalty"
+                  },
+                  "wants": "Full-stack TypeScript work on a booking app: React front end, Node services, Postgres.",
+                  "fits": [
+                    {
+                      "title": "React and TypeScript",
+                      "detail": "A TanStack app with typed routes and builds gated by audience.",
+                      "source": "some-ui · apps/www"
+                    },
+                    {
+                      "title": "Services and SQL",
+                      "detail": "40+ inventoried Axum operations and SQLx repositories.",
+                      "source": "server · apps/servers/file_host"
+                    }
+                  ],
+                  "gaps": [
+                    {
+                      "kind": "hard",
+                      "text": "Two years in a paid engineering role"
+                    },
+                    {
+                      "kind": "learnable",
+                      "text": "Node services in production"
+                    }
+                  ],
+                  "dontClaim": ["Commercial-scale traffic"],
+                  "resume": {
+                    "kind": "build",
+                    "variant": "fullstack",
+                    "template": "classic",
+                    "ref": "cb503cb"
+                  },
+                  "kit": {
+                    "fields": [
+                      {
+                        "label": "Email",
+                        "value": "sam.rivera@example.com"
+                      },
+                      {
+                        "label": "GitHub",
+                        "value": "https://github.example/sam-rivera"
+                      }
+                    ],
+                    "answers": [],
+                    "coverLetter": null,
+                    "questions": [],
+                    "compensation": null
+                  }
+                },
+                {
+                  "id": "tid-7f2a",
+                  "track": "adjacent",
+                  "family": "data",
+                  "fingerprint": "tidewater analytics|operations data analyst|remote",
+                  "posting": {
+                    "title": "Operations Data Analyst",
+                    "company": "Tidewater Analytics",
+                    "location": "Remote",
+                    "compensation": "$72,000–$85,000 a year",
+                    "experience": null,
+                    "postedOn": "2026-10-29",
+                    "applyUrl": "https://jobs.example.com/tid-7f2a"
+                  },
+                  "scores": {
+                    "fit": 0.68,
+                    "odds": 0.65,
+                    "fitWhy": "covers 7 of 10 requirements",
+                    "oddsWhy": "4 days old · remote"
+                  },
+                  "wants": "SQL and Python analysis of clinic scheduling data, dashboards for internal teams, and quality checks on incoming feeds.",
+                  "fits": [
+                    {
+                      "title": "SQL and dashboards",
+                      "detail": "Tableau dashboards on PostgreSQL, and reporting automated through the Google Workspace API.",
+                      "source": "personal · CABA Design, 2020–2023"
+                    },
+                    {
+                      "title": "Python data checks",
+                      "detail": "Python checks hold dashboards to the metrics the services emit.",
+                      "source": "server · scripts/check_metric_contract.py"
+                    },
+                    {
+                      "title": "Clinical data handling",
+                      "detail": "HIPAA-compliant LIMS accessioning at 99.99% accuracy.",
+                      "source": "personal · Natera, 2019–2020"
+                    }
+                  ],
+                  "gaps": [
+                    {
+                      "kind": "learnable",
+                      "text": "Clinic scheduling domain"
+                    },
+                    {
+                      "kind": "learnable",
+                      "text": "dbt or a cloud warehouse"
+                    }
+                  ],
+                  "dontClaim": [
+                    "Snowflake",
+                    "BigQuery",
+                    "A held analytics engineer title"
+                  ],
+                  "resume": {
+                    "kind": "build",
+                    "variant": "data",
+                    "template": "safe",
+                    "ref": "cb503cb"
+                  },
+                  "kit": {
+                    "fields": [
+                      {
+                        "label": "Email",
+                        "value": "sam.rivera@example.com"
+                      }
+                    ],
+                    "answers": [],
+                    "coverLetter": null,
+                    "questions": [
+                      {
+                        "label": "Describe a time you found a problem in a data feed.",
+                        "required": true,
+                        "draft": "At a clinical lab I accessioned samples into a HIPAA-compliant LIMS at 99.99% accuracy, which meant catching mismatched records before they reached a report. Later I wrote Python checks that hold dashboards to the metrics the services emit, so a feed that drifts fails a check instead of a meeting."
+                      }
+                    ],
+                    "compensation": null
+                  }
+                },
+                {
+                  "id": "kes-21c0",
+                  "track": "adjacent",
+                  "family": "qa",
+                  "fingerprint": "kestrel games|qa automation engineer|remote",
+                  "posting": {
+                    "title": "QA Automation Engineer",
+                    "company": "Kestrel Games",
+                    "location": "Remote",
+                    "compensation": "$88,000–$104,000 a year",
+                    "experience": null,
+                    "postedOn": "2026-10-27",
+                    "applyUrl": "https://jobs.example.com/kes-21c0"
+                  },
+                  "scores": {
+                    "fit": 0.63,
+                    "odds": 0.65,
+                    "fitWhy": "covers 7 of 11 requirements",
+                    "oddsWhy": "6 days old · remote"
+                  },
+                  "wants": "Keep an automated UI and API test suite running in CI for a mobile puzzle game, and triage failures with the developers.",
+                  "fits": [
+                    {
+                      "title": "UI automation",
+                      "detail": "Playwright end-to-end suites for the browser extensions and the web app.",
+                      "source": "some-ui · extensions, apps/www/tests"
+                    },
+                    {
+                      "title": "API contract tests",
+                      "detail": "A contract harness that fails on route and payload drift.",
+                      "source": "some-ui · packages/contract-harness"
+                    }
+                  ],
+                  "gaps": [
+                    {
+                      "kind": "learnable",
+                      "text": "Selenium or Cypress"
+                    },
+                    {
+                      "kind": "unknown",
+                      "text": "Mobile device lab"
+                    }
+                  ],
+                  "dontClaim": ["A held QA job title", "ISTQB certification"],
+                  "resume": {
+                    "kind": "patch",
+                    "variant": "qa",
+                    "template": "classic",
+                    "fallback": "qa",
+                    "pr": null,
+                    "change": "The qa composition leads with the Android launch test and the emulator monkey, which this posting asks for, ahead of the browser suites."
+                  },
+                  "kit": {
+                    "fields": [
+                      {
+                        "label": "Email",
+                        "value": "sam.rivera@example.com"
+                      }
+                    ],
+                    "answers": [],
+                    "coverLetter": null,
+                    "questions": [],
+                    "compensation": null
+                  }
+                }
+              ],
+              "setAside": [
+                {
+                  "fingerprint": "juniper row|software engineer ii|remote",
+                  "title": "Software Engineer II",
+                  "company": "Juniper Row",
+                  "why": "Posted Aug 30, older than 30 days"
+                },
+                {
+                  "fingerprint": "mosaic annotation|backend engineer model evaluation contract|remote",
+                  "title": "Backend Engineer, Model Evaluation (contract)",
+                  "company": "Mosaic Annotation",
+                  "why": "Part-time contract gig work"
+                },
+                {
+                  "fingerprint": "bellwether analytics group|technical support specialist|remote",
+                  "title": "Technical Support Specialist",
+                  "company": "Bellwether Analytics Group",
+                  "why": "Customer-facing support"
+                },
+                {
+                  "fingerprint": "cobalt field systems|data analyst secret clearance required|remote",
+                  "title": "Data Analyst (Secret clearance required)",
+                  "company": "Cobalt Field Systems",
+                  "why": "Requires a security clearance"
+                }
+              ],
+              "scouts": [
+                {
+                  "scoutId": "sc-3f9a21c0",
+                  "verdict": "agree",
+                  "note": "A real fit, ranked third on the adjacent track today behind two fresher postings.",
+                  "pickId": null,
+                  "review": {
+                    "scores": {
+                      "fit": 0.6,
+                      "odds": 0.45,
+                      "fitWhy": "covers 6 of 10 requirements",
+                      "oddsWhy": "posted 20 days ago · remote"
+                    },
+                    "gaps": [
+                      {
+                        "kind": "learnable",
+                        "text": "Game-engine test tooling"
+                      }
+                    ],
+                    "sends": {
+                      "variant": "qa",
+                      "template": "classic"
+                    }
+                  }
+                }
+              ],
+              "queue": {
+                "open": [
+                  {
+                    "day": "2026-11-01",
+                    "pickId": "lum-4c19",
+                    "track": "software",
+                    "closed": false
+                  }
+                ],
+                "lapsed": [
+                  {
+                    "day": "2026-10-30",
+                    "pickId": "hal-2b07",
+                    "track": "adjacent"
+                  }
+                ]
+              },
+              "read": ["scouts-20261101T210400.json"],
+              "notesDone": [],
+              "evidence": {
+                "someUi": "cb503cb",
+                "server": "9226240"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "GET /api/v1/interview-weeks": {
+      "status": 200,
+      "body": {
+        "weeks": [
+          {
+            "id": "2026-w45",
+            "sha256": "1cf4f17b34570f6b0a0f080cf4d393413754c3fd2ffc395b44b24c6e6ac2424b"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/interview-weeks/:id": {
+      "status": 200,
+      "body": {
+        "id": "2026-w45",
+        "sha256": "1cf4f17b34570f6b0a0f080cf4d393413754c3fd2ffc395b44b24c6e6ac2424b",
+        "week": {
+          "schema": "some-ui.interview-week/2",
+          "id": "2026-w45",
+          "by": "claude-routine",
+          "opens": "2026-11-02T00:00:00-08:00",
+          "due": "2026-11-08T23:59:00-08:00",
+          "company": {
+            "name": "Harbourlight",
+            "about": "Made up for practice: a small company that keeps ferry timetables current."
+          },
+          "role": {
+            "title": "Backend engineer",
+            "about": "Owns the timetable feed and the alerts riders get when a sailing moves."
+          },
+          "questions": [
+            {
+              "id": "walk-me-through",
+              "family": "about-yourself",
+              "variant": "walk-me-through",
+              "prompt": "Walk me through your background.",
+              "targetSeconds": 90,
+              "guidelines": [
+                "Says what the situation was.",
+                "Says what I did, and why."
+              ],
+              "ground": "open",
+              "ready": {
+                "answer": [
+                  {
+                    "label": "The situation",
+                    "text": "A small team needed a tool built in a week. I was the one person on it, so every call was mine to make and to explain.",
+                    "note": "Says where it happened and who it was for.",
+                    "sources": []
+                  },
+                  {
+                    "label": "What I did",
+                    "text": "I wrote down the options, tried the cheapest one first, and kept a record of what each try showed.",
+                    "note": "Names the steps, in order.",
+                    "sources": []
+                  },
+                  {
+                    "label": "What came of it",
+                    "text": "It shipped, and the record of why still answers the next person who asks.",
+                    "note": "Ends on a result someone can check.",
+                    "sources": []
+                  }
+                ],
+                "another": {
+                  "text": "Start from what I would do again, then walk back to the moment I chose it.",
+                  "note": "Leads with the lesson, then the story.",
+                  "sources": []
+                },
+                "poor": {
+                  "text": "I just did what seemed best at the time and it worked out.",
+                  "notes": [
+                    "Says nothing anyone can check.",
+                    "Names no other option."
+                  ],
+                  "sources": []
+                },
+                "cues": [
+                  "one person, every call",
+                  "cheapest try first",
+                  "the record still answers"
+                ]
+              }
+            },
+            {
+              "id": "ambiguity",
+              "family": "a-time-you",
+              "variant": "ambiguity",
+              "prompt": "Tell me about a time you worked with unclear requirements.",
+              "targetSeconds": 120,
+              "guidelines": [
+                "Says what the situation was.",
+                "Says what I did, and why."
+              ],
+              "ground": "open",
+              "ready": {
+                "answer": [
+                  {
+                    "label": "The situation",
+                    "text": "A small team needed a tool built in a week. I was the one person on it, so every call was mine to make and to explain.",
+                    "note": "Says where it happened and who it was for.",
+                    "sources": []
+                  },
+                  {
+                    "label": "What I did",
+                    "text": "I wrote down the options, tried the cheapest one first, and kept a record of what each try showed.",
+                    "note": "Names the steps, in order.",
+                    "sources": []
+                  },
+                  {
+                    "label": "What came of it",
+                    "text": "It shipped, and the record of why still answers the next person who asks.",
+                    "note": "Ends on a result someone can check.",
+                    "sources": []
+                  }
+                ],
+                "another": {
+                  "text": "Start from what I would do again, then walk back to the moment I chose it.",
+                  "note": "Leads with the lesson, then the story.",
+                  "sources": []
+                },
+                "poor": {
+                  "text": "I just did what seemed best at the time and it worked out.",
+                  "notes": [
+                    "Says nothing anyone can check.",
+                    "Names no other option."
+                  ],
+                  "sources": []
+                },
+                "cues": [
+                  "one person, every call",
+                  "cheapest try first",
+                  "the record still answers"
+                ]
+              }
+            },
+            {
+              "id": "why-this-role",
+              "family": "why-this-role",
+              "variant": "why-this-role",
+              "prompt": "Why this role?",
+              "targetSeconds": 60,
+              "guidelines": [
+                "Says what the situation was.",
+                "Says what I did, and why."
+              ],
+              "ground": "open",
+              "ready": {
+                "answer": [
+                  {
+                    "label": "The situation",
+                    "text": "A small team needed a tool built in a week. I was the one person on it, so every call was mine to make and to explain.",
+                    "note": "Says where it happened and who it was for.",
+                    "sources": []
+                  },
+                  {
+                    "label": "What I did",
+                    "text": "I wrote down the options, tried the cheapest one first, and kept a record of what each try showed.",
+                    "note": "Names the steps, in order.",
+                    "sources": []
+                  },
+                  {
+                    "label": "What came of it",
+                    "text": "It shipped, and the record of why still answers the next person who asks.",
+                    "note": "Ends on a result someone can check.",
+                    "sources": []
+                  }
+                ],
+                "another": {
+                  "text": "Start from what I would do again, then walk back to the moment I chose it.",
+                  "note": "Leads with the lesson, then the story.",
+                  "sources": []
+                },
+                "poor": {
+                  "text": "I just did what seemed best at the time and it worked out.",
+                  "notes": [
+                    "Says nothing anyone can check.",
+                    "Names no other option."
+                  ],
+                  "sources": []
+                },
+                "cues": [
+                  "one person, every call",
+                  "cheapest try first",
+                  "the record still answers"
+                ]
+              }
+            },
+            {
+              "id": "decision-c860",
+              "family": "decision",
+              "variant": "why-this-over-that",
+              "prompt": "Why did you choose this over the other options you had?",
+              "targetSeconds": 120,
+              "guidelines": [
+                "Says what the situation was.",
+                "Says what I did, and why."
+              ],
+              "ground": "work",
+              "ready": {
+                "answer": [
+                  {
+                    "label": "The situation",
+                    "text": "A small team needed a tool built in a week. I was the one person on it, so every call was mine to make and to explain.",
+                    "note": "Says where it happened and who it was for.",
+                    "sources": [
+                      {
+                        "kind": "pull",
+                        "repo": "some-ui",
+                        "number": 2726
+                      }
+                    ]
+                  },
+                  {
+                    "label": "What I did",
+                    "text": "I wrote down the options, tried the cheapest one first, and kept a record of what each try showed.",
+                    "note": "Names the steps, in order.",
+                    "sources": [
+                      {
+                        "kind": "pull",
+                        "repo": "some-ui",
+                        "number": 2726
+                      }
+                    ]
+                  },
+                  {
+                    "label": "What came of it",
+                    "text": "It shipped, and the record of why still answers the next person who asks.",
+                    "note": "Ends on a result someone can check.",
+                    "sources": [
+                      {
+                        "kind": "pull",
+                        "repo": "some-ui",
+                        "number": 2726
+                      }
+                    ]
+                  }
+                ],
+                "another": {
+                  "text": "Start from what I would do again, then walk back to the moment I chose it.",
+                  "note": "Leads with the lesson, then the story.",
+                  "sources": [
+                    {
+                      "kind": "pull",
+                      "repo": "some-ui",
+                      "number": 2726
+                    }
+                  ]
+                },
+                "poor": {
+                  "text": "I just did what seemed best at the time and it worked out.",
+                  "notes": [
+                    "Says nothing anyone can check.",
+                    "Names no other option."
+                  ],
+                  "sources": []
+                },
+                "cues": [
+                  "one person, every call",
+                  "cheapest try first",
+                  "the record still answers"
+                ]
+              },
+              "source": {
+                "kind": "call",
+                "id": "C860"
+              }
+            }
+          ],
+          "cards": [
+            {
+              "id": "opening",
+              "source": {
+                "kind": "opening"
+              },
+              "situation": "The start of the week's essay.",
+              "script": "I'm practising how I explain a choice,\nso someone new can follow it.",
+              "targetSeconds": 20
+            },
+            {
+              "id": "epic-3282",
+              "source": {
+                "kind": "issue",
+                "repo": "some-ui",
+                "number": 3282
+              },
+              "situation": "Someone asks what the walkthrough videos are.",
+              "script": "Each video walks through the real app on made-up data.\nYou see the screens a person sees, and the taps that reach them.",
+              "targetSeconds": 60
+            }
+          ]
+        }
+      }
+    },
+    "PUT /api/v1/jobs/events/:id": {
+      "status": 200,
+      "echo": "event"
+    }
+  }
+}

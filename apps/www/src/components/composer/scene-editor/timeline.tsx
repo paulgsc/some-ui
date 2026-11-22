@@ -2,7 +2,7 @@ import type { FC, JSX } from "react"
 import { useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 import {
   Badge,
   Card,
@@ -36,13 +36,6 @@ export const OrchestratorTimeline = ({
   const totalDuration = useOrchestratorStore(selectTotalDuration)
   const activeLifetimes = useSceneLifetimes()
   const forceScene = useOrchestratorStore((s) => s.forceScene)
-
-  const formatTime = (ms: number): string => {
-    const secs = Math.floor(ms / 1000)
-    const mins = Math.floor(secs / 60)
-    const remainingSecs = secs % 60
-    return `${mins}:${remainingSecs.toString().padStart(2, "0")}`
-  }
 
   // Calculate Layout Positions
   const sceneLayouts = useMemo(() => {
@@ -93,7 +86,7 @@ export const OrchestratorTimeline = ({
             Global Timeline
           </span>
           <Badge variant="outline" className="font-mono text-[10px]">
-            {formatTime(currentTime)}
+            {formatTimecode(currentTime)}
           </Badge>
         </div>
         <div className="relative h-8 w-full bg-background/50 rounded-md overflow-hidden border">

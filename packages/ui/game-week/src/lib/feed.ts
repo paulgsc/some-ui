@@ -11,6 +11,7 @@
 import type { ScenarioId } from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
+import type { BiteUnit, RankedEntry } from "./ranked"
 
 /** One game of the week, read through SF. */
 export type Game = {
@@ -22,7 +23,15 @@ export type Game = {
   readonly want: string
   /** Kickoff, ISO 8601. */
   readonly kickoff: string
+  /**
+   * The two teams' codes, as home names them; absent from a week kept
+   * before the phone read them.
+   */
+  readonly teams?: GameTeams | undefined
 }
+
+/** A game's two teams, by their codes: "SF", "SEA". */
+export type GameTeams = { readonly home: string; readonly away: string }
 
 /** A scenario that can be happening now, as the screen offers it. */
 export type OfferCard = {
@@ -39,6 +48,11 @@ export type JustHappened = {
   readonly context: string
   /** When it happened, ISO 8601. */
   readonly at: string
+  /**
+   * The unit that play was about, read off it by home (null for no one
+   * team); absent from a home before it named one, when the list's is used.
+   */
+  readonly unit?: BiteUnit | null | undefined
 }
 
 /** One offer from home: what the screen shows for one game at one moment. */
@@ -50,6 +64,11 @@ export type Offer = {
   readonly strip: string
   readonly cards: ReadonlyArray<OfferCard>
   readonly justHappened: ReadonlyArray<JustHappened>
+  /**
+   * Every scenario, most plausible now first, with the unit a bite on each
+   * is about (#3049); absent from a home before it ranks.
+   */
+  readonly ranked?: ReadonlyArray<RankedEntry> | undefined
 }
 
 /**
@@ -118,6 +137,7 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
           id: "fixture-1",
           label: "SF vs SEA",
           want: "SF win",
+          teams: { home: "SF", away: "SEA" },
           kickoff: iso(at - 70 * MINUTE),
         },
         {
@@ -159,21 +179,44 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
               rank: 6,
             },
           ],
+          // Ranked as home's engine would: every card now, in order, with
+          // SF wanted and SF with the ball.
+          ranked: [
+            ...(
+              [
+                "in.third-long",
+                "in.play-call",
+                "in.sack",
+                "in.penalty",
+                "in.big-play",
+                "in.red-zone",
+              ] as const
+            ).map((scenario) => ({
+              scenario,
+              tier: "now" as const,
+              unit: { unit: "offense" as const, side: "SF" },
+            })),
+            { scenario: "pre.stakes", tier: "always", unit: null },
+            { scenario: "post.pattern", tier: "always", unit: null },
+          ],
           justHappened: [
             {
               scenario: "in.big-play",
               context: "31-yard catch over the middle",
               at: iso(at - 0.5 * MINUTE),
+              unit: { unit: "offense", side: "SF" },
             },
             {
               scenario: "in.injury",
               context: "SEA corner down, now off",
               at: iso(at - 1.25 * MINUTE),
+              unit: { unit: "defense", side: "SEA" },
             },
             {
               scenario: "in.kick",
               context: "SEA 44-yard field goal",
               at: iso(at - 2.5 * MINUTE),
+              unit: { unit: "special-teams", side: "SEA" },
             },
           ],
         },

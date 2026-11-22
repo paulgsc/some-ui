@@ -1,0 +1,21 @@
+{
+  "id": "C867",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/snips/index.ts",
+    "some-ui:apps/www/tests/snips/capture.ts",
+    "some-ui:apps/www/tests/snips/web.spec.ts",
+    "some-ui:docs/snips.md"
+  ],
+  "chose": "On the web walk, a recording stage (the routes whose search is stageSearch: /call, /essay, /report and /rust-screen, held to the route files by a test) is photographed as the whole page, with its named parts measured from the page's top-left. Every other screen is photographed as the window a person sees. A stage is drawn whole for a recorder and is never scrolled by a person, and its card runs past a phone's fold: RR31's TB-101 diagnostic:1 sits at 794–1087 px against a 915 px window.",
+  "options": [
+    "the whole page for the stage family, the window for app screens",
+    "the whole page for every screen",
+    "the window for every screen, losing a stage's parts below the fold",
+    "the whole page for /rust-screen alone"
+  ],
+  "gray": "The owner asked for pictures of the real app as a person sees it (#3114), and an essay's zoom needs every part of a card. Which screens are taken whole is a design choice that no check or earlier decision settles, and it changes what the desk and an essay show.",
+  "undo": "Drop STAGE_ROUTES and isStage, and have the web camera always take the window.",
+  "refs": ["#3114", "#3313"]
+}

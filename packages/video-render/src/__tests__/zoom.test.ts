@@ -51,11 +51,11 @@ describe("a screen zoomed to its parts (RR31)", () => {
     card("QM-312", ["question"]),
   ])
 
-  it("is the screen-zoom composition, its stops in the order asked, its picture copied in", () => {
+  it("is the screen-zoom composition, its stops in the order asked, its picture copied in, in the ground asked", () => {
     const picture = zoomPicture(
       screens,
       ["QM-311:program", "QM-311:question", "QM-311:point:1"],
-      { foot: 0.25, theme: "mochi-night" }
+      { foot: 0.25, theme: "mochi-night", ground: "#111821" }
     )
     expect(picture).toEqual({
       kind: "composition",
@@ -69,6 +69,7 @@ describe("a screen zoomed to its parts (RR31)", () => {
         stops: JSON.stringify([box(70), box(20)]),
         foot: 0.25,
         theme: "mochi-night",
+        ground: "#111821",
       },
       files: ["screens/QM-311.png"],
     })
@@ -108,6 +109,8 @@ describe("a screen zoomed to its parts (RR31)", () => {
     expect(() =>
       zoomPicture(screens, ["QM-311:question"], { foot: -0.1 })
     ).toThrow(/foot/)
+    // Refused before the refs are read, so even with none held.
+    expect(() => zoomPicture(screens, [], { foot: Number.NaN })).toThrow(/foot/)
   })
 
   it("is nothing when no region asked for was captured", () => {

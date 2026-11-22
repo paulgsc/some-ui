@@ -11,11 +11,16 @@
 import type { ScenarioId } from "@some-ui/game-scenarios"
 import {
   CATALOG_VERSION,
+  HALF_WORDS,
+  HALVES,
   isScenarioId,
   scenarioOf,
+  UNITS,
 } from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
+import type { BiteUnit } from "./ranked"
+import { unitLine } from "./words"
 
 /**
  * The largest clock offset home keeps with a bite, either way (a day,
@@ -39,6 +44,8 @@ export type Said =
       readonly scenario: ScenarioId
       /** The card's live detail; empty when it had none. */
       readonly context: string
+      /** Which unit it is about (#3049); none said when absent or null. */
+      readonly unit?: BiteUnit | null | undefined
     }
 
 /** What the screen showed, and how the phone stood, when talking started. */
@@ -91,8 +98,9 @@ export function line(text: string): string {
  * The bite's fields, by home's names: `how`, `strip`, `watching`,
  * `started`, `mode` and `catalog` always; `scenario` whenever `said` names
  * one (every bite but one said first); `seq` and `context` when there was
- * one; `offset` (home's clock minus the phone's, whole milliseconds) once
- * the live socket has measured it (GW5).
+ * one; `unit`, and `unitSide` for a unit of one team, when it names one
+ * (#3049); `offset` (home's clock minus the phone's, whole milliseconds)
+ * once the live socket has measured it (GW5).
  */
 export function biteFields(
   said: Said,
@@ -104,6 +112,10 @@ export function biteFields(
     fields.scenario = said.scenario
     const context = line(said.context)
     if (context !== "") fields.context = context
+    if (said.unit != null) {
+      fields.unit = said.unit.unit
+      if (said.unit.side !== null) fields.unitSide = said.unit.side
+    }
   }
   if (moment.seq !== null) fields.seq = String(moment.seq)
   fields.strip = line(moment.strip)
@@ -136,4 +148,19 @@ export function pickedAfter(
  */
 export function scenarioName(id: string): string | null {
   return isScenarioId(id) ? scenarioOf(id).name : null
+}
+
+/**
+ * A bite's unit by name, as its `unit` and `unitSide` fields name it
+ * ("CHI defense"); null for a unit this catalog lacks (#3049).
+ */
+export function unitName(unit: string, side: string | null): string | null {
+  const named = UNITS.find((each) => each === unit)
+  return named === undefined ? null : unitLine({ unit: named, side })
+}
+
+/** A bite's half by name ("2nd half"); null for one this catalog lacks. */
+export function halfName(half: string): string | null {
+  const named = HALVES.find((each) => each === half)
+  return named === undefined ? null : HALF_WORDS[named]
 }

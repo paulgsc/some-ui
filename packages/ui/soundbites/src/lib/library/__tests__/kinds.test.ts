@@ -65,6 +65,82 @@ describe("what each kind's take is about, through its port", () => {
     expect(line("game", "999", {})).toBe("A game")
   })
 
+  it("says the half a bite was in, and the unit it is about (#3049)", () => {
+    const named: TakeNames = {
+      ...NAMES,
+      unit: (unit, side) =>
+        unit === "defense" ? `${side ?? "No one's"} defense` : null,
+      half: (half) => (half === "second" ? "2nd half" : null),
+    }
+    const said = (fields: Record<string, string>): string => {
+      const about = portAbout(
+        "game",
+        { ref: "401772", fields },
+        named,
+        ABOUT_WORDS
+      )
+      return about === null
+        ? "studio"
+        : [LIBRARY_WORDS.subject(about), LIBRARY_WORDS.detail(about)]
+            .filter((part) => part !== null)
+            .join(" · ")
+    }
+    const fields = {
+      strip: "Q3 4:12 · SF 17, LAR 13",
+      scenario: "fourth-down",
+      unit: "defense",
+      unitSide: "LAR",
+      half: "second",
+    }
+    expect(said(fields)).toBe(
+      "49ers vs Rams · 2nd half · Q3 4:12 · Fourth down · LAR defense"
+    )
+    // A matched play's quarter says the half already.
+    expect(
+      said({ ...fields, matchedBy: "next", playPeriod: "3", playClock: "4:05" })
+    ).toBe("49ers vs Rams · Q3 4:05 · Fourth down · LAR defense")
+    // What this phone can't name is left out, never guessed.
+    expect(said({ ...fields, unit: "goalposts", half: "third" })).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+    // A build that names neither says neither.
+    expect(line("game", "401772", fields)).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+  })
+
+  it("says the play home matched a bite to, or that it found none (GWB14)", () => {
+    const fields = {
+      strip: "Q3 4:12 · SF 17, LAR 13 · 4th & 2 at the LAR 38",
+      scenario: "fourth-down",
+    }
+    const matched = (more: Record<string, string>): string =>
+      line("game", "401772", { ...fields, ...more })
+    expect(
+      matched({ matchedBy: "next", playPeriod: "3", playClock: "4:05" })
+    ).toBe("49ers vs Rams · Q3 4:05 · Fourth down")
+    expect(
+      matched({ matchedBy: "nearest", playPeriod: "5", playClock: "8:00" })
+    ).toBe("49ers vs Rams · OT 8:00 · Fourth down")
+    expect(matched({ matchedBy: "nearest", playPeriod: "2" })).toBe(
+      "49ers vs Rams · Q2 · Fourth down"
+    )
+    // A clock with no quarter is no play to name: the clock it was said at.
+    expect(matched({ matchedBy: "next", playClock: "2:00" })).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+    expect(matched({ matchedBy: "unmatched" })).toBe(
+      "49ers vs Rams · Not matched to a play · Fourth down"
+    )
+    // About a stretch of the game, nothing to match it under, or a way this
+    // phone doesn't know: the clock it was said at.
+    for (const why of ["not-a-play", "no-scenario", "a-way-not-known-yet"]) {
+      expect(matched({ matchedBy: why })).toBe(
+        "49ers vs Rams · Q3 4:12 · Fourth down"
+      )
+    }
+  })
+
   it("says an interview take's week and its question, or what was read", () => {
     expect(line("interview", "2026-w47:time")).toBe(
       "Week 47 · Tell me about a time"

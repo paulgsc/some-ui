@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Outgoing } from "@/lib/jobs/files"
 import { decisionsFile } from "@/lib/jobs/files"
 import type { JobsRecordPort } from "@/lib/jobs/home"
-import { exchangeJobs } from "@/lib/jobs/home"
+import { exchangeJobs, readDigests } from "@/lib/jobs/home"
 import type { JobEvent, JobsState, PickRef, ShareKind } from "@/lib/jobs/model"
 import { DIGESTS_PER_RUN, EMPTY, homeOutbox, step } from "@/lib/jobs/model"
 import { NO_NOTICE } from "@/lib/jobs/notice"
@@ -311,6 +311,18 @@ describe("exchangeJobs, the digests home holds", () => {
       "GET /jobs/runs",
       "GET /jobs/digests",
     ])
+  })
+
+  it("reads alone (a pull on Jobs, JP1) with two GETs, sending nothing of the phone's even with its events waiting", async () => {
+    expect(homeOutbox(withLog).length).toBeGreaterThan(0)
+    const k = keeping(withLog)
+    const h = home(holding([], later("2026-10-19")))
+    expect(await readDigests(k, h.send)).toBeNull()
+    expect(h.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "GET /jobs/runs",
+      "GET /jobs/digests?after=2026-10-18",
+    ])
+    expect(k.fetches.map((f) => f.map((d) => d.day))).toEqual([["2026-10-19"]])
   })
 
   it("takes digests in through fetched", async () => {

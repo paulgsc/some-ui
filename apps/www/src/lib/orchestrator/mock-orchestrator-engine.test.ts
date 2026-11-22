@@ -7,7 +7,7 @@ import {
   buildActiveLifetimes,
   buildOrchestratorState,
   createEngineState,
-  formatTimecode,
+  formatPreciseTimecode,
   primarySceneId,
   totalDurationOf,
 } from "./mock-orchestrator-engine"
@@ -321,14 +321,14 @@ describe("applyCommand", () => {
   })
 })
 
-describe("formatTimecode", () => {
+describe("formatPreciseTimecode", () => {
   it("formats hours/minutes/seconds/millis with zero padding", () => {
-    expect(formatTimecode(0)).toBe("00:00:00.000")
-    expect(formatTimecode(61_234)).toBe("00:01:01.234")
-    expect(formatTimecode(3_661_000)).toBe("01:01:01.000")
+    expect(formatPreciseTimecode(0)).toBe("00:00:00.000")
+    expect(formatPreciseTimecode(61_234)).toBe("00:01:01.234")
+    expect(formatPreciseTimecode(3_661_000)).toBe("01:01:01.000")
   })
 
   it("clamps negative input to zero", () => {
-    expect(formatTimecode(-500)).toBe("00:00:00.000")
+    expect(formatPreciseTimecode(-500)).toBe("00:00:00.000")
   })
 })

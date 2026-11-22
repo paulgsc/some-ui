@@ -33,6 +33,14 @@ dependents, and `_detect-changes.yml` decides which of Rust, Node and Deny
 run. `trunk.yml` asks "is the whole repo healthy?" on every push to `main`,
 unfiltered.
 
+`_detect-changes.yml` keeps one promise, CD1: a flag is true only when a
+changed file matches one of its patterns, and `node` covers every workspace
+the Node jobs reach. Its proof is `packages/eslint/tests/detect-changes.test.ts`,
+which Repo guards runs on every PR. Under paths-filter's default
+`predicate-quantifier: some`, a leading-`!` pattern matches every file it does
+not name, so `pnpm check:workflows` fails one; a filter leaves files out with
+a positive extglob instead (`crates/**/!(*.md)`).
+
 Each has one aggregate check, judged by `re-actors/alls-green` (#1952):
 
 - **CI Gate** is the one check branch protection requires. Every job votes;
@@ -154,8 +162,25 @@ string a dispatcher can type, over each step that reads the input or the
 matrix built from it. `packages/eslint/tests/extension-sign-inputs.test.ts`
 is its proof, and the `guards` job in `pr.yml` runs it on every pull request.
 
-The other workflows' expansions of trusted values, and running a workflow
-security check in CI, are #2116's later steps.
+Promise WS2 holds the rest of `.github/`: no workflow or composite action
+carries a high-severity zizmor finding that `.github/zizmor.yml` does not
+suppress with its reason (an attacker's text expanded into a `run:` script, a
+dangerous trigger, a write permission zizmor rates as excessive at high
+severity, an unexplained `$GITHUB_ENV` write), and actionlint, with
+ShellCheck over every `run:` script, finds nothing `.github/actionlint.yaml`
+does not ignore with its reason. Its Family is every workflow and composite
+action under `.github/`, every trigger and every source of expression text.
+Its proof is `pnpm check:workflow-security`
+(`scripts/check-workflow-security.sh`), which runs actionlint, ShellCheck and
+zizmor at the versions it pins, offline; the `guards` job runs it on every
+pull request. Its Tolerance: zizmor's online audits (impostor commits, known
+vulnerable action versions) do not run, medium and lower findings are only
+reported by a local `--all` run. Every `uses:` names a commit, with its
+release in a trailing comment (`actions/checkout@<sha> # v7.0.1`), and a tag
+or branch ref fails (C953, the owner's go-ahead on #2116); Dependabot moves
+the hash and the comment together. That a pinned commit belongs to the
+action's own repository, and not a fork's, is the online audit's, so it is
+not checked.
 
 ## Decisions
 

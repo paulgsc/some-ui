@@ -85,7 +85,9 @@ const REQUIRED_SCRIPTS: ReadonlyArray<ReadonlyArray<string>> = [
 
 /** Directories reachable from a deployable over dependency names. */
 export function reachableDirs(
-  workspaces: ReadonlyArray<WorkspaceFacts>
+  workspaces: ReadonlyArray<
+    Pick<WorkspaceFacts, "dir" | "name" | "deps" | "deployable">
+  >
 ): Set<string> {
   const byName = new Map(workspaces.map((w) => [w.name, w]))
   const reached = new Set<string>()

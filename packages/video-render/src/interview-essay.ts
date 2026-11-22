@@ -54,6 +54,8 @@ import type { Speaker, Voicing } from "./essay"
 import {
   chartWeeksProblems,
   ESSAY_CHAPTERS,
+  lanedVoicesRow,
+  lanedVoicesSaid,
   MARKS,
   nextWeekProblems,
   weekId,
@@ -79,13 +81,19 @@ export const INTERVIEW_ESSAY_SCHEMA = "some-ui.interview-essay/1"
 export const INTERVIEW_ESSAY_ID = "interview-essay"
 
 /** The newest version `interviewEssayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const INTERVIEW_ESSAY_VERSION = 3
+export const INTERVIEW_ESSAY_VERSION = 4
 
 /**
  * The first version whose bubbles draw the cast (PDA6, #2883; C822), as the
- * Rust essay's version 6: what an essay with an opening is written at.
+ * Rust essay's version 6.
  */
 export const INTERVIEW_ESSAY_CAST_VERSION = 3
+
+/**
+ * The first version whose voices move on at each chapter (#3321, C840), as
+ * the Rust essay's version 7: what every interview essay is written at (C841).
+ */
+export const INTERVIEW_ESSAY_VOICES_VERSION = 4
 
 /** The first version with the owner's own opening (IW10): an essay before it holds none. */
 const OPENING_SINCE = 2
@@ -247,9 +255,11 @@ export function interviewEssayFormat(
       scene("next", "Next week", "What next week comes back to", 20_000),
     ],
     shape:
-      version >= INTERVIEW_ESSAY_CAST_VERSION
-        ? { ...SHAPE, cast: "cast-v1" }
-        : SHAPE,
+      version >= INTERVIEW_ESSAY_VOICES_VERSION
+        ? { ...SHAPE, cast: "cast-v1", voices: "lanes-v1" }
+        : version >= INTERVIEW_ESSAY_CAST_VERSION
+          ? { ...SHAPE, cast: "cast-v1" }
+          : SHAPE,
   }
 }
 
@@ -485,6 +495,8 @@ export function interviewEssayIntro(
   const answered = interviewAnsweredOf(essay)
   const of = `${answered.questions} of ${essay.questions.length} questions, ${answered.reads} of ${essay.reads.length} reads`
   const sample = voicing === "sample"
+  const lanes =
+    interviewEssayFormat(essay.template.version).shape?.voices !== undefined
   return {
     rows: [
       {
@@ -499,9 +511,11 @@ export function interviewEssayIntro(
       },
       {
         label: "Voices",
-        says: sample
-          ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
-          : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
+        says: lanes
+          ? lanedVoicesRow(sample, false)
+          : sample
+            ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
+            : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
       },
       {
         label: "Counted by",
@@ -517,9 +531,11 @@ export function interviewEssayIntro(
     said: [
       `This is the interview essay for ${essay.week.id}, ${sayDay(essay.week.from)} to ${sayDay(essay.week.to)}.`,
       "Claude wrote the tutor's words, code counted the faults, and code drew every frame.",
-      sample
-        ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
-        : "The tutor's voice is synthetic; the other voice is the owner's own.",
+      lanes
+        ? lanedVoicesSaid(sample, false)
+        : sample
+          ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
+          : "The tutor's voice is synthetic; the other voice is the owner's own.",
       "The company and the role are invented.",
       sample ? `It covers ${of}.` : `The owner answered ${of}.`,
     ].join(" "),

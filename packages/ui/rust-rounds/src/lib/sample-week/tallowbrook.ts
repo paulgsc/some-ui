@@ -11,7 +11,10 @@
  *
  * Tests read it; the phone reads `/2` weeks once home serves them.
  */
+import type { RustcRun } from "@rust-rounds/lib/formats"
 import type { WeekV2 } from "@rust-rounds/lib/formats/week"
+import { readWeek } from "@rust-rounds/lib/week-check"
+import type { HeldWeek } from "@rust-rounds/lib/weeks"
 
 export const TALLOWBROOK_WEEK_FILE: WeekV2 = {
   schema: "some-ui.rust-week/2",
@@ -419,3 +422,112 @@ export const TALLOWBROOK_WEEK_FILE: WeekV2 = {
   references: ["rust-reference", "ownership-inventory"],
   rubric: "solo",
 }
+
+/**
+ * TB-101's run as home records one, with `--error-format=json` for the
+ * diagnostics, each `rendered` joining to `stderr` as rustc printed it.
+ */
+export const TB_101_RUN: RustcRun & { outcome: "compile-error" } = {
+  outcome: "compile-error",
+  toolchain: "1.97.0",
+  code: "E0507",
+  stderr:
+    "error[E0507]: cannot move out of index of `Vec<Label>`\n  --> main.rs:16:18\n   |\n16 |         let to = queue[i].address;\n   |                  ^^^^^^^^^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n   |\nhelp: consider borrowing here\n   |\n16 |         let to = &queue[i].address;\n   |                  +\nhelp: consider cloning the value if the performance cost is acceptable\n   |\n16 |         let to = queue[i].address.clone();\n   |                                  ++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0507`.\n",
+  span: {
+    lineStart: 16,
+    columnStart: 18,
+    lineEnd: 16,
+    columnEnd: 34,
+  },
+  diagnostics: [
+    {
+      level: "error",
+      code: "E0507",
+      message: "cannot move out of index of `Vec<Label>`",
+      spans: [
+        {
+          file: "main.rs",
+          lineStart: 16,
+          lineEnd: 16,
+          columnStart: 18,
+          columnEnd: 34,
+          isPrimary: true,
+          label:
+            "move occurs because value has type `String`, which does not implement the `Copy` trait",
+          suggestedReplacement: null,
+        },
+      ],
+      children: [
+        {
+          level: "help",
+          message: "consider borrowing here",
+          spans: [
+            {
+              file: "main.rs",
+              lineStart: 16,
+              lineEnd: 16,
+              columnStart: 18,
+              columnEnd: 18,
+              isPrimary: true,
+              label: null,
+              suggestedReplacement: "&",
+            },
+          ],
+        },
+        {
+          level: "help",
+          message:
+            "consider cloning the value if the performance cost is acceptable",
+          spans: [
+            {
+              file: "main.rs",
+              lineStart: 16,
+              lineEnd: 16,
+              columnStart: 34,
+              columnEnd: 34,
+              isPrimary: true,
+              label: null,
+              suggestedReplacement: ".clone()",
+            },
+          ],
+        },
+      ],
+      rendered:
+        "error[E0507]: cannot move out of index of `Vec<Label>`\n  --> main.rs:16:18\n   |\n16 |         let to = queue[i].address;\n   |                  ^^^^^^^^^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n   |\nhelp: consider borrowing here\n   |\n16 |         let to = &queue[i].address;\n   |                  +\nhelp: consider cloning the value if the performance cost is acceptable\n   |\n16 |         let to = queue[i].address.clone();\n   |                                  ++++++++\n\n",
+    },
+    {
+      level: "error",
+      code: null,
+      message: "aborting due to 1 previous error",
+      spans: [],
+      children: [],
+      rendered: "error: aborting due to 1 previous error\n\n",
+    },
+    {
+      level: "failure-note",
+      code: null,
+      message:
+        "For more information about this error, try `rustc --explain E0507`.",
+      spans: [],
+      children: [],
+      rendered:
+        "For more information about this error, try `rustc --explain E0507`.\n",
+    },
+  ],
+}
+
+/**
+ * The Tallowbrook week as the phone holds it once home has run its programs
+ * (RR31, #3288; WALK8): TB-101's compile error recorded, the other tickets
+ * not run yet. The one sample week with a run.
+ */
+export const TALLOWBROOK_HELD: HeldWeek = /* @__PURE__ */ (() => {
+  const read = readWeek(TALLOWBROOK_WEEK_FILE)
+  if (!read.ok) throw new Error("The /2 sample week doesn't read.")
+  return {
+    week: read.week,
+    sha256: "sample",
+    runs: { "TB-101": TB_101_RUN },
+    ended: [],
+  }
+})()

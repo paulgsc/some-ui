@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "mcp__claude-code-remote__archive_session",
       "Bash(scripts/bootstrap-wasm-crates.sh*)",
       "Bash(cargo install wasm-pack*)",
       "Bash(rustup target add wasm32-unknown-unknown*)",

@@ -20,3 +20,7 @@ export function captionSpace(frame: FrameSize): number {
   )
   return Math.ceil(frame.height - top)
 }
+
+/** The band as a share of `frame`'s height: what a stage keeps clear at its foot. */
+export const captionShare = (frame: FrameSize): number =>
+  captionSpace(frame) / frame.height

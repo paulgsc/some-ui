@@ -1,0 +1,18 @@
+{
+  "id": "C1014",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:apps/servers/file_host/src/stage.rs"
+  ],
+  "chose": "The first source of urgency is the edge itself: a note some waiter names in stage_want is wanted, and needs no one to mark it. No Rust Urgency type is added yet: with one source it would be dead code; it arrives with the second source, the owner's fast-track (#1090), as the closed set that orders the two, and a fast-tracked take also skips the lane's give (the owner's ruling).",
+  "options": [
+    "the edge as the first source, the type with the second",
+    "an Urgency enum now that nothing reads",
+    "wait for #1090 and build both together"
+  ],
+  "gray": "Nothing the owner can see marks a take urgent by hand until #1090 lands; the 11-20 essays' takes would have been heard first all the same.",
+  "undo": "Remove the wanted term from waiting_first's order.",
+  "refs": ["server#1091", "server#1090"]
+}

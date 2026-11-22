@@ -16,10 +16,13 @@
  * subjects `OPERATOR_SUBJECTS` lists). So each contract is marked `session`,
  * and the cookie passed with `--session-cookie` must be an operator's.
  *
- * Two levers today, each a namespace whose value is one yes-or-no field:
- * Rust Rounds recording (`rust-rounds`, `{ recording }`) and whether home
- * follows NFL games (`game-feed`, `{ following }`, the game feed's switch in
- * place of `GAME_FEED_ENABLED`, #2074). Both are on by default.
+ * Three levers today. Two are a yes-or-no field: Rust Rounds recording
+ * (`rust-rounds`, `{ recording }`) and whether home follows NFL games
+ * (`game-feed`, `{ following }`, the game feed's switch in place of
+ * `GAME_FEED_ENABLED`, #2074), both on by default. The third is which teams'
+ * games home follows live (`game-teams`, `{ teams }`, #3329): ESPN's
+ * abbreviations, 2 to 4 capitals, at most 32, kept sorted and each once,
+ * none (the default) meaning every game.
  *
  * No contract sets a lever: one set on a real server changes what home does
  * (pausing Rust Rounds' recording, or the game feed), and every revision is
@@ -37,6 +40,14 @@ const RustRoundsSchema = z.object({ recording: z.boolean() })
 
 /** Whether home follows NFL games: on by default. */
 const GameFeedSchema = z.object({ following: z.boolean() })
+
+/**
+ * Which teams' games home follows live: every game by default (`[]`). Home
+ * keeps them sorted and each once, which the probe does not check.
+ */
+const GameTeamsSchema = z.object({
+  teams: z.array(z.string().regex(/^[A-Z]{2,4}$/)).max(32),
+})
 
 const SetBySchema = z.enum(["owner", "operator"])
 
@@ -133,6 +144,38 @@ export const contracts = [
     expect: {
       status: 200,
       schema: historySchema("game-feed", GameFeedSchema),
+      unknownFields: "reject",
+    },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_teams",
+    module: "admin_settings",
+    session: true,
+    method: "GET",
+    path: "/admin/settings/:namespace",
+    summary:
+      "which teams' games home follows live, as it stands: the teams (none is every game), whether it is the default, and who set it and when",
+    request: { path: { namespace: "game-teams" } },
+    expect: {
+      status: 200,
+      schema: standingSchema("game-teams", GameTeamsSchema),
+      unknownFields: "reject",
+    },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_teams_history",
+    module: "admin_settings",
+    session: true,
+    method: "GET",
+    path: "/admin/settings/:namespace/history",
+    summary:
+      "every revision of the teams home follows live, newest first, each with who set it and when",
+    request: { path: { namespace: "game-teams" } },
+    expect: {
+      status: 200,
+      schema: historySchema("game-teams", GameTeamsSchema),
       unknownFields: "reject",
     },
   }),

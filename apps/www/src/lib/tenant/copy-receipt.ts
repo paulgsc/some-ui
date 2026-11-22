@@ -5,7 +5,12 @@
  * forget its entries without reaching the copy itself (LA2).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { openKept, salvageEntries, writeKept } from "@some-ui/core-utils"
+import {
+  onJson,
+  openKept,
+  salvageEntries,
+  writeKept,
+} from "@some-ui/core-utils"
 
 import { isSessionId } from "@/lib/tenant/session-id"
 import type { SessionId } from "@/lib/tenant/session-id"
@@ -48,8 +53,10 @@ function isCopy(value: unknown): value is Copy {
   )
 }
 
-export const readCopies = salvageEntries((value): Array<Copy> | null =>
-  Array.isArray(value) && value.every(isCopy) ? value : null
+export const readCopies = onJson(
+  salvageEntries((value): Array<Copy> | null =>
+    Array.isArray(value) && value.every(isCopy) ? value : null
+  )
 )
 
 /**

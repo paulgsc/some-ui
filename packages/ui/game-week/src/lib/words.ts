@@ -5,11 +5,13 @@
  * every phrase these functions can make to that.
  */
 import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+import { UNIT_WORDS } from "@some-ui/game-scenarios"
 import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 
 import type { FeedLink } from "./feed"
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
+import type { BiteUnit, Tier } from "./ranked"
 
 export const WORDS = {
   team: "SF",
@@ -19,6 +21,9 @@ export const WORDS = {
    */
   yourTakes: (picked: boolean): string =>
     picked ? "Your takes from this game" : "Your takes from game day",
+  teamsFollowed: "Teams home follows live",
+  teamsFollowedHow:
+    "Opens home's switches in your browser, on the home network, with your passkey.",
   pickGame: "Game",
   watching: "Watching",
   notWatching: "Not watching",
@@ -34,7 +39,16 @@ export const WORDS = {
   undo: "Undo",
   settingsTitle: "How much to show",
   legendTitle: "Every scenario",
-  legendLede: "Tap one to talk about it.",
+  /** Whether home ranked it, or it is every scenario in the catalog's order. */
+  legendLede: (ranked: boolean): string =>
+    ranked
+      ? "Most likely first. Tap one to talk about it."
+      : "Tap one to talk about it.",
+  /** The unit chip while a bite is said: one tap moves it on. */
+  unitChange: "Tap for offense, defense, special teams or coaching",
+  /** The team switch beside it: the other team, as its code. */
+  aboutTeam: (team: string): string => `About ${team} instead`,
+  noUnit: "Which side of the ball",
   recordingLabel: "Saying it",
   sayingFirst: "Saying it first",
 } as const
@@ -191,4 +205,17 @@ export function outboxLine(view: OutboxView): string {
     )
   }
   return lines.join(" ")
+}
+
+/** The ranked list's headings, most plausible first (#3049). */
+export const TIER_TITLES: Readonly<Record<Tier, string>> = {
+  now: "Likely now",
+  always: "Any time",
+  rest: "Everything else",
+}
+
+/** Which unit a bite is about: "CHI defense", or "Coaching" for no one team. */
+export function unitLine(unit: BiteUnit): string {
+  const word = UNIT_WORDS[unit.unit]
+  return unit.side === null ? word : `${unit.side} ${word.toLowerCase()}`
 }

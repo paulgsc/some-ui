@@ -9,7 +9,9 @@
  * The file is the cut list itself, as `sample/videos/<video>/cut-list.json`
  * is. Its key is a slug and its stamp's day (`nixos-upgrade-2026-11-14`),
  * so the same subject checked again on a later day is a new essay. Home has
- * no captures or takes for one: every scene is a card picture.
+ * no captures or takes for one: every scene is a card picture, or a screen
+ * of the app home keeps, a snip or a clip frame (SNIPS4, `./snip`), which
+ * home hands beside the essay.
  *
  * From the cheat-sheet series' version 2 an essay is spoken (EXPLAIN6,
  * #3021, C370, C371: `Spoken`); one in version 1 is silent. A spoken essay
@@ -25,21 +27,20 @@ import type { ChapterMark } from "./chapters"
 import { withoutStop } from "./chapters"
 import type { CutList, Parsed, Shot, SpokenTurn, TimedWord } from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
+import { ESSAY_VOICES } from "./essay"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
 import { withSeries } from "./series"
 import type { HeardSpokenCard, HeardTurn, SpokenScene } from "./spoken-card"
-import {
-  SPOKEN_ASKER_VOICE,
-  spokenCardProblems,
-  spokenScenes,
-} from "./spoken-card"
+import { spokenCardProblems, spokenScenes } from "./spoken-card"
 import {
   SPOKEN_CATEGORY_OPENS,
   SPOKEN_CATEGORY_TITLES,
 } from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
+import { chapterIndexes, voicePolicyOf, voicesInChapters } from "./voices"
+import type { KokoroVoice, VoiceRole, VoicesId } from "./voices"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
 
@@ -62,15 +63,34 @@ export const isSpokenEssay = (cut: CutList): boolean =>
   cut.series.version >= CARDS_SPOKEN_VERSION
 
 /**
- * Who says a spoken essay, by Kokoro's voice names (C372): the host, the
- * weekly call's, says the intro, each chapter line and the close; the
- * narrator teaches each card. The voice changing is how a listener hears a
- * new chapter begin.
+ * Who says a spoken essay's lines: the host says the intro, each chapter
+ * line and the close; the narrator teaches each card; and in a spoken card,
+ * Kokoro asks (`asker`) or answers (`tutor`) the owner, as its bubble is
+ * drawn (`TURN_SPEAKER`: a tin sparrow asks, a tin owlet answers).
  */
-export const CARDS_VOICES = {
+export type CardsSpeaker = "host" | "narrator" | "asker" | "tutor"
+
+/**
+ * Each speaker's Kokoro voice in a series with no voice lanes, the cards
+ * essay's `fixed` case of the voice policy (C840): the host, the weekly
+ * call's (C372), and the narrator, one for every card; and Kokoro in a spoken card, asking or answering, the
+ * essays' asker's. The voice changing is how a listener hears a new chapter
+ * begin.
+ */
+export const CARDS_VOICES: Readonly<Record<CardsSpeaker, KokoroVoice>> = {
   host: CALL_VOICES.intro,
   narrator: CALL_VOICES.moved,
-} as const
+  asker: ESSAY_VOICES.asker,
+  tutor: ESSAY_VOICES.asker,
+}
+
+/** The role each speaker plays in the voice lanes: its own (C840). */
+export const CARDS_VOICE_ROLES: Readonly<Record<CardsSpeaker, VoiceRole>> = {
+  host: "host",
+  narrator: "narrator",
+  asker: "asker",
+  tutor: "tutor",
+}
 
 /**
  * The longest a spoken essay runs, by its words: the weekly call's part,
@@ -113,8 +133,10 @@ export function parseCardsIndex(raw: unknown): Parsed<CardsIndex> {
 /**
  * The cut list `raw` as the essay `key`, or every reason home can't render
  * it: what any cut list is refused for (`parseCutList`), a key that isn't
- * its stamp's day, a series that isn't a cards series, a scene that isn't
- * a card, plays a take or a cue or stands on an image, and captions; in a
+ * its stamp's day, a series that isn't a cards series, a scene that is
+ * neither a card nor a screen of the app (`./snip`), a spoken card that
+ * shows a screen, a scene that plays a take or a cue or stands on an image,
+ * and captions; in a
  * spoken version, what `spokenProblems` finds, and in a silent one, a scene
  * that says something. What
  * only drawing finds (a line that doesn't fit, a character the font lacks)
@@ -159,8 +181,17 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
         ]
       : []),
     ...shots
-      .filter((s) => s.picture.kind !== "card")
-      .map((s) => `${s.id}: its picture is a ${s.picture.kind}, not a card`),
+      .filter((s) => s.picture.kind === "screen" && s.spoken?.role === "spoken")
+      .map(
+        (s) =>
+          `${s.id}: a spoken card is drawn by its stage, so it shows no screen of the app`
+      ),
+    ...shots
+      .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
+      .map(
+        (s) =>
+          `${s.id}: its picture is a ${s.picture.kind}, not a card or a screen of the app`
+      ),
     ...(isSpokenEssay(cut.value)
       ? spokenProblems(cut.value)
       : shots
@@ -250,8 +281,11 @@ function spokenProblems(cut: CutList): Array<string> {
 export type CardsLine = {
   readonly file: string
   readonly said: string
-  readonly voice: string
+  readonly voice: KokoroVoice
 }
+
+/** A line before its voice is chosen: who says it. */
+type SpokenLine = Omit<CardsLine, "voice"> & { readonly speaker: CardsSpeaker }
 
 /**
  * A scene of a spoken essay as the renderer draws it: the essay's scene
@@ -265,6 +299,11 @@ export type CardsScene = StillScene & {
   readonly lines: ReadonlyArray<CardsLine>
   readonly mark?: string
   readonly spoken?: { readonly card: string; readonly scene: SpokenScene }
+}
+
+/** A scene before its lines' voices are chosen. */
+type UnvoicedScene = Omit<CardsScene, "lines"> & {
+  readonly lines: ReadonlyArray<SpokenLine>
 }
 
 /** The title of the close's chapter mark. */
@@ -281,18 +320,24 @@ const chapterTitle = (chapter: string): string =>
 const unheard = (turn: SpokenTurn): HeardTurn =>
   turn.voice === "kokoro" ? turn : { ...turn, transcript: "" }
 
+/** Who says a spoken card's Kokoro turn, by its place in the exchange. */
+const KOKORO_SPEAKER = {
+  ask: "asker",
+  answer: "tutor",
+} as const satisfies Readonly<Record<SpokenScene["role"], CardsSpeaker>>
+
 /**
  * A spoken card's scenes from its `n`th scene on: each exchange's question,
- * then its answer, each in its voice: Kokoro's line said in the asker's
- * voice, the owner's take in no line. `heard` is the card as home heard its
- * takes; without it (an estimate before the takes are read) an owner's turn
- * says nothing yet.
+ * then its answer, each in its voice: Kokoro's line said by the asker or the
+ * tutor, the owner's take in no line. `heard` is the card as home heard
+ * its takes; without it (an estimate before the takes are read) an owner's
+ * turn says nothing yet.
  */
 function spokenCardScenes(
   shot: Shot & { readonly spoken: { readonly role: "spoken" } },
   n: number,
   heard: HeardSpokenCard | undefined
-): Array<CardsScene> {
+): Array<UnvoicedScene> {
   const card = heard ?? {
     category: shot.spoken.category,
     exchanges: shot.spoken.exchanges.map(({ ask, answer }) => ({
@@ -303,15 +348,14 @@ function spokenCardScenes(
   return spokenScenes(card).map((scene, j) => {
     const id = `${shot.id}-${scene.id}`
     const file = stillFile(n + j, id)
+    const speaker = KOKORO_SPEAKER[scene.role]
     return {
       id,
       file,
       shot,
       said: scene.said,
       lines:
-        scene.take === undefined
-          ? [{ file, said: scene.said, voice: SPOKEN_ASKER_VOICE }]
-          : [],
+        scene.take === undefined ? [{ file, said: scene.said, speaker }] : [],
       spoken: { card: shot.id, scene },
       ...(j === 0 && opens(shot.spoken)
         ? { mark: SPOKEN_CATEGORY_TITLES[card.category] }
@@ -328,12 +372,20 @@ function spokenCardScenes(
  * scene for each question and each answer (`spokenCardScenes`), with the
  * card as home heard it from `heard`, by its shot's id. A scene with
  * nothing to say (which `parseCardsEssay` refuses) is left out.
+ *
+ * Each line's voice is its speaker's under the series' voice lanes
+ * (`voices`, `Series.voices`; C840), else `CARDS_VOICES`: a scene with a
+ * chapter mark opens a new chapter, so the narrator's voice moves on with
+ * each card, and each of Kokoro's roles in a spoken card (asking, answering)
+ * keeps one voice through its chapter: a `questions` card, which opens none,
+ * plays in the chapter before it (C831).
  */
 export function cardsScenes(
   cut: CutList,
-  heard: ReadonlyMap<string, HeardSpokenCard> = new Map()
+  heard: ReadonlyMap<string, HeardSpokenCard> = new Map(),
+  voices?: VoicesId
 ): Array<CardsScene> {
-  const scenes: Array<CardsScene> = []
+  const scenes: Array<UnvoicedScene> = []
   for (const shot of cut.shots) {
     const spoken = shot.spoken
     if (spoken?.role === "spoken")
@@ -346,11 +398,45 @@ export function cardsScenes(
       )
     else if (spoken !== undefined) scenes.push(cardScene(shot, scenes.length))
   }
-  return scenes
+  return voiced(scenes, voices)
+}
+
+/**
+ * `scenes` with each line in its speaker's voice for its chapter, and each
+ * spoken card's scene with Kokoro's: a scene with a chapter mark opens one.
+ */
+function voiced(
+  scenes: ReadonlyArray<UnvoicedScene>,
+  voices: VoicesId | undefined
+): Array<CardsScene> {
+  const policy = voicePolicyOf(voices, CARDS_VOICES, CARDS_VOICE_ROLES)
+  // A spoken card's owner turn says no line, so it is no speaker's turn: a
+  // role moves on only in the chapters Kokoro speaks in it.
+  const chapters = chapterIndexes(
+    scenes.map((scene) => scene.mark !== undefined)
+  )
+  const sayIn = voicesInChapters(
+    policy,
+    scenes.flatMap((scene, i) =>
+      scene.lines.map((line) => ({
+        speaker: line.speaker,
+        chapter: chapters[i] ?? 0,
+      }))
+    )
+  )
+  let at = 0
+  return scenes.map(({ lines, ...rest }) => ({
+    ...rest,
+    lines: lines.map(({ speaker: _speaker, ...line }) => {
+      const voice = sayIn[at++]
+      if (voice === undefined) throw new Error(`${rest.id}: no voice`)
+      return { ...line, voice }
+    }),
+  }))
 }
 
 /** A card's scene, the `i`th of the essay's: what it says, in whose voice. */
-function cardScene(shot: Shot, i: number): CardsScene {
+function cardScene(shot: Shot, i: number): UnvoicedScene {
   const file = stillFile(i, shot.id)
   const spoken = shot.spoken
   if (spoken?.role === "scene")
@@ -363,12 +449,12 @@ function cardScene(shot: Shot, i: number): CardsScene {
         {
           file: `${file}-chapter`,
           said: spoken.chapter,
-          voice: CARDS_VOICES.host,
+          speaker: "host",
         },
         {
           file: `${file}-narration`,
           said: spoken.narration,
-          voice: CARDS_VOICES.narrator,
+          speaker: "narrator",
         },
       ],
       mark: chapterTitle(spoken.chapter),
@@ -380,7 +466,7 @@ function cardScene(shot: Shot, i: number): CardsScene {
     file,
     shot,
     said,
-    lines: [{ file, said, voice: CARDS_VOICES.host }],
+    lines: [{ file, said, speaker: "host" }],
     ...(spoken?.role === "close" ? { mark: CLOSE_MARK } : {}),
   }
 }

@@ -1,0 +1,15 @@
+{
+  "id": "C891",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:crates/outbound/src/lib.rs#Caller::host"],
+  "chose": "The host label is a closed Host enum, fixed per caller by Caller::host, never read from a URL: espn, github_raw (call_weeks and cards_essays together), mailbox_worker, googleapis (FCM's oauth2 and fcm hosts as one), web_push (every browser's push service as one, since the endpoint is per browser), loopback. The cost is that a caller reaching two hosts reads as one; the gain is that no URL, project or subscription endpoint can reach a label.",
+  "options": [
+    "a closed Host enum fixed per caller by Caller::host",
+    "the request URL's host mapped into a closed set at send time, other for the rest",
+    "no host label, caller only"
+  ],
+  "gray": "The issue says host is fixed per caller, but Notice reaches two Google hosts and Nudge reaches whichever push service each browser uses, so one fixed name per caller merges hosts that a URL-derived label would split.",
+  "undo": "Split a caller into two cases (Notice into token and send) if one host needs telling apart.",
+  "refs": ["#3330"]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "C911",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:infra/prometheus/rules/home.yml#OutboundRefused",
+    "server:infra/prometheus/rules/home.test.yml"
+  ],
+  "chose": "OutboundRefused (objective OB3) fires for the game feed when at least three of its requests in 30 minutes were refused (4xx or 5xx) and none was answered ok. A timeout among the refusals does not clear it, so a mix of refusals and timeouts, which clears OutboundNoAnswer, is still heard. Other callers are left out. The owner asked for it on 2026-11-21.",
+  "options": [
+    "the game feed only, refusals with no ok, a timeout not clearing it",
+    "the game feed only, refusals only, anything but a refusal clearing it",
+    "every caller, refusals with no ok",
+    "fold it into OutboundNoAnswer as any non-ok outcome with no ok"
+  ],
+  "gray": "The owner chose the game feed and 'refused with no ok', but nothing said what a timeout among the refusals does. Clearing on it would leave a mix of 429s and timeouts heard by neither alert. Every caller was left out because the nudge's 410s are normal and the pollers' failing alerts already read their refusals.",
+  "undo": "Delete the OutboundRefused rule and its three tests; or drop the caller=\"game_feed\" matcher to judge every caller.",
+  "refs": ["#3330"]
+}

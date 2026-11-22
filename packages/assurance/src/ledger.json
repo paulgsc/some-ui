@@ -881,6 +881,58 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "VH7",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A voice note is heard within 25 minutes of reaching home; if one waits longer, or the transcriber keeps trying and almost nothing gets heard, I am told, with what is waiting on it.",
+          "requirement": "The transcriber is a shared stage (server crate::stage::Stage::Transcriber). At the start of each pass and after each attempt it keeps, it reads every note still waiting (voice_repo::transcript::backlog, the queue's own predicate over the whole queue, never the batch) and exports when the oldest reached home (stage_oldest_waiting_since_timestamp_seconds, aged by Prometheus) and how many wait; it counts how each attempt ended (stage_attempts_total: done for heard or silent, refused for unreadable or too long, failed for a deadline or a failure). StageDegraded fires when the oldest note waiting is older than HEARD_WITHIN (1,500 s, a policy constant exported as stage_promise_seconds, compile-time asserted above a turn given to the renders, an interval and one deadline-long note) for 5 minutes; StageBroken fires when the last hour holds more attempts than one note gets (stage_attempts_per_item, 3) and under a tenth of them done or refused, for 5 minutes. Both reach the owner through home-alerts.yml. The file_host dashboard's SHARED STAGES row shows the stage as OK, SLOW or STUCK, its oldest waiting, and who waits on it: notes waiting, cards essays held for a take, and the share of the last hour the batch lane was held for notes and for Rust Rounds programs.",
+          "bound": {
+            "value": 1500,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
+          "verdict": "holds",
+          "conclusion": "Tested in server CI (promtool and file_host's stage tests): a note waiting past 25 minutes, or an hour of attempts that almost never end, raises an alert, and one bad note failing its three attempts does not; whether 25 minutes is the right bound for the owner's notes is only shown by real use, and a pass that fails on storage leaves the last reading, which TranscriberFailing reports.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "StageDegraded fires once the oldest note has waited past its promise for 5 minutes and stays quiet while notes are picked up or nothing waits; StageBroken fires on an hour of deadlines and stays quiet while attempts end, for one bad note, and for refusals.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Stage is a closed enum: each case names its promise, how its attempts end and who waits on it, and a test fails while a case has no alert test or no tile on the overview.",
+              "ref": "server:apps/servers/file_host/src/stage.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The backlog is every note the queue would hear, past any batch and in any order: the oldest's arrival and the count, and nothing once all are heard or out of attempts.",
+              "ref": "server:crates/db/voice/src/transcript.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The pass reads the backlog before anything else it can fail on and again after each attempt it keeps.",
+              "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#StageDegraded",
+            "server:infra/prometheus/rules/home.test.yml#StageBroken",
+            "server:apps/servers/file_host/src/stage.rs#every_stage_has_its_alerts_their_tests_and_its_tile",
+            "server:crates/db/voice/src/transcript.rs#the_backlog_is_every_note_waiting_and_its_oldest"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
         }
       ]
     },
@@ -1125,9 +1177,9 @@
           "kind": "RE3",
           "property": "work",
           "claim": "Home fetches a game only while there is something to learn about it.",
-          "requirement": "A wake with nothing due fetches nothing; a game's summary is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
+          "requirement": "A wake with nothing due fetches nothing; the scoreboard is read every scoreboard cadence (600 s) only while a chosen game is live, past kickoff and not final (within its grace: 4 h while still pre, 8 h once over without completing, and without bound once completed), or within the margin (1 h) of its kickoff, and while any game was still live at its end read (kickoff plus 4 h), to at most 8 h after kickoff; and otherwise at the soonest of the next chosen kickoff less the margin, any listed game's end read, and a day after its last read; a failed read is retried on its backoff (to at most 900 s) whatever the games, and a start reads it at once; a chosen game's summary (a game is chosen when either side is a team the game-teams setting names, or always when it names none) is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a game no team chose gets no live summaries, but once the scoreboard calls it completed its summary is fetched until one says final; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
           "verdict": "unproven",
-          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit.",
+          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit. A day with no game near or ending costs one scoreboard read; with teams named, each kickoff time of an unchosen game adds one read at its end (kickoff plus 4 h). A game added, or moved sooner, to within a day of the last read is learnt only at the next scoreboard read (at the latest the daily one), so in the worst case it is missed live, and fetched as over only if the scoreboard still lists it then. With teams named, a game no team chose is fetched once a scoreboard read sees it completed (the one at its end, kickoff plus 4 h, or the reads every 600 s after it to kickoff plus 8 h while it is still live); one still live at kickoff plus 8 h, or still pre at its end read, can leave the week unseen. A completed game whose summary never reads final is still fetched without a bound (server#534), and a chosen one also keeps the scoreboard awake, every 600 s.",
           "tracked": "server#534",
           "evidence": [
             {
@@ -1144,20 +1196,50 @@
               "class": "measured",
               "says": "A postponed game is left after the post grace, and one still called pre past its grace waits for the scoreboard.",
               "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A week of wakes every 5 minutes with no game reads the scoreboard 7 times; a game tomorrow wakes it an hour before kickoff; a flexed kickoff is learnt at the read before the old one or the daily read; a postponed game sleeps it until the daily read learns its new kickoff; a read that fails while asleep backs off as before.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "With teams named, only a named team's game gets live summaries or wakes the scoreboard, a game no team chose is fetched once completed until final (the scoreboard reading at every listed game's end to see it), and a change of teams takes effect at the next pass.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
           ],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "The scoreboard is read every 600 s only while a chosen game is near (or any game is still live at its end read), and otherwise sleeps until an hour before the next chosen kickoff, a listed game's end read, or a day after its last read; live summaries are fetched only for games of the teams the game-teams setting names (every game when it names none), and any other game's summary only once the scoreboard calls it completed, until one reads final. The sleep is the owner's ask on #3329; the final fetch for unchosen games is the owner's decision in the linked comment.",
+              "why": "The owner (on #3329): there is no reason to ask ESPN all day, every day, when games happen on a few days in a few windows. Home fetched the scoreboard 144 times a day with no game near, and every game's summary on a full slate.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3329#issuecomment-7058452957"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_week_with_no_game_reads_the_scoreboard_once_a_day_and_nothing_else",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_tomorrow_wakes_the_scoreboard_an_hour_before_its_kickoff",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_flexed_kickoff_is_learnt_at_the_read_before_the_old_one_or_the_daily_read",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_postponed_game_sleeps_the_scoreboard_until_the_daily_read_learns_its_new_kickoff",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#only_a_chosen_teams_games_are_fetched_or_wake_the_scoreboard",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_failing_read_backs_off_as_before_while_asleep",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_called_off_before_its_kickoff_does_not_keep_the_feed_awake",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_completed_game_no_team_chose_is_fetched_until_its_summary_is_final",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_live_game_no_team_chose_is_not_fetched_and_dropped_once_it_leaves_the_scoreboard",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#the_scoreboard_reads_at_an_unchosen_games_end_so_its_final_summary_is_kept",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_live_past_its_end_read_keeps_the_scoreboard_awake_only_to_the_post_grace"
+          ]
         },
         {
           "id": "GA4",
           "kind": "OA6",
           "property": "outcome",
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
-          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
+          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due and whether or not the scoreboard is asleep, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; game_feed_asleep and game_feed_next_fetch_timestamp_seconds say, as the last pass that ran set them, whether the scoreboard sleeps between games and until when; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
           "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed worker that has never woken since home started has no stamp and so no alert, and Grafana itself is not yet watched.",
           "evidence": [
@@ -1185,6 +1267,16 @@
               "class": "unknown",
               "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
               "ref": "some-ui#2289"
+            },
+            {
+              "class": "structural",
+              "says": "A feed asleep for 30 minutes whose wakes keep stamping does not fire GameFeedStale or GameFeedFailing; one asleep whose stamp stops does fire GameFeedStale; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The GAME FEED dashboard's SCOREBOARD (AWAKE/ASLEEP), NEXT READ and TEAMS CHOSEN panels read game_feed_asleep, game_feed_next_fetch_timestamp_seconds and game_feed_teams_chosen.",
+              "ref": "server:infra/grafana/dashboards/lib/game-feed-panels.libsonnet"
             }
           ],
           "proof": [
@@ -1201,6 +1293,12 @@
               "change": "game_feed_enabled is the owner's switch on Home's switches (the game-feed setting, on by default), as each wake reads it before any fetch, in place of GAME_FEED_ENABLED read once at start.",
               "why": "The owner does not keep policy as an environment variable: whether home follows games is a switch set from the web app, as Rust Rounds recording is. The gauge still tells 'switched off' from a quiet week and from a stopped feed, so the claim holds as before.",
               "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "The scoreboard may sleep between games (game_feed_asleep, game_feed_next_fetch_timestamp_seconds); the worker still wakes and stamps every 5 s while it does.",
+              "why": "Sleeping between games (#3329) must not read as a stopped feed: GameFeedStale still means the worker stopped, and the new gauges say when it next reads.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3329"
             }
           ]
         },
@@ -1253,7 +1351,7 @@
           "kind": "OA4",
           "property": "outcome",
           "claim": "Every bite home holds with a scenario is matched to a play or marked unmatched and kept, never dropped.",
-          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, at or before the bite's start on home's clock, within the broadcast-delay window, the nearest) or why there was none; bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
+          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, found by BM5's direction: the snap to come for a bite on its offer; for a drive offer, the first accepted play of that possession from the snap on; for the coin toss, the opening kickoff; the nearest at or before the bite's start on home's clock for one from just happened, on an offer of a play already in the log (the try), or on a stale offer; the nearer either side for one tied to no offer. The snap to come, and any play found before or either side, lies within reconcile::WINDOW) or why there was none (`unmatched`, `not-a-play`, `no-scenario`); bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
           "verdict": "holds",
           "conclusion": "The reconciler's test matches each bite to its play or marks it unmatched and keeps it, and the store refuses rewriting a match. Whether the match is the right play (8 in 10 on a real Sunday, #2081) is the owner's spot check, not this objective.",
           "evidence": [
@@ -1269,7 +1367,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "A bite's play is found by when it was said (BM5): ahead for a bite on an offer of the snap to come (method `next`, a signed gap), behind for one from just happened, either side for one tied to no offer; it was always the nearest at or before.",
+              "why": "A bite said on a pre-snap offer was matched to the play before its snap, or none (#3040).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3040#issuecomment-7057816904"
+            }
+          ]
         },
         {
           "id": "BM2",
@@ -1298,8 +1403,8 @@
           "id": "BM3",
           "kind": "RE7",
           "property": "work",
-          "claim": "A game already final is reconciled again only when it has new bites.",
-          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass; it runs whatever the game feed's switch says.",
+          "claim": "A game already final is reconciled again, past once per start, only when it has new bites or mappings, or a bite matched under an older engine.",
+          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass, or when a bite's newest match was made under an older ENGINE_VERSION (once per bump, whatever week the game was in); it runs whatever the game feed's switch says.",
           "verdict": "holds",
           "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
           "evidence": [
@@ -1310,7 +1415,8 @@
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites"
+            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites",
+            "server:apps/servers/file_host/src/reconcile.rs#a_bite_matched_under_an_older_engine_is_matched_again_once"
           ],
           "watch": {
             "by": "none"
@@ -1321,6 +1427,12 @@
               "change": "The reconciler always runs, a pass every reconcile::TICK, where it was spawned only while GAME_FEED_ENABLED was on and logged once and spawned nothing while it was off.",
               "why": "Whether home follows games became the owner's switch, read each wake, so it is no longer known when home starts; the reconciler runs regardless, and a pass still reconciles a final game again only when a bite arrived since its last pass. The requirement also no longer says a game in play is reconciled: the worker reconciles only final games.",
               "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "A match made under an older ENGINE_VERSION is redone once, so a rule change reaches every bite matched before it; the claim now names that, and the mappings the requirement already counted.",
+              "why": "#3040 changed which play a bite is matched to; without a re-match, bites matched before the change kept the wrong play.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3040#issuecomment-7057816904"
             }
           ]
         },
@@ -1329,9 +1441,9 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What the reconciler keeps grows by bites, not by passes.",
-          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play) and never by the 10-minute tick; neither is updated or deleted but with the account.",
+          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play, and one more per bite each time the matching rule changes, as ENGINE_VERSION is part of the match, BM3) and never by the 10-minute tick; neither is updated or deleted but with the account.",
           "verdict": "holds",
-          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes.",
+          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season and a handful of rule changes, the rows stay in the tens of kilobytes.",
           "evidence": [
             {
               "class": "structural",
@@ -1356,6 +1468,47 @@
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "The bound also counts one more small bite_match row per bite each time the matching rule changes (an ENGINE_VERSION bump re-matches every bite home holds, once, since server#1069).",
+              "why": "Earlier bites get the new rule rather than keeping a match made under an older one; each row is tens of bytes and kept for good like every match, and bumps that land together in one release re-match once.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3356#issuecomment-7068142712"
+            }
+          ]
+        },
+        {
+          "id": "BM5",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every bite said on an offer of the snap to come is matched to that snap when its scenario's rule accepts it and it came within reconcile::WINDOW of the bite's start, to none otherwise, and never to a play home had seen when the offer was on its screen; every bite offered on a drive (first possession, red zone) to the first play from that snap on, in the same possession, that its rule accepts (the snap within reconcile::WINDOW), or to none; every bite offered on the coin toss to the opening kickoff, with no window, when home had not seen it when the offer was on its screen, or to none; every bite from just happened, on a stale offer, or on an offer of a play already in the log (the try, a kick while a try is pending), to the nearest play its rule accepts at or before it within reconcile::WINDOW, or to none; and every bite tied to no offer (picked from the whole set, or said first and picked or mapped after) to the nearer in time of the plays its rule accepts either side, each within reconcile::WINDOW, a tie looking back.",
+          "requirement": "The engine reads an offered bite's moment for its direction (BeforeTheSnap, BeforeTheDrive, BeforeTheKickoff or After); the reconciler sets After for a bite from just happened and Either for a bite tied to no offer, and matches by the direction; the offer's time is the bite's start, or reconcile::LAG (5 s) earlier when home had just stopped offering the scenario, and a stale offer only looks back.",
+          "verdict": "holds",
+          "conclusion": "Tested over the family a bite is said in: every moment × how it was said (offered, just happened, every scenario; said first by the same path as every scenario) × before or after its play × a flag that wipes the snap out between × a phone behind home when its offer was still on at the bite's start minus reconcile::LAG × an offer home no longer showed. Within reconcile::LAG after home sees a snap, a scenario still on offer for the next one (a play call, a drive) is read as the newer offer; nothing the bite keeps says which the phone showed.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A bite on the snap to come, the try, the coin toss, the opening drive before its kickoff, and one tied to no offer each take the play their moment points at, in the engine's own tests.",
+              "ref": "server:crates/scenario_engine/tests/its_play.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The reconciler matches a bite on the snap to come to that snap (method next, a signed gap), and a bite on an offer home just moved on from to its snap.",
+              "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_on_the_snap_to_come_is_about_that_snap",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_on_the_try_is_about_its_touchdown",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_before_kickoff_is_about_the_opening_kickoff",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_on_the_opening_drive_before_the_kickoff_is_about_that_drive",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_not_tied_to_an_offer_takes_the_nearer_play",
+            "server:apps/servers/file_host/src/reconcile.rs#a_bite_on_the_snap_to_come_is_matched_to_that_snap",
+            "server:apps/servers/file_host/src/reconcile.rs#a_bite_on_an_offer_home_just_moved_on_from_is_about_its_snap"
+          ],
+          "watch": {
+            "by": "none"
           },
           "amendments": []
         }
@@ -3730,7 +3883,7 @@
         "server:apps/servers/file_host/src/cards_essays",
         "server:apps/servers/file_host/src/routes/cards_essays.rs",
         "server:apps/servers/file_host/src/handlers/cards_essays.rs",
-        "server:apps/servers/file_host/src/take_files.rs",
+        "server:apps/servers/file_host/src/essay_media",
         "some-ui:apps/www/tests/record/voiced.ts"
       ],
       "modules": ["cards_essays"],
@@ -3739,16 +3892,21 @@
           "id": "CE1",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
-          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker, and, for a spoken card, the takes it names with their transcripts, in <key>.takes/, waiting while a take is not heard yet and refusing one home didn't hear or that is missing (take-unheard, take-missing; server#1054), takes the essay back within a minute when a take it was given is no longer on home (deleted from My data, let go, or the account gone), lets an essay wait rather than refuse it while no one's takes are on home, and drops those copies once the video is made; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions; in a spoken version, no intro, a scene with no chapter line or narration, a line the speaker can't say, or words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, or with an introduction anywhere but first) before anything is drawn or said, has home's speaker say each line of a spoken essay, and keeps cards.mp4, cut-list.json, essay.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and takes and is tried again, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
+          "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said, or is withdrawn for good once a take it plays is deleted; one that failed is tried again.",
+          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker, and, for a spoken card, the takes it names with their transcripts, in <key>.takes/, waiting while a take is not heard yet and refusing one home didn't hear or that is missing (take-unheard, take-missing; server#1054), withdraws the essay for good when a take its spoken cards play is deleted from My data or its recording let go, whether it was never given, its render has not started, is under way or is done (both receipts in cards_essay_video_deletion, cause take-deleted, naming the note, then its input, takes, video and work folders go within a minute, and a video a render under way finishes later goes the next minute; it is never given again, no list shows it and its video routes answer 404; server#1055), takes it back before its video is made when a take it was given is otherwise no longer on home (the account gone), lets an essay wait rather than refuse it while no one's takes are on home, and drops those copies once the video is made; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card or a screen of the app (a snip or a Clips Library frame), a screen on a spoken card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions; in a spoken version, no intro, a scene with no chapter line or narration, a line the speaker can't say, or words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, or with an introduction anywhere but first), and an essay showing a screen home didn't hand beside it in <key>.snips/ or <key>.clips/ (as every snip is until home hands snips, SNIPS2 some-ui#3116), a snip of another commit than its bundle, a snip picture not its record's, a frame that isn't a PNG, or a part its snip doesn't name, before anything is drawn or said, has home's speaker say each line of a spoken essay, and keeps cards.mp4, cut-list.json, essay.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and takes and is tried again, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
           "verdict": "unproven",
           "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) comes with server#854, and nothing has rendered on home yet.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
               "class": "structural",
-              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions, and in a spoken version (cheat-sheet v2, #3021) an essay with no intro, a scene that says nothing, an intro or close out of place, a line the speaker can't say, and words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, and with an introduction anywhere but first (spoken-card.test.ts); cardsFolderProblems refuses an index out of order, a newest essay that is silent, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
+              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card or a screen of the app, a screen on a spoken card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions, and in a spoken version (cheat-sheet v2, #3021) an essay with no intro, a scene that says nothing, an intro or close out of place, a line the speaker can't say, and words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, and with an introduction anywhere but first (spoken-card.test.ts); cardsFolderProblems refuses an index out of order, a newest essay that is silent, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
               "ref": "some-ui:packages/video-render/src/cards-essay.ts"
+            },
+            {
+              "class": "structural",
+              "says": "resolveScreens refuses a screen home didn't hand, a snip of another commit than its bundle and a part its snip doesn't name; parseSnipsGiven refuses a record whose picture isn't its id's and a bundle given twice; render refuses a cut list that still names a screen, while cards-check passes it; each tested (snip.test.ts). record:cards checks each picture's hash and each frame's PNG header before anything is drawn.",
+              "ref": "some-ui:packages/video-render/src/snip.ts"
             },
             {
               "class": "measured",
@@ -3782,6 +3940,18 @@
               "change": "A spoken card's owner turn plays one of the owner's takes: home gives the render the takes a spoken card names with their transcripts, waits while one is not heard yet, refuses one it didn't hear or that is missing, takes an essay back from the render worker within a minute when a take it was given is no longer on home, and drops the copies once the video is made; parseCardsEssay accepts a take only in a spoken card's owner turn. A take deleted after its render has started stays in the video it makes; that gap is open in server#1055.",
               "why": "WALK7 (some-ui#3315, server#1054): the owner wants their own voice in a cards essay, captioned from home's transcript and never cut by hand, and ruled that the copies join the named exception for their recordings on home.",
               "decision": "https://github.com/paulgsc/some-ui/issues/3311#issuecomment-7055970179"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "A take a spoken card plays, deleted from My data or its recording let go, withdraws its essay for good at any stage, never given, before, during or after its render, rather than taking it back only before the video is made.",
+              "why": "docs/identity.md's essay-render exception, rule (c), held for cards essays only until the render started (server#1054), so a video made kept the owner's voice after the take was deleted.",
+              "decision": "https://github.com/paulgsc/server/issues/1055"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "A cards essay may show a screen of the app home keeps, a snip or a Clips Library frame, in place of a card (SNIPS4, C865, C866). record:cards draws it only from what home hands beside the essay, as takes are handed (<key>.snips/, <key>.clips/), checked by hash or as a PNG, held whole above the captions or zoomed to the parts it names. Before anything is drawn it refuses a screen it wasn't handed, a snip of another commit than its bundle, or a part the snip doesn't name, and the render refuses a cut list that still names one. Until home hands snips (SNIPS2, some-ui#3116), every essay showing a snip is refused and said. The outcome claim is unchanged.",
+              "why": "The owner wants to see what an essay talks about: the app's own screens, on sample data (#3114, 2026-11-17).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3114"
             }
           ]
         },
@@ -3789,8 +3959,8 @@
           "id": "CE2",
           "kind": "RE9",
           "property": "work",
-          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries; no essay's video or folder is let go until its YouTube link is confirmed, and its row never is.",
-          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either today (C338): an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted).",
+          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries; no essay's video or folder is let go until its YouTube link is confirmed, but one whose spoken cards play a take later deleted is withdrawn, its video and folder removed, with two receipts; its row never is.",
+          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Only a withdrawal for a deleted take deletes a video or folder today (server#1055); otherwise (C338) an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted); server:cards_essay_video_deletion gains at most two append-only receipt rows per essay withdrawn for a deleted take, and they leave with the account.",
           "verdict": "unproven",
           "conclusion": "Structural on home's table: the row's bound (MAX_BODY) and its append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
           "tracked": "some-ui#2979",
@@ -3804,7 +3974,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "An essay whose spoken cards play a take later deleted from My data, or whose recording is let go, is withdrawn: its video and folder are removed before any YouTube link is confirmed, with two receipts in a new store, server:cards_essay_video_deletion.",
+              "why": "docs/identity.md's essay-render exception, rule (c), held for cards essays only until the render started (server#1054); a video made kept the owner's voice. The owner accepted the gap be closed (\"add it\", 2026-11-20, relayed in run some-ui#3311); server#1055 closes it as the Rust Rounds essay's withdrawal does.",
+              "decision": "https://github.com/paulgsc/server/issues/1055"
+            }
+          ]
         }
       ]
     },
@@ -3995,6 +4172,131 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "home-outbound",
+      "name": "What home asks of the outside is counted and heard",
+      "why": "Every HTTP request file_host and its crates send through reqwest goes through one constructor, crates/outbound, which counts it by the worker that sent it, the host it went to and how it ended; the OUTBOUND dashboard shows them, and two alerts tell the owner when a host stops answering a worker that asks it often, or the game feed is refused while it asks often (#3330, server#1070). The mailbox bell's WebSocket is outside it, counted by its own series.",
+      "paths": [
+        "server:crates/outbound",
+        "server:infra/grafana/dashboards/outbound.jsonnet"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "OB1",
+          "kind": "RE1",
+          "property": "work",
+          "claim": "Every HTTP request file_host and its crates send through reqwest is counted once, by the worker that sent it and the host it went to, and no reqwest client is built any other way.",
+          "requirement": "Each request sent through outbound::Client adds 1 to outbound_requests_total{caller, host, outcome}, by closed sets, never a URL; a test refuses a reqwest client named outside crates/outbound, and clippy's ratchet flags its constructors.",
+          "verdict": "holds",
+          "conclusion": "Every reqwest request is counted once by caller, host and outcome, in crates/outbound's tests. Measuring ends at the answer's headers, and bytes received are the declared length (C892): a body that stalls after its headers counts as its status. Not counted here: the mailbox bell's WebSocket (MBP2), which connects through tokio-tungstenite and is counted by its own mailbox_bell series. The guard has two gaps: a `use reqwest as r` alias passes the test, and clippy runs as a ratchet over a baseline, so a file under its count could trade one finding for a new constructor. No provider's own counts are read (ESPN gives none, and FCM's quota is not read).",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A request is counted once by its caller, its fixed host and its outcome, and nothing else is recorded.",
+              "ref": "server:crates/outbound/tests/records.rs"
+            },
+            {
+              "class": "structural",
+              "says": "No file outside crates/outbound names a reqwest client (a hard test); clippy's ratchet flags its constructors.",
+              "ref": "server:crates/outbound/tests/only_here.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The mailbox bell's WebSocket (MBP2) connects through tokio-tungstenite, outside crates/outbound; it is counted by its own mailbox_bell_connected and mailbox_bell_failures_total{why}, not here.",
+              "ref": "server:apps/servers/file_host/src/mailbox/bell.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/outbound/tests/records.rs#a_request_is_counted_by_caller_host_and_outcome_and_nothing_else",
+            "server:crates/outbound/tests/only_here.rs#nothing_outside_this_crate_names_a_reqwest_client"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/outbound.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "OB2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A host that stops answering a worker that asks it at least three times in 30 minutes is heard about 30 minutes after its last answer.",
+          "requirement": "Three requests or more by one caller to its host in 30 minutes, none answered (timeout or no connection), fires OutboundNoAnswer, naming the worker and the host.",
+          "verdict": "holds",
+          "conclusion": "Tested in CI with promtool. It fires once the last answer leaves the 30-minute window, and Prometheus and Grafana add about 80 s more. A worker asking fewer than three times in 30 minutes is not judged: call_weeks and cards_essays retry at 10 and 20 minutes then hourly, the game feed between games backs off to 15 minutes, and the nudge is rare, so for them this alert fires briefly or not at all, and their own failing alerts are what tell. A refusal is an answer, so it does not fire this. Grafana itself is not yet watched.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A caller whose host goes dark fires within the window and resolves when answers return; a caller answered between timeouts, a refusing host and a rare caller stay quiet.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
+              "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#OutboundNoAnswer"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "OB3",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "If ESPN keeps refusing the game feed while it asks at least three times in 30 minutes (a live game), the owner is told within about 30 minutes.",
+          "requirement": "Three refusals (4xx or 5xx) or more by the game feed in 30 minutes, with no ok answer, fires OutboundRefused; a timeout among them does not clear it.",
+          "verdict": "holds",
+          "conclusion": "Tested in CI with promtool, with a refusal every minute. Between games the feed backs off to its 15-minute cap and asks about twice per 30 minutes, so a refusal there is not judged; during a game the live tracks reach the threshold in the first 30 minutes, but as they back off to the cap it can resolve while ESPN still refuses. Judging refusals at the backoff's own spacing is #3352. Other workers' refusals are not alerted. Grafana itself is not yet watched.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "ESPN refusing every request fires it, refusals mixed with timeouts fire it, one ok answer clears it, and the nudge's 410s never fire it.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
+              "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#OutboundRefused"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -4004,7 +4306,7 @@
     },
     {
       "module": "admin_settings",
-      "why": "The operator's levers (Rust Rounds recording, and whether home follows NFL games): each read answers with what home follows now, and each write with what it kept."
+      "why": "The operator's levers (Rust Rounds recording, whether home follows NFL games, and which teams' games it follows live): each read answers with what home follows now, and each write with what it kept."
     },
     {
       "module": "aph",
@@ -5199,13 +5501,19 @@
     {
       "store": "server:cards_essay",
       "class": "record",
-      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996).",
+      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996); an essay whose spoken cards play a take later deleted is withdrawn sooner, its video and folder removed with receipts in cards_essay_video_deletion (server#1055).",
       "family": "cards-essay-rendered"
     },
     {
       "store": "server:cards_essay_link",
       "class": "record",
       "growth": "Per YouTube video the owner records for a cards essay: one tiny row (the essay's key, the video's id, when), the newest standing; about one per essay; append-only, triggers abort UPDATE and DELETE. No subject: a public video of an essay about public repositories, nobody's record, so deleting an account removes none.",
+      "family": "cards-essay-rendered"
+    },
+    {
+      "store": "server:cards_essay_video_deletion",
+      "class": "record",
+      "growth": "Per step of a cards essay's video going (the video, then the rest), one receipt row (the essay's key, step, cause take-deleted or let-go, the subject and the deleted take's voice-note id for take-deleted, the YouTube id when there was one, bytes, when): at most two per essay; append-only. A take-deleted row names the subject's note and leaves with the account; a let-go row (some-ui#2999, nothing writes one yet) names no one and is kept for good.",
       "family": "cards-essay-rendered"
     },
     {
@@ -5225,6 +5533,18 @@
       "class": "record",
       "growth": "Per step of a report week let go (the video, then the rest), one receipt row (subject, week, step, YouTube id, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
       "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:stage_want",
+      "class": "derived",
+      "growth": "bounded: one row per item a waiter is waiting on right now (server crate::stage::Waiter, server#1091): which waiter (a closed set, cards_essays first), its key (an essay's key), which stage (transcriber), and the item (the subject's note id); no time is kept. Each waiter's pass rewrites its own rows in one transaction, under account deletion's hold, so its rows are whatever that waiter's last pass recorded, never more than it waits on at once; they also go when the note is deleted, and with the account. Derived: every row is recomputed from the waiter's own record (the essay's body) on its next pass, so losing the table loses no one's data.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_fast_track",
+      "class": "record",
+      "growth": "Per act the owner takes putting one of their voice notes at the front of home's transcriber's line, or taking that back (server#1090, server#1091): one short row (the note's id, the act's number, fast or cancel, when); append-only (UPDATE aborts), a later act a new row, a repeat of the newest act writing nothing; it goes with its note when the owner deletes it for good, and with the account. Grows with how often the owner fast-tracks notes.",
+      "family": "voice-heard"
     }
   ],
   "processes": [
@@ -6443,7 +6763,7 @@
     {
       "id": "cards-essays",
       "name": "Making each cards essay into a video on home",
-      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are (#2979, C327, C338; the let-go comes with #2999).",
+      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are, except that a take deleted withdraws the essay and removes its video (server#1055) (#2979, C327, C338; the let-go comes with #2999).",
       "serves": ["cards-essay-rendered"],
       "witnesses": ["CE1"],
       "segments": [
@@ -6478,7 +6798,7 @@
           "on": "home",
           "paths": [
             "server:apps/servers/file_host/src/cards_essays",
-            "server:apps/servers/file_host/src/take_files.rs"
+            "server:apps/servers/file_host/src/essay_media"
           ]
         },
         {
@@ -6497,7 +6817,7 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. The owner saves each essay's YouTube link on its episode page, as other episodes take one (C389), and home keeps each essay until it can be let go after that link, as other episodes are; until some-ui#2999 builds the let-go, there is none (C338). Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. The owner saves each essay's YouTube link on its episode page, as other episodes take one (C389), and home keeps each essay until it can be let go after that link, as other episodes are; until some-ui#2999 builds the let-go, there is none (C338), except that a take deleted withdraws the essay and removes its video (server#1055). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
           "paths": [
@@ -6613,6 +6933,10 @@
     {
       "family": "home-compute",
       "why": "How home's one machine is shared between every process on it, and how a kill for memory is heard, whichever process it hits."
+    },
+    {
+      "family": "home-outbound",
+      "why": "A rule every outbound request home makes keeps, whichever worker makes it: they all go through crates/outbound."
     }
   ]
 }

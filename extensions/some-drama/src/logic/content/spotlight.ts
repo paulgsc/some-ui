@@ -6,6 +6,7 @@
 import { MOODS } from "@drama/logic/content/constants"
 import { likelihoodLabel, starsFor } from "@drama/logic/content/utils"
 import type { CardState, Spotlight } from "@drama/types"
+import { formatTimecode } from "@some-extension/common/utils/timecode"
 
 /** How long a change stays the card's face. A newer change restarts it. */
 export const SPOTLIGHT_MS = 4_000
@@ -55,10 +56,7 @@ export function likelihoodGlyph(p: number): string {
 
 /** "12:05" for a video time in seconds. */
 export function clockOf(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds))
-  const mm = String(Math.floor(s / 60))
-  const ss = String(s % 60).padStart(2, "0")
-  return `${mm}:${ss}`
+  return formatTimecode(Math.max(0, seconds) * 1000)
 }
 
 function signed(delta: number, digits: number, unit = ""): string {

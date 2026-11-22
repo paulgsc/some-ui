@@ -7,6 +7,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   localStorageOrNull,
+  onJson,
   openKept,
   salvageList,
   writeKept,
@@ -34,7 +35,7 @@ const TimeEventSchema: z.ZodType<TimeEvent> = z.object({
 const isEvent = (value: unknown): value is TimeEvent =>
   TimeEventSchema.safeParse(value).success
 
-const readLog = salvageList(isEvent)
+const readLog = onJson(salvageList(isEvent))
 
 export type TimeLogStore = {
   /** Every event kept, in the order kept; empty when none can be read. */

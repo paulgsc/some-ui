@@ -16,3 +16,6 @@ export {
 
 /** Each kind of take home keeps, as home names it (Takes, TAKES20). */
 export { TAKE_OFS } from "./lib/library/take-ofs"
+
+/** How home matched a game bite to its play, or why not (GWB14). */
+export { MATCH_METHODS } from "./lib/library/take-ofs"

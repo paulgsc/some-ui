@@ -54,7 +54,7 @@ jobs:
     outputs:
       changed: ${{ steps.inputs.outputs.changed }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: inputs
@@ -79,9 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Cache workspace build outputs
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
@@ -130,7 +130,7 @@ jobs:
 
       # Outside the nix shell on purpose: Gradle wants the runner's JDK and the
       # preinstalled SDK, neither of which the ci devShell carries.
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
@@ -196,7 +196,7 @@ jobs:
       # is nothing to download until the next.
       - name: Upload APK
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: some-ui-apk-${{ github.sha }}
           path: ${{ steps.name.outputs.file }}
@@ -230,7 +230,7 @@ jobs:
       # weekend; later, re-running that run's jobs rebuilds the same commit
       # with the same versionCode.
       - name: Upload the review's inputs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobile-review-${{ github.sha }}
           path: review-inputs
@@ -256,7 +256,7 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk ../../../launch-apk/debug.apk
           cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk ../../../launch-apk/tests.apk
       - name: Upload the launch test's APK
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobile-launch-apk-${{ github.sha }}
           path: launch-apk
@@ -280,10 +280,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: apps/mobile/launch
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: mobile-launch-apk-${{ github.sha }}
           path: launch-apk
@@ -294,7 +294,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Launch the release APK in an emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           # The app's targetSdk, so the platform behaviour tested is the one
           # the app opted into.
@@ -309,7 +309,7 @@ jobs:
             grep -q 'OK (1 test)' launch-out/lifecycle-test.txt
       - name: Upload what the emulator showed
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobile-launch-${{ github.sha }}
           path: launch-out

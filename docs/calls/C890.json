@@ -1,0 +1,21 @@
+{
+  "id": "C890",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/outbound/src/lib.rs",
+    "server:crates/mailbox_kit/src/transport.rs",
+    "server:crates/fcm_kit/src/transport.rs",
+    "server:crates/push_kit/src/transport.rs"
+  ],
+  "chose": "Every HTTP client in file_host and its crates is built by one constructor, outbound::client(Caller), in a new small crate, crates/outbound. Caller is a closed enum with one case per worker (game_feed, call_weeks, cards_essays, mailbox, notice, nudge, health_probe), and a new worker that fetches anything adds a case. Reached inward first (C820): some-metrics owns exposition and not measurement by its own README, and the kits' ReqwestTransports are per-kit adapters. The kits keep their seams and take an outbound::Client. Reached outward (C787): reqwest-middleware does the interception, but its error type wraps reqwest::Error, which would ripple through every caller's error mapping, for a surface of about ten methods. So it is a thin wrapper whose only way onto the wire is Request::send, and it keeps reqwest::Error and reqwest::Response.",
+  "options": [
+    "one constructor in a new small crate, crates/outbound, wrapping reqwest with a closed Caller enum",
+    "reqwest-middleware's ClientWithMiddleware with a metrics middleware, Caller carried as an extension",
+    "put the constructor in some-metrics",
+    "keep each client where it is and add a counter at each of the eight sites"
+  ],
+  "gray": "The issue asks for one constructor 'in an existing crate if one fits' but no existing crate owns HTTP: some-metrics' README rules measurement out, and the kits are per-service adapters. reqwest-middleware is the outsourced answer C787 prefers, and the cost against it (its error type rippling through every caller) is a judgement on the size of the ripple, not a rule.",
+  "undo": "Point the kits' ReqwestTransport back at reqwest::Client, restore the per-site builders and delete crates/outbound; or swap the wrapper for reqwest-middleware behind the same Caller enum.",
+  "refs": ["#3330"]
+}

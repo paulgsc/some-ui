@@ -22,9 +22,9 @@ import type {
 import { essayFileName } from "@interview-week/lib/monday/bundle"
 import { EMPLOYERS, employersIn } from "@interview-week/lib/monday/employers"
 import {
-  INTERVIEW_ESSAY_CAST_VERSION,
   INTERVIEW_ESSAY_ID,
   INTERVIEW_ESSAY_SCHEMA,
+  INTERVIEW_ESSAY_VOICES_VERSION,
   INTERVIEW_FAULTS_MOST,
   parseInterviewEssay,
 } from "@some-ui/video-render"
@@ -362,11 +362,11 @@ function build(
         problems.push(`${at}.${list}: "${id}" is not one the bundle asks for`)
   return {
     schema: INTERVIEW_ESSAY_SCHEMA,
-    // An essay with no opening stays version 1, which every stage draws; one
-    // with an opening takes the cast's (C822).
+    // Every essay takes the voices' version, which draws everything the
+    // versions before it do (C841).
     template: {
       id: INTERVIEW_ESSAY_ID,
-      version: owed.opening === null ? 1 : INTERVIEW_ESSAY_CAST_VERSION,
+      version: INTERVIEW_ESSAY_VOICES_VERSION,
     },
     week: { id: owed.week, from: owed.from, to: owed.to },
     company: owed.company,

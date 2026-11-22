@@ -29,11 +29,11 @@ import {
   postingTextLabel,
   sayWhyAloud,
 } from "@/lib/jobs/words"
+import { Chips } from "@/components/chips"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
 import {
   builderHref,
-  Chips,
   FileProblem,
   JourneyCard,
   Problem,

@@ -41,6 +41,16 @@ export const primitiveOwners = {
     "packages/core-utils/src/lib/is-record.ts",
     "extensions/common/src/utils/guards.ts",
   ],
+  // A length as the `m:ss` a clock reads (#2112). `formatTime` is the name
+  // each local copy took.
+  formatTimecode: [
+    "packages/core-utils/src/lib/date-utils.ts",
+    "extensions/common/src/utils/timecode.ts",
+  ],
+  formatTime: [
+    "packages/core-utils/src/lib/date-utils.ts",
+    "extensions/common/src/utils/timecode.ts",
+  ],
 }
 
 /**

@@ -1265,8 +1265,8 @@ that the shell's drain sends nothing unpaired and sends once paired on the
 moments below, a pull among them, asking each watched lane once and saying
 the pull fell short when one lane's run did, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`), and that a
-screen hears its lane's end in the pull under way, one run a lane between
-them (`lib/home-link/__tests__/pull.test.ts`). What no test
+pull on a Jobs screen reads the morning's picks as the person's own read,
+not by waiting on a lane's run (`lib/jobs/__tests__/pull.test.ts`, JP1). What no test
 can say is when a run is asked for. Rust Rounds' lane
 (`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`,
 `packages/ui/rust-rounds/src/lib/weeks/index.test.ts`,
@@ -1300,12 +1300,11 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   more for a lane whose run the link turned away, once the link frees up
   (the moment its watch asks it again too), through the refresher that
   `useHomePull` registers on `screenRefreshers` while `HomeLanes` is
-  mounted. In the same pull, that refresher's `ended` tells a screen how
-  its lane's run ended: `pulledLane` reads it, only for the Jobs refresher
-  (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
-  status page show), and it joins the pull under way, or starts the one
-  the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn; a pull first lets the link's hold away from home go (AW1),
+  mounted, each lane asked once, in turn. A screen never waits on a lane's
+  run for what it shows of home: the Jobs refresher (`lib/jobs/pull.ts`,
+  PULL2, registered while the Jobs screens or the status page show) reads
+  the morning's picks and runs as the person's own read, `askJobsPicks`
+  (`lib/home-link/jobs.ts`, JP1). A pull first lets the link's hold away from home go (AW1),
   keeping the stretch's tries, so pulls one after another do not start its
   backoff over (HERD1). A pull, the app coming back, the network coming back
   or a watch mounted while a lane's run is under way joins that run rather
@@ -1349,16 +1348,15 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `mayAsk`'s check that the phone is paired or that the document is
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
   `homeRefresher` from anywhere but `lanes.ts`'s `homePullOf`, or
-  registers it anywhere but `useHomePull`'s effect; a hunk that calls
-  `pulledLane` from anywhere but `lib/jobs/pull.ts`'s `jobsRefresher`, or
-  registers that refresher (`registerJobsPull`) from anywhere but an effect
+  registers it anywhere but `useHomePull`'s effect; a hunk that registers
+  `lib/jobs/pull.ts`'s `jobsRefresher` (`registerJobsPull`) from anywhere but an effect
   in `routes/_dashboard/_apk/jobs.tsx` or
   `components/settings/status-board.tsx`; a hunk to
   `lib/home-link/pull.ts` that asks a lane other than through `pullKept`,
   asks any but the lanes `watched` names when its turn comes, asks two lanes
   at once, asks a lane again other than after a run the link turned away
   (`busy`) and the link freeing up (`free`), or more than once again, drops
-  that one ask again, lets `ended` or `checkAgain` start a pull while one
+  that one ask again, lets `checkAgain` start a pull while one
   is out, or lets a pull
   read as in step when a run that answered it ended in a way `resynced`
   (`kept-model.ts`) does not accept; a hunk to `lib/home-link/kept-runtime.ts` or
@@ -1403,9 +1401,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   home and -1 on the phone; a hunk to `lib/home-link/jobs.ts` that makes
   the lane's `revision` anything but twice the log's length, plus one while
   `noticeFiling` owes home a request, or its `exchange` anything but
-  `exchangeJobs` over the runtime's `keeping`; a hunk to `lib/jobs` that
-  reads home's digests, files a decisions or scouts file or the notice
-  token anywhere but in `exchangeJobs`, or that deletes, renames or moves
+  `exchangeJobs` over the runtime's `keeping`, or its `askJobsPicks`
+  anything but `readDigests` over that `keeping` through the link's `keep`;
+  a hunk that makes `lib/jobs/pull.ts`'s refresher wait on a lane's run or
+  read home other than through `askJobsPicks`; a hunk to `lib/jobs` that
+  reads home's digests anywhere but in `exchangeJobs` and `readDigests`
+  (which `askJobsPicks` calls), files a decisions or scouts file or the
+  notice token anywhere but in `exchangeJobs`, or that deletes, renames or moves
   `readDigests`, `fileOutgoing` or `fileNotice` (`lib/jobs/home.ts`) so
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
@@ -1556,6 +1558,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `apps/www/src/routes/_dashboard.tsx`,
   `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
   `apps/www/src/lib/jobs/home.ts`, `apps/www/src/lib/jobs/notice.ts`,
+  `apps/www/src/lib/jobs/pull.ts`,
   `packages/ui/aph/src/lib/sync.ts`, `packages/ui/aph/src/lib/store.ts`,
   `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
   `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
