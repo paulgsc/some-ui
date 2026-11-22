@@ -39,8 +39,8 @@ What follows from them:
   once. The owner has decided (C1055) that the public Pages site becomes a curriculum
   vitae: who the owner is, what they do, the résumé and how to reach them, with each project
   shown by its clip and a link to its source. Until the prune lands, Pages still serves the
-  extensions comb and the apps on sample data; the prune takes those routes off the Pages
-  build, and nothing changes on `lan` or the APK.
+  extensions comb and the apps on sample data; the prune (#3401) takes those routes off the
+  Pages build, and nothing changes on `lan` or the APK.
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
   tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
