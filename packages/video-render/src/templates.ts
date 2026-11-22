@@ -17,21 +17,21 @@
 import type { Parsed } from "./cut-list"
 import type { Format } from "./format"
 import { parseFormat } from "./format"
-import callSeries from "./sample/series/conference-call/v2.json"
-import weekSeries from "./sample/series/playoff-delta-week/v3.json"
+import callSeries from "./sample/series/conference-call/v2.json" with { type: "json" }
+import weekSeries from "./sample/series/playoff-delta-week/v3.json" with { type: "json" }
 import { parseSeries } from "./series"
 import { parseStoryboard } from "./storyboard"
 import type { Storyboard } from "./storyboard"
-import callBoard from "./templates/conference-call/storyboard.json"
-import callV5 from "./templates/conference-call/v5.json"
-import reportBoard from "./templates/engagement-report/storyboard.json"
-import reportV1 from "./templates/engagement-report/v1.json"
-import legendBoard from "./templates/playoff-delta-legend/storyboard.json"
-import legendV4 from "./templates/playoff-delta-legend/v4.json"
-import weekBoard from "./templates/playoff-delta-week/storyboard.json"
-import weekV4 from "./templates/playoff-delta-week/v4.json"
-import essayBoard from "./templates/rust-essay/storyboard.json"
-import essayV7 from "./templates/rust-essay/v7.json"
+import callBoard from "./templates/conference-call/storyboard.json" with { type: "json" }
+import callV5 from "./templates/conference-call/v5.json" with { type: "json" }
+import reportBoard from "./templates/engagement-report/storyboard.json" with { type: "json" }
+import reportV1 from "./templates/engagement-report/v1.json" with { type: "json" }
+import legendBoard from "./templates/playoff-delta-legend/storyboard.json" with { type: "json" }
+import legendV4 from "./templates/playoff-delta-legend/v4.json" with { type: "json" }
+import weekBoard from "./templates/playoff-delta-week/storyboard.json" with { type: "json" }
+import weekV4 from "./templates/playoff-delta-week/v4.json" with { type: "json" }
+import essayBoard from "./templates/rust-essay/storyboard.json" with { type: "json" }
+import essayV7 from "./templates/rust-essay/v7.json" with { type: "json" }
 
 /** The folder under `templates/` each template's versions are pinned in. */
 export const TEMPLATE_IDS = [

@@ -67,7 +67,7 @@ import {
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
 import type { Storyboard } from "./storyboard"
-import sample from "./templates/conference-call/sample-week.json"
+import sample from "./templates/conference-call/sample-week.json" with { type: "json" }
 import { chapterVoices } from "./voices"
 import type { KokoroVoice, VoicePolicy } from "./voices"
 

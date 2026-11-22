@@ -78,7 +78,7 @@ import { boardSceneOf, storyboardOf } from "./storyboard"
 import type { Storyboard } from "./storyboard"
 import { takeFilesOf } from "./take-files"
 import type { TakeFiles } from "./take-files"
-import sample from "./templates/rust-essay/sample-essay.json"
+import sample from "./templates/rust-essay/sample-essay.json" with { type: "json" }
 import {
   isSilenceShape,
   isUnheard,
