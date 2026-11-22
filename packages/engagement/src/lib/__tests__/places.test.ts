@@ -90,11 +90,13 @@ describe("an affordance's places", () => {
     p.hidden(false)
     p.at(null)
     end()
-    expect(sent.map((e) => e.kind)).toEqual(["taken", "left", "taken", "left"])
-    // Put away, or closed into nothing that names a place: no next is guessed.
-    expect(
-      sent.filter((e) => e.kind === "left" && e.next !== undefined)
-    ).toEqual([])
+    // Put away: no next. Closed into nothing that names a place: elsewhere.
+    expect(said(sent)).toEqual([
+      "taken",
+      "left apply since 2026-11-21T09:00:00.000Z",
+      "taken",
+      "left apply since 2026-11-21T09:03:00.000Z to elsewhere",
+    ])
   })
 
   it("only names places and screens it has, so every event it sends checks", () => {
@@ -127,14 +129,14 @@ describe("an affordance's places", () => {
     expect(sent).toHaveLength(3)
   })
 
-  it("sends a closed screen's left with no next when nothing comes on that turn, or another pipeline's does", () => {
+  it("says a closed screen went elsewhere when nothing comes on that turn, or another pipeline's does", () => {
     const { places: p, sent, end, also } = places()
     p.at("apply")
     p.at(null)
     end()
     expect(said(sent)).toEqual([
       "taken",
-      "left apply since 2026-11-21T09:00:00.000Z",
+      "left apply since 2026-11-21T09:00:00.000Z to elsewhere",
     ])
     p.at("read")
     p.at(null)
@@ -142,9 +144,31 @@ describe("an affordance's places", () => {
       "ticket-1"
     )
     end()
-    expect(sent.filter((e) => e.kind === "left").at(-1)).not.toHaveProperty(
-      "next"
-    )
+    expect(sent.filter((e) => e.kind === "left").at(-1)).toMatchObject({
+      next: "elsewhere",
+    })
+  })
+
+  it("sends a closed screen's left at once, gone elsewhere, with no shared hand-off", () => {
+    const sent: Array<EngagementEvent> = []
+    const p = createPlaces(PICK, undefined, (event) => sent.push(event))
+    p.at("read")
+    p.at(null)
+    expect(sent.at(-1)).toMatchObject({ kind: "left", next: "elsewhere" })
+  })
+
+  it("sends every held left though one send throws", () => {
+    const { handoff, end } = turn()
+    const sent: Array<EngagementEvent> = []
+    const left = stepPlace(PICK, { place: "read", since: AT }, null, LATER)
+      .events[0]
+    if (left?.kind !== "left") throw new Error("a left")
+    handoff.hold(left, () => {
+      throw new Error("refused")
+    })
+    handoff.hold(left, (event) => sent.push(event))
+    expect(end).toThrow("refused")
+    expect(sent).toHaveLength(1)
   })
 
   it("follows the page's visibility, and leaves as the screen closes", () => {

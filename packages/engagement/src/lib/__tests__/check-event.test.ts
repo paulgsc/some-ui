@@ -128,12 +128,22 @@ describe("checkEvent: what an event may carry", () => {
       startedAt: EARLIER,
       place: "read",
     } as const
-    for (const next of ["decide", "today.today", "todays-pick.read"]) {
+    for (const next of [
+      "decide",
+      "today.today",
+      "todays-pick.read",
+      "elsewhere",
+    ]) {
       const checked = checkEvent({ ...left, next }, PIPELINES)
       expect(checked).toEqual({ ok: true, event: { ...left, next } })
     }
     expect(checkEvent(left, PIPELINES)).toEqual({ ok: true, event: left })
-    for (const next of ["today", "topik.routine-lens", "went back to Today"]) {
+    for (const next of [
+      "today",
+      "topik.routine-lens",
+      "went back to Today",
+      ["decide"],
+    ]) {
       const checked = checkEvent({ ...left, next }, PIPELINES)
       expect(checked.ok).toBe(false)
       if (!checked.ok) expect(checked.problems.join()).toContain("next:")

@@ -14,9 +14,10 @@
  * - `left`: it was started and stopped: where (one of the affordance's own
  *   places), after how long (`at` less `startedAt`), and, when the app
  *   knows it, the screen it went to (`next`, the owner's answer to #3367).
- *   That is another of the affordance's places, or `<affordance>.<place>`
- *   of its pipeline when the screen closed into one; it is left out when the
- *   app went to the back or the screen it went to names no place.
+ *   That is another of the affordance's places, `<affordance>.<place>` of
+ *   its pipeline when the screen closed into one, or `elsewhere` when it
+ *   closed into anything else; it is left out only when the app went to the
+ *   back (and by builds before it).
  * - `said`: a friction answer the owner gave, one of the affordance's own
  *   answers.
  *
@@ -29,6 +30,9 @@
  * pipeline and affordance, which surface, timings, and how it ended. No
  * words, no audio, no item content. `checkEvent` holds it.
  */
+
+/** What a closed screen's `left` says (`next`) when where it went has no place of its pipeline. */
+export const ELSEWHERE = "elsewhere"
 
 /** Where an affordance is: the Android app, or the desktop web. */
 export type Surface = "apk" | "web"
@@ -118,7 +122,9 @@ export type EngagementEvent =
        * The screen it went to, when known: one of the affordance's places
        * (`decide`), or a place of an affordance of its pipeline, written
        * `<affordance>.<place>` (`today.today`; the next item of the same
-       * affordance too). A registry id has no dot, so which is plain.
+       * affordance too), or `elsewhere` for a screen with no place of its
+       * pipeline. A registry id has no dot, and no place is `elsewhere`, so
+       * which is plain. Absent: the app went to the back.
        */
       readonly next?: string
     })

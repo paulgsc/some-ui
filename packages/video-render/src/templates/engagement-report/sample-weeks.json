@@ -329,14 +329,15 @@
         "surface": "apk",
         "place": "read",
         "left": 20,
-        "movedOn": 14,
+        "movedOn": 9,
         "medianMs": 41000,
         "nexts": [
-          { "next": "decide", "left": 12 },
-          { "next": "today.today", "left": 6 }
+          { "next": "decide", "left": 9 },
+          { "next": "today.today", "left": 5 }
         ]
       }
     ],
+    "nextsFrom": "2026-10-12T16:20:00.000Z",
     "partial": false,
     "debrief": {
       "said": 3,

@@ -14,6 +14,7 @@ import type {
   Surface,
 } from "@engagement/lib/events"
 import {
+  ELSEWHERE,
   EVENT_EXTRAS,
   EVENT_FIELDS,
   EVENT_KINDS,
@@ -99,14 +100,16 @@ export function checkEvent(
     before("startedAt")
     if (found && !(found.places ?? []).some((p) => p.id === record["place"]))
       problems.push(`place: one of ${found.id}'s places`)
+    const next = record["next"]
     if (
       "next" in record &&
       found &&
       typeof pipeline === "string" &&
-      !nextsOf(pipelines, pipeline, found).has(String(record["next"]))
+      (typeof next !== "string" ||
+        !nextsOf(pipelines, pipeline, found).has(next))
     )
       problems.push(
-        `next: one of ${found.id}'s places, or an affordance.place of ${pipeline}`
+        `next: one of ${found.id}'s places, an affordance.place of ${pipeline}, or elsewhere`
       )
   }
   if (kind === "said" && found) {
@@ -173,8 +176,9 @@ function rebuilt(
 
 /**
  * The screens a `left` of `affordance` can say it went to: its own places,
- * and each place of its pipeline's affordances on its surface, as
- * `<affordance>.<place>` (itself included: the next item of it).
+ * each place of its pipeline's affordances on its surface, as
+ * `<affordance>.<place>` (itself included: the next item of it), and
+ * `elsewhere`.
  */
 function nextsOf(
   pipelines: ReadonlyArray<Pipeline>,
@@ -183,6 +187,7 @@ function nextsOf(
 ): ReadonlySet<string> {
   const its = pipelines.find((p) => p.id === pipeline)?.affordances ?? []
   return new Set([
+    ELSEWHERE,
     ...(affordance.places ?? []).map((p) => p.id),
     ...its
       .filter((a) => a.surface === affordance.surface)

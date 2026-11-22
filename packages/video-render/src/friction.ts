@@ -19,12 +19,14 @@
  * when it is left, so the app going to the back splits a step in two;
  * `movedOn` counts the stretches followed at once by a step on (or back, or
  * to the next item), and at an affordance's last place it is `no-data`.
- * Since #3367 (the owner's answer: yes) a `left` may say the screen it went
- * to (`next`), so a stretch that went to a screen outside its affordance is
- * `finished` at the last place and `leftPartWay` at any other. Those count
- * only the stretches that said where they went: where none in the window
- * did (every row from a build before the field), both are `no-data`, and
- * the walkthrough keeps saying moved on, never guessing.
+ * Since #3367 (the owner's answer: yes) a `left` says the screen it went
+ * to (`next`), so for an affordance the registry calls a flow, a stretch
+ * that went to a screen outside it is `finished` at a place the flow
+ * finishes at and `leftPartWay` at one it is left part-way at; any other
+ * place says neither. They are said only over a window wholly after home's
+ * first `left` with a `next` (`nextsFrom`), so an older build's stretches
+ * are never missed from a count that reads as whole; until then they are
+ * `no-data` and the walkthrough keeps saying moved on.
  */
 
 import { addDays, isoWeekMonday } from "@some-ui/core-utils"
@@ -81,9 +83,9 @@ export const FrictionSchema = z.strictObject({
       stretchesLeft: CountSchema,
       /** Of those, the ones followed at once by a step on; `no-data` at the last place. */
       movedOn: CountSchema,
-      /** At the last place, the stretches that went on to another screen: the flow finished; `no-data` elsewhere, or where no stretch said where it went. */
+      /** At a place its flow finishes at, the stretches that went to a screen outside it; `no-data` at any other place, or before every build said where it went. */
       finished: CountSchema,
-      /** At any other place, the stretches that went to a screen outside the affordance; `no-data` at the last place, or where no stretch said where it went. */
+      /** At a place its flow is left part-way at, the same; `no-data` at any other place, or before every build said where it went. */
       leftPartWay: CountSchema,
       /** A stretch's median time on it, in ms; null under 5 stretches. */
       medianMs: z.int().min(0).nullable(),
@@ -140,9 +142,32 @@ export type FrictionRegistry = ReadonlyArray<{
     readonly surface: string
     readonly offer: string | null
     readonly places?: ReadonlyArray<{ readonly id: string }>
+    readonly flow?: {
+      readonly finishedAt: ReadonlyArray<string>
+      readonly partWayAt: ReadonlyArray<string>
+    }
     readonly retired?: true
   }>
 }>
+
+/**
+ * `parts`, counts of some of `whole`'s stretches, as said beside it: each
+ * kept in order while what the kept ones leave of `whole` is 5 or more, and
+ * `no-data` from the first that would leave less (ask #2701). The parts may
+ * overlap, so what they leave may be more than this assumes: never less.
+ */
+function beside(
+  whole: PublicCount,
+  parts: ReadonlyArray<PublicCount>
+): ReadonlyArray<PublicCount> {
+  let left = typeof whole === "number" ? whole : null
+  return parts.map((part) => {
+    if (left === null || typeof part !== "number") return part
+    if (left - part < UNDER) return "no-data"
+    left -= part
+    return part
+  })
+}
 
 /** Whole days from `from` to `to`, two owner's days. */
 const daysFrom = (from: string, to: string): number =>
@@ -260,31 +285,37 @@ export function frictionOf(
           const counts = (n: number): PublicCount =>
             measures.partial || !wasSeen ? noData : publicCount(n)
           const left = counts(row?.left ?? 0)
-          // Said beside the stretches, a count of some of them would give
-          // away the rest, under 5 (ask #2701).
-          const beside = (n: PublicCount): PublicCount =>
-            typeof left === "number" &&
-            typeof n === "number" &&
-            left - n < UNDER
-              ? noData
-              : n
           const moved = isLast ? noData : counts(row?.movedOn ?? 0)
-          const nexts = row?.nexts ?? []
-          // Only the stretches that said where they went (#3367): a screen
-          // outside the affordance is never one of its own places.
+          // Only over a window wholly after the first `left` that said where
+          // it went (#3367): before it, a build sent none, so a count of
+          // where stretches went would miss some and still read as whole.
+          const whole =
+            measures.nextsFrom != null && measures.nextsFrom <= measures.from
+          // A screen outside the affordance is never one of its own places
+          // (`elsewhere` included: no place has that id).
           const inside = new Set(own.map((p) => p.id))
-          const out = nexts
+          const out = (row?.nexts ?? [])
             .filter((n) => !inside.has(n.next))
             .reduce((sum, n) => sum + n.left, 0)
-          const went = nexts.length === 0 ? noData : counts(out)
+          const went = whole ? counts(out) : noData
+          const finished = a.flow?.finishedAt.includes(place.id) ? went : noData
+          const partWay = a.flow?.partWayAt.includes(place.id) ? went : noData
+          // Said beside the stretches, counts of some of them would give
+          // away the rest, under 5 (ask #2701): what all the said counts
+          // leave over must be 5 or more, so the newer ones go first.
+          const [shownMoved, shownFinished, shownPartWay] = beside(left, [
+            moved,
+            finished,
+            partWay,
+          ])
           return {
             pipeline: pipeline.id,
             affordance: a.id,
             place: place.id,
             stretchesLeft: left,
-            movedOn: beside(moved),
-            finished: isLast ? beside(went) : noData,
-            leftPartWay: isLast ? noData : beside(went),
+            movedOn: shownMoved ?? noData,
+            finished: shownFinished ?? noData,
+            leftPartWay: shownPartWay ?? noData,
             medianMs: typeof left === "number" ? (row?.medianMs ?? null) : null,
           }
         })

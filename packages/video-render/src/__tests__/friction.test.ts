@@ -20,6 +20,7 @@ const registry: FrictionRegistry = [
           { id: "apply" },
           { id: "ending" },
         ],
+        flow: { finishedAt: ["ending"], partWayAt: ["read", "apply"] },
       },
       {
         id: "record",
@@ -150,16 +151,21 @@ describe("the friction aggregate (WALK5, C861)", () => {
       affordance: "todays-pick",
       place: "read",
       stretchesLeft: 20,
-      movedOn: 14,
+      movedOn: 9,
       finished: "no-data",
-      // 6 of the 18 that said where they went left for Today (#3367).
-      leftPartWay: 6,
+      // 5 left for Today (#3367); with the 9 moved on, 6 are left over.
+      leftPartWay: 5,
       medianMs: 41000,
     })
     expect(at("todays-pick", "apply")).toMatchObject({
       stretchesLeft: 7,
       movedOn: "fewer-than-5",
-      // No stretch here said where it went: an older build's rows.
+      // None of its stretches went to another screen.
+      leftPartWay: "fewer-than-5",
+    })
+    // Decide is in neither of the flow's lists: passing ends a pick there.
+    expect(at("todays-pick", "decide")).toMatchObject({
+      finished: "no-data",
       leftPartWay: "no-data",
     })
     // 9 stretches, 5 moved on from: saying both would give away the 4 not.
@@ -186,6 +192,32 @@ describe("the friction aggregate (WALK5, C861)", () => {
       movedOn: "no-data",
     })
     expect(debrief).toEqual({ said: "fewer-than-5", median: null })
+  })
+
+  it("says finished or left part-way only over a window wholly after the first left that said where it went", () => {
+    const later = (nextsFrom: string | null): Friction["places"][number] => {
+      const got = read({
+        ...sampleHome,
+        friction: { ...sampleHome.friction, nextsFrom },
+      }).places.find((p) => p.place === "ending")
+      if (got === undefined) throw new Error("the ending")
+      return got
+    }
+    expect(later("2026-10-19T07:00:00.000Z").finished).toBe(5)
+    expect(later("2026-10-19T07:00:00.001Z").finished).toBe("no-data")
+    expect(later(null).finished).toBe("no-data")
+  })
+
+  it("never says counts that would leave fewer than 5 of the stretches over together (ask #2701)", () => {
+    const tight = structuredClone(sampleHome)
+    const read0 = tight.friction.places.find((p) => p.place === "read")
+    if (read0 === undefined) throw new Error("read")
+    // 20 stretches: 9 moved on, 7 out leave 4 over, so left part-way goes.
+    read0.nexts = [{ next: "today.today", left: 7 }]
+    expect(read(tight).places.find((p) => p.place === "read")).toMatchObject({
+      movedOn: 9,
+      leftPartWay: "no-data",
+    })
   })
 
   it("says no place's counts from a part of the window", () => {

@@ -11,6 +11,17 @@ const PICK_STEPS: ReadonlyArray<Choice> = [
 ]
 
 /**
+ * A pick's steps as a flow (#3367): leaving its ending for another screen
+ * is finishing it; leaving read, résumé or apply is leaving it part-way.
+ * Decide is neither: passing on a pick ends it there, and the record, not
+ * the event, says which happened.
+ */
+const PICK_FLOW = {
+  finishedAt: ["ending"],
+  partWayAt: ["read", "resume", "apply"],
+} as const
+
+/**
  * The interview week's pages, each a place (WALK5's friction, C861): its way
  * in, the questions, a question and its rungs, the reads, how a week goes,
  * and past weeks (`apps/www/src/lib/interview-week/places.ts` maps a route
@@ -59,6 +70,7 @@ const jobs: Pipeline = {
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
       places: PICK_STEPS,
+      flow: PICK_FLOW,
     },
     // Every other pick of the digest, and earlier days' still open, behind a tap.
     {
@@ -70,6 +82,7 @@ const jobs: Pipeline = {
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
       places: PICK_STEPS,
+      flow: PICK_FLOW,
     },
     // Scout: a posting I found myself, for the run's second opinion.
     {

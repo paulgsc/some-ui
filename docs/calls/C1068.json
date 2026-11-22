@@ -8,10 +8,11 @@
     "some-ui:packages/engagement/src/lib/check-event.ts",
     "server:crates/db/app_event/src/model.rs"
   ],
-  "chose": "The screen a `left` opens next is an optional `next` on the existing `left` case of the engagement event, not a new event or pipeline. A move within an affordance names the place (`decide`). A screen closing names the place that comes on screen next in the same turn of the event loop, with its affordance, as `<affordance>.<place>` (`today.today`), through one hand-off every places runtime shares; registry ids never hold a dot, so the two forms can't be confused. A flat affordance id was tried first and refused by the registry's own data: places `reading`, `finish` and `lesson` share ids with sibling affordances, and place ids are stable for good. `next` is left out, never guessed, when the app went to the back, when nothing naming a place comes on that turn, or when the next screen is another pipeline's. Home accepts the field on `left` only, as a name from the app's code; the phone checks it against the registry.",
+  "chose": "The screen a `left` opens next is an optional `next` on the existing `left` case of the engagement event, not a new event or pipeline. A move within an affordance names the place (`decide`). A screen closing names the place that comes on screen next in the same turn of the event loop, with its affordance, as `<affordance>.<place>` (`today.today`), through one hand-off www's screens share (`SCREEN_HANDOFF`); registry ids never hold a dot, so the two forms can't be confused. A bare affordance id was tried first and refused by the registry's own data: places `reading`, `finish` and `lesson` share ids with sibling affordances, and place ids are stable for good. A screen closing to anywhere it can't name (another pipeline, a screen with no place, one still loading, or a runtime with no shared hand-off, as Rust Rounds' tickets) says `elsewhere`, which no place may be named. Only the app going to the back leaves `next` out, so home can tell a stretch split by putting the app away from a screen left. Home accepts the field on `left` only, as a name from the app's code; the phone checks it against the registry.",
   "options": [
-    "`next` on `left`: own place, or `<affordance>.<place>` of the pipeline, via a same-turn hand-off (chosen)",
-    "`next` as a flat id: own place or sibling affordance id (refused: ids collide in the registry)",
+    "`next` on `left`: own place, `<affordance>.<place>` of the pipeline via a same-turn hand-off, or `elsewhere`; absent only when the app went to the back (chosen)",
+    "`next` as a bare id: own place or sibling affordance id (refused: ids collide in the registry)",
+    "leave `next` out for any destination the phone can't name (refused in review: exits then read like the app put away, and counts said as whole miss them)",
     "the route path entered, read from the router as the screen unmounts",
     "a new `went` event kind"
   ],

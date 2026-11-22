@@ -18,17 +18,21 @@
  * - **Where it went (`next`, the owner's answer to #3367).** A move to
  *   another of the affordance's places names it (`decide`). A screen closing
  *   names the place that comes on screen next, in the same turn of the event
- *   loop, with its affordance (`today.today`; the `Handoff` every runtime
- *   shares): the next screen mounts as the last unmounts. A registry id has
- *   no dot, so a `next` with one is always another screen's. Nothing comes on in that turn (a screen that
- *   names no place, or one still loading), or the app went to the back: the
- *   `left` carries no `next`, and home never guesses one.
+ *   loop, with its affordance (`today.today`), when the screen holds the
+ *   shared `SCREEN_HANDOFF` (www's screens do): the next screen mounts as the
+ *   last unmounts. A registry id has no dot, so a `next` with one is always
+ *   another screen's. A screen closing to anything else (another pipeline, a
+ *   screen that names no place, one still loading, or a runtime with no
+ *   shared hand-off) says `elsewhere`. Only the app going to the back leaves
+ *   `next` out, so a `left` without one is a stretch split by putting the
+ *   app away, or an older build's.
  * - **A place's `taken` is the place coming on screen.** On an affordance a
  *   visit also takes (a pick opened from Jobs' Today), the visit's take and
  *   each place's are both `taken`: a read of takes per offer counts the
  *   visit's, and a place's is the one a `left` naming a place follows.
  */
 import type { EngagementEvent, Surface } from "@engagement/lib/events"
+import { ELSEWHERE } from "@engagement/lib/events"
 import { engage } from "@engagement/lib/sink"
 import type { VisitPage } from "@engagement/lib/visit"
 
@@ -97,13 +101,17 @@ export type Handoff = {
 
 type Entered = { readonly of: PlaceOf; readonly place: string }
 
-/** The `left` held, gone to `to` (or nowhere known): `next` only within its pipeline and surface. */
+/** The `left` held, gone to `to` (or nowhere known): a place named only within its pipeline and surface. */
 function wentTo(left: LeftEvent, to: Entered | null): LeftEvent {
-  return to !== null &&
-    to.of.pipeline === left.pipeline &&
-    to.of.surface === left.surface
-    ? { ...left, next: `${to.of.affordance}.${to.place}` }
-    : left
+  return {
+    ...left,
+    next:
+      to !== null &&
+      to.of.pipeline === left.pipeline &&
+      to.of.surface === left.surface
+        ? `${to.of.affordance}.${to.place}`
+        : ELSEWHERE,
+  }
 }
 
 export function createHandoff(
@@ -116,7 +124,16 @@ export function createHandoff(
   const flush = (to: Entered | null): void => {
     const now = held
     held = []
-    for (const { left, send } of now) send(wentTo(left, to))
+    // Each is sent even if one before it throws: none is held twice.
+    const failed: Array<unknown> = []
+    for (const { left, send } of now) {
+      try {
+        send(wentTo(left, to))
+      } catch (error) {
+        failed.push(error)
+      }
+    }
+    if (failed.length > 0) throw failed[0]
   }
   return {
     hold: (left, send): void => {
@@ -128,13 +145,21 @@ export function createHandoff(
 }
 
 /** The one hand-off every screen's places share, as one screen follows another. */
-const SHARED_HANDOFF = createHandoff()
+export const SCREEN_HANDOFF: Handoff = createHandoff()
+
+/** No hand-off: a closed screen's `left` is sent at once, gone `elsewhere`. */
+const AT_ONCE: Handoff = {
+  hold: (left, send): void => {
+    send(wentTo(left, null))
+  },
+  enter: (): void => undefined,
+}
 
 export function createPlaces<P extends string>(
   of: PlaceOf,
   clock: () => Date = () => new Date(),
   send: (event: EngagementEvent) => void = engage,
-  handoff: Handoff = SHARED_HANDOFF
+  handoff: Handoff = AT_ONCE
 ): Places<P> {
   let open: OpenPlace<P> = null
   let shown: P | null = null

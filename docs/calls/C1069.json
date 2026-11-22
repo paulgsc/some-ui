@@ -6,13 +6,16 @@
     "some-ui:packages/video-render/src/friction.ts",
     "some-ui:packages/video-motion/src/walkthrough-words.ts",
     "some-ui:packages/engagement/src/lib/silence.ts",
-    "server:crates/db/app_event/src/friction.rs"
+    "server:crates/db/app_event/src/friction.rs",
+    "some-ui:packages/engagement/src/lib/registry.ts",
+    "some-ui:packages/engagement/src/lib/pipelines/jobs.ts"
   ],
-  "chose": "Home's friction read gains, per place, `nexts`: the lefts that said where they went, counted per screen, with no registry on home. The writer, holding the registry, makes some-ui.friction/3: per place `finished` (at an affordance's last place, the stretches that went to a screen outside it) and `leftPartWay` (at any other place, the same), `no-data` where no stretch in the window said where it went, under the same fewer-than-5 and complement rules as moved on. A stretch with no `next` counts in neither, so an older build's rows keep saying only \"moved on\" and the counts said are those known, never a guess. The narration lists them as one sentence (\"I spent time on this step 20 times, moved on from it 14 times and left it part-way 6 times\") and the chapter card draws each on its own line. `readModuleOpens` reads a kept /2 aggregate too, since the modules didn't change. This brings back C944's finished and left part-way, which C1002 replaced with proxies home could stand behind.",
+  "chose": "Home's friction read gains, per place, `nexts` (the lefts that said where they went, counted per screen) and `nextsFrom` (when the subject's first such `left` was made), with no registry on home. The registry says which affordances are flows and what leaving each place for another screen means: `flow.finishedAt` and `flow.partWayAt`. A pick finishes at its ending and is left part-way at read, résumé or apply; decide is in neither, since passing on a pick ends it there. Places that aren't in a flow (Today, Record, the interview week's hub) say neither. The writer makes some-ui.friction/3: per place `finished` and `leftPartWay`, the stretches that went to a screen outside the affordance (`elsewhere` included), only over a window wholly after `nextsFrom`, so an older build's stretches are never missing from a count said as whole; until then, `no-data`, and the walkthrough keeps saying moved on. Said beside the stretches, moved on, finished and left part-way together must leave 5 or more over (ask #2701), the newer ones dropped first. The narration lists them as one sentence (\"I spent time on this step 20 times, moved on from it 9 times and left it part-way 5 times\") and the chapter card draws each on its own line. `readModuleOpens` reads a kept /2 aggregate too, since the modules didn't change. This brings back C944's finished and left part-way, which C1002 replaced with proxies home could stand behind.",
   "options": [
-    "home counts per next screen; the writer classifies against the registry; friction/3 (chosen)",
-    "home classifies, holding a copy of the registry's place order",
-    "replace movedOn with the next-based counts"
+    "home counts per next screen and says when `next` began; the registry names each flow's finishing and part-way places; the writer classifies; friction/3 (chosen)",
+    "finished means leaving an affordance's last listed place (refused in review: wrong for one-place affordances, hubs and a passed pick)",
+    "say the counts as soon as any stretch carries `next` (refused in review: a lower bound said as a total)",
+    "home classifies, holding a copy of the registry"
   ],
   "gray": "What a published walkthrough says about the owner's own use, and how it words a count that covers only the stretches from builds that say where they went.",
   "undo": "Record a call that moves this one, drop finished and leftPartWay from the aggregate and the words, and go back to friction/2.",
