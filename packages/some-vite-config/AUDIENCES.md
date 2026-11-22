@@ -188,14 +188,21 @@ checked against every existing link. What is left is inside such a file.
   the door's own module); or a hunk to `apps/www/build.profiles.ts` that adds a directory to
   `doors` whose `index.ts` does not meet the claim, or to `profileBuildEnv` in
   `apps/www/build.paths.ts` that sets `VITE_DEVICE_BACKEND` to `"true"` in a profile carrying
-  `web`; or a hunk to `apps/www/eslint.config.js` that edits `DOOR_PATTERN`, drops it from a
-  block, adds a block setting `no-restricted-imports` for `src/` files without it, turns that
+  `web`; or a hunk to `apps/www/vite.config.ts` that drops `import.meta.env.VITE_PAGES_SITE` from
+  the `define`, or that changes what sets it to `"true"` (`isPagesSiteBuild`, or what it reads:
+  `isPagesBuild`, `isFitHarnessBuild`, `isStageBuild`) so that a build other than the public
+  site's gets it, or the public site's does not; or a hunk to `apps/www/eslint.config.js` that
+  edits `DOOR_PATTERN`, drops it from a block, adds a block setting `no-restricted-imports` for `src/` files without it, turns that
   rule off for some, or changes a block's `files` or `ignores` so a `src/` file is in no block
   that carries it; or one that adds a door to `doors` without a pattern of its own.
 - _Scope:_ the directories in `doors` (`apps/www/build.profiles.ts`), imports of them from the
-  rest of `apps/www`, `doors` itself, and `profileBuildEnv` in `apps/www/build.paths.ts`. Held
-  when written: `web-surface/index.ts`'s two exports (`WEB_PANELS`, `ExtensionsComb`) both sit
-  behind the condition; no file outside the door imports below its index
+  rest of `apps/www`, `doors` itself, `profileBuildEnv` in `apps/www/build.paths.ts`, and, in
+  `apps/www/vite.config.ts`, the `VITE_PAGES_SITE` define and `isPagesSiteBuild` with what it
+  reads. Held when written:
+  `web-surface/index.ts`'s two exports then (`WEB_PANELS`, `ExtensionsComb`) both sat behind the
+  condition; held again when amended for C1055: every export that loads code sits behind it, every one but
+  `AuthorshipRecord` with the `VITE_PAGES_SITE` clause, which `vite.config.ts` sets to `"true"`
+  in the public site's build only; no file outside the door imports below its index
   (`rg -e 'from "@/lib/web-surface/' -e 'import\("@/lib/web-surface/' apps/www` finds none
   outside it); and `VITE_DEVICE_BACKEND` is `"true"` only in `mobile`, which does not carry
   `web`.

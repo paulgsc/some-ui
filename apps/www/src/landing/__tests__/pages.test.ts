@@ -64,7 +64,7 @@ describe("renderResumePages", () => {
 
   it("runs nothing, and links only within the site but for its canonical", () => {
     for (const { head, body } of pages) {
-      const scripts = [...(head + body).matchAll(/<script([^>]*)>/g)]
+      const scripts = [...(head + body).matchAll(/<script\b([^>]*)>/gi)]
       expect(scripts.map((m) => m[1])).toEqual([' type="application/ld+json"'])
       for (const href of hrefs(head + body)) {
         expect(href.startsWith(SITE_BASE) || href.startsWith(SITE_URL)).toBe(

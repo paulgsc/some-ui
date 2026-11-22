@@ -385,9 +385,10 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor. The web builds copy nothing through it",
     },
     {
-      // Not viewer-storage.ts: the public site still boots it first, so what
-      // its résumé page remembers stays in memory (CLAUDE.md, "A viewer
-      // tries, and nothing is kept").
+      // Not viewer-storage.ts: main.tsx imports it first in every build that
+      // runs the app, lan and the Android app included, where it leaves the
+      // browser's storage as it is (CLAUDE.md, "A viewer tries, and nothing
+      // is kept").
       modules: [
         "apps/www/src/lib/demo/index.ts",
         "apps/www/src/lib/demo/leetype-sample*",
