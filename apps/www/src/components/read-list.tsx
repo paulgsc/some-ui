@@ -29,10 +29,13 @@ export type ReadWords = {
 export function ReadList<T, K extends QueryKey>({
   query,
   words,
+  narrowRetry = false,
   children,
 }: {
   query: UseQueryOptions<T, Error, T, K>
   words: ReadWords
+  /** Try again as wide as its words, not the column (the desktop web's). */
+  narrowRetry?: boolean
   children: (value: T) => ReactNode
 }): JSX.Element {
   return matchQueryOutcome(queryOutcome(useQuery(query)), {
@@ -44,7 +47,12 @@ export function ReadList<T, K extends QueryKey>({
         <p className="text-sm">
           {(phoneWasBusy(error) ? words.busy : undefined) ?? words.away}
         </p>
-        <Button size="sm" variant="outline" onClick={retry}>
+        <Button
+          size="sm"
+          variant="outline"
+          className={narrowRetry ? "self-start" : undefined}
+          onClick={retry}
+        >
           {words.tryAgain}
         </Button>
       </div>

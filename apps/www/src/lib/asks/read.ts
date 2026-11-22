@@ -37,8 +37,10 @@ async function readRepo(
 }
 
 /**
- * The asks, waiting and answered, A to Z, each once (one closed between
- * the two reads is in both: its closing wins); rejects when any read fails.
+ * The asks, waiting and answered, A to Z, each once: one whose state
+ * changed between the two reads is in both, and reads as answered (rightly
+ * when it was closed, wrongly for the rarer reopening, until the next read).
+ * Rejects when any read fails.
  */
 export const readAsks = async (): Promise<Array<AskIssue>> => {
   const read = await Promise.all(

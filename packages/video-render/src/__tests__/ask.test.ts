@@ -156,6 +156,9 @@ describe("an ask's shared part (C1200)", () => {
     const { waits: _x, ...noWaits } = ask
     expect(parseAskBody(body(noWaits)).ok).toBe(false)
     expect(parseAskBody(body({ ...ask, call: "vibes" })).ok).toBe(false)
+    expect(parseAskBody(body({ ...ask, waits: "owner" })).ok).toBe(false)
+    const { unblocks: _y, ...noUnblocks } = checklist
+    expect(parseAskBody(body(noUnblocks)).ok).toBe(false)
   })
 })
 

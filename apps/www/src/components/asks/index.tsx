@@ -225,8 +225,8 @@ const Steps = ({
 }
 
 /**
- * One ask opened: why it's the owner's, and while it waits its kind's part
- * and its receipt; an answered one is only read.
+ * One ask opened: why it's the owner's, its kind's part while it waits,
+ * and any receipt this tab kept, to hand back even once it is answered.
  */
 const AskBody = ({
   issue,
@@ -272,7 +272,7 @@ const AskBody = ({
           }
         />
       )}
-      {issue.answered === null && receipt.length > 0 && (
+      {receipt.length > 0 && (
         <Part label={W.receipt}>
           <p className="text-sm">{W.receiptHolds(receipt.length)}</p>
           <CopyButton text={receiptText(issue, receipt)} what={W.copyWhat} />
@@ -579,7 +579,7 @@ export const AsksView = ({
     void navigate({ to: ".", search: searchOf(next), replace: true })
   }
   return (
-    <ReadList query={asksQuery} words={W}>
+    <ReadList query={asksQuery} words={W} narrowRetry>
       {(asks) =>
         view === "pivot" ? (
           <Pivot asks={asks} state={state} onStep={onStep} />
@@ -663,7 +663,7 @@ export const AsksFrame = ({
 /** Asks itself: on to the first kind with an ask waiting, once read. */
 export const AsksLanding = (): JSX.Element | null =>
   hasAudience("lan") ? (
-    <ReadList query={asksQuery} words={W}>
+    <ReadList query={asksQuery} words={W} narrowRetry>
       {(asks) => (
         <Navigate
           to="/asks/$view"

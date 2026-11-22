@@ -346,11 +346,7 @@ describe("an Asks list", () => {
   })
 
   it("keeps what was read when a refresh fails, and says so", async () => {
-    vi.spyOn(globalThis, "fetch")
-      .mockImplementationOnce(() =>
-        Promise.resolve(answer([decision(9, "Redeploy home?")]))
-      )
-      .mockImplementation(() => Promise.resolve(answer([])))
+    serve({ server: [decision(9, "Redeploy home?")] })
     const client = createTestQueryClient()
     render(routed("/asks/decisions", keptReceipts(memory()), client))
     await screen.findByText("Redeploy home?")
@@ -373,18 +369,20 @@ describe("an Asks list", () => {
 })
 
 describe("the Asks pivot", () => {
-  it("opens a cell's kind's list, picked as the cell is", async () => {
+  it("opens a cell's kind's list picked as the cell is, answered too when counted", async () => {
     serve({
       ui: [
         decision(1, "Which voice?"),
         decision(2, "Which key?", { call: "environment", waits: "home" }),
       ],
+      closed: [decision(3, "Answered?", {}, "2026-11-21T09:00:00Z")],
     })
     render(routed("/asks/pivot"))
     const story = (await screen.findByText(W.calls.story)).closest("tr")
     if (story === null) throw new Error("each call is a row")
-    fireEvent.click(within(story).getByRole("link"))
-    await screen.findByRole("button", { name: "Which voice?" })
-    expect(rows()).toEqual(["Which voice?"])
+    fireEvent.click(screen.getByRole("button", { name: W.pivotCounts.all }))
+    fireEvent.click(await within(story).findByText(W.inCell.decision(2)))
+    await screen.findByRole("button", { name: "Answered?" })
+    expect(rows()).toEqual(["Which voice?", "Answered?"])
   })
 })
