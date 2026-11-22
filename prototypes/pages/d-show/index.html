@@ -408,6 +408,104 @@
         }
       }
 
+      /* Gaps: the same card shape as the projects, one visual and one line */
+      .section-title {
+        font-size: 1.25rem;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--fg);
+        margin: 2.4rem 0 0.9rem;
+      }
+      .section-title:first-of-type {
+        margin-top: 0;
+      }
+      .gaps {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .pair {
+        position: relative;
+        margin: 0;
+        background: #1b1d22;
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        aspect-ratio: 4 / 3;
+        border-bottom: 1px solid var(--line);
+      }
+      .pair img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: left top;
+        display: block;
+        min-height: 0;
+      }
+      .lbl {
+        position: absolute;
+        left: 8px;
+        z-index: 2;
+        font-size: 0.7rem;
+        font-weight: 600;
+        background: rgba(42, 33, 24, 0.82);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .lbl.b {
+        top: 8px;
+      }
+      .lbl.a {
+        top: calc(50% + 8px);
+      }
+      .ring {
+        position: absolute;
+        left: 41.5%;
+        top: 75%;
+        width: 42.5%;
+        height: 24.5%;
+        border: 3px solid #f2a33a;
+        border-radius: 10px;
+      }
+      .cpu {
+        position: relative;
+        margin: 0;
+        aspect-ratio: 4 / 3;
+        background: #111217;
+        border-bottom: 1px solid var(--line);
+        padding: 16px 16px 36px;
+        color: #ccccdc;
+        font:
+          12px/1.3 system-ui,
+          sans-serif;
+      }
+      .cpu b {
+        display: block;
+        color: #d8d9da;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      .cpu svg {
+        width: 100%;
+        height: calc(100% - 52px);
+        display: block;
+      }
+      .cpu .key {
+        display: flex;
+        gap: 14px;
+        margin-top: 6px;
+      }
+      .cpu .key i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-right: 5px;
+        vertical-align: -1px;
+      }
+      @media (max-width: 900px) {
+        .gaps {
+          grid-template-columns: 1fr;
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
         .screen img,
         .tap,
@@ -519,6 +617,7 @@
         the thing itself working.
       </p>
 
+      <h2 class="section-title">What I built and use every day</h2>
       <div class="grid">
         <article class="card">
           <figure
@@ -627,11 +726,70 @@
             </p>
             <p>
               It runs at home, under its own dashboards: what is up, what
-              failed, which stage of each job is stuck. Home has four CPU cores,
-              and I'm measuring whether the limit is my code or the machine.
+              failed, which stage of each job is stuck.
             </p>
             <p class="links">
               <a href="https://github.com/paulgsc/server">Source</a>
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <h2 class="section-title">Gaps I'm working through</h2>
+      <div class="grid gaps">
+        <article class="card">
+          <figure
+            class="pair"
+            aria-label="MDN's CSS filter page without Page Filter, then with it: the page goes dark, the live example stays white"
+          >
+            <img src="img/filter-before.jpg" alt="" />
+            <img src="img/filter-after.jpg" alt="" />
+            <span class="lbl b">Without Page Filter</span
+            ><span class="lbl a">With it</span>
+            <span class="ring"></span>
+          </figure>
+          <div class="body">
+            <h3>Page Filter misses parts of a page</h3>
+            <p>
+              Pages draw some parts inside their own components and keep
+              changing after they load, so the filter can't be sure it has
+              darkened everything.
+            </p>
+          </div>
+        </article>
+        <article class="card">
+          <figure
+            class="cpu"
+            aria-label="Home's CPU over a day: time spent busy and time spent waiting for a core, out of four"
+          >
+            <b>CPU: busy vs waiting, of 4 cores</b>
+            <svg viewBox="0 0 400 150" preserveAspectRatio="none">
+              <path d="M0 22 H400" stroke="#888" stroke-dasharray="5 5" />
+              <path
+                d="M0 110 C40 90 70 50 110 46 S180 30 220 60 S300 28 340 38 S380 30 400 34 V150 H0Z"
+                fill="#3274d966"
+                stroke="#5794f2"
+                stroke-width="2"
+              />
+              <path
+                d="M0 146 C50 142 90 128 120 130 S200 112 240 126 S320 108 360 118 S390 112 400 114 V150 H0Z"
+                fill="#e0752d99"
+              />
+            </svg>
+            <div class="key">
+              <span><i style="background: #5794f2"></i>busy</span
+              ><span><i style="background: #e0752d"></i>waiting for a core</span
+              ><span>dashed: 4 cores</span>
+            </div>
+            <span class="lbl" style="top: auto; bottom: 8px"
+              >Mock-up of home's Grafana panel</span
+            >
+          </figure>
+          <div class="body">
+            <h3>Home has four CPU cores</h3>
+            <p>
+              When work slows down, I'm measuring whether it's my code or the
+              machine.
             </p>
           </div>
         </article>

@@ -473,3 +473,24 @@ the SPA shell, about 1.3 MB raw. A later, optional story makes each a static pag
 **`/mission`:** it leaves Pages in step 4. On `lan` the only reader is the owner, who has the
 mandates in CLAUDE.md, so I'd remove it there too. That is a call for the owner or the
 coordinator, not part of C1055, which covers Pages only.
+
+## Round 4: the owner's picks (2026-11-22)
+
+- "2024 to now" is right. The published résumé already says it (`engagement.dates`,
+  "2024 — Present", "Independent open-source project (no employer)").
+- **The layout is D, with "what I'm stuck on" as its own section.** It uses the same card
+  shape as the projects, one visual and one line on why. Both stuck placements, inline and
+  strip, are dropped.
+  - The projects section is titled **"What I built and use every day"**.
+  - The gaps section is titled **"Gaps I'm working through"**. Two alternatives in the same
+    voice: "What I'm still stuck on", and "Problems I haven't solved yet".
+  - **Gap card 1, "Page Filter misses parts of a page":** the MDN before/after, with "Pages
+    draw some parts inside their own components and keep changing after they load, so the
+    filter can't be sure it has darkened everything."
+  - **Gap card 2, "Home has four CPU cores":** the CPU busy-vs-waiting panel (a mock-up,
+    labelled as one), with "When work slows down, I'm measuring whether it's my code or the
+    machine." The server's project card no longer carries the cores line.
+- `d-show/index.html` is the landing story 3 builds. Screens: `shots/d-show-*.png`.
+
+Still waiting on the owner: which process the PIPELINES panel shows, and Suspender Ledger's
+AMO listing URL.
