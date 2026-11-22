@@ -1,0 +1,14 @@
+{
+  "id": "C1044",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/soundbites/src/lib/hear-again/words.ts"],
+  "chose": "Under a take home is hearing again the phone says 'Being heard again. What home heard before stays here until it has.', and the ask's answer says the old words stay until then: home now keeps them visible while it hears the take (C1040, the owner's answer (b)).",
+  "options": [
+    "say the old words stay (chosen)",
+    "say only that home is hearing it: the old words beside it would read as the new ones"
+  ],
+  "gray": "Words on the screen; `words.test.ts` holds only that they name no machinery.",
+  "undo": "Restore the earlier line.",
+  "refs": ["#3339"]
+}

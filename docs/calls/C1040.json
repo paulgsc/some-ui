@@ -1,0 +1,19 @@
+{
+  "id": "C1040",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:migrations/20261122000100_hear_a_take_again.up.sql",
+    "server:crates/db/voice/src/attention.rs",
+    "server:crates/db/voice/src/transcript.rs"
+  ],
+  "chose": "A request to hear a take again supersedes only the keys it found, and only once it is answered: the agreed root shape, built (#3339, the owner's answers of 2026-11-22). With each `hear_again` act, in its transaction, go the keys that had made something of the take (`voice_note_hear_again_supersedes`, model names only, append-only). One view, `voice_note_superseded`, lists a request's keys once its fresh key has ended the take (heard, or found silent); every reader that chooses an ending, words or a verdict skips those, by one predicate. So while home hears the take again its old words and verdict stay what everything reads, marked `hearAgain.hearing` (answer b); if every fresh attempt fails nothing is superseded and the old words stay (answer a); a key that came after the request, a new model's, is never superseded by it; and nothing lapses on a mark set aside or a recording let go, since the view reads only append-only rows. The act also names the key it was asked under (`asked_under`), so no key is parsed apart: the queue and its backlog read a note's newest request asked under the key it is heard under now, by one SQL fragment both hold (`STANDING_KEY`).",
+  "options": [
+    "supersede listed keys once the fresh key ends the take (chosen)",
+    "supersede listed keys from the moment of the request: hides the old words while home hears, which answer (b) refused",
+    "supersede every key but the fresh one while the request stands (the branch before): a later model's words are hidden, and the supersession lapsed on set-aside or let-go"
+  ],
+  "gray": "Which earlier hearing a re-hear supersedes is held by tests (`a_request_supersedes_only_the_keys_it_found`, the attention tests); that the old words should show while home hears is the owner's answer, not a check.",
+  "undo": "Drop the child table and the view, and the two key columns, in a migration; readers go back to the newest ending.",
+  "refs": ["#3339"]
+}

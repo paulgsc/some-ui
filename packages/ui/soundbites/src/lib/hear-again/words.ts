@@ -21,13 +21,17 @@ export const HEAR_AGAIN_WORDS = {
   /** Under the ask, while home was asked too recently. */
   askAgainAt: (iso: string): string =>
     `You can ask again on ${dayAt(iso)} at ${timeAt(iso)}.`,
-  /** Under a take home is hearing again, on the owner's ask. */
-  hearing: "Home is hearing this take again.",
+  /**
+   * Under a take home is hearing again, on the owner's ask: what it heard
+   * before stays on the take until then (the owner's answer (b),
+   * 2026-11-22), and stays if home can't hear it this time either (a).
+   */
+  hearing: "Being heard again. What home heard before stays here until it has.",
   asking: "Telling home…",
   /** What came of an ask, said over the screen. */
   said: {
     asked:
-      "Home will try this take again. What it hears shows here once it has.",
+      "Home will try this take again. What it hears shows here once it has; until then, what it heard before stays.",
     snoozed:
       "Home was asked to try this take again not long ago, so nothing changed. The time you can ask again is under it.",
     settled:

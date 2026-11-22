@@ -1,0 +1,17 @@
+{
+  "id": "C1043",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/handlers/voice.rs",
+    "server:apps/servers/file_host/src/transcribe.rs"
+  ],
+  "chose": "On a home that runs no transcriber, asking home to hear a take again is a 409 ('home isn't hearing takes right now') that writes nothing, `hearAgain.open` is false, and no take reads 'being heard again', so a request never hears forever on a home that will not hear it (round 4). A request made before the transcriber was switched off keeps its verdict answered, so the take stays off Needs your attention until home hears again; it shows on Takes with its old words.",
+  "options": [
+    "refuse while off, and read no take as hearing (chosen)",
+    "take requests while off and let them wait: a take would read 'being heard again' for as long as the transcriber is off"
+  ],
+  "gray": "Held by `a_home_that_runs_no_transcriber_is_never_asked_to_hear_a_take_again`.",
+  "undo": "Pass the keys unconditionally again.",
+  "refs": ["#3339"]
+}
