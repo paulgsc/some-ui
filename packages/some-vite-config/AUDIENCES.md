@@ -19,7 +19,8 @@ a LAN-only page talks to is the server's to guard.
   The field is required. Every profile, manifest and gate is typed against `AUDIENCES`.
 - **Each build selects a profile.** `apps/www/build.profiles.ts` lists them (`lan`, the default,
   carries `public`, `lan` and `web`; `pages` carries `public` and `web`; `mobile`, the Android
-  app's, carries `public` and `apk`), chosen by `SOME_UI_PROFILE`.
+  app's, carries `public` and `apk`; `snips`, built only by Snips Capture and never deployed,
+  carries what `pages` does), chosen by `SOME_UI_PROFILE`.
 - **The desktop web and the phone are separate surfaces.** `web` and `apk` are mirrors: each
   holds what one device affords and the other has no counterpart for (Hangul Honeycomb, a
   keyboard game, is `web`; the soundbite recorder, the phone's microphone, is `apk`). Neither
@@ -216,7 +217,8 @@ separate entry, a route tree per deployable) the repository pays for that, not t
 
 `pnpm --filter www check:bundle-paths` (`apps/www/check-bundle-paths.ts`, rules in
 `apps/www/build.paths.ts`, reader and checks in `src/bundle-paths/`) holds www to it. It
-builds every profile the way its deployable does (`profileBuildEnv`), plus `--manifest` and
+builds every deployable profile the way its deployable does (`profileBuildEnv`; not the
+capture-only `snips`), plus `--manifest` and
 hidden sourcemaps, so the code checked is byte-for-byte what ships. It runs in root `pnpm lint`,
 and in `pr.yml`'s Node job, which runs for any change that is not Markdown
 (`_detect-changes.yml`: its lone `'!**/*.md'` pattern matches every other file), whenever

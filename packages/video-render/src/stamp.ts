@@ -3,7 +3,8 @@
  * card's foot, so a video that goes stale says how stale it is. It is
  * written once, as the cut list's `stamp` (the commits its cards were
  * checked against, and the day), and the renderer gives it to each card
- * (`@some-ui/burn-ins`' terminal, cheat sheet, legend, rule and flow cards) as
+ * (`@some-ui/burn-ins`' terminal, cheat sheet, legend, rule, flow and bars
+ * cards) as
  * its `stamp` param. Changing the pin re-stamps every card; nothing is
  * typed per card (`stampProblems`).
  */
@@ -14,12 +15,13 @@ import type { BurnIn, CutList } from "./cut-list"
 const STAMP = "stamp"
 
 /** The burn-in kinds that are cards, each drawing the stamp at its foot. */
-const CARD_KINDS: ReadonlySet<string> = new Set([
+export const CARD_KINDS: ReadonlySet<string> = new Set([
   "terminal",
   "cheat-sheet",
   "legend",
   "rule",
   "flow",
+  "bars",
 ])
 
 const isCard = (b: BurnIn): boolean => CARD_KINDS.has(b.kind)

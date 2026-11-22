@@ -1,0 +1,17 @@
+{
+  "id": "C1050",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/eslint/src/assets.ts",
+    "some-ui:apps/www/src/lib/share-files/index.ts"
+  ],
+  "chose": "check:assets exempts apps/www/src/lib/share-files/index.ts from the no-write-on-the-phone rule now, as #3399's share-time copy: it writes what the person shares to the cache only to hand it to Android's share sheet. The exemption's reason says honestly that the folder is cleared at the next share, not right after.",
+  "options": [
+    "exempt share-files now, as the share-time copy",
+    "list share-files as debt until ASSETS2 makes the copy deleted right after the share"
+  ],
+  "gray": "#3399 exempts a copy held only while the share sheet hands it on, deleted after; share-files already is that copy, but keeps it until the next share. Whether that gap makes it debt or the exemption is not settled by the epic or the owner.",
+  "undo": "Remove the share-files entry from WRITE_EXEMPT in packages/eslint/src/assets.ts; check:assets then fails share-files until it deletes its copy once the share sheet is done (the ratchet refuses a new DEBT line for it).",
+  "refs": ["#3399"]
+}

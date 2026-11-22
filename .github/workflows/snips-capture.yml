@@ -1,8 +1,9 @@
 name: Snips Capture
 
 # Photographs every screen of the app on sample data (SNIPS1, epic #3114):
-# the APK on an emulator, paired with a stand-in home, and the Pages build
-# at desktop and phone sizes. The pictures go to one bundle, which home
+# the APK on an emulator, paired with a stand-in home, and the viewer's web
+# build (the `snips` profile, apps/www/build.profiles.ts) at desktop and phone
+# sizes. The pictures go to one bundle, which home
 # picks up, checks and files by id (SNIPS2); essays name snips by those ids.
 # docs/snips.md is the bundle's contract.
 #
@@ -35,17 +36,20 @@ jobs:
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
-      # The viewer's build, as pages.yml makes it: sample data, nothing kept.
-      - name: Build the Pages app
+      # The viewer's build, made here only (the `snips` profile): pages.yml's
+      # environment, with every viewer route kept, so the routes an essay names
+      # still resolve once the public site is pruned to a CV (C1055, #3401).
+      # The variables are pages.yml's own; keep the two in step by hand.
+      - name: Build the viewer's app
         run: |
           nix develop .#ci --command pnpm turbo build --filter='www^...' --concurrency=100%
           nix develop .#ci --command env \
-            SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
-            pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
+            SOME_UI_PROFILE=snips VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
+            pnpm --filter www exec vite build --outDir dist-snips --emptyOutDir
       - name: Photograph every route
         run: |
           nix develop .#ci-playwright --command env \
-            WWW_DIST_PAGES=apps/www/dist-pages SNIPS_OUT="$GITHUB_WORKSPACE/snips-web" \
+            WWW_DIST_SNIPS=apps/www/dist-snips SNIPS_OUT="$GITHUB_WORKSPACE/snips-web" \
             pnpm --filter www exec playwright test tests/snips/web.spec.ts --trace off
       # Retention: read by this run's bundle job only. "Re-run failed jobs"
       # more than a day later finds no half; dispatch the workflow again.
