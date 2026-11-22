@@ -89,8 +89,8 @@ every line is written from the code at the stamp's commits, and names it:
   what the sentence rests on: the line that says the unit runs as root, not
   the whole module. An intro or a close that says what a command does cites
   it the same way.
-- **Quote rather than count** where you can: a short phrase survives a line
-  added above it, and `cards-stale` (below) then reports only a real change.
+- **Quote rather than count** where you can: a phrase of at least eight
+  characters, which survives a line added above it, and `cards-stale` (below) then reports only a real change.
 - **Say what applies on home.** Where the owner's own setup differs from the
   general case, say what happens on home, and cite where home's setup says
   so. For example, "then run nixos-rebuild switch" is right in general, and
@@ -174,9 +174,9 @@ Since you, months later, are the listener:
 7. **Check the folder:**
    `pnpm --filter @some-ui/video-render render cards-check <paulgsc/testing>/cards --repo <owner/repo>=<clone> …`,
    a `--repo` for each repository your essay cites, until it says ready.
-   The newest essay must be spoken, and every source it names must be read
-   at its stamp: a clone it needs and isn't given, or one too shallow to
-   hold the commit, refuses it. Every note about your essay is a scene to
+   The newest essay must be spoken, and every source the newest day's
+   essays name must be read at its stamp: a clone they need and isn't
+   given, or one too shallow to hold the commit, refuses them. Every note about your essay is a scene to
    cite before you publish; notes about older essays stay.
 8. **Open a pull request** in `paulgsc/testing`. Before pushing, run
    `python3 scripts/guard.py --staged` there until it says ready. Title it

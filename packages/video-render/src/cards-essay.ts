@@ -600,9 +600,9 @@ export function cardsFolderProblems(
 
 /**
  * Every listed essay's sources held to its stamp's commits through `read`
- * (#3036, `sourceProblems`), each line naming its file. The newest essay,
- * the one being published, is held strictly: a commit its sources can't be
- * read at refuses it. An essay the folder check refuses is that check's to
+ * (#3036, `sourceProblems`), each line naming its file. The newest day's
+ * essays, those being published, are held strictly: a commit their
+ * sources can't be read at refuses them. An essay the folder check refuses is that check's to
  * report, so it is passed over here.
  */
 export function cardsFolderSources(
@@ -612,11 +612,15 @@ export function cardsFolderSources(
   const index = parseCardsIndex(files.get("index.json"))
   const problems: Array<string> = []
   const notes: Array<string> = []
-  for (const [i, { key }] of (index.ok ? index.value.essays : []).entries()) {
+  const essays = index.ok ? index.value.essays : []
+  // Every essay of the newest day is held strictly: one publish may add
+  // several, and the index orders them by day alone.
+  const newest = dayOf(essays[0]?.key)
+  for (const { key } of essays) {
     const name = `${key}.json`
     const essay = parseCardsEssay(key, files.get(name))
     if (!essay.ok) continue
-    const check = sourceProblems(essay.value, read, i === 0)
+    const check = sourceProblems(essay.value, read, dayOf(key) === newest)
     problems.push(...check.problems.map((p) => `${name}: ${p}`))
     notes.push(...check.notes.map((n) => `${name}: ${n}`))
   }

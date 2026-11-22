@@ -7,13 +7,13 @@
     "some-ui:packages/video-render/src/cli.ts",
     "some-ui:packages/video-render/CARDS-ROUTINE.md"
   ],
-  "chose": "render cards-check refuses a source that doesn't hold at the stamp's commit (no such file, lines past its end, a quote not in them), a source citing a repository the stamp doesn't pin, and a clone given without the stamp's commit. It only notes a narration with no source, and a repository no clone was given for, since the folder holds essays served before this rule that are never rewritten.",
+  "chose": "render cards-check refuses a source that doesn't hold at the stamp's commit (no such file, lines past its end or blank, a quote not in them) and a source citing a repository the stamp doesn't pin. It only notes a narration with no source, since the folder holds essays served before this rule that are never rewritten. A commit an essay's sources cite that no clone given can read (none given, or one too shallow) refuses the essays of the folder's newest day, the ones being published, whose author has the clones; for an older essay, whose commits are another session's, it is a note.",
   "options": [
     "refuse a wrong source, note a missing one (this)",
     "refuse a missing source too, for essays from a new series version on",
     "note everything, refuse nothing"
   ],
   "gray": "Whether an uncited sentence stops an essay from reaching the owner is a trade between rigour and keeping old essays publishable; #3036 names it as a call.",
-  "undo": "Move the unsourced line from notes to problems in sourceProblems (claims.ts), gated on the essay's series version so served essays still pass.",
+  "undo": "Move the unsourced line from notes to problems in sourceProblems (claims.ts), gated on the essay's series version so served essays still pass; or change which essays cardsFolderSources holds strictly (cards-essay.ts).",
   "refs": ["#3036"]
 }

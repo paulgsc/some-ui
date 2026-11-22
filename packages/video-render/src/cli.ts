@@ -273,7 +273,10 @@ async function main(): Promise<void> {
     return
   }
   if (first === "cards-check") {
-    if (!second) fail(["usage: render cards-check <cards folder>"])
+    if (!second)
+      fail([
+        "usage: render cards-check <cards folder> [--repo <owner/repo>=<clone> …]",
+      ])
     const files = await readJsonFolder(here(second))
     // The series home's image holds: this checkout's samples of each.
     const held = new Map<string, Series>()
@@ -590,12 +593,18 @@ function readAt(clones: ReadonlyMap<string, string>): ReadFile {
     // A folder, or nothing, at that path is no file to cite.
     if (gitOut(dir, ["cat-file", "-t", `${commit}:${path}`]) !== "blob")
       return { kind: "absent" }
-    // Not trimmed: a line count is the file's own.
-    const text = execFileSync("git", ["-C", dir, "show", `${commit}:${path}`], {
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    })
-    return { kind: "file", text }
+    try {
+      // The blob's own bytes, untrimmed: a line count is the file's own,
+      // and no attribute or filter rewrites them.
+      const text = execFileSync(
+        "git",
+        ["-C", dir, "cat-file", "blob", `${commit}:${path}`],
+        { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+      )
+      return { kind: "file", text }
+    } catch (e) {
+      return fail([`${repo} ${path} at ${commit} couldn't be read:`, String(e)])
+    }
   }
 }
 

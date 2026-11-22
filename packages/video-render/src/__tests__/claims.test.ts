@@ -92,6 +92,9 @@ describe("a line's sources", () => {
       cited([{ ...AUTO, quote: "autoUpgrade" }])
     ).resolves.toBeDefined()
     await expect(cited([AUTO])).rejects.toThrow("neither lines nor a quote")
+    await expect(cited([{ ...AUTO, quote: "true" }])).rejects.toThrow(
+      "a quote of fewer than 8 characters is found almost anywhere"
+    )
     await expect(cited([{ ...AUTO, lines: [4, 3] }])).rejects.toThrow(
       "its first line is after its last"
     )
@@ -216,6 +219,28 @@ describe("sourceProblems", () => {
     expect(
       sourceProblems(cut, () => ({ kind: "no-clone" }), false).notes
     ).toContain(none)
+  })
+
+  it("holds every essay of the newest day strictly, since one publish may add several", async () => {
+    const cut = await cited([{ ...AUTO, lines: [1, 1] }])
+    const second = "nixos-upgrade-again-2026-11-14"
+    const files = new Map<string, unknown>([
+      [
+        "index.json",
+        {
+          schema: "some-ui.cards-index/1",
+          essays: [{ key: KEY }, { key: second }],
+        },
+      ],
+      [`${KEY}.json`, cut],
+      [
+        `${second}.json`,
+        { ...cut, stamp: { ...cut.stamp, sources: [`${DOTFILES}@1234567`] } },
+      ],
+    ])
+    expect(cardsFolderSources(files, reader(tree)).problems).toEqual([
+      `${second}.json: ${DOTFILES}@1234567: the clone given doesn't hold that commit: fetch it, or more of its history, and check again`,
+    ])
   })
 
   it("is the folder's, by each essay's file, passing over an essay the folder check refuses", async () => {

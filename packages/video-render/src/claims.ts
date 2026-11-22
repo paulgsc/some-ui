@@ -28,6 +28,13 @@ import type { CutList, Spoken } from "./cut-list"
 /** A repository as a stamp names it, without its commit: `owner/repo`. */
 export const SOURCE_REPO = /^[\w.-]+\/[\w.-]+$/
 
+/**
+ * The fewest characters a quote holds, so that finding it in a file says
+ * something: a letter or a bracket is in every file. Policy (C771), moved
+ * with the story (C985).
+ */
+const QUOTE_LEAST = 8
+
 /** A path in a repository: relative, with no `..` and no empty part. */
 const SourcePathSchema = z
   .string()
@@ -56,7 +63,14 @@ const ClaimSourceSchema = z
         "its first line is after its last"
       )
       .optional(),
-    quote: z.string().trim().min(1).optional(),
+    quote: z
+      .string()
+      .trim()
+      .min(
+        QUOTE_LEAST,
+        `a quote of fewer than ${QUOTE_LEAST} characters is found almost anywhere`
+      )
+      .optional(),
   })
   .refine((s) => s.lines !== undefined || s.quote !== undefined, {
     message:
