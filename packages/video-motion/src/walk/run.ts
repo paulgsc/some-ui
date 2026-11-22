@@ -6,7 +6,7 @@
  * snips and `walk.json` are a function of the app's build and the sample, on
  * one machine.
  *
- * One runner, three stages (C860, C1072): the same steps and the same
+ * One runner, three stages (C860, C1073): the same steps and the same
  * `walk.json`, whether the app is a built web page in a sandbox
  * (`./stage-sandbox`), the APK on an emulator (`./stage-apk`) or home's own
  * Grafana (`./stage-grafana`). A new stage is a new case of `StageSpec`
@@ -83,6 +83,8 @@ export type Stage = {
   readonly viewport: WalkViewport
   /** Where a point of the page (CSS px) is on the snip, in the viewport's units. */
   readonly place: (x: number, y: number) => { x: number; y: number }
+  /** The origin a `visit` goes to: the stage's own pages, never another's. */
+  readonly origin: string
   /** Opens the walk's first page, with `init` run before the page's own scripts. */
   readonly open: (init: ReadonlyArray<string>) => Promise<void>
   /** The page held still, ready to be taken. */
@@ -131,6 +133,23 @@ const TAP_LEAD_MS = 400
 /** How long a step may wait for what it is waiting for. */
 const UNTIL_MS = 20_000
 
+/** A made-up origin a visit's path is resolved against, to see it stays there. */
+const ANY_STAGE = "http://stage.invalid"
+
+/**
+ * A path of the stage's own origin, as the URL parser reads it: `//host`,
+ * `/\\host` and a tab or newline inside all leave the origin, so the parsed
+ * origin is what is checked, never the text.
+ */
+function onStage(path: string): boolean {
+  if (!path.startsWith("/")) return false
+  try {
+    return new URL(path, ANY_STAGE).origin === ANY_STAGE
+  } catch {
+    return false
+  }
+}
+
 /** Every reason `steps` can't be walked, before anything is opened. */
 export function stepProblems(
   steps: ReadonlyArray<Step>
@@ -146,10 +165,7 @@ export function stepProblems(
     if (step.action.kind === "dwell" && step.action.ms <= 0) {
       problems.push(`${step.label}: it dwells no time`)
     }
-    if (
-      step.action.kind === "visit" &&
-      (!step.action.path.startsWith("/") || step.action.path.startsWith("//"))
-    ) {
+    if (step.action.kind === "visit" && !onStage(step.action.path)) {
       problems.push(`${step.label}: it visits a path of the stage, from /`)
     }
   })
@@ -215,8 +231,13 @@ async function act(
       return null
     }
     case "visit": {
-      // A path from the stage's own origin: `stepProblems` refused any other.
-      await page.goto(new URL(action.path, page.url()).toString())
+      // A path of the stage's own origin (`stepProblems` refused any other),
+      // resolved against the stage, never the page, which may have moved.
+      const to = new URL(action.path, stage.origin)
+      if (to.origin !== new URL(stage.origin).origin) {
+        throw new Error(`${label}: ${action.path} leaves the stage`)
+      }
+      await page.goto(to.toString())
       return null
     }
     default: {

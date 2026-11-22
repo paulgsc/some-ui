@@ -70,7 +70,7 @@ const entry =
 
 /**
  * The apps a walk can show. Home's dashboards walk on its own Grafana
- * (`home-server`, `home-cores`, C1072). Suspender Ledger walks in the sandbox; Jobs on
+ * (`home-server`, `home-cores`, C1073). Suspender Ledger walks in the sandbox; Jobs on
  * the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([

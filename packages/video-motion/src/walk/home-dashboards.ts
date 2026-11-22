@@ -1,5 +1,5 @@
 /**
- * Home's dashboards for the public site (C1072, #3415): two walks on home's
+ * Home's dashboards for the public site (C1073, #3415): two walks on home's
  * own Grafana (`./stage-grafana`), each panel opened alone (`/d-solo/`) at
  * one size, in the dark theme, over one window of time that the sample
  * names. Home's render worker walks them; the server card's clip is the
@@ -30,12 +30,13 @@ const SampleSchema = z.strictObject({
   version: z.string().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/),
   /** Grafana, as the render worker reaches it. */
   origin: z.url({ protocol: /^https?$/ }),
-  /** The window's end: a UTC midnight. */
+  /** The window's end: a UTC midnight that has passed, so its data is all in. */
   to: z.iso
     .datetime()
-    .refine((at) => at.endsWith("T00:00:00Z"), "to must be a UTC midnight"),
-  /** How many days the window holds, ending at `to`. */
-  days: z.int().min(1).max(31),
+    .refine((at) => at.endsWith("T00:00:00Z"), "to must be a UTC midnight")
+    .refine((at) => Date.parse(at) <= Date.now(), "to must have passed"),
+  /** How many days the window holds, ending at `to`: a week, as the words say. */
+  days: z.literal(7),
 })
 type Sample = z.infer<typeof SampleSchema>
 

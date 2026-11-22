@@ -136,10 +136,18 @@ jobs:
             echo "::notice::The mailbox's pages token is not set, so home's pictures are not fetched; their slots keep their drawings."
             exit 0
           fi
+          url="${MAILBOX_URL%/}"
           # The token goes to curl on its standard input, never its arguments.
           auth() { printf 'header = "Authorization: Bearer %s"\n' "$MAILBOX_PAGES_TOKEN"; }
-          auth | curl -fsS --max-time 60 -K - -o "$RUNNER_TEMP/items.json" \
-            "$MAILBOX_URL/v1/site-assets/items?limit=50"
+          # Each kind fails on its own, and a mailbox that does not answer
+          # fails none of this run's other jobs: pages.yml reads only a run
+          # that succeeded, so a failure here would hide every kind's media.
+          if ! auth | curl -fsS --max-time 60 -K - -o "$RUNNER_TEMP/items.json" \
+            "$url/v1/site-assets/items?limit=50" ||
+            ! jq -e '.items | type == "array"' "$RUNNER_TEMP/items.json" > /dev/null; then
+            echo "::warning::The mailbox did not list home's pictures; their slots keep what the last run fetched."
+            exit 0
+          fi
           # A picture is held to 768 KiB (the mailbox's PICTURE_MAX_BYTES).
           for kind in server:clips:mp4 cores:stills:png; do
             name="${kind%%:*}"; rest="${kind#*:}"; dir="${rest%%:*}"; ext="${rest#*:}"
@@ -153,14 +161,21 @@ jobs:
             fi
             out="$RUNNER_TEMP/site-assets-$name/$dir/$name.$ext"
             mkdir -p "$(dirname "$out")"
-            auth | curl -fsS --max-time 120 --max-filesize 786432 -K - -o "$out" \
-              "$MAILBOX_URL/v1/site-assets/items/$item"
-            # The bytes are the type their name says, or nothing is uploaded.
-            case $ext in
-              png) head -c 8 "$out" | od -An -tx1 | tr -d ' \n' | grep -qx 89504e470d0a1a0a ;;
-              mp4) [ "$(dd if="$out" bs=1 skip=4 count=4 status=none)" = ftyp ] ;;
-            esac
-            [ "$(stat -c %s "$out")" -le 786432 ]
+            # The bytes are the type their name says and within the cap, or
+            # this kind is not uploaded.
+            if ! {
+              auth | curl -fsS --max-time 120 --max-filesize 786432 -K - -o "$out" \
+                "$url/v1/site-assets/items/$item" &&
+                case $ext in
+                  png) [ "$(head -c 8 "$out" | od -An -tx1 | tr -d ' \n')" = 89504e470d0a1a0a ] ;;
+                  mp4) [ "$(dd if="$out" bs=1 skip=4 count=4 status=none)" = ftyp ] ;;
+                esac &&
+                [ "$(stat -c %s "$out")" -le 786432 ]
+            }; then
+              echo "::warning::$name: $item did not fetch or check out; its slot keeps what the last run fetched."
+              rm -f "$out"
+              continue
+            fi
             echo "$name=true" >> "$GITHUB_OUTPUT"
             echo "- $name: $item" >> "$GITHUB_STEP_SUMMARY"
           done

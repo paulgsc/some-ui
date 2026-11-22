@@ -160,7 +160,7 @@ const HOME_SAMPLE = {
   schema: "some-ui.walk-sample/home-dashboards/1",
   version: "0.42.1",
   origin: "http://grafana:3000",
-  to: "2026-11-23T00:00:00Z",
+  to: "2026-11-16T00:00:00Z",
   days: 7,
 }
 
@@ -169,7 +169,8 @@ describe("home's dashboards (C1073, #3415)", () => {
     expect(homeServer.sample.safeParse(HOME_SAMPLE).success).toBe(true)
     for (const bad of [
       { ...HOME_SAMPLE, to: "2026-11-23T05:00:00Z" },
-      { ...HOME_SAMPLE, days: 0 },
+      { ...HOME_SAMPLE, days: 1 },
+      { ...HOME_SAMPLE, to: "2999-01-01T00:00:00Z" },
       { ...HOME_SAMPLE, origin: "file:///etc" },
       { ...HOME_SAMPLE, version: "" },
       { ...HOME_SAMPLE, token: "x" },
@@ -189,8 +190,8 @@ describe("home's dashboards (C1073, #3415)", () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({
       orgId: "1",
       panelId: "943",
-      from: String(Date.parse("2026-11-16T00:00:00Z")),
-      to: String(Date.parse("2026-11-23T00:00:00Z")),
+      from: String(Date.parse("2026-11-09T00:00:00Z")),
+      to: String(Date.parse("2026-11-16T00:00:00Z")),
       theme: "dark",
       timezone: "utc",
     })
@@ -219,7 +220,13 @@ describe("home's dashboards (C1073, #3415)", () => {
       holdMs: 1000,
     })
     expect(stepProblems([open, visit("/d-solo/x/?panelId=1")])).toEqual([])
-    for (const path of ["https://example.com/", "//example.com/x", "x"]) {
+    for (const path of [
+      "https://example.com/",
+      "//example.com/x",
+      "/\\example.com/x",
+      "/\t/example.com/x",
+      "x",
+    ]) {
       expect(stepProblems([open, visit(path)])).toEqual([
         "Visits: it visits a path of the stage, from /",
       ])

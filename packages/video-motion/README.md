@@ -47,8 +47,10 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
     (`apps/www/tests/walk/jobs-week.json`), run by `apps/mobile/walk/walk-apk.sh` inside
     Snips Capture's emulator.
   - **grafana** (`src/walk/stage-grafana.ts`, C1073): home's own Grafana, each panel opened
-    alone (`/d-solo/`) at one size, dark, in UTC, over the window home's sample names, with
-    every request but Grafana's refused and a Viewer token read from `GRAFANA_TOKEN`. Home's
+    alone (`/d-solo/`) at one size, dark, in UTC, over the week home's sample names (ending at
+    a UTC midnight that has passed), with a Viewer token read from `GRAFANA_TOKEN`. Every
+    request is fetched by the stage: another origin is refused, a redirect fails the walk
+    (it would carry the token), and service workers and sockets are blocked. Home's
     render worker walks `home-server` (six panels of file_host's dashboard) and `home-cores`
     (the CPU panel) here (`src/walk/home-dashboards.ts`, #3415); the server clip is
     `home-server`'s walkthrough, from `walks/home-server.json`. A step may `visit` another
