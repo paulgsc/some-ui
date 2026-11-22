@@ -6,9 +6,10 @@
  * snips and `walk.json` are a function of the app's build and the sample, on
  * one machine.
  *
- * One runner, two stages (C860): the same steps and the same `walk.json`,
- * whether the app is a built web page in a sandbox (`./stage-sandbox`) or the
- * APK on an emulator (`./stage-apk`). A new stage is a new case of `StageSpec`
+ * One runner, three stages (C860, C1072): the same steps and the same
+ * `walk.json`, whether the app is a built web page in a sandbox
+ * (`./stage-sandbox`), the APK on an emulator (`./stage-apk`) or home's own
+ * Grafana (`./stage-grafana`). A new stage is a new case of `StageSpec`
  * and of `openStage`'s switch, never a second runner. What a step does is a
  * closed union too (`Action`), each case handled once here.
  */
@@ -23,6 +24,8 @@ import type { Microphone } from "./microphone"
 import { microphoneScript } from "./microphone"
 import type { ApkStageSpec } from "./stage-apk"
 import { openApkStage } from "./stage-apk"
+import type { GrafanaStageSpec } from "./stage-grafana"
+import { openGrafanaStage } from "./stage-grafana"
 import type { SandboxStageSpec } from "./stage-sandbox"
 import { openSandboxStage } from "./stage-sandbox"
 
@@ -36,6 +39,8 @@ type Action =
   | { readonly kind: "type"; readonly target: string; readonly text: string }
   /** Hold on the screen for a while of real time (a take recording), shown once it has passed. */
   | { readonly kind: "dwell"; readonly ms: number }
+  /** Go to another page of the stage's own origin, a path and query (a dashboard's next panel). */
+  | { readonly kind: "visit"; readonly path: string }
 
 /** One step: its action, then the screen it leaves, held `holdMs` on the walk's timeline. */
 export type Step = {
@@ -49,7 +54,7 @@ export type Step = {
 }
 
 /** Where the walk is played: a closed union, one case per stage. */
-type StageSpec = SandboxStageSpec | ApkStageSpec
+type StageSpec = SandboxStageSpec | ApkStageSpec | GrafanaStageSpec
 
 export type Walk = {
   readonly app: string
@@ -141,6 +146,12 @@ export function stepProblems(
     if (step.action.kind === "dwell" && step.action.ms <= 0) {
       problems.push(`${step.label}: it dwells no time`)
     }
+    if (
+      step.action.kind === "visit" &&
+      (!step.action.path.startsWith("/") || step.action.path.startsWith("//"))
+    ) {
+      problems.push(`${step.label}: it visits a path of the stage, from /`)
+    }
   })
   return problems
 }
@@ -153,6 +164,9 @@ function openStage(spec: StageSpec, chrome: () => string): Promise<Stage> {
     }
     case "apk": {
       return openApkStage(spec)
+    }
+    case "grafana": {
+      return openGrafanaStage(spec, chrome())
     }
     default: {
       return assertNever(spec)
@@ -198,6 +212,11 @@ async function act(
     }
     case "dwell": {
       await page.waitForTimeout(action.ms)
+      return null
+    }
+    case "visit": {
+      // A path from the stage's own origin: `stepProblems` refused any other.
+      await page.goto(new URL(action.path, page.url()).toString())
       return null
     }
     default: {
