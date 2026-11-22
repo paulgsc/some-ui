@@ -218,13 +218,16 @@ jobs:
                 grep -qxF "$kind" "$work/seen" && continue
                 zip="$work/$id.zip"
                 out="$work/$id"
-                # An archive holding any link is refused whole, before it is
-                # unpacked: unzip makes links, and one to a folder could write
-                # outside $out. Listed to a file, not piped to grep, so a
-                # listing cut short cannot read as "no link".
+                # An archive holding a link is refused whole: before it is
+                # unpacked when its listing shows one (unzip makes links, and
+                # one to a folder could write outside $out), and after, for a
+                # host whose listing hides it (VMS), when anything but files
+                # and folders came out. Each listing goes to a file, not a
+                # pipe, so one cut short cannot read as "no link".
                 if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$zip" &&
                   unzip -tq "$zip" && zipinfo "$zip" > "$zip.list" &&
-                  ! grep -q '^l' "$zip.list" && unzip -q "$zip" -d "$out"; then
+                  ! grep -q '^l' "$zip.list" && unzip -q "$zip" -d "$out" &&
+                  find "$out" ! -type f ! -type d > "$zip.odd" && [ ! -s "$zip.odd" ]; then
                   (cd "$out" && find . -type f) | while read -r file; do
                     mkdir -p "$media/$(dirname "$file")"
                     mv "$out/$file" "$media/$file"

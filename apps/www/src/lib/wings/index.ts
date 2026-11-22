@@ -48,7 +48,7 @@ export type Wing = {
    */
   web: { home: Path; job: string; purpose: Purpose; lanOnly?: true } | null
   /**
-   * What the wing publishes and what it keeps, as the strip under the web
+   * What the wing keeps, as the strip under the web
    * header says it to the owner (CLAUDE.md, "two mandates"). Absent where the
    * web shows no strip. No wing publishes anything since the public site
    * became a CV (C1055), so the strip names only what each keeps (C1060).
