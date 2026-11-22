@@ -58,6 +58,9 @@ up to 14 days.
    - **asks:** every open ask that parses: first those filed this week,
      newest first, then the rest by how much each unblocks. An ask that
      doesn't parse is named in the PR body, never guessed.
+     Say each ask with the options and recommendation its facts carry
+     (`options`, made by `callOptionsOf` for either kind); for a checklist,
+     `said` says how many steps it has and what they are for.
    - **later:** every owner item from the ledger's `first_step` "Yours:"
      lines that has no ask yet.
    - Each `said` is plain, spoken English, a few sentences, in the owner's

@@ -154,6 +154,7 @@ describe('"/"', () => {
       "/settings",
       "/assurance",
       "/home-switches",
+      "/asks",
       "/job-run",
       "/mission",
       "/extensions",

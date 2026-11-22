@@ -14,8 +14,7 @@ routine" list. When fewer than three of the routine's scenes wait unopened on
 the phone, it also writes stock scenes that answer no reflection (part D), and
 every run leaves a record of itself in the mailbox (step 12), which the phone
 shows as when the routine last ran and what it brought. What the owner said in
-Studio about an ask is filed as a pending issue in the repository it concerns
-(part E).
+Studio is filed as a pending issue in the repository it concerns (part E).
 
 Home is the record of everything this run reads and writes: the reflections,
 the prompts, the transcripts of their voice notes, and the scenes and dramas
@@ -696,7 +695,9 @@ earlier pending issue (in E1's list, or filed this run) answers the same ask,
 the new one links it and says which answer is newer, and closes neither.
 What the issue says depends on its `kind`:
 
-- **`ask`, an answer to an ask.** Read the ask first (issue `about` in `repo`:
+- **`ask`, an answer to an ask.** The phone no longer records one (asks
+  moved to the desktop web, C1097), so this is a take recorded before then,
+  still filed. Read the ask first (issue `about` in `repo`:
   its ` ```json ask ` block, as `docs/asks.md` describes it). Title:
   `Answer to #<about>: <the option chosen, or what was asked for instead, in a few words>`.
   Body: which option the owner chose, by its `says`, and what that unblocks

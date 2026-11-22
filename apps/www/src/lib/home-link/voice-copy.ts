@@ -398,8 +398,9 @@ export const lineNote =
 
 /**
  * A take on the desk of Studio's answers, as home is told it: a Studio note
- * under its `line`, `idea:<idea>:<question>` for an idea's answer or the
- * ask's ref for an ask's (SFEED5, `answerRef`), which home reads as any other.
+ * under its `line`, `idea:<idea>:<question>` for an idea's answer (an ask's
+ * ref, `answerRef`, for an answer recorded before asks left the phone,
+ * C1097), which home reads as any other.
  */
 export function ideaNote(take: IdeaTake): VoiceOut {
   return {

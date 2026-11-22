@@ -1,0 +1,23 @@
+{
+  "id": "C1097",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/routes/_dashboard/_apk/journal",
+    "apps/www/src/lib/studio-index",
+    "apps/www/src/lib/take-about",
+    "apps/www/src/lib/idea-hearing/index.ts",
+    "packages/video-render/src/pending.ts",
+    "packages/ui/topik/ROUTINE.md",
+    "docs/asks.md"
+  ],
+  "chose": "At the owner's word (\"we should kind of prune that from the APK\", 2026-11-22), asks leave the Android app for the desktop web's Asks page: Studio's Asks list, an ask's page and answering an ask by voice (SFEED5) are removed with their tests, routes and words. Takes still name an answer recorded before then by its ask's number, and the reflections routine still files one still on home (pendingOfRef keeps its ask branch), so no take home keeps goes unfiled; home itself has no ask-specific path (a spoken answer was a plain Studio note under an `ask:` ref). Once no `ask:` take is left unfiled on home, the routine's ask branch and answerRef can go too.",
+  "options": [
+    "remove asks from the phone, keep the routine filing any answer already on home (taken)",
+    "remove asks from the phone and the routine's ask branch at once",
+    "keep the phone's list read-only beside the web page"
+  ],
+  "gray": "The owner asked to prune asks from the APK; whether the routine's filing of answers already on home goes with it is not settled by their words, and dropping it could leave a recorded answer unfiled.",
+  "undo": "Restore the _apk/journal/asks routes, components/studio/asks.tsx and ask-answer.tsx, lib/ask-answer and phoneAskHearing from git, and the asks kind in Studio's index.",
+  "refs": ["#2731", "#2746"]
+}

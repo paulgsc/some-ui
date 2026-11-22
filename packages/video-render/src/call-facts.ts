@@ -17,7 +17,7 @@
  *   says them.
  */
 
-import type { AskFile } from "./ask"
+import type { AskFile, CallOptions } from "./ask"
 import type { Repo } from "./refs"
 
 /** A fence's opening or closing line: three or more backticks or tildes. */
@@ -198,6 +198,8 @@ export type CallFacts = {
     readonly createdAt: string
     /** The ask its body carries, or null with `problems` saying why not. */
     readonly ask: AskFile | null
+    /** What the call offers for it (`callOptionsOf`); null with `ask`. */
+    readonly options: CallOptions | null
     readonly problems: ReadonlyArray<string>
   }>
   readonly epics: Array<{

@@ -11,7 +11,6 @@ import { FEED_FACTS } from "./words"
  * What each is called and says is `./words`.
  */
 export const STUDIO_KINDS = [
-  "asks",
   "clips",
   "episodes",
   "feedback",

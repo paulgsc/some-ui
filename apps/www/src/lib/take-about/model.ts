@@ -2,7 +2,8 @@
  * What each of Studio's takes was said for (TAKES2, #3068; epic #3029),
  * joined from what the phone keeps: a note on an episode names its spoken
  * take (`lib/episode-feedback`, `take`), a video names its scenes, an idea
- * its questions, an ask its question, a spoken card its title (#3339).
+ * its questions, a spoken card its title (#3339). An answer to an ask
+ * (recorded before asks left the phone, C1097) says its ask's number.
  * Pure; `./index` reads the stores.
  *
  * A note's take goes home as a plain take (`take:<id>`), so home keeps no
@@ -36,8 +37,6 @@ export type AboutSources = {
   readonly videos: ReadonlyMap<string, KnownVideo>
   /** By the idea's id. */
   readonly ideas: ReadonlyMap<string, KnownIdea>
-  /** Each open ask's question, by its id (`askId`). */
-  readonly asks: ReadonlyMap<string, string>
   /** Each spoken card's title on this phone, by the card's id. */
   readonly spoken: ReadonlyMap<string, string>
 }
@@ -46,7 +45,6 @@ export const NO_SOURCES: AboutSources = {
   notes: [],
   videos: new Map(),
   ideas: new Map(),
-  asks: new Map(),
   spoken: new Map(),
 }
 
@@ -91,11 +89,10 @@ export function aboutOf(
     }
   }
   if (ref.startsWith("ask:")) {
-    const askId = ref.slice("ask:".length)
     return {
       kind: "ask",
-      ask: sources.asks.get(askId) ?? null,
-      number: parseAskId(askId)?.number ?? null,
+      ask: null,
+      number: parseAskId(ref.slice("ask:".length))?.number ?? null,
     }
   }
   const parts = ref.split(":")

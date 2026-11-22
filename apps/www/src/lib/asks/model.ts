@@ -1,9 +1,8 @@
 /**
- * Studio's asks (SFEED1, #2731): what waits on the owner to decide, as the
- * open issues labelled `ask` in the two repositories hold them
- * (`docs/asks.md`), read through GitHub's public list of issues. Pure: what
- * each answer reads as, and in what order the asks are listed. The read
- * itself is `./index`'s.
+ * The asks: what waits on the owner to decide or do, as the open issues
+ * labelled `ask` in the two repositories hold them (`docs/asks.md`), read
+ * through GitHub's public list of issues. Pure: what each answer reads as,
+ * and in what order the asks are listed. The read itself is `./read`'s.
  *
  * An ask whose block `parseAskBody` refuses is still listed, by its title,
  * so the owner sees that it is there and can open its page.
@@ -25,8 +24,8 @@ export const IssuesSchema = z.array(IssueSchema)
 
 export type Issues = z.infer<typeof IssuesSchema>
 
-/** An open ask, as Studio lists it. */
-export type StudioAsk = {
+/** An open ask, as the Asks page lists it. */
+export type OpenAsk = {
   /** Its repository and number (`askId`), as its page's address names it. */
   readonly id: string
   readonly repo: WorkRepo
@@ -40,11 +39,11 @@ export type StudioAsk = {
 }
 
 /** What the list says first: the question, or the title when unread. */
-export const questionOf = (ask: StudioAsk): string =>
+export const questionOf = (ask: OpenAsk): string =>
   ask.ask?.question ?? ask.title
 
 /** The open asks among `issues` of `repo`; pull requests are never asks. */
-export function asksOf(repo: WorkRepo, issues: Issues): Array<StudioAsk> {
+export function asksOf(repo: WorkRepo, issues: Issues): Array<OpenAsk> {
   return issues
     .filter((issue) => issue.pull_request === undefined)
     .map((issue) => {
@@ -65,8 +64,8 @@ export function asksOf(repo: WorkRepo, issues: Issues): Array<StudioAsk> {
 
 /** Every repository's asks, A to Z by what each asks, so none comes first. */
 export function aToZ(
-  byRepo: ReadonlyArray<ReadonlyArray<StudioAsk>>
-): Array<StudioAsk> {
+  byRepo: ReadonlyArray<ReadonlyArray<OpenAsk>>
+): Array<OpenAsk> {
   return byRepo
     .flat()
     .sort(
