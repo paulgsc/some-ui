@@ -1,0 +1,15 @@
+{
+  "id": "C1342",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/topik/src/lib/topik/shop"],
+  "chose": "Shop's machine (KP4, #2853) lands in @some-ui/topik ahead of home's route, with its port typed: home hears a spoken hunch, and home's meaning index answers a hunch's words with either the phrases that do it, closest first, or that it kept the hunch. Home holds the threshold and keeps a miss in the same answer, so a hunch is never lost between deciding it missed and keeping it, and the phone holds no threshold of its own. Each request names its hunch (the runtime's id and the hunch's number this session), the same when it is sent again, so home keeps a miss once even when its answer was lost; a hunch home can't be reached for, or whose answer was lost, is said possibly not kept, and can be sent again. The basket is the machine's state only, gone when the session ends.",
+  "options": [
+    "home decides hit or miss and keeps a miss in the same answer (taken)",
+    "the phone applies the threshold to home's scores, and asks home to keep a miss in a second call",
+    "hold the machine until home's route exists"
+  ],
+  "gray": "#2853 places the threshold and the keeping of a miss on home without saying which side decides; a second call to keep a miss can fail after the miss was shown, losing the hunch.",
+  "undo": "Change the port's answer to scores and add a keep effect to the machine; nothing is stored by the phone either way.",
+  "refs": ["#2853", "#2849"]
+}
