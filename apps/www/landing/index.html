@@ -116,155 +116,181 @@
       .lede + .section-title {
         margin-top: 0;
       }
-      /* Cards in justified rows (C1064): each card takes its picture's own
-         shape (--ar, from the file, render.ts), asks its row for a width in
-         proportion (--r), and so every card in a row shares one height and
-         no picture is cropped or padded. A narrow window gives each card a
-         row of its own. */
-      .grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
+      /* The projects' cube (C1110): one pane whose faces are the projects,
+         turned face to face by the keyframes render.ts draws for their
+         number (cubeTurn, in the head). A face is a square: its screen,
+         where the clip or still sits whole on the dark, then its words
+         below, never over it. The faces stand on a regular prism of
+         --faces sides (a cube at four), its apothem from the pane's own
+         width, so the front face is exactly the pane. Hovering holds the
+         turn, so a reader can stop on a face. */
+      .cube {
+        container-type: inline-size;
+        width: min(100%, 34rem);
+        margin: 0 auto;
+        perspective: 1800px;
       }
-      /* flex-grow is the shape scaled up, so a row's cards always fill it
-         and keep their shared height. The outline is a shadow, not a
-         border, so the card's box is the picture's exact shape. The picture
-         and its words share one grid cell: the picture sets the card's
-         height, and words taller than it grow the card past it rather than
-         being cut off, so no shape of asset and no width can clip them. A
-         row's cards keep their own height (flex-start), so one card's words
-         never pad another. */
-      .grid {
-        align-items: flex-start;
-      }
-      .card {
+      .cube-turn {
+        --apothem: calc(-50cqi / tan(180deg / var(--faces)));
         position: relative;
-        display: grid;
-        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
+        aspect-ratio: 1;
+        transform-style: preserve-3d;
+        transform: translateZ(var(--apothem));
+        animation: cube-turn var(--cycle) ease-in-out infinite;
+      }
+      /* On a narrow pane the words take more lines: the faces stand taller
+         so their screens keep room. */
+      @container (max-width: 30rem) {
+        .cube-turn {
+          aspect-ratio: 4 / 5;
+        }
+      }
+      .cube:hover .cube-turn {
+        animation-play-state: paused;
+      }
+      .face {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
         border-radius: 12px;
         overflow: hidden;
-        background: var(--stage);
+        background: var(--card);
         box-shadow: 0 0 0 1px var(--line);
-        isolation: isolate;
+        backface-visibility: hidden;
+        transform: rotateY(calc(var(--i) * 360deg / var(--faces)))
+          translateZ(calc(50cqi / tan(180deg / var(--faces))));
       }
-      .pic,
-      .overlay {
-        grid-area: 1 / 1;
-      }
-      .pic {
+      .screen {
         position: relative;
-        align-self: start;
-        aspect-ratio: var(--ar);
+        flex: 1;
+        min-height: 0;
+        background: #111217;
       }
-      /* The card's placeholder and its picture, under its words. */
-      .ground,
-      .drawing,
+      /* A face's title card: what the face shows when the build has no
+         clip or still for it, and under a clip a reader who prefers less
+         motion doesn't see. */
+      .title-card {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        text-align: center;
+        color: #f3e4cc;
+        font-size: clamp(1.2rem, 7cqi, 2rem);
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      /* A slot's clip or still, whole inside its screen (the face) or
+         filling its card exactly (a gap's, which takes the still's shape):
+         never cropped, never something to click. Its own box is the
+         screen's dark, so the title card under it never shows through. */
       .media {
         position: absolute;
         inset: 0;
-        z-index: 0;
-      }
-      .ground--server {
-        background: #111217;
-      }
-      /* A slot's clip or still is the card's background (C1064): filling
-         the card, never something to click. */
-      .media {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
         display: block;
+        background: #111217;
         pointer-events: none;
       }
-      /* A reader who prefers less motion sees the placeholder under it. The
-         clip still loads and plays out of sight (autoplay outranks preload,
-         and a video takes no media-chosen source): stopping it would take a
-         script, which this page has none of. */
+      /* A card's words, below its picture. */
+      .caption {
+        padding: 12px 16px 14px;
+      }
+      .caption h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .caption p {
+        margin: 0.2rem 0;
+        font-size: 0.95rem;
+      }
+      .caption .stack {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0.1rem 0 0.3rem;
+      }
+      /* A short, wide window (a phone held sideways) can't hold a square
+         face: each face is twice as wide as it is tall, its words beside
+         its screen. */
+      @media (orientation: landscape) and (max-height: 500px) and (prefers-reduced-motion: no-preference) {
+        .cube {
+          width: min(100%, 44rem);
+        }
+        .cube-turn {
+          aspect-ratio: 2 / 1;
+        }
+        .face {
+          flex-direction: row;
+        }
+        .screen,
+        .caption {
+          flex: 1 1 50%;
+        }
+        .caption {
+          align-self: center;
+        }
+      }
+      /* A reader who prefers less motion sees no turn: the faces lie flat,
+         side by side, each with its words, and every clip gives way to its
+         title card. The clip still loads and plays out of sight (autoplay
+         outranks preload, and a video takes no media-chosen source):
+         stopping it would take a script, which this page has none of. */
       @media (prefers-reduced-motion: reduce) {
+        .cube {
+          width: 100%;
+          perspective: none;
+        }
+        .cube-turn {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+          gap: 20px;
+          aspect-ratio: auto;
+          transform: none;
+          animation: none;
+        }
+        .face {
+          position: relative;
+          transform: none;
+        }
+        .screen {
+          flex: none;
+          aspect-ratio: 4 / 3;
+        }
         video.media {
           display: none;
         }
       }
-      /* The card's words over its picture, on a scrim dark enough that white
-         text reads on any frame. */
-      .overlay {
-        position: relative;
-        align-self: end;
-        z-index: 1;
-        padding: 48px 18px 16px;
-        color: #fff;
-        /* Clear above the words, and at least 0.86 dark from where they
-           begin, so white text reads at 10:1 or better on a white frame. */
-        background: linear-gradient(
-          to bottom,
-          rgba(17, 18, 23, 0) 0,
-          rgba(17, 18, 23, 0.86) 44px,
-          rgba(17, 18, 23, 0.9) 100%
-        );
-      }
-      /* A gap's words sit at its left, so what its picture shows, at the
-         right (the widget that stays white), is never under them. */
-      /* A gap's card is the words' dark: if its words ever outgrow a very
-         wide still, the card continues below the picture as their panel,
-         as it does under 600px, never as a bare strip. */
-      .card[data-slot="still"] {
-        background: #111217;
-      }
-      .overlay--side {
-        align-self: stretch;
-        justify-self: start;
-        width: 58%;
+      /* The gaps' cards in justified rows (C1064): each takes its still's
+         own shape (--ar, from the file, render.ts), asks its row for a
+         width in proportion (--r), and so every card in a row shares one
+         picture height and no picture is cropped or padded. A narrow window
+         gives each card a row of its own. A card's words sit below its
+         picture (C1110), so a row's cards keep their own height. */
+      .grid {
         display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        padding: 18px;
-        /* As dark under the words as the bottom scrim, fading only in
-           the padding past their right edge. */
-        background: linear-gradient(
-          to right,
-          rgba(17, 18, 23, 0.9) 0,
-          rgba(17, 18, 23, 0.86) calc(100% - 18px),
-          rgba(17, 18, 23, 0) 100%
-        );
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: flex-start;
       }
-      /* On a narrow screen a gap's picture is too short to hold its words
-         beside what it shows: the words go under it, in the same card, and
-         the picture keeps its own shape. */
-      @media (max-width: 600px) {
-        .card[data-slot="still"] .overlay {
-          grid-area: 2 / 1;
-          justify-self: stretch;
-          width: auto;
-          background: #111217;
-        }
+      .card {
+        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--card);
+        box-shadow: 0 0 0 1px var(--line);
       }
-      .card h3 {
-        margin: 0;
-        font-size: 1.08rem;
+      .pic {
+        position: relative;
+        aspect-ratio: var(--ar);
+        background: var(--stage);
       }
-      .card p {
-        margin: 0.2rem 0;
-        font-size: 0.95rem;
-      }
-      .card .stack {
-        color: #e6e0d6;
-        font-size: 0.85rem;
-        margin: 0.15rem 0 0.4rem;
-      }
-      /* The overlay's entrance: one class (rise, render.ts) to take off. */
-      .rise {
-        animation: rise 0.6s ease-out both;
-      }
-      @keyframes rise {
-        from {
-          opacity: 0;
-          transform: translateY(12px);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .rise {
-          animation: none;
-        }
+      .drawing {
+        position: absolute;
+        inset: 0;
       }
       .note {
         position: absolute;

@@ -5,16 +5,18 @@
  * exactly what Pages serves. vite.config.ts writes it into
  * `landing/index.html`, the Pages build's `index.html`.
  *
- * The page carries no script. Its project and gap cards are each a picture
- * with the card's own words laid over it (C1064): the picture is the card's
- * background, not something to watch or work, and takes the card's shape
- * from its own size, so it fills the card with nothing cropped or padded.
- * Every card draws a placeholder in CSS under its picture, a ground for a
- * clip and a labelled drawing for a gap; a slot whose asset is in the build
- * (`media`; output.ts, `SITE_MEDIA_DIR`) lays its clip, playing muted on a
- * loop, or its still over it. A reader who prefers less motion sees the
- * placeholder (landing/index.html). The photo slot holds the mochi, the
- * brand cast's own drawing (`mochiSvg`), until the owner's photo is bundled.
+ * The page carries no script. Every card is a picture with its words below
+ * it, never over it (C1110). "What I built and use every day" is one pane, a
+ * cube whose faces are the projects, turned face to face by CSS alone
+ * (`cubeTurn`, in the page's head): each face fits its clip or still inside
+ * its screen, whole, on the screen's dark, and a face whose asset the build
+ * lacks shows the project's title card. The gaps keep their row of cards,
+ * each taking its still's own shape (C1064). A slot's asset is shown only
+ * when the build carries it (`media`; output.ts, `SITE_MEDIA_DIR`). A reader
+ * who prefers less motion sees the cube's faces laid flat in a row, with
+ * each clip's title card in place of the clip (landing/index.html). The
+ * photo slot holds the mochi, the brand cast's own drawing (`mochiSvg`),
+ * until the owner's photo is bundled.
  */
 import type { ResumeData } from "@some-ui/resume"
 
@@ -49,52 +51,73 @@ export type LandingMedia = ReadonlyMap<string, MediaSize | null>
 const PLACEHOLDER: MediaSize = { width: 4, height: 3 }
 
 /**
- * A card takes its picture's own shape (C1064): `--ar` for its aspect ratio,
- * `--r` for the width it asks of its row, so a row of cards of different
- * shapes shares one height and no picture is cropped or padded.
+ * A gap's card takes its picture's own shape (C1064): `--ar` for its aspect
+ * ratio, `--r` for the width it asks of its row, so a row of cards of
+ * different shapes shares one height and no picture is cropped or padded.
  */
 const shape = ({ width, height }: MediaSize): string =>
   `--ar: ${String(width)} / ${String(height)}; --r: ${(width / height).toFixed(4)}`
 
 /**
- * A card: its picture as its background, laid over its drawn placeholder,
- * and its own words over both, the only thing on it a reader takes in. Nothing
- * on a card is a link or a control (C1064, C1065); the page's header links to
- * the code.
+ * A slot's asset, as the background of its picture: a clip plays muted on a
+ * loop, a still just sits there; neither is a control (C1064) nor read out.
  */
-const card = (
-  slot: "clip" | "still",
-  key: string,
-  placeholder: string,
-  picture: string,
-  words: string,
-  size: MediaSize
-): string => `
-        <article class="card" data-slot="${slot}" data-asset="${e(key)}" style="${shape(size)}">
-          <div class="pic">
-            ${placeholder}${picture}
-          </div>
-          <div class="overlay${slot === "still" ? " overlay--side" : ""} rise">${words}
-          </div>
-        </article>`
+const mediaTag = (key: string): string =>
+  key.endsWith(".mp4")
+    ? `<video class="media" src="${mediaSrc(key)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
+    : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" />`
 
-const projectCard = (p: ProjectWords, media: LandingMedia): string => {
-  const size = media.get(p.clip)
-  return card(
-    "clip",
-    p.clip,
-    `<div class="ground ground--${e(p.id)}" aria-hidden="true"></div>`,
-    size === undefined || size === null
-      ? ""
-      : `
-          <video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`,
-    `
-            <h3>${e(p.title)}</h3>
-            <p class="stack">${e(p.stack)}</p>
-            <p>${e(p.line)}</p>`,
-    size ?? PLACEHOLDER
+/** Seconds each face of the cube rests facing the reader, then turning. */
+export const CUBE_REST_S = 6
+export const CUBE_TURN_S = 1.2
+
+/**
+ * The cube's turn (C1110) for `faces` faces, as one CSS keyframes rule: it
+ * rests on each face for `CUBE_REST_S`, turns a face's angle in
+ * `CUBE_TURN_S`, and ends where it began, so the loop never jumps. The
+ * angles depend on how many faces there are, so the rule is drawn here with
+ * the page rather than written once in the template.
+ */
+export function cubeTurn(faces: number): string {
+  const slot = CUBE_REST_S + CUBE_TURN_S
+  const pct = (seconds: number): string =>
+    `${String(Number(((seconds / (slot * faces)) * 100).toFixed(3)))}%`
+  const at = (face: number): string =>
+    `transform: translateZ(var(--apothem)) rotateY(${String(Number(((-360 * face) / faces).toFixed(3)))}deg);`
+  const steps = Array.from(
+    { length: faces },
+    (_, face) =>
+      `${pct(face * slot)}, ${pct(face * slot + CUBE_REST_S)} { ${at(face)} }`
   )
+  return `@keyframes cube-turn { ${steps.join(" ")} 100% { ${at(faces)} } }
+      .cube { --faces: ${String(faces)}; --cycle: ${String(slot * faces)}s; }`
 }
+
+/**
+ * One face of the cube: its screen, holding the project's title card under
+ * the face's clip or still when the build carries one, and its words below
+ * the screen.
+ */
+const projectFace = (
+  p: ProjectWords,
+  index: number,
+  media: LandingMedia
+): string => `
+          <article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${e(p.media)}" style="--i: ${String(index)}">
+            <div class="screen">
+              <div class="title-card" aria-hidden="true"><span>${e(p.title)}</span></div>${
+                media.has(p.media)
+                  ? `
+              ${mediaTag(p.media)}`
+                  : ""
+              }
+            </div>
+            <div class="caption">
+              <h3>${e(p.title)}</h3>
+              <p class="stack">${e(p.stack)}</p>
+              <p>${e(p.line)}</p>
+            </div>
+          </article>`
 
 /** The gap's drawn visual, by gap: what the still will show, drawn. */
 const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
@@ -102,24 +125,28 @@ const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
   cores: `<div class="drawing drawing--cores" aria-hidden="true"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><path d="M0 22 H400" class="cores-line"/><path d="M0 110 C40 90 70 50 110 46 S180 30 220 60 S300 28 340 38 S380 30 400 34 V150 H0Z" class="busy"/><path d="M0 146 C50 142 90 128 120 130 S200 112 240 126 S320 108 360 118 S390 112 400 114 V150 H0Z" class="waiting"/></svg></div>`,
 }
 
+/**
+ * A gap's card: its picture (the still, or its drawing until the build
+ * carries one) in its own shape, and its words below it.
+ */
 const gapCard = (g: GapWords, media: LandingMedia): string => {
   const size = media.get(g.visual)
   const shown = size !== undefined && size !== null
-  return card(
-    "still",
-    g.visual,
-    shown
-      ? ""
-      : `${GAP_DRAWING[g.id]}
-          <p class="note">${e(g.visualNote)}</p>`,
-    shown
-      ? `<img class="media" src="${mediaSrc(g.visual)}" alt="" aria-hidden="true" />`
-      : "",
-    `
+  return `
+        <article class="card" data-slot="still" data-asset="${e(g.visual)}" style="${shape(size ?? PLACEHOLDER)}">
+          <div class="pic">
+            ${
+              shown
+                ? mediaTag(g.visual)
+                : `${GAP_DRAWING[g.id]}
+            <p class="note">${e(g.visualNote)}</p>`
+            }
+          </div>
+          <div class="caption">
             <h3>${e(g.title)}</h3>
-            <p>${e(g.line)}</p>`,
-    size ?? PLACEHOLDER
-  )
+            <p>${e(g.line)}</p>
+          </div>
+        </article>`
 }
 
 /** The photo slot's asset: the owner's portrait, once one is bundled. */
@@ -129,10 +156,14 @@ export const PHOTO = "photo/portrait.webp"
 export function landingMediaKeys(
   words: LandingWords = LANDING_WORDS
 ): ReadonlyArray<string> {
+  // A still may show on a face and on a gap's card both; the build
+  // carries it once.
   return [
-    PHOTO,
-    ...words.projects.map((p) => p.clip),
-    ...words.gaps.map((g) => g.visual),
+    ...new Set([
+      PHOTO,
+      ...words.projects.map((p) => p.media),
+      ...words.gaps.map((g) => g.visual),
+    ]),
   ]
 }
 
@@ -143,11 +174,17 @@ const role = (title: string, when: string, body: string): string => `
             ${body}
           </div>`
 
-/** The page's `<head>` words: its title, description and canonical address. */
+/**
+ * The page's `<head>`: its title, description and canonical address, and
+ * the cube's turn for as many faces as there are projects.
+ */
 export function renderLandingHead(words: LandingWords = LANDING_WORDS): string {
   return `<title>${e(words.title)}</title>
     <meta name="description" content="${e(words.description)}" />
-    <link rel="canonical" href="${SITE_URL}" />`
+    <link rel="canonical" href="${SITE_URL}" />
+    <style>
+      ${cubeTurn(words.projects.length)}
+    </style>`
 }
 
 /**
@@ -204,7 +241,9 @@ export function renderLanding(
     <main>
       <p class="lede">${e(words.lede)}</p>
       <h2 class="section-title">${e(words.projectsTitle)}</h2>
-      <div class="grid">${words.projects.map((p) => projectCard(p, media)).join("")}
+      <div class="cube">
+        <div class="cube-turn">${words.projects.map((p, i) => projectFace(p, i, media)).join("")}
+        </div>
       </div>
       <h2 class="section-title">${e(words.gapsTitle)}</h2>
       <div class="grid gaps">${words.gaps.map((g) => gapCard(g, media)).join("")}

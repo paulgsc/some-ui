@@ -1,0 +1,14 @@
+{
+  "id": "C1110",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/words.ts",
+    "apps/www/landing/index.html"
+  ],
+  "chose": "\"What I built and use every day\" is one pane: a cube whose faces each show one project, turning face to face on its own, drawn in CSS alone since the page runs no script. Each face's clip or still sits whole inside the face's screen, on its dark, and the face's words are below it, never over it; a face whose asset the build lacks shows the project's title card. The gaps' cards keep their row and their stills' shapes, with their words below the picture too, so no text covers any picture on the page. The owner (2026-11-22), on the live site: \"what happened to the android app, hyperframe footage? why this blur?\", and: \"extensions in webapp is completely covered by the text blob? can we actually for this case utilize the rotating cube ui. so that it's one artifact in that pane for what I build everyday, and the faces rotate, that way we can showcase multiple things.\"",
+  "undo": "Draw the projects as the row of cards again in apps/www/src/landing/render.ts (projectCard, as before this call) and landing/index.html's .grid rules, and drop cubeTurn from the head.",
+  "refs": ["#3401"],
+  "moves": "C1064"
+}

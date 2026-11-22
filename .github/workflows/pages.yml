@@ -177,73 +177,19 @@ jobs:
             fi
           done
 
-      # The landing's media (PAGES #3401, C1059), unpacked where
-      # render-public-site.ts looks for them (apps/www/src/landing/output.ts,
-      # SITE_MEDIA_DIR). Only from this repository's own successful runs of
-      # the two producers on main (Site Assets on a push, a dispatch or its
-      # schedule; Snips Capture on a dispatch), never a pull request's or a
-      # fork's: their artifacts list beside main's, and a fork's branch can be
-      # named main. Of each kind, the newest such run's. Each archive is
-      # tested, refused whole if it holds a link, and unpacked apart, and
-      # only its regular files move in, so a broken download or a link to a
-      # file on this runner ships nothing.
+      # The landing's media (PAGES #3401, C1059): the newest of each kind
+      # from this repository's own successful producer runs on main, by
+      # apps/www/scripts/fetch-site-media.sh, which says what it takes and
+      # refuses. The owner's local preview runs the same script (C1111).
       # Best effort: a kind with none keeps its slot's drawn placeholder, the
-      # summary says which kinds were found, and the deploy goes on.
+      # summary says which kinds were found, and the deploy goes on. A
+      # rollback to a commit older than the script has none to run, so its
+      # slots all draw their placeholders.
       - name: Fetch the site's media
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          media=apps/www/node_modules/.cache/www/site-media
-          work="$RUNNER_TEMP/site-media"
-          mkdir -p "$media" "$work"
-          : > "$work/seen"
-          for producer in site-assets.yml:push,workflow_dispatch,schedule snips-capture.yml:workflow_dispatch; do
-            workflow="${producer%%:*}"
-            events="${producer#*:}"
-            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?branch=main&status=success&per_page=20" \
-              --jq ".workflow_runs[]
-                    | select(.head_repository.id == .repository.id)
-                    | select(.head_branch == \"main\")
-                    | select(.event as \$e | any(\"$events\" | split(\",\")[]; . == \$e))
-                    | .id" |
-            while read -r run; do
-              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" \
-                --jq '.artifacts[]
-                      | select(.name | startswith("site-assets-"))
-                      | select(.expired | not)
-                      | [(.name | sub("-[0-9a-f]{40}$"; "")), .id]
-                      | @tsv' |
-              while IFS="$(printf '\t')" read -r kind id; do
-                grep -qxF "$kind" "$work/seen" && continue
-                zip="$work/$id.zip"
-                out="$work/$id"
-                # An archive holding a link is refused whole: before it is
-                # unpacked when its listing shows one (unzip makes links, and
-                # one to a folder could write outside $out), and after, for a
-                # host whose listing hides it (VMS), when anything but files
-                # and folders came out. Each listing goes to a file, not a
-                # pipe, so one cut short cannot read as "no link".
-                if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$zip" &&
-                  unzip -tq "$zip" && zipinfo "$zip" > "$zip.list" &&
-                  ! grep -q '^l' "$zip.list" && unzip -q "$zip" -d "$out" &&
-                  find "$out" ! -type f ! -type d > "$zip.odd" && [ ! -s "$zip.odd" ]; then
-                  (cd "$out" && find . -type f) | while read -r file; do
-                    mkdir -p "$media/$(dirname "$file")"
-                    mv "$out/$file" "$media/$file"
-                  done
-                  echo "$kind" >> "$work/seen"
-                  echo "- $kind: run $run, artifact $id" >> "$GITHUB_STEP_SUMMARY"
-                else
-                  echo "- $kind: artifact $id did not unpack; its slot keeps its placeholder" >> "$GITHUB_STEP_SUMMARY"
-                fi
-              done
-            done
-          done
-          {
-            echo "Site media found (a slot with none draws its placeholder):"
-            (cd "$media" && find . -type f | sort)
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash apps/www/scripts/fetch-site-media.sh
 
       - name: Build www and its workspace dependencies
         run: nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%

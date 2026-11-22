@@ -10,14 +10,19 @@
  * placeholder this table describes.
  */
 
-/** One project card: what it is, its stack, and where to read it. */
+/**
+ * One face of the projects' cube (C1110): what it is, its stack, one line,
+ * and the asset it shows, a clip or a still, by key. A face is a case of the
+ * landing's one card (a picture, then its words below it), so a project
+ * whose picture is a still is a member of the same type, not a new card.
+ */
 export type ProjectWords = {
-  readonly id: "extensions" | "android" | "server"
+  readonly id: "extensions" | "page-filter" | "android" | "server"
   readonly title: string
   readonly stack: string
   readonly line: string
-  /** The clip the slot will hold, by asset key. */
-  readonly clip: string
+  /** The asset the face shows, by key: a clip or a still. */
+  readonly media: `clips/${string}.mp4` | `stills/${string}.png`
 }
 
 /** One gap card: one visual and one line on why. */
@@ -56,7 +61,7 @@ export const LANDING_WORDS: LandingWords = {
     "Paul Gathondu, software engineer in Rust and TypeScript: what I built and use every day, the gaps I'm working through, experience, résumé and contact.",
   role: "Software engineer · Rust and TypeScript",
   resume: "Résumé (PDF)",
-  lede: "I build web services in Rust and apps in TypeScript and React. These three are my own work, public, and I use them every day.",
+  lede: "I build web services in Rust and apps in TypeScript and React. These are my own work, public, and I use them every day.",
   photoAlt: "Paul Gathondu",
   projectsTitle: "What I built and use every day",
   gapsTitle: "Gaps I'm working through",
@@ -71,24 +76,31 @@ export const LANDING_WORDS: LandingWords = {
   projects: [
     {
       id: "extensions",
-      title: "Browser extensions",
+      title: "Suspender Ledger",
       stack: "TypeScript · Firefox and Chromium MV3",
-      line: "Suspender Ledger keeps a site awake, then suspends a tab. Signed and reviewed by Mozilla (unlisted).",
-      clip: "clips/extensions.mp4",
+      line: "It keeps a site awake, then suspends a tab. Signed and reviewed by Mozilla (unlisted).",
+      media: "clips/extensions.mp4",
+    },
+    {
+      id: "page-filter",
+      title: "Page Filter",
+      stack: "TypeScript · Firefox and Chromium MV3",
+      line: "The extension I use most: it darkens the pages I read at night.",
+      media: "stills/page-filter.png",
     },
     {
       id: "android",
       title: "The Android app",
       stack: "TypeScript · React · Capacitor · Rust → WebAssembly",
       line: "Study sessions, Rust practice rounds, a job search desk and a video studio, in one app.",
-      clip: "clips/apk.mp4",
+      media: "clips/apk.mp4",
     },
     {
       id: "server",
       title: "file_host: the server behind them",
       stack: "Rust · Axum · Tokio · SQLite · Redis · NATS · Grafana",
       line: "It runs on my home server, under its own dashboard: whether it's answering, how long it has been up, and what the rate limiter turns away.",
-      clip: "clips/server.mp4",
+      media: "clips/server.mp4",
     },
   ],
   gaps: [
