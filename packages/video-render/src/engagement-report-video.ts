@@ -222,8 +222,8 @@ export const HomeWeeksSchema = z.object({
             .optional(),
         })
       ),
-      /** When home's first `left` that said where it went was made; null when none has (#3367). */
-      nextsFrom: z.string().nullable().optional(),
+      /** Whether a `left` that said where it went was made by the window's start (#3367). */
+      nextsBefore: z.boolean().optional(),
       partial: z.boolean(),
       debrief: z.object({
         said: count,

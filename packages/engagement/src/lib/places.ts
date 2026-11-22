@@ -115,7 +115,8 @@ function wentTo(left: LeftEvent, to: Entered | null): LeftEvent {
 }
 
 export function createHandoff(
-  defer: (run: () => void) => void = queueMicrotask
+  defer: (run: () => void) => void = queueMicrotask,
+  raise: (run: () => void) => void = (run) => setTimeout(run)
 ): Handoff {
   let held: Array<{
     left: LeftEvent
@@ -124,16 +125,18 @@ export function createHandoff(
   const flush = (to: Entered | null): void => {
     const now = held
     held = []
-    // Each is sent even if one before it throws: none is held twice.
-    const failed: Array<unknown> = []
+    // Each is sent even if one before it throws, and a throw never reaches
+    // the screen coming on (its own `taken` is sent after this): it is
+    // raised on its own, after this turn, where it is seen and stops nothing.
     for (const { left, send } of now) {
       try {
         send(wentTo(left, to))
       } catch (error) {
-        failed.push(error)
+        raise(() => {
+          throw error
+        })
       }
     }
-    if (failed.length > 0) throw failed[0]
   }
   return {
     hold: (left, send): void => {

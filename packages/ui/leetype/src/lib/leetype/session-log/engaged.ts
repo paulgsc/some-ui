@@ -18,6 +18,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
+import { ELSEWHERE } from "@some-ui/engagement"
 
 import type { SessionEvent, SessionLog } from "./model"
 import { byTime } from "./model"
@@ -127,6 +128,8 @@ export function engagedOf(
           kind: "left",
           startedAt: started.at,
           place: inReading ? "reading" : "round",
+          // The session's screen was left for one this log can't name (#3367).
+          next: ELSEWHERE,
         },
       ]
     }

@@ -159,9 +159,9 @@ describe("the friction aggregate (WALK5, C861)", () => {
     })
     expect(at("todays-pick", "apply")).toMatchObject({
       stretchesLeft: 7,
-      movedOn: "fewer-than-5",
-      // None of its stretches went to another screen.
-      leftPartWay: "fewer-than-5",
+      // "Fewer than 5" may be 4, which would leave 3 of 7: unsaid (ask #2701).
+      movedOn: "no-data",
+      leftPartWay: "no-data",
     })
     // Decide is in neither of the flow's lists: passing ends a pick there.
     expect(at("todays-pick", "decide")).toMatchObject({
@@ -194,18 +194,19 @@ describe("the friction aggregate (WALK5, C861)", () => {
     expect(debrief).toEqual({ said: "fewer-than-5", median: null })
   })
 
-  it("says finished or left part-way only over a window wholly after the first left that said where it went", () => {
-    const later = (nextsFrom: string | null): Friction["places"][number] => {
+  it("says finished or left part-way only over a window that starts after a left said where it went", () => {
+    const ending = (nextsBefore?: boolean): Friction["places"][number] => {
       const got = read({
         ...sampleHome,
-        friction: { ...sampleHome.friction, nextsFrom },
+        friction: { ...sampleHome.friction, nextsBefore },
       }).places.find((p) => p.place === "ending")
       if (got === undefined) throw new Error("the ending")
       return got
     }
-    expect(later("2026-10-19T07:00:00.000Z").finished).toBe(5)
-    expect(later("2026-10-19T07:00:00.001Z").finished).toBe("no-data")
-    expect(later(null).finished).toBe("no-data")
+    expect(ending(true).finished).toBe(5)
+    expect(ending(false).finished).toBe("no-data")
+    // A read from a home before the field.
+    expect(ending(undefined).finished).toBe("no-data")
   })
 
   it("never says counts that would leave fewer than 5 of the stretches over together (ask #2701)", () => {

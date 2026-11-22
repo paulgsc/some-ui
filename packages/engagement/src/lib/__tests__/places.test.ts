@@ -157,8 +157,16 @@ describe("an affordance's places", () => {
     expect(sent.at(-1)).toMatchObject({ kind: "left", next: "elsewhere" })
   })
 
-  it("sends every held left though one send throws", () => {
-    const { handoff, end } = turn()
+  it("sends every held left though one send throws, and raises it apart from the screen coming on", () => {
+    const raised: Array<() => void> = []
+    const waiting: Array<() => void> = []
+    const handoff = createHandoff(
+      (run) => waiting.push(run),
+      (run) => raised.push(run)
+    )
+    const end = (): void => {
+      for (const run of waiting.splice(0)) run()
+    }
     const sent: Array<EngagementEvent> = []
     const left = stepPlace(PICK, { place: "read", since: AT }, null, LATER)
       .events[0]
@@ -167,8 +175,10 @@ describe("an affordance's places", () => {
       throw new Error("refused")
     })
     handoff.hold(left, (event) => sent.push(event))
-    expect(end).toThrow("refused")
+    expect(end).not.toThrow()
     expect(sent).toHaveLength(1)
+    expect(raised).toHaveLength(1)
+    expect(raised[0]).toThrow("refused")
   })
 
   it("follows the page's visibility, and leaves as the screen closes", () => {

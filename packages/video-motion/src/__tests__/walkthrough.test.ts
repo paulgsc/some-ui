@@ -228,10 +228,10 @@ describe("the walkthrough (WALK4)", () => {
       return lines.slice(jobs.fill.chapters[i - 1]?.narration.length)
     }
     expect(extra(1)).toEqual([
-      "In the last four weeks, I spent time on this step 20 times, moved on from it 9 times and left it part-way 5 times; a stretch here runs about 41 seconds.",
+      "In the last four weeks, I spent time on this step 20 times, moved on from it 9 times and left it from this step 5 times; a stretch here runs about 41 seconds.",
     ])
     expect(extra(2)).toEqual([
-      "In the last four weeks, I spent time on this step 7 times, moved on from it fewer than 5 times and left it part-way fewer than 5 times; a stretch here runs about 2 minutes.",
+      "In the last four weeks, I spent time on this step 7 times; a stretch here runs about 2 minutes.",
       "I rated how hard applying felt fewer than 5 times in these four weeks.",
     ])
     expect(extra(4)).toEqual([
@@ -243,7 +243,7 @@ describe("the walkthrough (WALK4)", () => {
       return picture?.kind === "composition" ? picture.variables.notes : null
     }
     expect(card("chapter-1")).toBe(
-      "Last 4 weeks|Here 20 times|Moved on 9 times|Left part-way 5 times|About 41 s a stretch"
+      "Last 4 weeks|Here 20 times|Moved on 9 times|Left from here 5 times|About 41 s a stretch"
     )
     // Without home's aggregate, nothing is measured and there's no silence card.
     const bare = walkthroughCutList(jobs, walkOf(15))
@@ -266,7 +266,7 @@ describe("the walkthrough (WALK4)", () => {
       medianMs: null,
     }
     expect(measureSaid([{ kind: "place", counts }])).toEqual([
-      "In the last four weeks, I spent time on this step 11 times and finished it 5 times.",
+      "In the last four weeks, I spent time on this step 11 times and left it at its last step 5 times.",
     ])
     const older = {
       ...counts,

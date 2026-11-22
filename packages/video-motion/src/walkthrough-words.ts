@@ -1,8 +1,8 @@
 /**
  * Everything a walkthrough says and burns in about real use (WALK5, #3337;
  * #3338), in one table, in the viewer's terms and the owner's first person:
- * how often a step was reached and moved on from, finished or left part-way
- * (only where a stretch said where it went, #3367), how long a stretch on it
+ * how often a step was reached and moved on from, and left from it or from
+ * its last step for another screen (#3367), how long a stretch on it
  * runs, how hard applying felt, and which modules nobody opens. No count
  * under 5 is said (the engagement report's rule, ask #2701): it is "fewer
  * than 5". Drawn notes split their lines on "|", as every walkthrough
@@ -49,15 +49,19 @@ export const WALKTHROUGH_WORDS = {
     drawn: (n: string): string => `Moved on ${n} times`,
     said: (n: string): string => `moved on from it ${n} times`,
   },
-  // Only from the stretches that said the screen they went to (#3367): an
-  // older build's say nothing, and the step keeps "moved on".
+  // What the counts are: stretches on the step that ended by going to
+  // another screen (#3367), said only over weeks when every build said where
+  // it went; before that the step keeps "moved on". A step is counted by
+  // what was on screen, not by whether the pick was done (a done pick opened
+  // again counts too), so the words say where it was left from, never that
+  // a pick was finished or given up.
   finished: {
-    drawn: (n: string): string => `Finished ${n} times`,
-    said: (n: string): string => `finished it ${n} times`,
+    drawn: (n: string): string => `Left at the end ${n} times`,
+    said: (n: string): string => `left it at its last step ${n} times`,
   },
   leftPartWay: {
-    drawn: (n: string): string => `Left part-way ${n} times`,
-    said: (n: string): string => `left it part-way ${n} times`,
+    drawn: (n: string): string => `Left from here ${n} times`,
+    said: (n: string): string => `left it from this step ${n} times`,
   },
   time: {
     drawn: (s: number): string =>

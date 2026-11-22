@@ -5,6 +5,7 @@ export type {
   VisitEnding,
 } from "./lib/events"
 export {
+  ELSEWHERE,
   EVENT_FIELDS,
   EVENT_KINDS,
   SURFACES,
