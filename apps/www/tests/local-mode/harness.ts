@@ -110,7 +110,10 @@ function listen(server: Server, port: number): Promise<Listening> {
 
 /**
  * The app's files under `base` (`/` for lan, `/some-ui/` for Pages), with the
- * single-page fallback both real hosts give: an unknown path answers the shell.
+ * single-page fallback each real host gives: an unknown path answers the
+ * app's shell. GitHub Pages answers `404.html`, which the Pages build writes
+ * (its `index.html` is the landing, vite.config.ts `landingPage`); the lan
+ * build has no `404.html`, and nginx answers `index.html`.
  */
 export function serveBuild(dir: string, base: string): Promise<Listening> {
   const server = createServer((req, res) => {
@@ -130,10 +133,11 @@ export function serveBuild(dir: string, base: string): Promise<Listening> {
       statSync(file).isDirectory()
     ) {
       const index = join(file, "index.html")
+      const shell = existsSync(join(dir, "404.html"))
+        ? "404.html"
+        : "index.html"
       file =
-        file.startsWith(dir) && existsSync(index)
-          ? index
-          : join(dir, "index.html")
+        file.startsWith(dir) && existsSync(index) ? index : join(dir, shell)
     }
     res.writeHead(200, {
       "content-type": TYPES[extname(file)] ?? "application/octet-stream",
