@@ -26,6 +26,7 @@
  * engagement.test.ts`'s, since only www has the route tree.
  */
 import type { EventKind, Surface } from "@engagement/lib/events"
+import { ELSEWHERE } from "@engagement/lib/events"
 
 /** The wings of `apps/www/src/lib/wings` that hold a pipeline. */
 export type WingId = "practice" | "self" | "studio" | "jobs" | "operate"
@@ -67,6 +68,15 @@ export type Affordance = {
   readonly touches: boolean
   /** Where a `left` can say it stopped. */
   readonly places?: ReadonlyArray<Choice>
+  /**
+   * For an affordance that is a flow, what leaving one of its places for
+   * another screen means: it ended there (`finishedAt`), or was left
+   * part-way (`partWayAt`). A place in neither says neither.
+   */
+  readonly flow?: {
+    readonly finishedAt: ReadonlyArray<string>
+    readonly partWayAt: ReadonlyArray<string>
+  }
   /** What a `said` can answer. */
   readonly answers?: ReadonlyArray<Choice>
   /** No longer offered; kept so the events that name it still read. */
@@ -139,6 +149,7 @@ function openedProblems(pipeline: Pipeline): ReadonlyArray<string> {
  *   only with `offered`;
  * - `left` is emitted exactly when there are places, and only with `taken`;
  * - `said` is emitted exactly when there are answers;
+ * - a flow names only its own places, each once, and none is `elsewhere`;
  * - every pipeline has an affordance that is not retired;
  * - a pipeline opened at its root names one of its own affordances, not
  *   retired, that sends `offered` or `taken`; one not measured says why.
@@ -214,6 +225,19 @@ function affordanceProblems(here: string, a: Affordance): Array<string> {
         problems.push(`${here}: ${what} ${choice.id} twice`)
       ids.add(choice.id)
     }
+  }
+  if (places.some((p) => p.id === ELSEWHERE))
+    problems.push(
+      `${here}: no place is ${ELSEWHERE}, which a left's next keeps`
+    )
+  if (a.flow !== undefined) {
+    const named = [...a.flow.finishedAt, ...a.flow.partWayAt]
+    if (named.length === 0) problems.push(`${here}: a flow names a place`)
+    if (new Set(named).size !== named.length)
+      problems.push(`${here}: a flow names a place once`)
+    for (const id of named)
+      if (!places.some((p) => p.id === id))
+        problems.push(`${here}: flow place ${id} is not one of its places`)
   }
   if (a.name.trim() === "") problems.push(`${here}: has no name`)
   return problems

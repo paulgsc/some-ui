@@ -174,6 +174,44 @@ describe("the registry", () => {
       "exactly when it names answers",
     ],
     [
+      "a place a left's next keeps for where it can't name",
+      [
+        pipeline([
+          affordance({
+            emits: ["offered", "taken", "left"],
+            places: [{ id: "elsewhere", name: "Elsewhere" }],
+          }),
+        ]),
+      ],
+      "no place is elsewhere",
+    ],
+    [
+      "a flow naming a place it doesn't have",
+      [
+        pipeline([
+          affordance({
+            emits: ["offered", "taken", "left"],
+            places: [{ id: "here", name: "Here" }],
+            flow: { finishedAt: ["there"], partWayAt: [] },
+          }),
+        ]),
+      ],
+      "flow place there is not one of its places",
+    ],
+    [
+      "a flow naming a place both finished and part-way",
+      [
+        pipeline([
+          affordance({
+            emits: ["offered", "taken", "left"],
+            places: [{ id: "here", name: "Here" }],
+            flow: { finishedAt: ["here"], partWayAt: ["here"] },
+          }),
+        ]),
+      ],
+      "a flow names a place once",
+    ],
+    [
       "a pipeline whose every affordance is retired",
       [pipeline([affordance({ retired: true })])],
       "offers nothing",
