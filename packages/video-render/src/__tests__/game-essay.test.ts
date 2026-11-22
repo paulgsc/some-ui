@@ -192,41 +192,36 @@ describe("an essay that contradicts itself", () => {
     const [first, second] = game?.halves ?? []
     if (game === undefined || first === undefined || second === undefined)
       throw new Error("the sample has two halves")
-    const at = (half: typeof first, ...times: Array<string>): typeof first => ({
-      ...half,
-      bites: half.bites.map((bite, i) => ({
-        ...bite,
-        saidAt: times[i] ?? bite.saidAt,
-      })),
+    const [bite] = second.bites
+    if (bite === undefined)
+      throw new Error("the sample's second half has a bite")
+    const twice = (a: string, b: string): unknown => ({
+      ...essay,
+      games: [
+        {
+          ...game,
+          halves: [
+            first,
+            {
+              ...second,
+              bites: [
+                { ...bite, saidAt: a },
+                { ...bite, take: "sample-bite-2b", saidAt: b },
+              ],
+            },
+            ...game.halves.slice(2),
+          ],
+        },
+      ],
     })
-    const order = "401873010: its bites are not in the order they were said"
+    const order =
+      "401873010, the second half: its bites are not in the order they were said"
+    // In order as text, out of order as times; then the other way round.
     expect(
-      problems({
-        ...essay,
-        games: [
-          {
-            ...game,
-            halves: [
-              at(first, "2026-10-23T02:00:00-05:00"),
-              at(second, "2026-10-23T03:00:00Z"),
-            ],
-          },
-        ],
-      })
+      problems(twice("2026-10-23T02:00:00-05:00", "2026-10-23T03:00:00Z"))
     ).toContain(order)
     expect(
-      problems({
-        ...essay,
-        games: [
-          {
-            ...game,
-            halves: [
-              at(first, "2026-10-23T00:52:10Z"),
-              at(second, "2026-10-23T00:52:10.500Z", "2026-10-23T00:53:00Z"),
-            ],
-          },
-        ],
-      })
+      problems(twice("2026-10-23T02:31:40Z", "2026-10-23T02:31:40.500Z"))
     ).not.toContain(order)
   })
 
@@ -288,7 +283,6 @@ describe("an essay that contradicts itself", () => {
         "bites: one take is in the essay twice",
         "401873010: a team plays itself",
         "401873010: its halves are out of the game's order, or one is there twice",
-        "401873010: its bites are not in the order they were said",
       ])
     )
   })
@@ -387,50 +381,60 @@ describe("home's week file, as the essay files it (C1241, C1242)", () => {
     ).toEqual(["week: 2025-w53 is not a week of its year"])
   })
 
-  it("files a bite with no half before the game or after it, by kickoff", () => {
+  it("files a bite home gives no half by its scenario's phase, else by kickoff", () => {
     const kickoff = "2026-10-23T00:15:00Z"
-    expect(gamePlaceOf(null, "2026-10-22T23:00:00Z", kickoff)).toBe("before")
-    expect(gamePlaceOf(null, kickoff, kickoff)).toBe("after")
-    expect(gamePlaceOf(null, "2026-10-22T17:14:59-07:00", kickoff)).toBe(
+    const mid = "2026-10-23T01:30:00Z"
+    expect(gamePlaceOf("second", "in.turnover", mid, kickoff)).toBe("second")
+    // A pre-game scenario said mid-game is still about before the game.
+    expect(gamePlaceOf(null, "pre.weather", mid, kickoff)).toBe("before")
+    // An in-game one said before home saw a play is the first half's.
+    expect(gamePlaceOf(null, "in.first-drive", mid, kickoff)).toBe("first")
+    expect(gamePlaceOf(null, "post.result", mid, kickoff)).toBe("after")
+    // With no phase to go by, kickoff decides, as instants.
+    expect(gamePlaceOf(null, null, "2026-10-22T23:00:00Z", kickoff)).toBe(
       "before"
     )
-    expect(gamePlaceOf(null, "2026-10-23T03:30:00Z", kickoff)).toBe("after")
-    expect(gamePlaceOf("second", "2026-10-23T02:00:00Z", kickoff)).toBe(
-      "second"
+    expect(gamePlaceOf(null, "you.caught-it", kickoff, kickoff)).toBe("after")
+    // Sorts before kickoff as text, and is after it as an instant.
+    expect(gamePlaceOf(null, null, "2026-10-22T17:15:01-07:00", kickoff)).toBe(
+      "after"
     )
   })
 
-  it("holds a bite filed before the game to before kickoff, one after it to after, and a half as home gave it", () => {
+  it("orders bites within each placement, not across the game's", () => {
     const essay = sample()
     const [game] = essay.games
     if (game === undefined) throw new Error("the sample has a game")
-    // A late kickoff: the first-half bite is said before it, and stays
-    // where home filed it; the after-final bite, said before it, does not.
-    expect(
-      problems({
-        ...essay,
-        games: [{ ...game, kickoff: "2026-10-23T03:00:00Z" }],
-      })
-    ).toEqual([
-      "sample-bite-3: it is filed after the game, and was said before kickoff",
-    ])
     const [first] = game.halves
-    if (first === undefined) throw new Error("the sample has a first half")
+    const [bite] = first?.bites ?? []
+    if (bite === undefined) throw new Error("the sample has a first-half bite")
+    // A pre-game scenario said mid-game, filed before the game: said after
+    // the first half's bite, and still not out of order.
     expect(
       problems({
         ...essay,
         games: [
           {
             ...game,
-            halves: [{ ...first, half: "before" }, ...game.halves.slice(1)],
-            halftime: undefined,
+            halves: [
+              {
+                half: "before",
+                bites: [
+                  {
+                    ...bite,
+                    take: "sample-bite-0",
+                    scenario: "pre.weather",
+                    play: null,
+                    saidAt: "2026-10-23T01:30:00Z",
+                  },
+                ],
+              },
+              ...game.halves,
+            ],
           },
         ],
       })
-    ).toEqual([
-      "sample-bite-1: it is filed before the game, and was said after kickoff",
-      "sample-bite-1: its play is in the first half, and it is filed under before the game",
-    ])
+    ).toEqual([])
   })
 
   it("keeps a bite said first and never mapped, with no scenario", () => {

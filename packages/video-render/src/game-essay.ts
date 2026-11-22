@@ -17,10 +17,9 @@
  *      the way its stance calls for (D21);
  *    - `halftime`, between a game's first half and its second (D10).
  *
- *    A game's bites are filed by half, and before or after the game for a
- *    pre-game or after-final bite (`gamePlaceOf`, C1242). Whose voice says
- *    each is code's (`gameVoiceOf`, D5): the writer sets `voice` by it, from
- *    home's confidence and the owner's choice, and does not choose it.
+ *    A game's bites are filed by half, and before or after the game for one
+ *    home gives no half (`gamePlaceOf`, C1242). Whose voice says each is
+ *    code's (`gameVoiceOf`, D5), for the writer to set `voice` by.
  * 3. `close`: the week, closed.
  *
  * **What the essay never is (section 0, D20; the owner, 2026-11-15):** a
@@ -50,6 +49,7 @@ import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import {
   HALVES,
   isScenarioId,
+  scenarioOf,
   type Half,
   type ScenarioId,
 } from "@some-ui/game-scenarios"
@@ -89,9 +89,9 @@ export const READ_ALOUD_BELOW = 0.7
  * Whose voice says a bite (D5–D7): the owner's own choice when they made
  * one, for any reason; otherwise code, from home's confidence in the words
  * it heard: read aloud below `READ_ALOUD_BELOW`, and in the owner's voice
- * when home kept no confidence (words heard before Oct 31). The writer sets a
- * bite's `voice` by it rather than choosing one; the essay's data carries
- * the voice, not the confidence, so no check reads it back.
+ * when home kept no confidence (words heard before Oct 31). It is for the
+ * writer to set a bite's `voice` by; the essay's data carries the voice,
+ * not the confidence, so no check reads it back.
  */
 export const gameVoiceOf = (
   confidence: number | null,
@@ -110,21 +110,31 @@ export const GAME_PLACEMENTS = ["before", ...HALVES, "after"] as const
 export type GamePlacement = (typeof GAME_PLACEMENTS)[number]
 
 /**
- * Where a bite is filed: its half as home gave it, or, with none, before
- * the game when it was said before kickoff and after it otherwise. Home
- * gives every in-game bite a half, matched or not (the half of the quarter
- * it was said in, C872), so only a pre-game or after-final bite has none.
- * The writer files by it; the check holds a bite filed before the game to
- * before kickoff and one filed after it to after, and leaves a half as home
- * gave it, since `kickoff` is the scheduled start and a bite can be said
- * in its first minutes before the snap.
+ * Where a bite is filed: its half as home gave it (the half of the quarter
+ * home last saw by then, C872, or its matched play's). Home gives none to a
+ * bite about no moment of play, or one said before home saw a play. Then
+ * its scenario's phase decides: before the game for a pre-game scenario,
+ * the first half for an in-game one (no play seen yet), after the game for
+ * an after-final one; and with none to go by (said first, never mapped, or
+ * about the owner's watching), before kickoff is before the game and any
+ * later is after it. The writer files by this; the essay keeps no record of
+ * which bites home gave a half, so the check holds a matched bite to its
+ * play's quarter and bites to their order within each placement, not to
+ * this rule.
  */
-export const gamePlaceOf = (
+export function gamePlaceOf(
   half: Half | null,
+  scenario: ScenarioId | null,
   saidAt: string,
   kickoff: string
-): GamePlacement =>
-  half ?? (Date.parse(saidAt) < Date.parse(kickoff) ? "before" : "after")
+): GamePlacement {
+  if (half !== null) return half
+  const phase = scenario === null ? null : scenarioOf(scenario).phase
+  if (phase === "pre") return "before"
+  if (phase === "in") return "first"
+  if (phase === "post") return "after"
+  return Date.parse(saidAt) < Date.parse(kickoff) ? "before" : "after"
+}
 
 /**
  * The days a week's essay covers (C1241): an NFL week, from the Tuesday of
@@ -340,7 +350,7 @@ const GameSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "a game's id is ESPN's"),
   away: team,
   home: team,
-  /** When it kicked off: a bite with no half is filed before it or after it (`gamePlaceOf`). */
+  /** When it is scheduled to kick off: what files a bite home gives no half and no phase to go by (`gamePlaceOf`). */
   kickoff: z.iso.datetime({ offset: true }),
   /** The game's card. */
   game: said,
@@ -490,24 +500,16 @@ function gameProblems(game: GameEssayGame): Array<string> {
     problems.push(
       `${game.id}: halftime is said only between bites of both halves`
     )
-  const said = game.halves.flatMap((half) =>
-    half.bites.map((bite) => Date.parse(bite.saidAt))
-  )
-  if (said.some((at, i) => i > 0 && at < (said[i - 1] ?? at)))
-    problems.push(`${game.id}: its bites are not in the order they were said`)
+  for (const half of game.halves) {
+    const said = half.bites.map((bite) => Date.parse(bite.saidAt))
+    if (said.some((at, i) => i > 0 && at < (said[i - 1] ?? at)))
+      problems.push(
+        `${game.id}, ${halfSaid(half.half)}: its bites are not in the order they were said`
+      )
+  }
   const plays = new Set([game.away, game.home])
-  const kickoff = Date.parse(game.kickoff)
   for (const half of game.halves)
     for (const bite of half.bites) {
-      const saidAt = Date.parse(bite.saidAt)
-      if (half.half === "before" && saidAt >= kickoff)
-        problems.push(
-          `${bite.take}: it is filed before the game, and was said after kickoff`
-        )
-      if (half.half === "after" && saidAt < kickoff)
-        problems.push(
-          `${bite.take}: it is filed after the game, and was said before kickoff`
-        )
       if (bite.play === null) continue
       const { period, spot, possession } = bite.play.still
       if (halfOfPeriod(period) !== half.half)
