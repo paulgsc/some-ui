@@ -48,8 +48,18 @@ shopt -s inherit_errexit
 
 # A bucket's own name, `claude/bucket-<repo>-<n>`. A prefix alone is not
 # enough: `claude/bucket-prune`, the worker branch that built this, starts
-# the same way and was kept as a bucket after #3410.
-is_bucket() { [[ $1 =~ ^claude/bucket-.+-[0-9]+$ ]]; }
+# the same way and was kept as a bucket after #3410. With BUCKET_REPO set
+# (run sets it from GITHUB_REPOSITORY), <repo> must be this repository's
+# name, so a worker named `claude/bucket-prune-2` is not one either.
+is_bucket() {
+  local repo=${BUCKET_REPO:-}
+  if [ -n "$repo" ]; then
+    repo=${repo//./\\.}
+    [[ $1 =~ ^claude/bucket-${repo}-[0-9]+$ ]]
+  else
+    [[ $1 =~ ^claude/bucket-.+-[0-9]+$ ]]
+  fi
+}
 
 is_ancestor() { git merge-base --is-ancestor "$1" "$2"; }
 
@@ -130,6 +140,14 @@ run() {
   local merged head_ref head_sha cross merge_sha
   read -r merged head_ref head_sha cross merge_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
     --jq '"\(.merged) \(.head.ref) \(.head.sha) \(.head.repo.full_name != .base.repo.full_name) \(.merge_commit_sha)"')
+  BUCKET_REPO=${GITHUB_REPOSITORY##*/}
+  export BUCKET_REPO
+  # The workflow's filter can only test the prefix: a merged PR from a
+  # branch that merely starts like a bucket's is not one, and not an error.
+  if [ "${GITHUB_EVENT_NAME:-}" = pull_request ] && [ "$merged" = true ] && ! is_bucket "$head_ref"; then
+    echo "::notice::#$PR's head $head_ref is not a bucket (claude/bucket-$BUCKET_REPO-<n>); nothing to prune."
+    exit 0
+  fi
   if [ "$merged" != true ] || [ "$cross" != false ] || ! is_bucket "$head_ref"; then
     echo "::error::#$PR is not a merged bucket PR from this repository (merged=$merged, head=$head_ref)." >&2
     exit 1
