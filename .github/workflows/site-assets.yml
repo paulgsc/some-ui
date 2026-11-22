@@ -16,8 +16,11 @@ on:
       - "packages/video-render/**"
       - ".github/workflows/site-assets.yml"
   workflow_dispatch:
-  # Twice a month, so the newest of each kind never outlives its 30 days
-  # while nothing it is made from changes.
+  # Twice a month, so while these runs succeed the newest of each kind
+  # outlives no 30 days even when nothing it is made from changes. A month
+  # of failed runs, or GitHub pausing an idle repository's schedules, lets
+  # it lapse: the landing then draws placeholders, and pages.yml's summary
+  # lists what it found.
   schedule:
     - cron: "41 5 3,17 * *"
 

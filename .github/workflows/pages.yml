@@ -204,7 +204,7 @@ jobs:
               --jq ".workflow_runs[]
                     | select(.head_repository.id == .repository.id)
                     | select(.head_branch == \"main\")
-                    | select(.event as \$e | \"$events\" | split(\",\") | index(\$e))
+                    | select(.event as \$e | any(\"$events\" | split(\",\")[]; . == \$e))
                     | .id" |
             while read -r run; do
               gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" \
