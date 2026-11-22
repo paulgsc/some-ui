@@ -307,17 +307,28 @@ test.describe("the Pages build", () => {
     })
     const seen = watch(context)
 
-    // The landing at the root is static: it loads, and asks nothing of
-    // another origin either (`seen`, below).
+    const collect = async (): Promise<void> => {
+      violations.push(
+        ...((await page.evaluate(() => window.__policyViolations)) ?? [])
+      )
+    }
+    // Anything that runs: a script element that is not JSON-LD data.
+    const scripts = page.locator('script:not([type="application/ld+json"])')
+
+    // The landing at the root is static: it loads, runs nothing, and asks
+    // nothing of another origin either (`seen`, below).
     await page.goto(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toBeVisible()
+    await expect(scripts).toHaveCount(0)
+    await collect()
 
     // The résumé is static too (C1055): every version's page is there whole,
     // with no script.
     for (const version of ["", "qa/"]) {
       await page.goto(`${app().origin}${BASE}resume/${version}`)
       await expect(page.locator("main h1, main h2").first()).toBeVisible()
-      await expect(page.locator("script:not([type])")).toHaveCount(0)
+      await expect(scripts).toHaveCount(0)
+      await collect()
     }
 
     // The authorship record is the site's one script: it draws the record its
@@ -325,14 +336,13 @@ test.describe("the Pages build", () => {
     await page.goto(`${app().origin}${BASE}authorship?r=AB`)
     await page.waitForLoadState("networkidle")
     await expect(page.locator("#record")).not.toBeEmpty()
-    violations.push(
-      ...((await page.evaluate(() => window.__policyViolations)) ?? [])
-    )
+    await collect()
 
     // A page the public site doesn't have answers its static 404.html.
     await page.goto(`${app().origin}${BASE}app`)
     await expect(page.locator("h1")).toHaveText(/\S/)
-    await expect(page.locator("script")).toHaveCount(0)
+    await expect(scripts).toHaveCount(0)
+    await collect()
 
     expect(seen.filter((line) => !line.includes(app().origin))).toEqual([])
     expect(violations).toEqual([])

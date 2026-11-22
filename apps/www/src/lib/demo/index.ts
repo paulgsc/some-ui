@@ -1,6 +1,6 @@
 /**
  * The sample a viewer's study screens start from (CLAUDE.md, "A viewer tries,
- * and nothing is kept"): on the Pages build the page's storage is an
+ * and nothing is kept"): in a viewer build the page's storage is an
  * in-memory copy (`./viewer-storage`), and this seeds it with a few drafts. A
  * viewer can compose, edit and play; a reload starts over. Seeded from
  * `main.tsx`, which loads the activity registry anyway.
@@ -39,7 +39,7 @@ export function demoSessions(): Array<SessionRecord> {
   })
 }
 
-/** On the Pages build, gives a viewer's fresh storage its sample drafts. */
+/** In a viewer build, gives a viewer's fresh storage its sample drafts. */
 export function seedDemo(): void {
   if (VIEWER_BUILD) keepSessions(browserLocalStorage, demoSessions())
 }

@@ -281,6 +281,9 @@ function readSitePages(): ReadonlyArray<SitePage> {
   return parsed
 }
 
+const HEAD_MARKER = "<!--site:head-->"
+const BODY_MARKER = "<!--site:body-->"
+
 function publicSite(): Plugin {
   let base = "/"
   return {
@@ -300,14 +303,25 @@ function publicSite(): Plugin {
           this.error(`the Pages build has no ${source}`)
         }
         delete bundle[source]
+        const html = template.source
         for (const page of pages.filter((p) => p.template === kind)) {
+          // A template that has lost a marker would ship the page blank.
+          for (const [marker, fill] of [
+            [HEAD_MARKER, page.head],
+            [BODY_MARKER, page.body],
+          ] as const) {
+            if (fill !== "" && !html.includes(marker)) {
+              this.error(`${source} has no ${marker} for ${page.file}`)
+            }
+          }
+          // Functions, so a `$` in the résumé's text is written as it is.
           this.emitFile({
             type: "asset",
             fileName: page.file,
-            source: template.source
-              .replace("<!--site:head-->", page.head)
-              .replace("<!--site:body-->", page.body)
-              .replaceAll(SITE_BASE, base),
+            source: html
+              .replace(HEAD_MARKER, () => page.head)
+              .replace(BODY_MARKER, () => page.body)
+              .replaceAll(SITE_BASE, () => base),
           })
         }
       }

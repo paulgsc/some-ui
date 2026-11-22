@@ -1,5 +1,5 @@
 /**
- * On the Pages build, the page's `localStorage` and `sessionStorage` are
+ * In a viewer build (the capture build Snips photographs; C1055), the page's `localStorage` and `sessionStorage` are
  * in-memory copies (CLAUDE.md, "A viewer tries, and nothing is kept"): every
  * store, in www and in the activity packages alike, reads and writes them as
  * before, and a reload starts over. Imported first by `main.tsx`, so no

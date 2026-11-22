@@ -78,10 +78,15 @@ describe("renderResumePages", () => {
     const [page] = renderResumePages([
       {
         ...versions[0],
-        data: { ...resumeData.backend, label: "</script><b>x" },
+        data: {
+          ...resumeData.backend,
+          label: "</script><b>x",
+          profile: { ...resumeData.backend.profile, name: "</script><b>y" },
+        },
       },
     ])
-    expect(page.head).not.toContain("</script><b>")
+    expect(page.head).not.toMatch(/<\/script><b>/)
+    expect(page.head).toContain("\\u003c/script>\\u003cb>y")
     expect(page.body).toContain("&lt;/script&gt;&lt;b&gt;x")
   })
 })

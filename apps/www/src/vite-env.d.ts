@@ -30,9 +30,9 @@ interface ImportMetaEnv {
   readonly VITE_DEVICE_BACKEND?: "true"
   /**
    * `"true"` in the public site's build only (vite.config.ts `define`, the
-   * `pages` profile; C1055). Read inline where the Pages bundle must drop a
-   * branch, as `VITE_DEVICE_BACKEND` is; `PAGES_SITE` (`@/lib/build-profile`)
-   * elsewhere.
+   * `pages` profile; C1055). Read inline by the web door
+   * (`@/lib/web-surface`), as `VITE_DEVICE_BACKEND` is, so the Pages bundle
+   * drops every branch but the authorship record's.
    */
   readonly VITE_PAGES_SITE?: "true" | ""
 
