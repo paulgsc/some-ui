@@ -20,6 +20,8 @@ import { lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { createElement } from "react"
 import { resumeData, ResumeDocument } from "@some-ui/resume"
+import { SESSION_THEMES } from "@some-ui/styles/theme/registry"
+import { sessionColours } from "@some-ui/styles/theme/sources"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { MediaSize } from "./src/landing/media.ts"
@@ -37,6 +39,7 @@ import {
   renderLandingHead,
 } from "./src/landing/render.ts"
 import { SHOW, showFor } from "./src/landing/show.ts"
+import { landingThemes } from "./src/landing/themes.ts"
 import type { ResumeComposition } from "./src/lib/resume-files.ts"
 import {
   DEFAULT_RESUME_COMPOSITION,
@@ -105,6 +108,10 @@ if (drafts > 0) {
   )
 }
 
+// Every session theme the repo offers, its colours read from
+// @some-ui/styles' own CSS (C1184), so the landing keeps no palette.
+const themes = landingThemes(SESSION_THEMES, sessionColours)
+
 const media: LandingMedia = new Map(
   landingMediaKeys(undefined, episodes).flatMap((key) => {
     const found = mediaFor(key)
@@ -116,13 +123,14 @@ const pages: ReadonlyArray<SitePage> = [
   {
     file: "index.html",
     template: "landing",
-    head: renderLandingHead(undefined, episodes),
+    head: renderLandingHead(undefined, episodes, themes),
     body: renderLanding(
       resumeData.fullstack,
       mochiSvg(),
       undefined,
       media,
-      episodes
+      episodes,
+      themes
     ),
   },
   ...renderResumePages(versions),

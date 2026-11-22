@@ -15,6 +15,8 @@ import type { MediaSize } from "./media.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
 import type { ResolvedEpisode, ResolvedFace } from "./show.ts"
 import { showMediaKeys } from "./show.ts"
+import type { LandingTheme } from "./themes.ts"
+import { themeCss, themePicker } from "./themes.ts"
 import type { Timeline, Track } from "./timeline.ts"
 import { EPISODE_TURN_S, num, showTimeline, tracksOf } from "./timeline.ts"
 import type { GapWords, LandingWords } from "./words.ts"
@@ -310,21 +312,27 @@ const role = (title: string, when: string, body: string): string => `
           </div>`
 
 /**
- * The page's `<head>`: its title, description and canonical address, and
- * the show's tracks (`showCss`).
+ * The page's `<head>`: its title, description and canonical address, its
+ * colours from the repo's themes (`themeCss`), and the show's tracks
+ * (`showCss`).
  */
 export function renderLandingHead(
   words: LandingWords = LANDING_WORDS,
-  episodes: ReadonlyArray<ResolvedEpisode> = []
+  episodes: ReadonlyArray<ResolvedEpisode> = [],
+  themes: ReadonlyArray<LandingTheme> = []
 ): string {
+  const css = [
+    ...(themes.length === 0 ? [] : [themeCss(themes)]),
+    ...(episodes.length === 0 ? [] : [showCss(showTimeline(episodes))]),
+  ]
   return `<title>${e(words.title)}</title>
     <meta name="description" content="${e(words.description)}" />
     <link rel="canonical" href="${SITE_URL}" />${
-      episodes.length === 0
+      css.length === 0
         ? ""
         : `
     <style>
-      ${showCss(showTimeline(episodes))}
+      ${css.join("\n      ")}
     </style>`
     }`
 }
@@ -332,14 +340,16 @@ export function renderLandingHead(
 /**
  * The page's `<body>` content, from one résumé version (its profile, roles,
  * dates and education), the landing's words, the keys of the media the
- * build carries, and the show (`show.ts`, resolved).
+ * build carries, the show (`show.ts`, resolved), and the themes a reader
+ * can pick (`themes.ts`).
  */
 export function renderLanding(
   resume: ResumeData,
   mochiSvg: string,
   words: LandingWords = LANDING_WORDS,
   media: LandingMedia = new Map(),
-  episodes: ReadonlyArray<ResolvedEpisode> = []
+  episodes: ReadonlyArray<ResolvedEpisode> = [],
+  themes: ReadonlyArray<LandingTheme> = []
 ): string {
   const { profile } = resume
   const where = profile.location === null ? "" : ` · ${profile.location}`
@@ -378,7 +388,7 @@ export function renderLanding(
             ${link(profile.email, `mailto:${profile.email}`)}
             ${link(profile.github, `https://${profile.github}`)}
           </div>
-        </div>
+        </div>${themes.length === 0 ? "" : `\n        ${themePicker(themes, words, e)}`}
       </div>
     </header>
     <main>

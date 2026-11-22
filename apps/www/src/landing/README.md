@@ -19,12 +19,20 @@ project each. Each episode is one to four scenes, and each scene is some copy an
 - **Copy.** A scene's copy is a chapter of the episode's walkthrough
   (`apps/www/tests/walk/jobs-walkthrough.json`,
   `packages/video-motion/walks/home-server.json`), or its own words where there is none,
-  marked `draft` until the owner has read them.
+  marked `draft` until the owner has read them. A draft shows only in a preview
+  (`SITE_SHOW_DRAFTS=1`), never on Pages; agreeing one sets its `draft` to false.
 - **Timing.** `timeline.ts` lays the whole show on one clock: copy streams in, then the
   cubes turn.
 - **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the two producer
   jobs: each still copied from a walk's screens, each cut taken silent from a rendered
   video by shot. A face the build doesn't have shows its title card.
+
+## Themes
+
+The landing wears the repo's session themes (C1184): `themes.ts` takes each one's colours
+from `@some-ui/styles` when the site is built, and the page names no colour of its own.
+The device's light or dark setting picks Mochi or Mochi Night, and the header's "Theme"
+picker (radios, no script) tries any other; the page keeps nothing about the choice.
 
 ## Previewing a branch on your machine
 

@@ -11,18 +11,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!--site:head-->
     <style>
+      /* The colours are a theme's (C1184): render.ts writes each session
+         theme's roles into the head (themes.ts), the device's by default.
+         Nothing here names a colour of its own; what is drawn mixes the
+         theme's. */
       :root {
-        --fg: #2a2118;
-        --muted: #6e604f;
-        --line: #eadfcd;
-        --accent: #a35a0b;
-        --bg: #fdf8f0;
-        --card: #fff;
-        --stage: #f3e4cc;
+        --line: color-mix(in oklab, var(--fg) 14%, var(--bg));
       }
       * {
         box-sizing: border-box;
@@ -94,7 +92,7 @@
       }
       .btn {
         background: var(--accent);
-        color: #fff;
+        color: var(--accent-fg);
         padding: 0.45rem 1rem;
         border-radius: 6px;
         text-decoration: none;
@@ -164,7 +162,7 @@
         place-items: center;
         padding: 18px;
         text-align: center;
-        color: #f3e4cc;
+        color: var(--screen-fg);
         font-size: 1.3rem;
         font-weight: 600;
         line-height: 1.2;
@@ -180,7 +178,7 @@
         height: 100%;
         object-fit: contain;
         display: block;
-        background: #111217;
+        background: var(--screen);
         pointer-events: none;
       }
       /* A card's words, below its picture. */
@@ -234,7 +232,7 @@
         background: var(--stage);
       }
       .screen {
-        background: #111217;
+        background: var(--screen);
       }
       /* WIDE_MOTION: the stage. The copy block (an episode a face, about Y)
          beside the episode's pair of cubes (a scene a face, about X), the
@@ -412,12 +410,19 @@
         z-index: 1;
         margin: 0;
         font-size: 0.7rem;
-        background: rgba(42, 33, 24, 0.82);
-        color: #fff;
+        background: color-mix(in oklab, var(--fg) 85%, transparent);
+        color: var(--bg);
         padding: 2px 8px;
         border-radius: 999px;
       }
+      /* Page Filter's drawing depicts a web page, white as it comes and
+         dark once filtered, and the part no extension reaches staying
+         white: the subject's own colours, not a theme's (C1184). */
       .drawing--filter {
+        --page-white: oklch(98.5% 0 0deg);
+        --page-edge: oklch(88% 0 0deg);
+        --page-dark: oklch(23% 0.01 260deg);
+        --page-mark: oklch(78% 0.15 70deg);
         display: grid;
         grid-template-rows: 1fr 1fr;
       }
@@ -425,10 +430,10 @@
         position: relative;
       }
       .drawing--filter .light {
-        background: #fafafa;
+        background: var(--page-white);
       }
       .drawing--filter .dark {
-        background: #1b1d22;
+        background: var(--page-dark);
       }
       .drawing--filter .part {
         position: absolute;
@@ -437,14 +442,14 @@
         width: 40%;
         height: 56%;
         border-radius: 6px;
-        background: #fff;
-        border: 1px solid #ddd;
+        background: var(--page-white);
+        border: 1px solid var(--page-edge);
       }
       .drawing--filter .part.white {
-        border: 3px solid #f2a33a;
+        border: 3px solid var(--page-mark);
       }
       .drawing--cores {
-        background: #111217;
+        background: var(--screen);
         padding: 18px 16px 36px;
       }
       .drawing--cores svg {
@@ -453,17 +458,78 @@
         display: block;
       }
       .cores-line {
-        stroke: #888;
+        stroke: color-mix(in oklab, var(--screen-fg) 55%, var(--screen));
         stroke-dasharray: 5 5;
         fill: none;
       }
       .busy {
-        fill: rgba(50, 116, 217, 0.4);
-        stroke: #5794f2;
+        fill: color-mix(in oklab, var(--chart-b) 40%, transparent);
+        stroke: var(--chart-b);
         stroke-width: 2;
       }
       .waiting {
-        fill: rgba(224, 117, 45, 0.6);
+        fill: color-mix(in oklab, var(--chart-a) 60%, transparent);
+      }
+      /* The theme picker (C1184): a disclosure in the header's corner, its
+         radios applied by the head's :has() rules, so no script. */
+      .themes {
+        align-self: flex-start;
+        margin-left: auto;
+        position: relative;
+        font-size: 0.88rem;
+      }
+      .themes summary {
+        cursor: pointer;
+        color: var(--muted);
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+      }
+      .themes summary:focus-visible,
+      .themes input:focus-visible + .swatch,
+      .themes input:focus-visible ~ span {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .themes fieldset {
+        position: absolute;
+        right: 0;
+        z-index: 2;
+        margin: 0.3rem 0 0;
+        padding: 0.4rem 0.6rem;
+        min-width: 13rem;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--card);
+        box-shadow: 0 6px 24px color-mix(in oklab, var(--fg) 18%, transparent);
+      }
+      .themes legend {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+      .themes label {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.25rem 0;
+        cursor: pointer;
+      }
+      .themes input {
+        accent-color: var(--accent);
+        margin: 0;
+      }
+      .swatch {
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 50%;
+        background: linear-gradient(
+          135deg,
+          var(--sw-bg) 0 50%,
+          var(--sw-fg) 50% 100%
+        );
+        box-shadow: 0 0 0 1px var(--line);
       }
       h2 {
         font-size: 0.85rem;

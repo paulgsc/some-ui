@@ -37,6 +37,9 @@ export type LandingWords = {
   readonly independentNote: string
   readonly skills: string
   readonly footerKeeps: string
+  /** The theme picker's name, and its first choice: the device's own theme (C1184). */
+  readonly theme: string
+  readonly themeDevice: string
   readonly gaps: ReadonlyArray<GapWords>
 }
 
@@ -58,6 +61,8 @@ export const LANDING_WORDS: LandingWords = {
   skills:
     "Rust, TypeScript, React, Node.js, SQL, Python, Axum, Tokio, Redis, NATS, Docker, GitHub Actions, Grafana, Prometheus, Vitest, Playwright",
   footerKeeps: "This page keeps nothing about you.",
+  theme: "Theme",
+  themeDevice: "As your device is set",
   gaps: [
     {
       id: "page-filter",

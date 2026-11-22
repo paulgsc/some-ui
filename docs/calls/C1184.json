@@ -1,0 +1,20 @@
+{
+  "id": "C1184",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/landing/themes.ts",
+    "apps/www/src/landing/render.ts",
+    "apps/www/landing/index.html",
+    "apps/www/render-public-site.ts"
+  ],
+  "chose": "The landing wears the repo's own session themes, as the owner asked after previewing the show (\"we're definitely going to be using our themes, right? So it's definitely going to incorporate the various themes.\"). Every theme in @some-ui/styles' SESSION_THEMES is resolved from that package's CSS at build time (sessionColours), and the page keeps no palette of its own: its colours are the themes' roles, and what it draws mixes them. The reader's device picks the brand's two (Mochi, Mochi Night); a picker in the header's corner, a disclosure of radios applied with :has(), lets a reader try any other, with no script, and the page keeps nothing about the choice. A screen where a clip plays is the theme's darkest ground (its ink on a light theme, its background on a dark one). Page Filter's drawing keeps its subject's own colours, a white page and a dark one, since it depicts a web page and not the site. The résumé and authorship pages keep their own templates for now.",
+  "options": [
+    "every session theme, the device's by default, a picker with no script",
+    "the device's light and dark brand themes only, no picker",
+    "a theme chosen by the owner at build time"
+  ],
+  "gray": "Which themes a viewer sees, whether they may choose, and what a screen's ground is are on the screen; no check or earlier call settles them.",
+  "undo": "Drop themes.ts and the themes argument of renderLanding and renderLandingHead, and give landing/index.html's :root a palette again.",
+  "refs": ["#3401", "#3436"]
+}
