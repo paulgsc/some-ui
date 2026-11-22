@@ -76,3 +76,19 @@ Other stills taken and not used yet: `pr-3376-checks.png` (workflows collapsed, 
 - **#3376.** By `cls.py`'s rules, 14.2 of 33.1 min couldn't fail, not about 17.
 - **#3377.** 17.6 min couldn't fail on its first run. With the whole 39.2-min
   update-branch rerun added, that's 56.8 min, which matches "about 55".
+
+## Round 2 (2026-11-22): all 16 scenes, rendered
+
+The blockers above are built on their own branches (`claude/cards-chapter-once`,
+`claude/cards-bars`, `claude/screens-pages`, `claude/cards-check-prepare`). Merged
+together locally, they render the whole essay, silent (`--voices none`), 5:52.
+
+| Path | What |
+| --- | --- |
+| `full/merge-queue-2026-11-21.json` | The cut list: cheat-sheet v5, each chapter's line on its first scene only (C1027), the five GitHub pages as `{"from": "pages"}` screens, the three charts as `bars` cards. K1 now states the merge-queue limit as fact (the owner's check, #3387). |
+| `full/description.txt` | Its chapters, each once. |
+| `stills-full/*.png` | One frame per scene at its end; `K1-zoom.png` mid-scene, zoomed to "Who can use this feature?". |
+| `pages/` | The pages as `record:pages` took them, logged out (`list.json` is its input). |
+| `testing-recon/` | Item 5, staged for the coordinator to push to paulgsc/testing: `2026-11-21-ci-audit/` and the commit as a patch. The raw pulls (2.3 MB) are cut to a derived table, since testing's guard caps JSON at 256 KB a file and the tree at 4 MB; the derived files reproduce every headline number. |
+
+The stamp names `paulgsc/testing@a5ec27e`, the staged commit; it becomes true once it's pushed.

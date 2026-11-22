@@ -1,0 +1,85 @@
+{
+  "schema": "some-ui.pages/1",
+  "pages": [
+    {
+      "url": "https://github.com/paulgsc/some-ui/pull/3376/files",
+      "capturedAt": "2026-11-21T23:46:47.269Z",
+      "title": "chore(assurance): place stage_want’s store; record C1013–C1015 (server#1098 pair) by paulgsc · Pull Request #3376 · paulgsc/some-ui · GitHub",
+      "width": 2880,
+      "height": 1800,
+      "scale": 2,
+      "regions": [],
+      "image": {
+        "name": "github-com-paulgsc-some-ui-pull-3376-files-817f6b982b72.png",
+        "bytes": 417859,
+        "sha256": "817f6b982b7201f6ea1cddb43c7916b4969547f9dfe449eba84292c36e6832f8"
+      }
+    },
+    {
+      "url": "https://github.com/paulgsc/some-ui/actions/runs/44944305421",
+      "capturedAt": "2026-11-21T23:46:50.141Z",
+      "title": "chore(assurance): place stage_want’s store; record C1013–C1015 (server#1098 pair) · paulgsc/some-ui@6eafd64 · GitHub",
+      "width": 2880,
+      "height": 1800,
+      "scale": 2,
+      "regions": [],
+      "image": {
+        "name": "github-com-paulgsc-some-ui-actions-runs-44944305421-f71fcc9cde9a.png",
+        "bytes": 338831,
+        "sha256": "f71fcc9cde9a5c82f22cb3af0662066feedcbe30fbf38b2b5fa59820aaf9f5a2"
+      }
+    },
+    {
+      "url": "https://github.com/paulgsc/some-ui/actions?query=event%3Apull_request",
+      "capturedAt": "2026-11-21T23:46:53.350Z",
+      "title": "All workflows · GitHub",
+      "width": 2880,
+      "height": 1800,
+      "scale": 2,
+      "regions": [],
+      "image": {
+        "name": "github-com-paulgsc-some-ui-actions-46008fa356ee.png",
+        "bytes": 546060,
+        "sha256": "46008fa356ee1d54fb612fdcfb1536e18c04d451cabca90c1f50f3ee55247667"
+      }
+    },
+    {
+      "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue",
+      "capturedAt": "2026-11-21T23:46:56.081Z",
+      "title": "Managing a merge queue - GitHub Docs",
+      "width": 2880,
+      "height": 1800,
+      "scale": 2,
+      "regions": [
+        {
+          "name": "who-can-use",
+          "box": {
+            "x": 350,
+            "y": 286.59375,
+            "width": 740,
+            "height": 214
+          }
+        }
+      ],
+      "image": {
+        "name": "docs-github-com-en-repositories-configuring-branches-and-merges-in-your-repository-configuring-p-011b413d9458.png",
+        "bytes": 475856,
+        "sha256": "011b413d9458d5ff155aadcc3aac02800b71b45a1a3852ee61b57c3d4008f13d"
+      }
+    },
+    {
+      "url": "https://github.com/paulgsc/server/pull/1098/checks",
+      "capturedAt": "2026-11-21T23:46:59.869Z",
+      "title": "feat(stage): what waits on a note puts it first in the transcriber's queue by paulgsc · Pull Request #1098 · paulgsc/server",
+      "width": 2880,
+      "height": 1800,
+      "scale": 2,
+      "regions": [],
+      "image": {
+        "name": "github-com-paulgsc-server-pull-1098-checks-55f09f1c59d9.png",
+        "bytes": 226710,
+        "sha256": "55f09f1c59d9ab6a564b0cd989c77f83bb3a30c721f369fda8a30870f4f4f580"
+      }
+    }
+  ]
+}

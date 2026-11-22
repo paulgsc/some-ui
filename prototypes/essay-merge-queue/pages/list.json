@@ -1,0 +1,8 @@
+{"pages": [
+ {"url": "https://github.com/paulgsc/some-ui/pull/3376/files"},
+ {"url": "https://github.com/paulgsc/some-ui/actions/runs/44944305421"},
+ {"url": "https://github.com/paulgsc/some-ui/actions?query=event%3Apull_request"},
+ {"url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue",
+  "parts": {"who-can-use": "text=Who can use this feature? >> xpath=../../.."}},
+ {"url": "https://github.com/paulgsc/server/pull/1098/checks"}
+]}
