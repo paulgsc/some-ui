@@ -93,6 +93,22 @@ describe("a train", () => {
     expect(train("G3", facts, cleared).stops[0]?.state).toBe("passed")
   })
 
+  it("draws a leg further down that is already done as passed", () => {
+    const closed = factsWith({
+      asks: new Map([
+        [askKey({ repo: "some-ui", number: 3433 }), { ...ask, open: false }],
+      ]),
+    })
+    const essay = train("G3", closed)
+    expect(essay.stops.map((s) => s.state)).toEqual([
+      "here",
+      "passed",
+      "ahead",
+      "ahead",
+    ])
+    expect(essay.stops[1]).toMatchObject({ holder: "you", now: W.now.done })
+  })
+
   it("counts an ask closed as every step of it done", () => {
     const closed = factsWith({
       asks: new Map([

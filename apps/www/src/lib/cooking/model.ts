@@ -305,7 +305,8 @@ export function trainsOf(run: RunFile, facts: Facts): Array<Train> {
       }
       case "goal": {
         const other = place(leg.goal)
-        const at = other.stops.at(other.current)
+        // Once it has arrived, the one who held its last leg.
+        const at = other.stops.at(other.arrived ? -2 : other.current)
         return plain(
           W.waitsOn(other.title),
           at?.holder ?? "claude",
@@ -331,8 +332,14 @@ export function trainsOf(run: RunFile, facts: Facts): Array<Train> {
     const readings = goal.legs.map((leg, at) => reading(goal, leg, at))
     const first = readings.findIndex((r) => !r.done)
     const current = first === -1 ? readings.length : first
+    // A leg further down the line that is already done (a train it waits on
+    // that has arrived) draws as passed: the line says what is left.
     const state = (at: number): StopState =>
-      at < current ? "passed" : at === current ? "here" : "ahead"
+      at < current || readings[at]?.done === true
+        ? "passed"
+        : at === current
+          ? "here"
+          : "ahead"
     const stops: Array<Stop> = [
       ...readings.map((r, at) => ({
         leg: goal.legs[at]?.leg ?? "home",
