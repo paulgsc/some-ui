@@ -2,7 +2,8 @@
  * What the week's screens keep on this phone (RR13), each in one
  * `localStorage` record read and written only through core-utils'
  * `openKept` and `writeKept` (KR1), so a value that can't be read whole is
- * moved aside, never written over:
+ * moved aside, never written over (the draft and the weeks sent through
+ * `@some-ui/voice-capture`'s `keptDrafts` and `keptRecords`):
  *
  * - **A draft per week** (`weekDrafts`): the bundle's draft of the week by
  *   its id, so a week left unsent stays as it was when the next one opens.
@@ -14,7 +15,16 @@
  * - **An error pasted** (`pasteStores`, `./paste`): the one being written in
  *   each week, kept as it is typed, and those kept, which only grow. Each
  *   one kept goes home (`lib/kept-home`, RR14), and stays here too.
+ * - **The owner's picks at each fork** (`weekPicks`, RR29) and **each step
+ *   marked done or skipped** (`weekMarks`, RR25), every week's in one list
+ *   each, which only grow: a pick or a mark is appended, never written over
+ *   (`lib/decisions`, `lib/flow`).
+ * - **Each academy exercise ticked** as worked at the desk (`weekTicks`,
+ *   RR25, C673), every week's in one list, which only grows (`lib/flow`'s
+ *   `tick`).
  */
+import type { PickMade } from "@rust-rounds/lib/decisions"
+import type { ExerciseTick, StepMark } from "@rust-rounds/lib/flow"
 import { WEEK_SENT_KEY } from "@rust-rounds/lib/play/keys"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -28,6 +38,7 @@ import type {
   BundleDrafts,
   BundleRecords,
 } from "@some-ui/voice-capture"
+import { keptDrafts, keptRecords } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import type { WeekSent } from "./spec"
@@ -36,92 +47,61 @@ const DRAFTS_KEY = "some-ui:rust-rounds.week-drafts"
 const HEARD_KEY = "some-ui:rust-rounds.week-heard"
 const PASTE_DRAFTS_KEY = "some-ui:rust-rounds.week-paste-drafts"
 const PASTES_KEY = "some-ui:rust-rounds.week-pastes"
-
-const DraftSchema: z.ZodType<BundleDraft> = z.object({
-  id: z.string(),
-  at: z.string(),
-  typed: z.record(z.string(), z.string()),
-  beside: z.record(z.string(), z.string()).optional(),
-  unheard: z.record(z.string(), z.string()).optional(),
-  overtaken: z.record(z.string(), z.array(z.string())).optional(),
-  later: z.array(z.string()),
-})
-
-const readDrafts = readJson((value) => {
-  const parsed = z.record(z.string(), DraftSchema).safeParse(value)
-  return parsed.success ? parsed.data : null
-})
+const PICKS_KEY = "some-ui:rust-rounds.week-picks"
+const MARKS_KEY = "some-ui:rust-rounds.week-marks"
+const TICKS_KEY = "some-ui:rust-rounds.week-ticks"
 
 /** The draft of week `week`, among every week's in `storage`. */
-export function weekDrafts(
+export const weekDrafts = (
   storage: KeyedStorage | null,
   week: string
-): BundleDrafts<BundleDraft> {
-  const open = (): {
-    value: Readonly<Record<string, BundleDraft>>
-    writable: boolean
-  } => openKept(storage, DRAFTS_KEY, readDrafts, {})
-  return {
-    read: (): BundleDraft | null | undefined => {
-      const opened = open()
-      return opened.writable ? (opened.value[week] ?? null) : undefined
-    },
-    write: (draft): boolean => {
-      const opened = open()
-      if (!opened.writable) return false
-      const { [week]: _gone, ...others } = opened.value
-      const next = draft === null ? others : { ...others, [week]: draft }
-      return writeKept(storage, DRAFTS_KEY, next, readDrafts)
-    },
-  }
-}
+): BundleDrafts<BundleDraft> => keptDrafts(storage, DRAFTS_KEY, week)
 
 const SentSchema: z.ZodType<WeekSent> = z.object({
   week: z.string(),
   at: z.string(),
   answers: z.array(
-    z.object({ ticket: z.string(), take: z.string(), recordedAt: z.string() })
+    z.object({
+      ticket: z.string(),
+      point: z.number().int().positive().optional(),
+      take: z.string(),
+      recordedAt: z.string(),
+    })
   ),
   passed: z.array(z.string()),
+  verdicts: z
+    .array(
+      z.object({
+        ref: z.string(),
+        decision: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("option"), option: z.string() }),
+          z.object({ kind: z.literal("own") }),
+          z.object({ kind: z.literal("recommended-by-default") }),
+        ]),
+      })
+    )
+    .optional(),
+  opening: z
+    .array(
+      z.object({
+        n: z.number().int().positive(),
+        take: z.string(),
+        recordedAt: z.string(),
+        version: z.number().int().positive(),
+        ms: z.number().int().nonnegative(),
+      })
+    )
+    .optional(),
 })
 
-const readSent = readJson((value) => {
-  const parsed = z.array(SentSchema).safeParse(value)
-  return parsed.success ? parsed.data : null
-})
-
-/** Whether `next` keeps every week of `kept` as it was, in order. */
-const grows = (
-  kept: ReadonlyArray<WeekSent>,
-  next: ReadonlyArray<WeekSent>
-): boolean =>
-  next.length >= kept.length &&
-  kept.every(
-    (each, i) => canonicalJson(each) === canonicalJson(next[i] ?? null)
-  )
-
-/** The weeks sent from this phone, in `storage`. */
-export function weeksSent(
+/** The weeks sent from this phone, in `storage`, which only grow. */
+export const weeksSent = (
   storage: KeyedStorage | null
-): BundleRecords<WeekSent> {
-  const open = (): {
-    value: ReadonlyArray<WeekSent>
-    writable: boolean
-  } => openKept(storage, WEEK_SENT_KEY, readSent, [])
-  return {
-    list: (): ReadonlyArray<WeekSent> | null => {
-      const opened = open()
-      return opened.writable ? opened.value : null
-    },
-    keep: (change): ReadonlyArray<WeekSent> | null => {
-      const opened = open()
-      if (!opened.writable) return null
-      const next = change(opened.value)
-      if (!grows(opened.value, next)) return null
-      return writeKept(storage, WEEK_SENT_KEY, next, readSent) ? next : null
-    },
-  }
-}
+): BundleRecords<WeekSent> =>
+  keptRecords(storage, WEEK_SENT_KEY, (value) => {
+    const parsed = z.array(SentSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })
 
 const readHeard = readJson((value) => {
   const parsed = z.record(z.string(), z.string()).safeParse(value)
@@ -251,3 +231,68 @@ export function pasteStores(storage: KeyedStorage | null): PasteStores {
     },
   }
 }
+
+/** A kept record of week `week`'s. */
+type OfWeek<R> = R & { readonly week: string }
+
+/**
+ * Week `week`'s records among every week's kept: what `lib/decisions` and
+ * `lib/flow` read, since a ticket's id names it within its week only.
+ */
+export const ofWeek = <R>(
+  records: ReadonlyArray<OfWeek<R>>,
+  week: string
+): ReadonlyArray<OfWeek<R>> => records.filter((each) => each.week === week)
+
+const PickSchema: z.ZodType<OfWeek<PickMade>> = z.object({
+  week: z.string(),
+  ticket: z.string(),
+  fork: z.number().int().positive(),
+  pick: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("option"), option: z.string() }),
+    z.object({ kind: z.literal("own") }),
+  ]),
+  at: z.string(),
+})
+
+/** Every pick made at a fork on this phone, each week's, which only grow. */
+export const weekPicks = (
+  storage: KeyedStorage | null
+): BundleRecords<OfWeek<PickMade>> =>
+  keptRecords(storage, PICKS_KEY, (value) => {
+    const parsed = z.array(PickSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })
+
+const MarkSchema: z.ZodType<OfWeek<StepMark>> = z.object({
+  week: z.string(),
+  ticket: z.string(),
+  step: z.enum(["read", "academy", "voice", "opening"]),
+  mark: z.enum(["done", "skipped"]),
+  at: z.string(),
+})
+
+/** Every step marked done or skipped on this phone, each week's, which only grow. */
+export const weekMarks = (
+  storage: KeyedStorage | null
+): BundleRecords<OfWeek<StepMark>> =>
+  keptRecords(storage, MARKS_KEY, (value) => {
+    const parsed = z.array(MarkSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })
+
+const TickSchema: z.ZodType<OfWeek<ExerciseTick>> = z.object({
+  week: z.string(),
+  ticket: z.string(),
+  exercise: z.number().int().positive(),
+  at: z.string(),
+})
+
+/** Every academy exercise ticked on this phone, each week's, which only grow. */
+export const weekTicks = (
+  storage: KeyedStorage | null
+): BundleRecords<OfWeek<ExerciseTick>> =>
+  keptRecords(storage, TICKS_KEY, (value) => {
+    const parsed = z.array(TickSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })

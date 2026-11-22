@@ -33,6 +33,10 @@
  *   #2688): `rust-round`, the week and ticket as `<week>:<ticket>`, when
  *   taken, but only once its week is sent: until then it waits on the phone
  *   (`waits`), as a new idea's take does;
+ * - a take of the interview week (`lib/interview-week`'s `interviewDesk`,
+ *   IW5): `interview`, its line as IW1 names it (`<week>:<question>` for an
+ *   answer, `<week>:read:<card>` for a read), when taken, once its week is
+ *   sent, as a week's ticket does;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -93,7 +97,10 @@
  *   stores the room it makes or not (RM1, `lib/takes-desk/runtime.ts`),
  *   and the audio of each Rust Rounds note home holds (RR6),
  *   × every home state (held; waiting; unpaired; off the LAN, which the
- *   phone sees alike as not held); for Studio takes, × every
+ *   phone sees alike as not held; held only by the home of another
+ *   pairing, a re-paired or reset one, which it sees as not held either:
+ *   HP1, `lib/voice-home/model.ts`, which lets nothing go on that pairing's word; a game
+ *   bite's own stamp still says it is on home, #2955); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that
  *   Drive has it (said, not said, or not read) and the share sheet's
@@ -139,12 +146,14 @@ import { assertNever, localStorageOrNull } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
+import { spokenPartOfLine } from "@some-ui/video-render"
 import type { TakeKept } from "@some-ui/voice-capture"
 import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { interviewDesk } from "@/lib/interview-week"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -155,18 +164,26 @@ import type { LibraryTake } from "@/lib/library-takes"
 import { libraryTakesDesk } from "@/lib/library-takes"
 import {
   isSaving,
+  letGoDeletedReflections,
   onAudioSettled,
   reflectionAudio,
   reflectionNotesKept,
 } from "@/lib/reflection-voice"
 import type { RustRoundTake } from "@/lib/rust-rounds"
-import { rustRoundRef, rustRoundsDesk, rustWeekDesk } from "@/lib/rust-rounds"
+import {
+  isPointLine,
+  rustRoundRef,
+  rustRoundsDesk,
+  rustWeekDesk,
+} from "@/lib/rust-rounds"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes, sceneNotesKept } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
+import { takeConveyor } from "@/lib/take-conveyor"
+import type { Take as DeskTake } from "@/lib/takes-desk"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
@@ -175,6 +192,7 @@ import type {
   CopyPass,
   Unsendable,
   VoiceHomeState,
+  VoiceOf,
   VoiceOut,
 } from "@/lib/voice-home/model"
 import {
@@ -184,15 +202,20 @@ import {
   passWith,
   runEnd,
 } from "@/lib/voice-home/model"
+import type { PairingPort } from "@/lib/voice-home/runtime"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
 import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
-import { homeLink, paired } from "./index"
+import { homeLink, pairing } from "./index"
 import { lensEntriesHeld } from "./lens-record"
+import type { Pairing } from "./model"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
+import { onServes, servesNow } from "./serves-now"
 import { markSetAside } from "./set-aside"
+import { blockedOf, unanswered } from "./settle"
+import { sendStationMoves } from "./take-stations"
 import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
 
@@ -218,7 +241,8 @@ export function asideAt(kept: object | undefined): string | null | undefined {
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
   const { body } = reflection
-  if (body.kind !== "voice") return null
+  // One whose recording home deleted for good has none to send (HEARD4).
+  if (body.kind !== "voice" || body.deletedAt !== undefined) return null
   return {
     id: reflection.id,
     of: "reflection",
@@ -358,18 +382,19 @@ export function rustRoundNote(
 }
 
 /**
- * A take on a week's ticket (its `line` is `<week>:<ticket>`), as home is
- * told it: a Rust Rounds note named by its week and ticket.
+ * A week's take named by its line, as home is told it, said `of`: a Rust
+ * Rounds ticket's (`<week>:<ticket>`, RR13) or the interview week's
+ * (`<week>:<question>` or `<week>:read:<card>`, IW1). Its ref is its line.
  */
-export function rustWeekNote(take: RustRoundTake): VoiceOut {
-  return {
+export const lineNote =
+  (of: "rust-round" | "interview") =>
+  (take: DeskTake): VoiceOut => ({
     id: take.id,
-    of: "rust-round",
+    of,
     ref: take.line,
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
-  }
-}
+  })
 
 /**
  * A take on the desk of Studio's answers, as home is told it: a Studio note
@@ -389,13 +414,18 @@ export function ideaNote(take: IdeaTake): VoiceOut {
 /**
  * A take with no scene yet (ST32), as home is told it: a Studio note named
  * by its own id, so a scene can name it later (ST30). Home lists it as a
- * take (`GET /voice-notes/takes`) and deletes it from My data as one.
+ * take (`GET /voice-notes/takes`) and deletes it from My data as one. A
+ * spoken card's part read on the same desk (W5, `lib/studio-spoken`) is
+ * named by its part's line instead (`spoken:<card>.<part>`, C807), which
+ * home keeps as a take with no scene too.
  */
 export function libraryNote(take: LibraryTake): VoiceOut {
   return {
     id: take.id,
     of: "studio",
-    ref: refOf(`take:${take.id}`),
+    ref: refOf(
+      spokenPartOfLine(take.line) === null ? `take:${take.id}` : take.line
+    ),
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
   }
@@ -469,11 +499,14 @@ async function readSoundbites(): Promise<void> {
   if (kept === null) return
   const { store } = kept
   const bites = await store.list()
-  soundbites = bites.map((bite) => ({
-    note: soundbiteNote(bite),
-    audio: (): Promise<Blob | null> => store.audio(bite.id),
-    aside: asideAt(bite),
-  }))
+  // One whose recording home deleted for good has none to send (HEARD4).
+  soundbites = bites
+    .filter((bite) => bite.deletedAt === undefined)
+    .map((bite) => ({
+      note: soundbiteNote(bite),
+      audio: (): Promise<Blob | null> => store.audio(bite.id),
+      aside: asideAt(bite),
+    }))
   soundbitesFresh = true
   wasRead()
 }
@@ -642,9 +675,23 @@ function listed(
         ]
   })
   // RR13: only the takes of a week sent; one still waiting is not listed.
-  const week = rustWeekDesk.kept().map((take) => ({
-    note: rustWeekNote(take),
-    audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
+  // RR24: a take of one point waits too until home says it serves this
+  // build, since a home before the epoch refuses its ref, and a note
+  // refused is never sent again. So does a take of the opening's answer,
+  // `<week>:opening:<n>` (#3269), which reads as a point's line.
+  const pointsServed = servesNow() === "fits"
+  const week = rustWeekDesk
+    .kept()
+    .filter((take) => pointsServed || !isPointLine(take.line))
+    .map((take) => ({
+      note: lineNote("rust-round")(take),
+      audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
+      aside: asideAt(take),
+    }))
+  // IW5: only the takes of a week sent; one still waiting is not listed.
+  const interview = interviewDesk.kept().map((take) => ({
+    note: lineNote("interview")(take),
+    audio: (): Promise<Blob | null> => interviewDesk.audio(take.id),
     aside: asideAt(take),
   }))
   const ideas = ideaTakesDesk.kept().map((take) => ({
@@ -680,6 +727,7 @@ function listed(
     ...leetype,
     ...rust,
     ...week,
+    ...interview,
     ...ideas,
     ...bundled,
     ...resaid,
@@ -691,6 +739,10 @@ function listed(
 export type OnPhone = {
   readonly id: string
   readonly of: VoiceOut["of"]
+  /** What home is told it belongs to (`VoiceOut`'s `ref`); a note that can't go home yet, its line. */
+  readonly ref: string
+  /** A game bite's own fields; absent for every other kind. */
+  readonly fields?: VoiceOut["fields"]
   /** When it was recorded, ISO 8601. */
   readonly at: string
   readonly audio: () => Promise<Blob | null>
@@ -727,10 +779,12 @@ export async function recordingsOnPhone(): Promise<{
   const bites: ReadonlyArray<Candidate> =
     kept === null
       ? []
-      : (await kept.store.list()).map((bite) => ({
-          note: soundbiteNote(bite),
-          audio: (): Promise<Blob | null> => kept.store.audio(bite.id),
-        }))
+      : (await kept.store.list())
+          .filter((bite) => bite.deletedAt === undefined)
+          .map((bite) => ({
+            note: soundbiteNote(bite),
+            audio: (): Promise<Blob | null> => kept.store.audio(bite.id),
+          }))
   if (kept === null) unread.push("soundbite")
   const ref = rustRoundRef()
   const unnamed: ReadonlyArray<OnPhone> = rustRoundsDesk
@@ -739,6 +793,7 @@ export async function recordingsOnPhone(): Promise<{
     .map((take) => ({
       id: take.id,
       of: "rust-round",
+      ref: take.line,
       at: new Date(take.takenAt).toISOString(),
       audio: (): Promise<Blob | null> => rustRoundsDesk.audio(take.id),
     }))
@@ -746,6 +801,8 @@ export async function recordingsOnPhone(): Promise<{
     ...listed(takes, bites).map(({ note, audio }) => ({
       id: note.id,
       of: note.of,
+      ref: note.ref,
+      ...(note.fields === undefined ? {} : { fields: note.fields }),
       at: note.at,
       audio,
     })),
@@ -855,7 +912,7 @@ async function copyAll(): Promise<CopyPass> {
   oweMarks(all)
   settleMarks(all)
   for (const { note, audio } of all) {
-    if (!paired()) break
+    if (pairing().kind !== "paired") break
     if (home.settled(note.id)) continue
     try {
       const blob = await audio()
@@ -864,7 +921,7 @@ async function copyAll(): Promise<CopyPass> {
         continue
       }
       // An unpairing can land while the audio is read.
-      if (!paired()) break
+      if (pairing().kind !== "paired") break
       pass = passWith(pass, await home.copy(note, blob))
     } catch (error) {
       if (!failed) reported(error)
@@ -893,7 +950,8 @@ export const copyPasses = {
 
 /** One copy pass at a time; a change during one asks for one more after it. */
 function copySoon(): void {
-  if (!paired()) return
+  // Only once known paired; a pairing read later asks again (`changed`).
+  if (pairing().kind !== "paired") return
   if (copying !== null) {
     again = true
     return
@@ -919,6 +977,9 @@ function copySoon(): void {
 
 /** Home's word on Drive could not be read or acted on, to the native log. */
 function unheard(error: unknown): void {
+  // Home's silence, or a name or certificate that stopped the request, is
+  // the link's to tell, once a stretch (AW1, NA1).
+  if (unanswered(error) || blockedOf(error) !== null) return
   reportFailure({
     port: "voice notes (which takes Drive has)",
     error: {
@@ -963,8 +1024,9 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * whose said answers name notes that have just gone, each note left on an
  * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
  * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
- * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
- * the run in its exchange's place. A run that sent all it had still fails,
+ * home to make (`sendVideos`, ST33), whose takes name notes too, then each
+ * move of a Studio take along the conveyor (`sendStationMoves`, CONVEYOR1),
+ * which ends the run in its exchange's place. A run that sent all it had still fails,
  * saying why, if that pass left a note it could copy uncopied (`runEnd`,
  * LA14).
  */
@@ -972,15 +1034,22 @@ export async function sendVoice(
   send: HomeCall,
   at: { readonly pairing: string }
 ): Promise<HomeExchanged> {
+  phoneVoiceHome().follow(linkPairing)
   copySoon()
   const running = copying
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
   const home = phoneVoiceHome()
-  const exchanged = await exchangeVoice(home.keeping, send, {
-    letGo: studioKeeping() === null ? null : letGoDeleted,
-    heldBack: home.deletedHeldBack,
-  })
+  const exchanged = await exchangeVoice(
+    home.keeping,
+    send,
+    {
+      letGo: letGoDeleted,
+      ready: readyToLetGo,
+      heldBack: home.deletedHeldBack,
+    },
+    at.pairing
+  )
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
   const ideas = await sendIdeas(
@@ -1001,10 +1070,13 @@ export async function sendVoice(
   const marked = await markSetAside(marks, send)
   if (marked.kind !== "synced") return runEnd(pass, marked)
   // After the marks, so a video home won't take never holds them up.
-  return runEnd(
-    pass,
-    await sendVideos(phoneVideos(localStorageOrNull(), at.pairing), send)
+  const videos = await sendVideos(
+    phoneVideos(localStorageOrNull(), at.pairing),
+    send
   )
+  if (videos.kind !== "synced") return runEnd(pass, videos)
+  // Last, so a move home answers oddly never holds up what came before.
+  return runEnd(pass, await sendStationMoves(takeConveyor().port, send))
 }
 
 /** Home's held notes as a set, made again only when the list changes. */
@@ -1039,43 +1111,127 @@ export function voiceKept(id: string): TakeKept {
   const state = phoneVoiceHome().getSnapshot()
   if (kept?.from !== state) kept = { from: state, of: keptIn(state) }
   const where = kept.of(id)
-  return where.place === "going" && !paired() ? ON_PHONE : where
+  if (where.place !== "going") return where
+  // Going home only on a paired phone; on this phone, saying nothing of
+  // home, while the pairing record is read (PO1, #3157).
+  return GOING_UNDER[pairing().kind]
 }
 
 /**
- * Lets go of this phone's own copies of the notes home deleted for good
- * from My data (MY-DATA MD3, #2477), each named by home's receipt, and of
- * nothing else. Studio's recordings are the one kind My data can delete: a
- * take's audio leaves the phone whatever the owner's let-go choice, its
- * record staying in its shot (`@some-ui/soundbites`' `letGoDeletedTakes`),
- * and an idea answer's or a take with no scene leaves its desk, the take
- * staying listed (`letGoDeleted` on `lib/idea-takes`' two desks, #2579, and
- * on `lib/library-takes`'). A receipt is home's word
- * that it held the note, so once every store has let go, a copy still
- * waiting for an answer this phone never heard goes as a held one does,
- * and any set-aside mark still owed for one is dropped, since home holds
- * no note to mark now; until then the copy waits, so the voice run sends it
- * again and home's `deleted_for_good` brings it back here (LA8). Resolves
- * false when Studio's store isn't handed in, a desk couldn't store its
- * mark, or the write failed (that said to the native log); never rejects.
- * Its callers are `lib/my-data`'s delete, on home's receipt, and the voice
- * run (`sendVoice`), on home's `deleted_for_good`.
+ * Calls `listener` once the pairing record has been read, at once if it
+ * has: from then on `voiceKept` says no take's place is `unknown` (#3152).
+ * My data reads this phone's side again then, by itself. Returns the
+ * unsubscribe.
  */
-export async function letGoDeleted(
-  ids: ReadonlyArray<string>
-): Promise<boolean> {
-  const studio = studioKeeping()
-  const deleted = new Set(ids)
-  try {
-    const [, kit, bundle, resaid, library, week] = await Promise.all([
-      studio?.letGoDeletedTakes(deleted),
+export function whenPlacesKnown(listener: () => void): () => void {
+  const link = homeLink()
+  const known = (): boolean => pairing(link.getSnapshot()).kind !== "reading"
+  if (known()) {
+    listener()
+    return (): void => undefined
+  }
+  let heard = false
+  const stop = link.subscribe(() => {
+    if (heard || !known()) return
+    heard = true
+    stop()
+    listener()
+  })
+  return stop
+}
+
+/** Where a take waiting to go home is kept, by whether this phone is paired. */
+const GOING_UNDER: Readonly<Record<Pairing["kind"], TakeKept>> = {
+  paired: { place: "going" },
+  unpaired: ON_PHONE,
+  reading: { place: "unknown" },
+}
+
+/** Lets go of this phone's copies of one kind's notes that `deleted` names. */
+type LetsGoDeleted = (deleted: ReadonlySet<string>) => Promise<boolean>
+
+/**
+ * How this phone lets go of its own copy of each kind of note home deleted
+ * for good (LA19, HEARD4): each kind's stores, each saying what it keeps.
+ */
+const DELETED_LETS_GO: Readonly<Record<VoiceOf, LetsGoDeleted>> = {
+  studio: async (deleted) => {
+    const studio = studioKeeping()
+    if (studio === null) return false
+    const [, ...desks] = await Promise.all([
+      studio.letGoDeletedTakes(deleted),
       ideaTakesDesk.letGoDeleted(deleted),
       ideaBundleDesk.letGoDeleted(deleted),
       ideaRedoDesk.letGoDeleted(deleted),
       libraryTakesDesk.letGoDeleted(deleted),
-      rustWeekDesk.letGoDeleted(deleted),
     ])
-    const gone = studio !== null && kit && bundle && resaid && library && week
+    return desks.every(Boolean)
+  },
+  "rust-round": async (deleted) =>
+    (
+      await Promise.all([
+        rustRoundsDesk.letGoDeleted(deleted),
+        rustWeekDesk.letGoDeleted(deleted),
+      ])
+    ).every(Boolean),
+  interview: (deleted) => interviewDesk.letGoDeleted(deleted),
+  lens: (deleted) => lensTakesDesk.letGoDeleted(deleted),
+  leetype: (deleted) => leetypeTakesDesk.letGoDeleted(deleted),
+  reflection: (deleted) =>
+    Promise.resolve(letGoDeletedReflections([...deleted])),
+  jobs: (deleted) => Promise.resolve(phoneJobs().letGo(deleted)),
+  // A scene note goes whole, as home's word lets one go.
+  scene: (deleted) =>
+    Promise.resolve(
+      phoneSceneVoice().remove(
+        sceneNotes
+          .read()
+          .filter((note) => deleted.has(note.id))
+          .map(({ id }) => id)
+      )
+    ),
+  game: (deleted) => phoneGameBites().letGo(deleted),
+  soundbite: async (deleted) => {
+    const kept = soundbiteKeeping()
+    if (kept === null) return false
+    await kept.store.letGoDeleted([...deleted], new Date().toISOString())
+    return true
+  },
+}
+
+/**
+ * Whether this launch can let go of its copies of kind `of`: Studio's and
+ * the soundbites' once their page has handed its store in, every other
+ * kind's at once (HEARD4). My data's `WAITS_ON_STORE` names the same kinds
+ * (LA19).
+ */
+function readyToLetGo(of: VoiceOf): boolean {
+  if (of === "studio") return studioKeeping() !== null
+  if (of === "soundbite") return soundbiteKeeping() !== null
+  return true
+}
+
+/**
+ * Lets go of this phone's own copies of the notes of kind `of` home deleted
+ * for good, from My data or from Takes › Needs your attention (MY-DATA MD3,
+ * #2477; HEARD4, #3079), each named by home's receipt, and of nothing else:
+ * each kind as `DELETED_LETS_GO` says. A receipt is home's word that it held
+ * the note, so once the kind's stores have let go, a copy still waiting for
+ * an answer this phone never heard goes as a held one does, and any
+ * set-aside mark still owed for one is dropped, since home holds no note to
+ * mark now; until then the copy waits, so the voice run sends it again and
+ * home's `deleted_for_good` brings it back here (LA8). Resolves false when
+ * the kind's store isn't handed in (`readyToLetGo`), a store couldn't store
+ * its mark, or the write failed (that said to the native log); never
+ * rejects. Its callers are `lib/my-data`'s delete, on home's receipt, and
+ * the voice run (`sendVoice`), on home's `deleted_for_good`.
+ */
+export async function letGoDeleted(
+  of: VoiceOf,
+  ids: ReadonlyArray<string>
+): Promise<boolean> {
+  try {
+    const gone = readyToLetGo(of) && (await DELETED_LETS_GO[of](new Set(ids)))
     if (gone) settleDeleted(ids)
     return gone
   } catch (error) {
@@ -1091,10 +1247,19 @@ export async function letGoDeleted(
   }
 }
 
-/** Retires the voice record's copies of notes home deleted for good. */
+/**
+ * Retires the voice record's copies of notes home deleted for good: the
+ * receipt is the word of the pairing the phone holds (HP1). Unpaired, a
+ * copy waits, and the next run's `deleted_for_good` retires it.
+ */
 function settleDeleted(ids: ReadonlyArray<string>): void {
   const home = phoneVoiceHome()
-  for (const id of ids) home.keeping.answered({ kind: "held", id })
+  const now = pairing()
+  if (now.kind === "paired") {
+    for (const id of ids) {
+      home.keeping.answered({ kind: "held", id, pairing: now.id })
+    }
+  }
   home.drop(ids)
 }
 
@@ -1132,7 +1297,7 @@ let lensRecordTold = false
  * phone never paired loads none of topik for it.
  */
 function holdLensRecord(): void {
-  if (lensRecordTold || !paired()) return
+  if (lensRecordTold || pairing().kind !== "paired") return
   lensRecordTold = true
   import("@some-ui/topik")
     .then(({ lensRecordHeldByHome }) => {
@@ -1178,6 +1343,7 @@ function holdOffline(): void {
   ideaBundleDesk.keptWhere(voiceKept)
   ideaRedoDesk.keptWhere(voiceKept)
   rustWeekDesk.keptWhere(voiceKept)
+  interviewDesk.keptWhere(voiceKept)
   libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
   reflectionNotesKept(voiceKept)
@@ -1191,12 +1357,23 @@ function holdOffline(): void {
  * that never was builds none of them for this.
  */
 
+/**
+ * The pairing this phone holds, as the voice record follows it (HP1,
+ * `lib/voice-home/model.ts`).
+ */
+const linkPairing: PairingPort = {
+  current: () => pairing(),
+  subscribe: (listener) => homeLink().subscribe(listener),
+}
+
 export function watchVoiceNotes(): () => void {
+  // First, so what home holds is read under the pairing alone (HP1).
+  phoneVoiceHome().follow(linkPairing)
   const stores: Array<() => void> = []
   let takes = false
   let saidBites = false
   const changed = (): void => {
-    if (paired() && stores.length === 0) {
+    if (pairing().kind === "paired" && stores.length === 0) {
       stores.push(
         reflections.subscribe(copySoon),
         // A spoken reflection is listed before its audio is written.
@@ -1219,7 +1396,11 @@ export function watchVoiceNotes(): () => void {
         ideaRedoDesk.phone().takes.subscribe(copySoon),
         // A week's takes go once it is sent (RR13): its Send is a change.
         rustWeekDesk.phone().takes.subscribe(copySoon),
-        libraryTakesDesk.phone().takes.subscribe(copySoon)
+        // An interview week's takes go once it is sent (IW5).
+        interviewDesk.phone().takes.subscribe(copySoon),
+        libraryTakesDesk.phone().takes.subscribe(copySoon),
+        // A point's note waits for home to serve this build (RR24, C681).
+        onServes(copySoon)
       )
     }
     // A kept take is a write to its project, once Studio has handed it in.

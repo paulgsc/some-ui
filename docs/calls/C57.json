@@ -1,0 +1,18 @@
+{
+  "id": "C57",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+    "packages/voice-capture/src/lib/bundle.ts"
+  ],
+  "chose": "A week already sent opens on its brief, with what home holds over the tickets and each ticket's standing, not on the sent screen; the words home heard show on each ticket's card. Right after a Send the sent screen shows, with \"Back to the week\".",
+  "options": [
+    "open on the brief, words heard on each card",
+    "open on the sent screen with a way back to the week",
+    "open on the first ticket's card"
+  ],
+  "gray": "#2832 asks that the week stay open after a send and say per ticket what home holds, but names no screen it opens on.",
+  "undo": "In bundle.ts's opened step, open a resending draft with a kept record on \"sent\" again.",
+  "refs": ["#2832"]
+}

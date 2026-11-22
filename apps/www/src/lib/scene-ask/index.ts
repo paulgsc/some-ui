@@ -15,6 +15,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   localStorageOrNull,
+  onJson,
   openKept,
   salvageList,
   writeKept,
@@ -146,7 +147,7 @@ export type PhoneSceneAsks = SceneAsk & {
 }
 
 const KEY = "some-ui:scene-asks"
-const items = salvageList(isAsked)
+const items = onJson(salvageList(isAsked))
 const PORT = "scene asks"
 
 export function createSceneAsks(ports: SceneAsksPorts): PhoneSceneAsks {

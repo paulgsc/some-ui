@@ -16,8 +16,17 @@
  * subjects `OPERATOR_SUBJECTS` lists). So each contract is marked `session`,
  * and the cookie passed with `--session-cookie` must be an operator's.
  *
+ * Three levers today. Two are a yes-or-no field: Rust Rounds recording
+ * (`rust-rounds`, `{ recording }`) and whether home follows NFL games
+ * (`game-feed`, `{ following }`, the game feed's switch in place of
+ * `GAME_FEED_ENABLED`, #2074), both on by default. The third is which teams'
+ * games home follows live (`game-teams`, `{ teams }`, #3329): ESPN's
+ * abbreviations, 2 to 4 capitals, at most 32, kept sorted and each once,
+ * none (the default) meaning every game.
+ *
  * No contract sets a lever: one set on a real server changes what home does
- * (pausing Rust Rounds' recording), and every revision is kept for good. The
+ * (pausing Rust Rounds' recording, or the game feed), and every revision is
+ * kept for good. The
  * write route is pinned by its refusal instead, and marked `mutates` anyway,
  * as `curriculum_operator.write_refused` is.
  */
@@ -29,30 +38,47 @@ import { defineContract } from "../src/contract"
 /** Rust Rounds recording, the first lever: on by default. */
 const RustRoundsSchema = z.object({ recording: z.boolean() })
 
+/** Whether home follows NFL games: on by default. */
+const GameFeedSchema = z.object({ following: z.boolean() })
+
+/**
+ * Which teams' games home follows live: every game by default (`[]`). Home
+ * keeps them sorted and each once, which the probe does not check.
+ */
+const GameTeamsSchema = z.object({
+  teams: z.array(z.string().regex(/^[A-Z]{2,4}$/)).max(32),
+})
+
 const SetBySchema = z.enum(["owner", "operator"])
 
-const StandingSchema = z.object({
-  namespace: z.literal("rust-rounds"),
-  value: RustRoundsSchema,
-  isDefault: z.boolean(),
-  default: RustRoundsSchema,
-  revision: z.number().int().positive().nullable(),
-  setBy: SetBySchema.nullable(),
-  setAt: z.string().nullable(),
-})
+/** A lever as it stands, for the namespace and value schema given. */
+function standingSchema(namespace: string, value: z.ZodType): z.ZodType {
+  return z.object({
+    namespace: z.literal(namespace),
+    value,
+    isDefault: z.boolean(),
+    default: value,
+    revision: z.number().int().positive().nullable(),
+    setBy: SetBySchema.nullable(),
+    setAt: z.string().nullable(),
+  })
+}
 
-const HistorySchema = z.object({
-  namespace: z.literal("rust-rounds"),
-  default: RustRoundsSchema,
-  revisions: z.array(
-    z.object({
-      revision: z.number().int().positive(),
-      value: RustRoundsSchema,
-      setBy: SetBySchema,
-      setAt: z.string(),
-    })
-  ),
-})
+/** A lever's every revision, for the namespace and value schema given. */
+function historySchema(namespace: string, value: z.ZodType): z.ZodType {
+  return z.object({
+    namespace: z.literal(namespace),
+    default: value,
+    revisions: z.array(
+      z.object({
+        revision: z.number().int().positive(),
+        value,
+        setBy: SetBySchema,
+        setAt: z.string(),
+      })
+    ),
+  })
+}
 
 /** A namespace no home has, so the miss below is a real miss. */
 const ABSENT_NAMESPACE = "contract-harness-does-not-exist"
@@ -67,7 +93,11 @@ export const contracts = [
     summary:
       "Rust Rounds recording as it stands: the value home follows, whether it is the default, and who set it and when",
     request: { path: { namespace: "rust-rounds" } },
-    expect: { status: 200, schema: StandingSchema, unknownFields: "reject" },
+    expect: {
+      status: 200,
+      schema: standingSchema("rust-rounds", RustRoundsSchema),
+      unknownFields: "reject",
+    },
   }),
 
   defineContract({
@@ -79,7 +109,75 @@ export const contracts = [
     summary:
       "every revision of Rust Rounds recording, newest first, each with who set it and when",
     request: { path: { namespace: "rust-rounds" } },
-    expect: { status: 200, schema: HistorySchema, unknownFields: "reject" },
+    expect: {
+      status: 200,
+      schema: historySchema("rust-rounds", RustRoundsSchema),
+      unknownFields: "reject",
+    },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_feed",
+    module: "admin_settings",
+    session: true,
+    method: "GET",
+    path: "/admin/settings/:namespace",
+    summary:
+      "whether home follows NFL games as it stands: the value home follows, whether it is the default, and who set it and when",
+    request: { path: { namespace: "game-feed" } },
+    expect: {
+      status: 200,
+      schema: standingSchema("game-feed", GameFeedSchema),
+      unknownFields: "reject",
+    },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_feed_history",
+    module: "admin_settings",
+    session: true,
+    method: "GET",
+    path: "/admin/settings/:namespace/history",
+    summary:
+      "every revision of whether home follows NFL games, newest first, each with who set it and when",
+    request: { path: { namespace: "game-feed" } },
+    expect: {
+      status: 200,
+      schema: historySchema("game-feed", GameFeedSchema),
+      unknownFields: "reject",
+    },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_teams",
+    module: "admin_settings",
+    session: true,
+    method: "GET",
+    path: "/admin/settings/:namespace",
+    summary:
+      "which teams' games home follows live, as it stands: the teams (none is every game), whether it is the default, and who set it and when",
+    request: { path: { namespace: "game-teams" } },
+    expect: {
+      status: 200,
+      schema: standingSchema("game-teams", GameTeamsSchema),
+      unknownFields: "reject",
+    },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_teams_history",
+    module: "admin_settings",
+    session: true,
+    method: "GET",
+    path: "/admin/settings/:namespace/history",
+    summary:
+      "every revision of the teams home follows live, newest first, each with who set it and when",
+    request: { path: { namespace: "game-teams" } },
+    expect: {
+      status: 200,
+      schema: historySchema("game-teams", GameTeamsSchema),
+      unknownFields: "reject",
+    },
   }),
 
   defineContract({
@@ -94,6 +192,22 @@ export const contracts = [
     request: {
       path: { namespace: "rust-rounds" },
       body: { recording: "off" },
+    },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
+    id: "admin_settings.game_feed_write_refused",
+    module: "admin_settings",
+    session: true,
+    method: "PUT",
+    path: "/admin/settings/:namespace",
+    summary:
+      "another lever's value is refused for following NFL games (a 422), and nothing is kept",
+    mutates: true,
+    request: {
+      path: { namespace: "game-feed" },
+      body: { recording: false },
     },
     expect: { status: 422 },
   }),

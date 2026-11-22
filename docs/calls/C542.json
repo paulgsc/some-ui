@@ -1,0 +1,18 @@
+{
+  "id": "C542",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/mobile/compat/storm.sh",
+    "some-ui:apps/mobile/compat/page.mjs"
+  ],
+  "chose": "The storm scenario runs on the debug APK, setting the stand-in home's address over the WebView's DevTools socket, while the launch test runs on the release APK.",
+  "options": [
+    "debug APK with DevTools set-up",
+    "release APK with the address typed through adb input",
+    "a release build with WebView debugging switched on"
+  ],
+  "gray": "The owner asked for the APK built from the ref; the release build closes DevTools and its WebView text is invisible to uiautomator, while the debug build's JavaScript is the same bundle (R8 shrinks only Java).",
+  "undo": "Point storm.sh at launch.apk and replace page.mjs's set-up with typed input.",
+  "refs": ["#3104"]
+}

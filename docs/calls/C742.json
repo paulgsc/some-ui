@@ -1,0 +1,15 @@
+{
+  "id": "C742",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["server:infra/compose/www.yml", "server:docs/home-compute.md"],
+  "chose": "www and resume-render are interactive (oom_score_adj 0): a person waits on each page, proxied call and résumé render. www runs read_only with tmpfs for conf.d, nginx's cache and /var/run, and cap_drop ALL plus CHOWN, NET_BIND_SERVICE, SETGID, SETUID, measured on pgathondu/www:0.1.69 (without CHOWN nginx stops at start). Caps: www 256M, 1 CPU, 128 pids; resume-render 1G, 2 CPUs, 64 pids, as some-ui's compose had.",
+  "options": [
+    "interactive",
+    "tooling",
+    "www without read_only, as some-ui's compose ran it"
+  ],
+  "gray": "resume-render is one person's occasional tool; tooling would also fit.",
+  "undo": "Change oom_score_adj in infra/compose/www.yml and the class tables in docs/home-compute.md together.",
+  "refs": ["server#853"]
+}

@@ -1,0 +1,383 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "Rust scratchpad",
+  "series": {
+    "id": "cheat-sheet",
+    "version": 2
+  },
+  "look": "plain",
+  "voice": "read",
+  "shots": [
+    {
+      "id": "intro",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · OPEN AND CLOSE",
+            "title": "prefix S, write, quit, gone",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "prefix S",
+                "note": "A tmux window named scratch."
+              },
+              {
+                "badge": "main",
+                "label": "A dir in tmpfs",
+                "note": "main.rs and a rust-project.json, so rust-analyzer works with no Cargo.toml."
+              },
+              {
+                "badge": "main",
+                "label": "Vim + a watch pane",
+                "note": "The right pane compiles, lints and runs on every save."
+              },
+              {
+                "badge": "main",
+                "label": "Quit vim",
+                "note": "The directory and the pane go. Nothing is kept: copy out first."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "intro",
+        "said": "This is a spoken cheat sheet on the Rust scratchpad: a throwaway place to try a few lines of Rust without making a project. Reach for it when you want to test an idea, see how the compiler reacts, or run a small snippet, and you don't want a Cargo project left behind. By the end, you'll be able to open one with a single key binding, compile and lint as you write, and fix it when it opens the wrong editor or an old version. It is as of November fourteenth, twenty twenty-six, checked against two repositories: scratch, which holds the tool, and dotfiles, which binds it into tmux. Later commits may have moved things, and every card is stamped with the commits it was checked against."
+      }
+    },
+    {
+      "id": "C1",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 11300,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · OPEN AND CLOSE",
+            "title": "prefix S, write, quit, gone",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "prefix S",
+                "note": "A tmux window named scratch."
+              },
+              {
+                "badge": "main",
+                "label": "A dir in tmpfs",
+                "note": "main.rs and a rust-project.json, so rust-analyzer works with no Cargo.toml."
+              },
+              {
+                "badge": "main",
+                "label": "Vim + a watch pane",
+                "note": "The right pane compiles, lints and runs on every save."
+              },
+              {
+                "badge": "main",
+                "label": "Quit vim",
+                "note": "The directory and the pane go. Nothing is kept: copy out first."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter one. Open it, write, quit, and it's gone.",
+        "narration": "In tmux, press your prefix, then a capital S. A new tmux window named scratch opens. Behind it, a directory in memory holds main dot rs and a small rust-project dot json, which is enough for rust-analyzer to work with no Cargo dot toml. Vim opens on the left, and a pane on the right compiles, lints and runs your file every time you save. When you quit vim, the directory and the pane go away. Nothing is kept, so copy out anything you want before you quit. That is the mistake to expect: losing a snippet you meant to keep."
+      }
+    },
+    {
+      "id": "C2",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 13600,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · THE SHELL",
+            "title": "What the binding runs, and the commands inside",
+            "bar": "nix develop · scratchpad",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "nix develop github:paulgsc/scratch#scratchpad -c scratch"
+              },
+              {
+                "comment": "# the toolchain lives only in this dev shell, never in NixOS or home;"
+              },
+              {
+                "comment": "# the first run downloads it, later runs reuse it until a GC",
+                "badge": "main"
+              },
+              {
+                "prompt": "$",
+                "keyword": "scratch run foo.rs",
+                "comment": "     # rustc + clippy, then run it if it compiles"
+              },
+              {
+                "prompt": "$",
+                "keyword": "scratch watch foo.rs",
+                "comment": "   # the same on every save"
+              },
+              {
+                "prompt": "$",
+                "keyword": "scratch check -",
+                "comment": "        # lint only: rustc's JSON diagnostics"
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter two. What the key binding runs, and the commands inside it.",
+        "narration": "The key binding runs one command: nix develop on the scratchpad shell of the scratch repository, then the scratch tool inside it. The Rust toolchain lives only in that development shell, never in the system or in your home configuration. The first run downloads it, which takes a while; later runs reuse it until Nix collects its garbage. Inside the shell, scratch run, followed by a file, compiles it with rustc and clippy, and runs it if it compiles. Scratch watch does the same on every save: that is the right pane. And scratch check, followed by a dash, only lints, giving the compiler's diagnostics as JSON, which is what vim reads."
+      }
+    },
+    {
+      "id": "C3",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12450,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · IN VIM",
+            "title": "Inside the editor",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "Compile and run",
+                "command": "\\r   or   :make",
+                "note": "Errors go to the quickfix list, output below them."
+              },
+              {
+                "badge": "main",
+                "task": "Lints as you type",
+                "command": "rust-analyzer + scratch check -"
+              },
+              {
+                "badge": "main",
+                "task": "Another file",
+                "command": ":e other.rs",
+                "note": "Its own crate on first save; the pane runs the file saved last."
+              },
+              {
+                "badge": "gap",
+                "task": "Crates",
+                "command": "std only"
+              },
+              {
+                "badge": "main",
+                "task": "Outside tmux",
+                "command": "vim alone",
+                "note": "No watch pane; \\r still runs it."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter three. Inside the editor.",
+        "narration": "In vim, backslash r, or colon make, compiles and runs the file. Errors go to the quickfix list, and the output appears below them. Lints show up as you type, from rust-analyzer and scratch check. To try a second file, open it with colon e. It becomes its own crate on its first save, and the right pane runs whichever file you saved last. One gap to know: only the standard library is there, no crates. And outside tmux, vim alone still works: you lose the watch pane, but backslash r still runs the file."
+      }
+    },
+    {
+      "id": "C4",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 11300,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · WHEN IT ISN'T WHAT YOU EXPECT",
+            "title": "nano, a stale copy, a lost binding",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "nano opens",
+                "command": "vim, always",
+                "note": "NixOS makes nano the default EDITOR; scratch#2 stopped reading it."
+              },
+              {
+                "badge": "main",
+                "task": "Another editor",
+                "command": "SCRATCH_EDITOR=…",
+                "note": "Only on purpose: \\r and lints as you type are vim's; the pane still runs."
+              },
+              {
+                "badge": "you",
+                "task": "nano still opens",
+                "command": "--refresh (next card)",
+                "note": "Nix is still running a copy from before scratch#2."
+              },
+              {
+                "badge": "gap",
+                "task": "prefix r after an upgrade",
+                "command": "tmux source-file",
+                "note": "prefix r reads ~/.tmux.conf; home-manager writes ~/.config/tmux/tmux.conf (dotfiles#66)."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter four. When it isn't what you expect.",
+        "narration": "If nano opens instead of vim: NixOS makes nano the default editor, and the scratch tool stopped reading that setting in its second pull request, so you always get vim. If you want another editor on purpose, set SCRATCH underscore EDITOR, knowing that backslash r and the lints as you type are vim's; the pane still runs either way. If nano still opens, Nix is running a copy from before that fix, and the next chapter shows how to refresh it. And if prefix r after an upgrade doesn't pick up the new binding, that's a known gap: prefix r reads the old dot tmux dot conf, while home-manager writes the one under dot config."
+      }
+    },
+    {
+      "id": "C5",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 13600,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · PAST NIX'S CACHE",
+            "title": "Take a new main, and reload tmux",
+            "bar": "your shell",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "nix develop --refresh github:paulgsc/scratch#scratchpad -c true"
+              },
+              {
+                "comment": "# Nix reuses its last fetch for an hour (tarball-ttl): this looks now",
+                "badge": "main"
+              },
+              {
+                "comment": "# the toolchain moves only with flake.lock, never on a refresh"
+              },
+              {
+                "comment": "# without --refresh, it fetches the toolchain ahead of prefix S",
+                "badge": "you"
+              },
+              {
+                "prompt": "$",
+                "keyword": "tmux source-file ~/.config/tmux/tmux.conf"
+              },
+              {
+                "comment": "# after an upgrade, so prefix S is bound: not prefix r",
+                "badge": "you"
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter five. Getting past Nix's cache, and reloading tmux.",
+        "narration": "Nix reuses what it last fetched for an hour. To take a new main of the scratch repository right now, run nix develop with dash dash refresh on the scratchpad shell, ending in dash c true, which only fetches and exits. The toolchain itself moves only when the lock file does, never on a refresh. Running that ahead of time also means prefix S won't stop to download anything. And after an upgrade of your dotfiles, run tmux source-file on the config under dot config, so that prefix S is bound. Prefix r won't do it."
+      }
+    },
+    {
+      "id": "C6",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12450,
+      "burnIns": [
+        {
+          "kind": "legend",
+          "params": {
+            "kicker": "LEGEND",
+            "title": "Reading the badges"
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter six. Reading the badges on these cards.",
+        "narration": "Each claim on a card carries a badge that says how far to trust it. A filled square means it is on main, the default branch, at the commit the card is stamped with. A half-filled square is an open pull request, not merged yet. An empty square is planned and not built. A triangle is a known gap: something that doesn't work the way you'd expect. And a raised hand is a step only you do. When you come back to this later, trust the filled squares, and check the others against the repository before you rely on them."
+      }
+    },
+    {
+      "id": "C7",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 10150,
+      "burnIns": [
+        {
+          "kind": "rule",
+          "params": {
+            "kicker": "FRESHNESS",
+            "title": "How stale is this card?",
+            "sources": ["the scratch README", "the code"],
+            "wins": "the README"
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter seven. How stale is this?",
+        "narration": "Everything here was true on the day it was stamped. If what you see differs from what you heard, the sources are the scratch README and the code, and when they disagree, the README wins, because it is the one meant to be kept current. Compare the commit stamped on the card with main to see how far things have moved since."
+      }
+    },
+    {
+      "id": "close",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · OPEN AND CLOSE",
+            "title": "prefix S, write, quit, gone",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "prefix S",
+                "note": "A tmux window named scratch."
+              },
+              {
+                "badge": "main",
+                "label": "A dir in tmpfs",
+                "note": "main.rs and a rust-project.json, so rust-analyzer works with no Cargo.toml."
+              },
+              {
+                "badge": "main",
+                "label": "Vim + a watch pane",
+                "note": "The right pane compiles, lints and runs on every save."
+              },
+              {
+                "badge": "main",
+                "label": "Quit vim",
+                "note": "The directory and the pane go. Nothing is kept: copy out first."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "close",
+        "said": "That's the scratchpad. Next time, press your prefix and a capital S, write a few lines, and save to watch them run. If something is off, refresh the shell with nix develop dash dash refresh, then reload tmux from the config under dot config; the README in the scratch repository has the rest."
+      }
+    }
+  ],
+  "burnIns": [],
+  "stamp": {
+    "sources": ["paulgsc/scratch@35ae1e0", "paulgsc/dotfiles@91cb11b"],
+    "date": "2026-11-14"
+  }
+}

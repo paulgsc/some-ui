@@ -9,7 +9,12 @@ import { describe, expect, it } from "vitest"
 
 import type { Feed } from "@/lib/call-videos/model"
 import { FEEDS } from "@/lib/call-videos/model"
-import { FEED_WORDS, share, VIDEOS_WORDS } from "@/lib/call-videos/words"
+import {
+  episodeName,
+  FEED_WORDS,
+  share,
+  VIDEOS_WORDS,
+} from "@/lib/call-videos/words"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 
 function strings(value: unknown): Array<string> {
@@ -22,15 +27,29 @@ function strings(value: unknown): Array<string> {
 /** Each feed's keys as home makes them. */
 const KEYS: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-10-30", "2026-12-28"],
+  "cards-essay": ["zfs-2026-11-02", "rust-scratchpad-2026-11-14"],
+  "interview-essay": ["2026-w46", "2027-w01"],
   "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
+  report: ["2026-W46", "2027-W01", "2026-W53"],
   "rust-essay": ["2026-w46", "2027-w01"],
 }
 
 /** Keys a feed can't read: another feed's, and none of home's. */
 const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-SF-08", "week-44", ""],
+  "cards-essay": ["2026-w46", "zfs-2026-02-31", "zfs", ""],
+  "interview-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
-  "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
+  report: [
+    "2026-10-30",
+    "2026-w46",
+    "2026-W4",
+    "2026-W00",
+    "2026-W54",
+    "2027-W53",
+    "",
+  ],
+  "rust-essay": ["2026-10-30", "2026-W46", "2026-w4", "2026-w00", ""],
 }
 
 /** All a feed says of an episode by its key. */
@@ -60,6 +79,23 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     )
   })
 
+  it("names an essay's and a report's ISO week, each in its own spelling, and no week 53 a year lacks", () => {
+    expect(FEED_WORDS.report.label("2026-W46")).toBe("2026, week 46")
+    expect(FEED_WORDS["rust-essay"].label("2026-w46")).toBe("2026, week 46")
+    expect(FEED_WORDS["interview-essay"].label("2026-w46")).toBe(
+      "2026, week 46"
+    )
+    expect(FEED_WORDS.report.label("2026-W53")).toBe("2026, week 53")
+    // 2027 has 52 weeks.
+    expect(FEED_WORDS.report.week("2027-W53")).toBeNull()
+    expect(FEED_WORDS.report.label("2027-W53")).toBe("This report")
+    expect(FEED_WORDS["rust-essay"].week("2027-w53")).toBeNull()
+    expect(FEED_WORDS["rust-essay"].label("2027-w53")).toBe("This essay")
+    // Each feed reads only its own spelling, as home keys it.
+    expect(FEED_WORDS.report.week("2026-w46")).toBeNull()
+    expect(FEED_WORDS["rust-essay"].week("2026-W46")).toBeNull()
+  })
+
   it("names a week of Playoff Delta by its season and week, the legend for week 00, and no team code", () => {
     expect(FEED_WORDS["playoff-delta"].label("2026-SF-08")).toBe("2026, week 8")
     expect(FEED_WORDS["playoff-delta"].label("2026-SF-00")).toBe(
@@ -79,6 +115,41 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     expect(FEED_WORDS["rust-essay"].shareTitle("2026-w46")).toBe(
       "Rust Rounds, 2026, week 46"
     )
+  })
+
+  it("names a cards essay by its title, else by its subject and the day it was checked", () => {
+    expect(FEED_WORDS["cards-essay"].label("zfs-2026-11-02")).toBe(
+      "Zfs, as of Monday, November 2"
+    )
+    expect(FEED_WORDS["cards-essay"].shareTitle("zfs-2026-11-02")).toBe(
+      "A cards essay: Zfs, as of Monday, November 2"
+    )
+    const essay = { key: "zfs-2026-11-02" }
+    expect(
+      episodeName("cards-essay", { ...essay, title: "How ZFS snapshots" })
+    ).toBe("How ZFS snapshots")
+    for (const title of [null, undefined, "", "  "])
+      expect(episodeName("cards-essay", { ...essay, title })).toBe(
+        "Zfs, as of Monday, November 2"
+      )
+    // The other feeds have no title: their label, as before.
+    expect(episodeName("call", { key: "2026-10-30", title: null })).toBe(
+      "2026-10-30 to 2026-11-05"
+    )
+  })
+
+  it("names a part of the call's week by its week and which part, never its key", () => {
+    const week = { title: null, week: "2026-11-06", of: 3 }
+    expect(episodeName("call", { ...week, key: "2026-11-06", part: 1 })).toBe(
+      "2026-11-06 to 2026-11-12, part 1 of 3"
+    )
+    expect(
+      episodeName("call", { ...week, key: "2026-11-06-p2", part: 2 })
+    ).toBe("2026-11-06 to 2026-11-12, part 2 of 3")
+    // A week of one video is named as before.
+    expect(
+      episodeName("call", { ...week, key: "2026-11-06", part: 1, of: 1 })
+    ).toBe("2026-11-06 to 2026-11-12")
   })
 
   it("names an episode whose key it can't read by a plain word, never the key", () => {

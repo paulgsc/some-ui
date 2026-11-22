@@ -24,10 +24,14 @@ import type { RecordKind } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   DELETING,
+  itemName,
+  itemWent,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptNote,
   MY_DATA,
   onDay,
+  receiptParts,
   RECEIPTS,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
@@ -121,6 +125,11 @@ const HOME: HomeReading = {
         size: 2048,
         setAsideAt: null,
         deletable: false,
+        durationMs: null,
+        heard: null,
+        heardCut: false,
+        playsBack: false,
+        recordingLetGoAt: null,
       },
     ],
   },
@@ -140,6 +149,11 @@ const DELETABLE: HomeReading = {
         size: 2048,
         setAsideAt: null,
         deletable: true,
+        durationMs: null,
+        heard: null,
+        heardCut: false,
+        playsBack: false,
+        recordingLetGoAt: null,
       },
     ],
   },
@@ -162,8 +176,7 @@ const PHONE = [
     of: "lens" as const,
     at: "2026-11-01T09:00:00.000Z",
     bytes: 1024,
-    held: false,
-    going: false,
+    place: "phone" as const,
   },
 ]
 
@@ -243,24 +256,97 @@ describe("My data's overview", () => {
 })
 
 describe("a kind's list", () => {
-  it("lists newest first, with Play only where the audio is on this phone", () => {
+  it("lists newest first, with Play where the audio is on this phone or home gives it back", () => {
     const onPlay = vi.fn()
     const view = kindOf("studio", "studio", HOME, [], NOW)
     render(
-      <MyDataKind view={view} playing={null} onPlay={onPlay} onStop={vi.fn()} />
+      <MyDataKind
+        view={view}
+        playing={null}
+        unread={[]}
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
     )
     expect(screen.getByText(`3 kept · 3.0 MB · since ${SINCE}`)).toBeTruthy()
-    expect(screen.getByText(WHERE_WORDS.home)).toBeTruthy()
+    expect(screen.getByText(`${WHERE_WORDS.home} · 2.0 KB`)).toBeTruthy()
+    expect(screen.getByText(MY_DATA.kind.noPlay)).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
     expect(screen.getByText(MY_DATA.kind.newest(1, 3))).toBeTruthy()
 
     cleanup()
     const lens = kindOf("lens", "lens", HOME, PHONE, NOW)
     render(
-      <MyDataKind view={lens} playing={null} onPlay={onPlay} onStop={vi.fn()} />
+      <MyDataKind
+        view={lens}
+        playing={null}
+        unread={[]}
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
     )
     fireEvent.click(screen.getByRole("button", { name: /^Play/ }))
     expect(onPlay).toHaveBeenCalledWith("p1")
+  })
+
+  it("says what a recording home holds is, plays it from home, and says a miss in an alert (MD8, MDL1)", () => {
+    const onPlay = vi.fn()
+    const notes = HOME.kept.notes ?? []
+    const heard: HomeReading = {
+      kind: "read",
+      kept: {
+        kinds: [],
+        weeks: [],
+        notes: notes.map((note) => ({
+          ...note,
+          durationMs: 42_000,
+          heard: "I was thinking about the scene",
+          playsBack: true,
+          recordingLetGoAt: null,
+        })),
+      },
+    }
+    const view = kindOf("studio", "studio", heard, [], NOW)
+    const { rerender } = render(
+      <MyDataKind
+        view={view}
+        playing={null}
+        unread={[]}
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
+    )
+    expect(screen.getByText("“I was thinking about the scene”")).toBeTruthy()
+    expect(screen.getByText(/^Recorded .* · 42 s long$/)).toBeTruthy()
+    expect(screen.queryByText(MY_DATA.kind.noPlay)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /^Play/ }))
+    expect(onPlay).toHaveBeenCalledWith("t1")
+
+    rerender(
+      <MyDataKind
+        view={view}
+        playing="t1"
+        unread={[]}
+        fetching
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole("button", { name: /^Getting the recording/ })
+    ).toBeTruthy()
+
+    rerender(
+      <MyDataKind
+        view={view}
+        playing={null}
+        unread={[]}
+        missed="t1"
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
+    )
+    expect(screen.getByRole("alert").textContent).toContain(MY_DATA.kind.missed)
   })
 })
 
@@ -271,6 +357,7 @@ describe("deleting from a kind's list (MD3)", () => {
       <MyDataKind
         view={kindOf("studio", "studio", HOME, [], NOW)}
         playing={null}
+        unread={[]}
         onPlay={vi.fn()}
         onStop={vi.fn()}
         onDelete={onDelete}
@@ -280,12 +367,53 @@ describe("deleting from a kind's list (MD3)", () => {
     expect(screen.queryByText(DELETING.select)).toBeNull()
   })
 
+  it("keeps the row of a week's middle take home let go, with no Play or Delete, saying what stayed (IW14)", () => {
+    const at = "2026-11-23T08:00:00.000Z"
+    const home: HomeReading = {
+      kind: "read",
+      kept: {
+        kinds: [],
+        weeks: [],
+        notes: [
+          {
+            id: "middle",
+            recordedAt: "2026-11-18T09:00:00.000Z",
+            storedAt: "2026-11-18T09:01:00.000Z",
+            size: 2048,
+            setAsideAt: null,
+            deletable: false,
+            durationMs: 3_000,
+            heard: "the options",
+            heardCut: false,
+            playsBack: false,
+            recordingLetGoAt: at,
+          },
+        ],
+      },
+    }
+    render(
+      <MyDataKind
+        view={kindOf("interview", "interview", home, [], NOW)}
+        playing={null}
+        unread={[]}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+    screen.getByText(itemWent(at, false, false))
+    expect(screen.queryByRole("button", { name: /^Play/ })).toBeNull()
+    expect(screen.queryByText(DELETING.row)).toBeNull()
+    expect(screen.queryByText(itemWhere("home", 2048))).toBeNull()
+  })
+
   it("offers Delete… on what home marks deletable, opening the sheet on it, and Select on several until it is cancelled", () => {
     const onDelete = vi.fn()
     const kind = (home: HomeReading): JSX.Element => (
       <MyDataKind
         view={kindOf("studio", "studio", home, [], NOW)}
         playing={null}
+        unread={[]}
         onPlay={vi.fn()}
         onStop={vi.fn()}
         onDelete={onDelete}
@@ -326,7 +454,52 @@ describe("deleting from a kind's list (MD3)", () => {
       />
     )
     expect(screen.queryByText(DELETING.row)).toBeNull()
-    expect(screen.getByText(DELETING.waitsOnStudio)).toBeTruthy()
+    expect(screen.getByText(DELETING.waitsOn("studio"))).toBeTruthy()
+  })
+
+  it("offers no Studio row while this phone's read isn't in, and says it is reading", () => {
+    render(
+      <MyDataKind
+        view={kindOf("studio", "studio", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        unread={null}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(DELETING.row)).toBeNull()
+    expect(screen.getByText(MY_DATA.phoneReading)).toBeTruthy()
+  })
+
+  it("offers a kind that waits on no store while this phone's read isn't in", () => {
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        unread={null}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.getAllByText(DELETING.row).length).toBeGreaterThan(0)
+  })
+
+  it("offers Delete… on a take of another kind home marks deletable (HEARD5)", () => {
+    const onDelete = vi.fn()
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        unread={[]}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        onDelete={onDelete}
+      />
+    )
+    fireEvent.click(screen.getAllByText(DELETING.row)[0])
+    expect(onDelete).toHaveBeenCalledWith("reflection", [expect.any(String)])
   })
 })
 
@@ -340,7 +513,7 @@ describe("the delete sheet (MD3)", () => {
       <DeleteSheetView sheet={asking} onConfirm={onConfirm} onClose={onClose} />
     )
     expect(screen.getByText(DELETING.title("studio", 1))).toBeTruthy()
-    for (const line of [...DELETING.goes(1), ...DELETING.stays(1)])
+    for (const line of [...DELETING.goes(1), ...DELETING.stays("studio", 1)])
       expect(screen.getByText(line)).toBeTruthy()
     const buttons = screen
       .getAllByRole("button")
@@ -412,6 +585,33 @@ describe("the delete sheet (MD3)", () => {
 })
 
 describe("the Deleted page (MD3)", () => {
+  it("says a week's middle take went when the week closed, and what stayed, on the Deleted page (IW14)", () => {
+    const at = "2026-11-23T08:00:00.000Z"
+    render(
+      <MyDataReceipts
+        state={{
+          seq: 1,
+          reading: {
+            kind: "read",
+            total: 1,
+            receipts: [
+              {
+                ...RECEIPT,
+                of: "interview",
+                deletedAt: at,
+                went: ["recording"],
+                stayed: ["note", "words"],
+              },
+            ],
+          },
+        }}
+      />
+    )
+    screen.getByText(RECEIPTS.closedLine(itemName(at)))
+    screen.getByText(RECEIPTS.stayedLine(receiptParts(["note", "words"])))
+    expect(screen.queryByText(RECEIPTS.deletedLine(itemName(at)))).toBeNull()
+  })
+
   it("lists each receipt, and says when home can't list them yet", () => {
     render(
       <MyDataReceipts
@@ -425,6 +625,9 @@ describe("the Deleted page (MD3)", () => {
     expect(
       screen.getByText("Went: The recording and home's words for it")
     ).toBeTruthy()
+    // The owner's own delete reads as one, with no line for what stayed.
+    screen.getByText(RECEIPTS.deletedLine(itemName(RECEIPT.deletedAt)))
+    expect(screen.queryByText(/^Stayed:/)).toBeNull()
     cleanup()
     render(<MyDataReceipts state={{ seq: 1, reading: { kind: "older" } }} />)
     expect(screen.getByRole("status").textContent).toContain("newer version")
@@ -436,10 +639,13 @@ describe("on the phone", () => {
   it("reads the page on opening, is read again by a drag down, and stops playing on leaving", async () => {
     runtime.state = {
       seq: 1,
+      phoneSeq: 1,
       of: null,
       home: HOME,
       phone: { notes: PHONE, unread: ["studio"] },
       playing: null,
+      fetching: false,
+      missed: null,
     }
     const { unmount } = render(<DeviceMyData />)
     expect(runtime.open).toHaveBeenCalledWith(null, null)

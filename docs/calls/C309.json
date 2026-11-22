@@ -1,0 +1,14 @@
+{
+  "id": "C309",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["packages/ui/burn-ins/src/lib/terminal.ts"],
+  "chose": "While a line's badge spells itself out, the line's text moves aside for it and comes back as it closes; a line too long for the window with its badge open is refused.",
+  "options": [
+    "Move the text aside",
+    "Draw the open badge over the text, as the prototype did"
+  ],
+  "gray": "The prototype drew the open badge over the start of its line, hiding it for 2.6 s; moving it aside keeps the line readable but costs some width.",
+  "undo": "In terminalAt (burn-ins' terminal.ts), leave a row's x as its line's, and drop the open reach from lineProblem.",
+  "refs": ["#2467"]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "C6",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": ["packages/ui/soundbites/src/lib/studio/words.ts"],
+  "chose": "Studio's record length line reworded to stay on one line (\"Runs N s · a take up to M s\", \"Runs N s: your take and a breath\"), and the soundbites full paragraph reworded (\"Full. Unless you pick another below, your next one replaces…\").",
+  "options": ["the earlier words, wrapping", "words reworded to fit one line"],
+  "gray": "Wording.",
+  "undo": "Restore the earlier words in the soundbites WORDS.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

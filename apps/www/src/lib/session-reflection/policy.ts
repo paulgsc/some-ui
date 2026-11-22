@@ -84,6 +84,12 @@ type ReflectionBody =
        * aside, and on one set aside before the phone noted when.
        */
       setAsideAt?: string
+      /**
+       * When this phone heard home deleted its recording for good, ISO 8601
+       * (LA19, HEARD4): its audio then left this phone too, and the
+       * reflection stays, saying so. Absent on one never deleted.
+       */
+      deletedAt?: string
     }
 
 export type Reflection = {
@@ -268,12 +274,22 @@ function bodyOf(value: unknown): ReflectionBody | null {
     ) {
       return null
     }
+    const deletedAt = field("deletedAt")
+    const deleted = typeof deletedAt === "string" ? { deletedAt } : {}
     if (standing === "set-aside" && typeof setAsideAt === "string") {
-      return { kind, durationMs, mimeType, bytes, standing, setAsideAt }
+      return {
+        kind,
+        durationMs,
+        mimeType,
+        bytes,
+        standing,
+        setAsideAt,
+        ...deleted,
+      }
     }
     return standing === "earlier" || standing === "set-aside"
-      ? { kind, durationMs, mimeType, bytes, standing }
-      : { kind, durationMs, mimeType, bytes }
+      ? { kind, durationMs, mimeType, bytes, standing, ...deleted }
+      : { kind, durationMs, mimeType, bytes, ...deleted }
   }
   return null
 }

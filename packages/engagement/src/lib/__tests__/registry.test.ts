@@ -19,17 +19,66 @@ const affordance = (over: Partial<Affordance> = {}): Affordance => ({
   ...over,
 })
 
-const pipeline = (affordances: ReadonlyArray<Affordance>): Pipeline => ({
+const pipeline = (
+  affordances: ReadonlyArray<Affordance>,
+  opened: Pipeline["opened"] = { kind: "not-measured", why: "Not yet." }
+): Pipeline => ({
   id: "a-pipeline",
   name: "A pipeline",
   wing: "practice",
   domain: "practice",
+  opened,
   affordances,
 })
 
 describe("the registry", () => {
   it("holds its own shape", () => {
     expect(findRegistryProblems(PIPELINES, UNMEASURED)).toEqual([])
+  })
+
+  it("says how each module's opening is known, and only aph and Jobs know it at their root (#3338)", () => {
+    expect(
+      PIPELINES.filter((p) => p.opened.kind === "root")
+        .map((p) => p.id)
+        .sort()
+    ).toEqual(["aph", "jobs"])
+    for (const p of PIPELINES) {
+      if (p.opened.kind === "not-measured") {
+        expect(p.opened.why, p.id).not.toMatch(MACHINERY)
+      }
+    }
+  })
+
+  it("refuses an opening at a root it doesn't offer, or one that sends nothing when shown", () => {
+    const said = affordance({
+      id: "said-only",
+      offer: null,
+      emits: ["said"],
+      answers: [{ id: "why", name: "Why" }],
+    })
+    expect(
+      findRegistryProblems(
+        [pipeline([affordance()], { kind: "root", affordance: "elsewhere" })],
+        []
+      )
+    ).toEqual(["a-pipeline: opened at elsewhere, which it doesn't offer"])
+    expect(
+      findRegistryProblems(
+        [
+          pipeline([affordance(), said], {
+            kind: "root",
+            affordance: "said-only",
+          }),
+        ],
+        []
+      )
+    ).toEqual(["a-pipeline: its root said-only sends nothing when shown"])
+    expect(
+      findRegistryProblems(
+        [pipeline([affordance()], { kind: "not-measured", why: " " })],
+        []
+      )
+    ).toEqual(["a-pipeline: says why its opening is not measured"])
   })
 
   it("lists every pipeline the epic names", () => {
@@ -123,6 +172,44 @@ describe("the registry", () => {
       "a said with no answers",
       [pipeline([affordance({ emits: ["offered", "said"] })])],
       "exactly when it names answers",
+    ],
+    [
+      "a place a left's next keeps for where it can't name",
+      [
+        pipeline([
+          affordance({
+            emits: ["offered", "taken", "left"],
+            places: [{ id: "elsewhere", name: "Elsewhere" }],
+          }),
+        ]),
+      ],
+      "no place is elsewhere",
+    ],
+    [
+      "a flow naming a place it doesn't have",
+      [
+        pipeline([
+          affordance({
+            emits: ["offered", "taken", "left"],
+            places: [{ id: "here", name: "Here" }],
+            flow: { finishedAt: ["there"], partWayAt: [] },
+          }),
+        ]),
+      ],
+      "flow place there is not one of its places",
+    ],
+    [
+      "a flow naming a place both finished and part-way",
+      [
+        pipeline([
+          affordance({
+            emits: ["offered", "taken", "left"],
+            places: [{ id: "here", name: "Here" }],
+            flow: { finishedAt: ["here"], partWayAt: ["here"] },
+          }),
+        ]),
+      ],
+      "a flow names a place once",
     ],
     [
       "a pipeline whose every affordance is retired",

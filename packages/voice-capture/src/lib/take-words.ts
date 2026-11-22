@@ -18,6 +18,7 @@ export type TakeWords = {
   readonly button: {
     readonly ready: string
     readonly again: string
+    readonly counting: (left: number) => string
     readonly opening: string
     readonly recording: string
     readonly keeping: string
@@ -28,6 +29,7 @@ export type TakeWords = {
   readonly buttonLabel: {
     readonly ready: string
     readonly again: string
+    readonly counting: (left: number) => string
     readonly opening: string
     readonly recording: string
     readonly keeping: string
@@ -49,6 +51,8 @@ export type TakeWords = {
   readonly place: {
     readonly phone: string
     readonly going: string
+    /** On this phone, while whether it goes home isn't known yet. */
+    readonly unknown: string
     /** On home, when this phone didn't note since when. */
     readonly home: string
     readonly homeSince: (when: string) => string
@@ -86,6 +90,7 @@ export const TAKE_WORDS: TakeWords = {
   button: {
     ready: "Tap to talk",
     again: "Tap to record again",
+    counting: (left) => `Recording in ${left}`,
     opening: "Opening the microphone…",
     recording: "Tap to stop",
     keeping: "Keeping it…",
@@ -95,6 +100,7 @@ export const TAKE_WORDS: TakeWords = {
   buttonLabel: {
     ready: "Start talking",
     again: "Record it again",
+    counting: (left) => `Recording in ${left}. Tap to call it off`,
     opening: "Opening the microphone. Tap to stop",
     recording: "Stop, and keep it",
     keeping: "Keeping it",
@@ -114,6 +120,7 @@ export const TAKE_WORDS: TakeWords = {
   place: {
     phone: "Kept on this phone",
     going: "On this phone, going home",
+    unknown: "On this phone",
     home: "On home",
     homeSince: (when) => `On home since ${when}`,
     unsent: "On this phone. Nothing has been sent",
@@ -140,6 +147,7 @@ export const TAKE_WORDS: TakeWords = {
     phone: "Set aside. It stays on this phone.",
     going: "Set aside. It stays on this phone until home has it.",
     home: "Set aside. Home keeps it.",
+    unknown: "Set aside. It's on this phone.",
   },
   unplayable: "Couldn't play that take.",
   // The pattern's row offers Redo beside the take, so it says so.
@@ -157,6 +165,9 @@ export function buttonSaid(words: TakeWords, view: TakeButtonView): string {
     }
     case "recording": {
       return words.button.recording
+    }
+    case "counting": {
+      return words.button.counting(view.left)
     }
     case "full": {
       return words.button.full(view.max)
@@ -177,6 +188,7 @@ export function buttonLabel(words: TakeWords, view: TakeButtonView): string {
   if (view.kind === "ready") {
     return view.again ? words.buttonLabel.again : words.buttonLabel.ready
   }
+  if (view.kind === "counting") return words.buttonLabel.counting(view.left)
   return words.buttonLabel[view.kind]
 }
 
@@ -184,7 +196,8 @@ export function buttonLabel(words: TakeWords, view: TakeButtonView): string {
 export function keptSaid(words: TakeWords, kept: TakeKept): string {
   switch (kept.place) {
     case "phone":
-    case "going": {
+    case "going":
+    case "unknown": {
       return words.place[kept.place]
     }
     case "home": {

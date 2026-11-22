@@ -1,0 +1,21 @@
+{
+  "id": "C738",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "packages/video-render/src/opening.ts",
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/monday/bundle.ts",
+    "apps/www/src/lib/web-surface/call/essay-stage.tsx"
+  ],
+  "chose": "Rust Rounds' opening is a conversation, not one script: a week's /2 `opening` holds one to three `{ask, script}` exchanges, each answer its own take, and the Rust essay's template version 5 opens, after the brand, on each question asked in a third Kokoro voice (`af_heart`, neither the tutor's nor the sample's) followed by the owner's take of its answer, as `opening.<n>.<ext>` among the takes. A question whose answer has no take to play is left out; with none, the essay opens as before.",
+  "options": [
+    "a conversation of up to three questions and answers",
+    "one script read whole (C732)"
+  ],
+  "gray": "It moves C732 at the owner's word (2026-11-19): \"I want it conversational\", with an observer's leading questions, three at most, about two to three minutes in all.",
+  "undo": "Go back to C732: one `{script}`, one take with ref `<week>:opening`, one opening scene.",
+  "refs": ["#3269"],
+  "moves": "C732"
+}

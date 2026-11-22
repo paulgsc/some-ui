@@ -23,7 +23,7 @@ import type {
 import { act, renderHook } from "@testing-library/react"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { homeLink, paired } from "@/lib/home-link/index"
+import { homeLink, pairing } from "@/lib/home-link/index"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { watchKept } from "@/lib/home-link/kept-watch"
@@ -232,6 +232,8 @@ function watched(): { want: ReturnType<typeof vi.fn>; stop: () => void } {
     getSnapshot: () => INITIAL_KEPT,
     subscribe: () => (): void => undefined,
     want,
+    // The watch's own first ask: the lane is idle here, so it asks for a run.
+    nudge: want,
     pull: () => Promise.reject(new Error("the watch never pulls")),
   }
   const stop = watchKept(
@@ -267,6 +269,7 @@ beforeAll(async () => {
           fakes.bitesHeard.delete(listener)
         }
       },
+      letGoDeleted: () => Promise.resolve(),
     },
     heldByHome: (next): void => {
       fakes.bitesHeld.push(next)
@@ -274,7 +277,7 @@ beforeAll(async () => {
   })
   homeLink()
   await vi.waitFor(() => {
-    expect(paired()).toBe(true)
+    expect(pairing().kind).toBe("paired")
   })
 })
 

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import {
   CONVEYOR_WORDS,
+  failedAside,
   nowAside,
   nowStation,
   ROW_TAGS,
@@ -133,5 +134,32 @@ describe("home's conveyor", () => {
         }),
       }).kind
     ).toBe("read")
+  })
+
+  it("sets a refused row aside as too big or spilled over, and any other failed row as burnt (C502, C566)", () => {
+    const row = {
+      feed: "rust-essay",
+      key: "2026-w46",
+      at: 0,
+      by: "recorder",
+      exit: 1,
+    } as const
+    expect(
+      failedAside({ ...row, reason: "too-long", minutes: 31.2, capMinutes: 30 })
+    ).toBe("tooBigForOven")
+    expect(
+      failedAside({ ...row, reason: "too-large", mb: 512, capMb: 500 })
+    ).toBe("tooBigForBox")
+    expect(
+      failedAside({
+        ...row,
+        reason: "overflow",
+        scenes: ["dive-2"],
+        sceneCount: 1,
+      })
+    ).toBe("spilledOver")
+    // An older home: the reason with no numbers is not a refusal it can say.
+    expect(failedAside({ ...row, reason: "too-long" })).toBe("burnt")
+    expect(failedAside(row)).toBe("burnt")
   })
 })

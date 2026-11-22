@@ -1,0 +1,11 @@
+{
+  "id": "C303",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/mailbox/pass.rs"],
+  "chose": "The pickup and picked folders stay live, unarchived, for now, with the follow-up filed as an issue.",
+  "options": ["(a) archive both now", "(b) leave them live and file an issue"],
+  "gray": "It is unknown whether the Worker's archive role covers them, and archiving them would add 2 listings to every idle pass beyond the agreed 26, taking it to 28 requests.",
+  "undo": "Follow up in paulgsc/server#850: add Pickup and Picked to ARCHIVES once the Worker's archive role covers them.",
+  "refs": ["#2872", "#2875", "server#851", "server#850"]
+}

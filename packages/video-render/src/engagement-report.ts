@@ -419,7 +419,8 @@ export function movedMost(lines: ReadonlyArray<ReportLine>): ReportLine | null {
 // ---------------------------------------------------------------------------
 // The report
 
-const CountSchema = z.union([
+/** A count as it may go public (`PublicCount`), as a file holds it. */
+export const CountSchema = z.union([
   z.number().int().min(UNDER),
   z.literal("fewer-than-5"),
   z.literal("no-data"),

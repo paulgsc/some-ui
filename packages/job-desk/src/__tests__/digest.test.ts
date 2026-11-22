@@ -43,6 +43,77 @@ describe("the sample digest's postings", () => {
   })
 })
 
+/**
+ * SD1: the sample digest carries no real person's contact details.
+ * - Claim: every paste kit's Email, Location, GitHub and Portfolio field in
+ *   `sample.digest.json` is the made-up person's below, and every email
+ *   address and every web address on one of `ADDRESS`'s top-level domains,
+ *   with or without a scheme, in any string in the file, is on a name
+ *   reserved for examples (RFC 2606, RFC 6761).
+ * - Family: every pick of the sample, every such field, every address in its
+ *   text, and every build that shows it (each reads this file, `sample.ts`).
+ * - Proof: the two tests below, over every pick and the whole parsed file.
+ * - Tolerance: free text that names no such address (cover letters, drafted
+ *   answers) is read by review, not by these tests.
+ */
+describe("the sample digest's paste kits (SD1)", () => {
+  const PERSON: Readonly<Record<string, string>> = {
+    Email: "sam.rivera@example.com",
+    Location: "Springfield, IL",
+    GitHub: "https://github.example/sam-rivera",
+    Portfolio: "https://sam-rivera.example",
+  }
+
+  /** RFC 2606 and RFC 6761. */
+  const reserved = (host: string): boolean =>
+    /(^|\.)example\.(com|net|org)$/.test(host) || host.endsWith(".example")
+
+  /**
+   * An email address's domain, or a web address's host, scheme or not: on
+   * the top-level domains a person's address is likely on, so file names
+   * (`.json`, `.py`) and versions are not read as hosts.
+   */
+  const ADDRESS =
+    /(?:[\w.+-]+@|(?:https?:\/\/)?)((?:[a-z0-9-]+\.)+(?:com|org|net|io|dev|app|me|co|ai|us|edu|gov|info|example))(?![a-z0-9-])/gi
+
+  it("give a made-up person's contact details, in every pick", () => {
+    const contacts = sample().picks.flatMap((pick) =>
+      pick.kit.fields.filter((field) => Object.hasOwn(PERSON, field.label))
+    )
+    expect(contacts.length).toBeGreaterThan(0)
+    for (const { label, value } of contacts) {
+      expect(value, label).toBe(PERSON[label])
+    }
+  })
+
+  it("name only reserved domains, in any address anywhere in the file", () => {
+    // Every string the file holds, parsed, so an escaped `\/` reads as itself.
+    const strings: Array<string> = []
+    const walk = (value: unknown): void => {
+      if (typeof value === "string") strings.push(value)
+      else if (value !== null && typeof value === "object") {
+        Object.values(value).forEach(walk)
+      }
+    }
+    walk(JSON.parse(SAMPLE))
+    const found = strings.flatMap((text) => [...text.matchAll(ADDRESS)])
+    expect(found.length).toBeGreaterThan(0)
+    for (const [address, host = ""] of found) {
+      expect(reserved(host.toLowerCase()), address).toBe(true)
+    }
+    for (const real of [
+      "a@mail.io",
+      "HTTPS://Site.dev/x",
+      "github.com/someone",
+      "www.someone.me",
+    ]) {
+      const host = [...real.matchAll(ADDRESS)][0]?.[1]
+      expect(host, real).toBeDefined()
+      expect(reserved((host ?? "").toLowerCase()), real).toBe(false)
+    }
+  })
+})
+
 describe("parseDigest", () => {
   it("names what is wrong, by path", () => {
     const digest = sample()
@@ -491,7 +562,7 @@ describe("digestFindings", () => {
     kit.coverLetter = "Call me at (510)-555-0134."
     kit.compensation = { ask: "$110,000", why: "I live at 12 Oak Street." }
     kit.fields.push({ label: "Telephone", value: "on request" })
-    kit.answers.push({ label: "Street address", value: "Berkeley" })
+    kit.answers.push({ label: "Street address", value: "Springfield" })
     for (const label of [
       "Phone ✱",
       "What is your phone number?",

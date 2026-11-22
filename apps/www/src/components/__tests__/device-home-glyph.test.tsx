@@ -44,11 +44,14 @@ const home = vi.hoisted(
     sent: Array<NativeCall>
     answer: (call: NativeCall) => Promise<{ status: number; body: string }>
     jobs: { snapshot: { state: JobsState } | null }
+    /** The pairing record's read, held until the test ends it (PO1). */
+    held: Promise<void> | null
   } => ({
     credential: { base: "https://home.example/api/v1", token: "t" },
     sent: [],
     answer: () => unreachable(),
     jobs: { snapshot: null },
+    held: null,
   })
 )
 /**
@@ -58,6 +61,20 @@ const home = vi.hoisted(
 async function unreachable(): Promise<never> {
   const { noAnswer } = await import("@/test-support/no-answer")
   throw noAnswer()
+}
+
+/**
+ * Home silent only where `path` names, failing (503) elsewhere: one silence
+ * holds every lane away from home (AW1), so a test of one lane against a
+ * silent home keeps the others from being silent first.
+ */
+function silentOnly(
+  part: string
+): (call: NativeCall) => Promise<{ status: number; body: string }> {
+  return (call) =>
+    new URL(call.url).pathname.includes(part)
+      ? unreachable()
+      : Promise.resolve({ status: 503, body: "" })
 }
 
 const SESSION = sessionRecord({
@@ -76,12 +93,14 @@ vi.mock("@/lib/device-backend/native-http", () => ({
 }))
 vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
-    read: (): Promise<{ record: string | null; lost: boolean }> =>
-      Promise.resolve({
+    read: async (): Promise<{ record: string | null; lost: boolean }> => {
+      await home.held
+      return {
         record:
           home.credential === null ? null : JSON.stringify(home.credential),
         lost: false,
-      }),
+      }
+    },
     write: (): Promise<void> => Promise.resolve(),
     clear: (): Promise<void> => Promise.resolve(),
   },
@@ -157,6 +176,7 @@ afterEach(() => {
   home.answer = (): Promise<never> => unreachable()
   home.jobs.snapshot = null
   home.credential = { base: PAIRING, token: "t" }
+  home.held = null
 })
 
 /** The Practice wing's mark, with or without the shell's drain. */
@@ -228,6 +248,41 @@ describe("Practice's sharing mark", () => {
     expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
   })
 
+  it("says neither pair first nor Send now while the pairing record is read, then what it finds (PO1)", async () => {
+    for (const found of ["none", "a pairing"] as const) {
+      let end: () => void = () => undefined
+      home.held = new Promise((resolve) => {
+        end = resolve
+      })
+      home.credential = found === "none" ? null : { base: PAIRING, token: "t" }
+      await mount()
+      expect(mark().getAttribute("aria-label")).not.toContain(
+        "only on this phone"
+      )
+      fireEvent.click(mark())
+      expect(
+        screen.queryAllByText(/Pair this phone with home in Settings/)
+      ).toHaveLength(0)
+      expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+      await act(async () => {
+        end()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+      if (found === "none") {
+        expect(
+          screen.getAllByText(/Pair this phone with home in Settings/).length
+        ).toBeGreaterThan(0)
+        expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+      } else {
+        expect(
+          screen.getByRole("button", { name: "Send now", hidden: true })
+        ).toBeTruthy()
+      }
+      cleanup()
+      vi.resetModules()
+    }
+  })
+
   it("draws each mark in its legend in a form no other shares", async () => {
     const { MARK_WORDS } = await import("@/lib/sharing-marks")
     await mount()
@@ -267,9 +322,10 @@ describe("Practice's sharing mark", () => {
   it("asks for a run again from Send now", async () => {
     await mount()
     await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
-    // A send that didn't go is said over the screen, the mark a fixed icon.
+    // A send that didn't go is said over the screen, the mark a fixed icon:
+    // home's silence is a stretch away from home, said with its start (AW1).
     expect(screen.getByRole("status").textContent).toContain(
-      "Home didn't answer."
+      "Away from home since"
     )
     const before = home.sent.length
     fireEvent.click(mark())
@@ -281,6 +337,7 @@ describe("Practice's sharing mark", () => {
 describe("the Jobs record's mark", () => {
   it("drains once paired, from the shell, and says what waits", async () => {
     jobsRecord(2)
+    home.answer = silentOnly("/jobs")
     await mount("jobs")
     await waitFor(() =>
       expect(
@@ -292,9 +349,7 @@ describe("the Jobs record's mark", () => {
     )
     fireEvent.click(mark(/Where the Jobs record is kept/))
     expect(
-      within(screen.getByRole("dialog")).getByText(
-        /2 events wait on this phone/
-      )
+      within(screen.getByRole("dialog")).getByText(/2 items wait on this phone/)
     ).toBeTruthy()
   })
 
@@ -306,7 +361,8 @@ describe("the Jobs record's mark", () => {
     const fromHome = { ...INDEXING_01, id: "borrowing-01" }
     home.answer = (call): Promise<{ status: number; body: string }> => {
       const path = new URL(call.url).pathname
-      if (!path.includes("/rust-rounds")) return unreachable()
+      if (!path.includes("/rust-rounds"))
+        return Promise.resolve({ status: 503, body: "" })
       if (call.method === "PUT")
         return Promise.resolve({ status: 201, body: "{}" })
       if (path.endsWith("/rust-rounds")) {
@@ -393,6 +449,7 @@ function aphStore(onPhone = false, entries = 0): AphStore & { moved: number } {
     outbox: () => null,
     sent: () => undefined,
     pulled: () => false,
+    exchanges: () => 0,
     save: () => null,
     review: () => false,
     editEntry: () => false,
@@ -405,7 +462,10 @@ function aphStore(onPhone = false, entries = 0): AphStore & { moved: number } {
   return store
 }
 
-async function mountAph(store: AphStore): Promise<void> {
+async function mountAph(
+  store: AphStore,
+  read: AphKeeping["read"] = () => Promise.resolve({ kind: "synced" })
+): Promise<void> {
   // aph's own exchange is its package's to test: here, one request.
   const aph: AphKeeping = {
     store,
@@ -413,6 +473,8 @@ async function mountAph(store: AphStore): Promise<void> {
       await send("PUT", "/aph/entries/1", "{}")
       return { kind: "synced" }
     },
+    // How the read goes beside the drain is `aph-read.test.ts`'s.
+    read,
   }
   const { DeviceAphLane } = await import("@/components/aph/device-aph-lane")
   const { DeviceHomeGlyph, HomeLanes } = await import(
@@ -430,6 +492,7 @@ async function mountAph(store: AphStore): Promise<void> {
 
 describe("aph's mark", () => {
   it("moves aph to home on a paired phone's first run, and sends", async () => {
+    home.answer = silentOnly("/aph")
     const store = aphStore(true, 2)
     await mountAph(store)
     await waitFor(() =>
@@ -455,6 +518,24 @@ describe("aph's mark", () => {
         "Until home answers, this shows only what this phone hasn't sent yet."
       )
     ).toBeTruthy()
+  })
+
+  it("reads home's record once as aph's screens open, kept on home (AR1)", async () => {
+    const read = vi.fn<AphKeeping["read"]>(() =>
+      Promise.resolve({ kind: "synced" })
+    )
+    await mountAph(aphStore(), read)
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1))
+  })
+
+  it("reads nothing as aph opens before it is kept on home (AR1)", async () => {
+    home.answer = silentOnly("/aph")
+    const read = vi.fn<AphKeeping["read"]>(() =>
+      Promise.resolve({ kind: "synced" })
+    )
+    await mountAph(aphStore(true, 2), read)
+    await act(() => Promise.resolve())
+    expect(read).not.toHaveBeenCalled()
   })
 
   it("says home was busy, not a failure, when home is busy", async () => {
@@ -532,9 +613,11 @@ describe("a pull (PULL3)", () => {
   })
 
   it("asks every lane the shell drains for one run, and the mark says how it went", async () => {
+    home.answer = (): Promise<{ status: number; body: string }> =>
+      Promise.resolve({ status: 503, body: "" })
     await mount()
-    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
-    // The watch's first runs, each one request home doesn't answer, are over.
+    await waitFor(() => expect(howOf(mark())).toBe("failed"))
+    // The watch's first runs, each one request home fails, are over.
     await waitFor(() => expect(new Set(sentSince(0)).size).toBe(3))
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
     const before = home.sent.length
@@ -544,6 +627,18 @@ describe("a pull (PULL3)", () => {
     expect(sentSince(before).sort()).toEqual(
       ["/api/v1/jobs", "/api/v1/rust-rounds", "/api/v1/sessions"].sort()
     )
+    expect(howOf(mark())).toBe("failed")
+  })
+
+  it("away from home, tries once and says no answer for every lane (AW1)", async () => {
+    await mount()
+    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const before = home.sent.length
+    const { PULL_HOME } = await import("@/lib/home-link/words")
+    expect(await pull()).toEqual([PULL_HOME.what])
+    // The pull lets the hold go: one try finds no answer, and holds the rest.
+    expect(sentSince(before)).toHaveLength(1)
     expect(howOf(mark())).toBe("no-answer")
   })
 

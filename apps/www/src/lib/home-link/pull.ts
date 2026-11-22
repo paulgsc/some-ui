@@ -10,22 +10,22 @@
  * the same (its watch, or a tap in Settings, had the link) is asked once
  * more when the link frees up, the moment its watch asks it again too. Once
  * home is busy (AD3, `./runtime`), every lane after that one says so: the
- * pull stops reaching home there.
+ * pull stops reaching home there. Away from home (AW1, `./away`), a pull
+ * lets the link's hold go first: the person asked to check again.
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;
- * the pull itself says only whether all of them got in step. A screen that
- * shows one lane hears that lane's end in the same pull (`ended`; Jobs'
- * morning run, PULL2) and names it in its own words.
+ * the pull itself says only whether all of them got in step.
  */
+import { CHECK_MS } from "@/lib/pull-refresh/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
-import { homeLink } from "./index"
+import { homeLink, LINK_CLOCK } from "./index"
 import type { KeptRun } from "./kept-model"
 import { resynced } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 import type { Front } from "./kept-watch"
-import { pullKept } from "./kept-watch"
+import { mayAsk, pullKept } from "./kept-watch"
 import { drainFree } from "./model"
 import { PULL_HOME } from "./words"
 
@@ -35,6 +35,10 @@ export type HomePullPorts = {
   readonly doc: Front
   /** Resolves once the link would start a drain run. */
   readonly free?: () => Promise<void>
+  /** Ends the link's hold away from home, so the pull's asks go (AW1). */
+  readonly lookAgain?: () => void
+  /** Epoch ms, for how long the pull under way has been out (HERD2). */
+  readonly now?: () => number
 }
 
 /** Resolves once the home link would start a drain run. */
@@ -54,57 +58,80 @@ function linkFree(): Promise<void> {
   })
 }
 
-/** Home as a pull reads it again, and each lane's end in that pull. */
-export type HomeRefresher = Refresher & {
-  /**
-   * How `lane`'s run in the pull under way ended, starting that pull if
-   * none is out (the refresher's own ask in the same pull joins it); null
-   * when the pull asked nothing of it.
-   */
-  readonly ended: (lane: Kept) => Promise<KeptRun | null>
-}
-
 /** Home as a pull reads it again: every lane `watched` names, one at a time. */
 export function homeRefresher({
   watched,
   doc,
   free = linkFree,
-}: HomePullPorts): HomeRefresher {
-  const pullLane = async (lane: Kept): Promise<KeptRun | null> => {
+  lookAgain = (): void => homeLink().lookAgain(),
+  now = LINK_CLOCK.now,
+}: HomePullPorts): Refresher {
+  /**
+   * The run that already answers a pull sent at `since`: the lane's last,
+   * if it got in step with home after the pull went out and none runs now
+   * (HERD4). The watch reads a lane the pull hasn't reached yet as the
+   * drain frees, and that run joins the pull as one under way would (HERD1).
+   */
+  const answered = (lane: Kept, since: number): KeptRun | null => {
+    const { running, last } = lane.getSnapshot()
+    return !running && last?.kind === "synced" && last.at > since ? last : null
+  }
+  const pullLane = async (
+    lane: Kept,
+    since: number
+  ): Promise<KeptRun | null> => {
+    // A pull that could ask nothing (hidden, unpaired) is answered by nothing.
+    if (!mayAsk(doc)) return null
+    const already = answered(lane, since)
+    if (already !== null) return already
     const end = await pullKept(lane, doc)
     if (end?.kind !== "busy") return end
     await free()
     // Its screens may have gone while it waited (aph's).
-    return watched().has(lane) ? pullKept(lane, doc) : null
+    if (!watched().has(lane)) return null
+    return answered(lane, since) ?? pullKept(lane, doc)
   }
-  /** Each lane's end in the pull still out; null once it is done. */
-  let out: ReadonlyMap<Kept, Promise<KeptRun | null>> | null = null
-  const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
-    if (out !== null) return out
-    const ends = new Map<Kept, Promise<KeptRun | null>>()
+  /**
+   * Each lane's end in the pull still out, and when it went out; null once
+   * it is done. One out longer than a pull may take (`CHECK_MS`) no longer
+   * holds the pulls after it (HERD2): the next asks every lane afresh, which
+   * joins a run still under way rather than asking another (HERD1).
+   */
+  let out: {
+    readonly ends: ReadonlyArray<Promise<KeptRun | null>>
+    readonly at: number
+  } | null = null
+  const pull = (): ReadonlyArray<Promise<KeptRun | null>> => {
+    if (out !== null && now() - out.at < CHECK_MS) return out.ends
+    lookAgain()
+    const since = now()
+    const ends: Array<Promise<KeptRun | null>> = []
     let turn: Promise<void> = Promise.resolve()
     for (const lane of Array.from(watched())) {
-      const end = turn.then(() => (watched().has(lane) ? pullLane(lane) : null))
-      ends.set(lane, end)
+      const end = turn.then(() =>
+        watched().has(lane) ? pullLane(lane, since) : null
+      )
+      ends.push(end)
       turn = end.then(
         () => undefined,
         () => undefined
       )
     }
-    out = ends
+    const sent = { ends, at: since }
+    out = sent
     void turn.then(() => {
-      if (out === ends) out = null
+      if (out === sent) out = null
     })
     return ends
   }
   return {
     what: PULL_HOME.what,
+    before: lookAgain,
     checkAgain: async (): Promise<void> => {
-      const ends = await Promise.all(pull().values())
+      const ends = await Promise.all(pull())
       if (ends.some((end) => end !== null && !resynced(end))) {
         throw new Error("a lane did not get in step with home")
       }
     },
-    ended: (lane) => pull().get(lane) ?? Promise.resolve(null),
   }
 }

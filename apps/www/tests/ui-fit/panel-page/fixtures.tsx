@@ -39,12 +39,15 @@ import {
 
 import { PANELS } from "@/lib/playable"
 
+import { CallStageFixture } from "./call-stage"
 import { CodeCardFixture } from "./code-card"
+import { EssayStageFixture } from "./essay-stage"
 import { IncidentFixture } from "./incident"
 import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
 import { RustRoundsFixture } from "./rust-rounds"
 import { TakePatternFixture } from "./take-pattern"
+import { WorkTrackerFixture } from "./work-tracker"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -380,15 +383,13 @@ const Topik = PANELS.topik.Component
 export const PANEL_FIXTURES = {
   hangul: (): JSX.Element => <Hangul mode="endless" />,
   leetype: (): JSX.Element => <Leetype />,
-  // A session has no companion services here, so speech is `static`: the
-  // browser's own voice. The applet runs without a provider too, but its
+  // Speech is the browser's own voice, as in every web build. The applet runs without a provider too, but its
   // controls are the ones a learner with speech sees.
   topik: (): JSX.Element => (
     <SpeechProvider
       config={{
-        mode: "static",
         language: "korean",
-        adapters: { static: webSpeech },
+        backend: webSpeech,
       }}
     >
       <Topik />
@@ -575,9 +576,15 @@ export const PANEL_FIXTURES = {
 
   "code-card": CodeCardFixture,
 
+  "call-stage": CallStageFixture,
+
+  "essay-stage": EssayStageFixture,
+
   "intent-failure": IntentFailureFixture,
 
   "rust-rounds": RustRoundsFixture,
+
+  "work-tracker": WorkTrackerFixture,
 
   "take-pattern": TakePatternFixture,
 

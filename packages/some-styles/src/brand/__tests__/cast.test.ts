@@ -1,0 +1,48 @@
+/**
+ * The cast (PDA6, #2883): each character names every gradient and clip it
+ * uses through `id`, defines each once, and draws with no SVG filter.
+ */
+import { describe, expect, it } from "vitest"
+
+import { castNodes, CHARACTERS } from "../cast"
+import type { CastNode } from "../cast"
+
+const walk = (nodes: ReadonlyArray<CastNode>): Array<CastNode> =>
+  nodes.flatMap((node) => [node, ...walk(node.children ?? [])])
+
+describe("the cast", () => {
+  it.each(CHARACTERS)(
+    "%s defines every id it uses, once, and only through id",
+    (who) => {
+      const id = (name: string): string => `t-${name}`
+      const nodes = walk(castNodes(who, id))
+      const defined = nodes.flatMap((n) =>
+        typeof n.attrs.id === "string" ? [n.attrs.id] : []
+      )
+      expect(new Set(defined).size).toBe(defined.length)
+      expect(defined.every((d) => d.startsWith("t-"))).toBe(true)
+      const used = nodes.flatMap((n) =>
+        Object.values(n.attrs).flatMap((v) =>
+          typeof v === "string"
+            ? [...v.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1])
+            : []
+        )
+      )
+      expect(used.length).toBeGreaterThan(0)
+      for (const ref of used) expect(defined).toContain(ref)
+    }
+  )
+
+  it.each(CHARACTERS)(
+    "%s draws with gradients alone, no filter, on the host's ground",
+    (who) => {
+      const nodes = walk(castNodes(who, (name) => name))
+      expect(nodes.some((n) => n.tag === "filter" || "filter" in n.attrs)).toBe(
+        false
+      )
+      expect(
+        nodes.filter((n) => n.attrs["data-ground"] === "true")
+      ).toHaveLength(1)
+    }
+  )
+})

@@ -1,5 +1,5 @@
 /**
- * The Rust Rounds a viewer can play on the Pages build (#2241; CLAUDE.md, "A
+ * The Rust Rounds a viewer can play in a viewer build (#2241; CLAUDE.md, "A
  * viewer tries, and nothing is kept"): the worked example, which the session
  * always holds (`@some-ui/rust-rounds`, `indexing-01`), and one more sample
  * round, `borrowing-01`, each with rustc's results recorded ahead of time and

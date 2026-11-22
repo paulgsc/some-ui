@@ -6,11 +6,15 @@
  * keeps, the record's count with it on the overview
  * (`lib/home-link/kept-read`, LA8), and this phone's recordings as
  * the voice lane lists them and says where each is kept
- * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`). Phone-only
+ * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`), and a
+ * recording's audio from home when this phone let its own go
+ * (`lib/home-link/voice-audio`, MD8). Phone-only
  * (`build.paths.ts`).
  *
  * Deleting a record home keeps (MD3, #2477) is `./deleting` and
  * `./deleting-runtime`; the Deleted page's receipts are `./receipts`.
+ * The Korean word sets page (MD7, #2496) is `./word-sets` and
+ * `./word-sets-runtime`, over topik's store on this phone.
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
@@ -19,18 +23,21 @@ import { feedVideos } from "@/lib/call-videos"
 import { deleteCallStep, deleteNotes } from "@/lib/home-link/delete-note"
 import { askDeleted } from "@/lib/home-link/deleted-read"
 import { askKept } from "@/lib/home-link/kept-read"
+import { askAudio } from "@/lib/home-link/voice-audio"
 import {
   letGoDeleted,
   recordingsOnPhone,
   voiceKept,
+  whenPlacesKnown,
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { studioKeeping } from "@/lib/studio-keeping"
 
 import type { CallDeleting } from "./call-deleting-runtime"
 import { createCallDeleting } from "./call-deleting-runtime"
-import type { DeletableKind, ReceiptsReading } from "./deleting"
-import { isDeletableKind, readReceipts } from "./deleting"
+import type { ReceiptsReading } from "./deleting"
+import { readReceipts } from "./deleting"
 import type { Deleting } from "./deleting-runtime"
 import { createDeleting } from "./deleting-runtime"
 import type { HomeReading, Of, PhoneNote, PhoneRead } from "./model"
@@ -39,15 +46,19 @@ import type { Receipts } from "./receipts"
 import { createReceipts } from "./receipts"
 import type { MyData } from "./runtime"
 import { createMyData } from "./runtime"
+import type { WordSetsPage } from "./word-sets-runtime"
+import { createWordSetsPage } from "./word-sets-runtime"
 
 export type { KindItem, Of, Overview, Where } from "./model"
 export { isKind, kindOf, overviewOf, WHERE_ORDER } from "./model"
 export type { DeletableKind, DeleteSheet, Receipt } from "./deleting"
-export { isDeletableKind, offersDelete } from "./deleting"
+export { offersDelete } from "./deleting"
 export type { Deleting } from "./deleting-runtime"
 export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
 export type { MyDataState } from "./state"
+export type { WordSetsSaid } from "./word-sets"
+export type { WordSetsPage } from "./word-sets-runtime"
 
 async function askHome(
   of: Of | null,
@@ -71,7 +82,14 @@ async function readPhone(): Promise<PhoneRead> {
         port: "my data: this phone's recordings",
         error: toIntentError(error),
       })
-      return { notes: [], unread: [] }
+      // Unread for deleting too: no store's copy is let go unknown.
+      return {
+        notes: [],
+        unread: [
+          ...(studioKeeping() === null ? (["studio"] as const) : []),
+          ...(soundbiteKeeping() === null ? (["soundbite"] as const) : []),
+        ],
+      }
     }
   )
   const read = await Promise.all(
@@ -81,7 +99,9 @@ async function readPhone(): Promise<PhoneRead> {
         // counted this time; the next open or drag down reads it again.
         .catch(() => null)
       if (blob === null) return null
-      // Where every screen's row says it is (MIC3).
+      // Where every screen's row says it is (MIC3): not known yet while
+      // the pairing record is read, which the runtime reads again after
+      // (#3152).
       const { place } = voiceKept(id)
       return {
         id,
@@ -90,8 +110,7 @@ async function readPhone(): Promise<PhoneRead> {
         // IndexedDB hands back a handle whose size is known without its
         // bytes being read.
         bytes: blob.size,
-        held: place === "home",
-        going: place === "going",
+        place,
       }
     })
   )
@@ -101,10 +120,15 @@ async function readPhone(): Promise<PhoneRead> {
   }
 }
 
+/** Recording `id`'s audio: this phone's copy, else home's (MD8). */
 async function audioOf(id: string): Promise<Blob | null> {
-  const { notes } = await recordingsOnPhone()
+  const { notes } = await recordingsOnPhone().catch(() => ({ notes: [] }))
   const found = notes.find((note) => note.id === id)
-  return found === undefined ? null : found.audio()
+  const here = await found
+    ?.audio()
+    // Ignored: a copy this phone can't read is asked of home instead.
+    .catch(() => null)
+  return here ?? askAudio(id)
 }
 
 /**
@@ -118,13 +142,7 @@ async function audioOf(id: string): Promise<Blob | null> {
 export async function deletableStudioTakes(): Promise<ReadonlySet<string>> {
   const home = await askHome("studio")
   // This phone lets its own copy go only through Studio's store.
-  if (
-    home.kind !== "read" ||
-    studioKeeping() === null ||
-    !isDeletableKind("studio")
-  ) {
-    return new Set()
-  }
+  if (home.kind !== "read" || studioKeeping() === null) return new Set()
   return new Set(
     (home.kept.notes ?? [])
       .filter((note) => note.deletable)
@@ -139,26 +157,40 @@ export function phoneMyData(): MyData {
   myData ??= createMyData({
     askHome,
     readPhone,
+    placesKnown: whenPlacesKnown,
     audioOf,
     player: audioPlayer,
   })
   return myData
 }
 
-/** How this phone lets go of its own copies of each kind home deleted. */
-const LETS_GO: Readonly<
-  Record<DeletableKind, (ids: ReadonlyArray<string>) => Promise<boolean>>
-> = {
-  studio: letGoDeleted,
-}
-
 let deleting: Deleting | null = null
+
+/** Who hears what home deleted for good, with a receipt each. */
+const deletedHearers = new Set<(ids: ReadonlyArray<string>) => void>()
+
+/**
+ * Hears each delete My data's delete path made, with the ids home answered
+ * a receipt for, whichever page asked it (My data, or Takes › Needs your
+ * attention, HEARD3); returns the unsubscribe.
+ */
+export function hearDeletes(
+  listener: (ids: ReadonlyArray<string>) => void
+): () => void {
+  deletedHearers.add(listener)
+  return (): void => {
+    deletedHearers.delete(listener)
+  }
+}
 
 /** Made on first use, so importing this module sends nothing. */
 export function phoneDeleting(): Deleting {
   deleting ??= createDeleting({
     deleteNotes,
-    letGo: (of, ids) => LETS_GO[of](ids),
+    letGo: (of, ids) => {
+      for (const hear of deletedHearers) hear(ids)
+      return letGoDeleted(of, ids)
+    },
     reread: () => {
       phoneMyData().refreshShown()
     },
@@ -190,4 +222,24 @@ export function phoneCallDeleting(): CallDeleting {
     },
   })
   return callDeleting
+}
+
+let wordSets: WordSetsPage | null = null
+
+/**
+ * My data's Korean word sets (MD7), one per page load, over topik's store
+ * of them on this phone, loaded when the page first reads it.
+ */
+export function phoneWordSetsPage(): WordSetsPage {
+  wordSets ??= createWordSetsPage({
+    open: async () => (await import("@some-ui/topik")).phoneWordSets(),
+    now: () => new Date(),
+    failed: (error) => {
+      reportFailure({
+        port: "my data: this phone's word sets",
+        error: toIntentError(error),
+      })
+    },
+  })
+  return wordSets
 }

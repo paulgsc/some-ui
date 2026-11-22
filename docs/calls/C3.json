@@ -1,0 +1,15 @@
+{
+  "id": "C3",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": ["packages/ui/shared/src/components/ui/notice/index.tsx"],
+  "chose": "A refusal stays on the plane until closed, covering the top of the screen (in topik's full-screen lesson, Exit and Pause).",
+  "options": [
+    "until closed",
+    "status notices close themselves after a few seconds"
+  ],
+  "gray": "Covering controls against a word that vanishes unread.",
+  "undo": "Add a timeout to non-danger notices in Notice.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

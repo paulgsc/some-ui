@@ -9,10 +9,17 @@
  *   `closed`, and a send that is not a draft, or none. A draft is never what
  *   the owner sent (#2231, "The record is final only after `due`").
  * - A transcript is `some-ui.voice-transcript/1` (the mailbox's `transcript`
- *   folder). A take's `ref` is `<week>:<ticket>`; a pasted error's note is
+ *   folder). A take's `ref` is `<week>:<ticket>`, or `<week>:<ticket>:<n>`
+ *   for its point n (RR24), or `<week>:opening:<n>` for the answer to the
+ *   opening's question n (#3269, C736); a pasted error's note is
  *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
+import {
+  CONVERSATION_MOST,
+  hearingOf,
+  transcriptName,
+} from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -25,9 +32,25 @@ const PasteSchema = z.object({
 
 const TicketRecordSchema = z.object({
   ticket: z.string().min(1),
+  /** Answered whole, or by any of its points. */
   answered: z.boolean(),
+  /** The take of the whole ticket, when one was sent: it answers every point. */
   take: z.string().min(1).nullable(),
   recordedAt: Instant.nullable(),
+  /**
+   * Each point answered by a take of its own (RR24), its point read from the
+   * take's `ref`; `take` above is the whole ticket's, which answers every
+   * point. A home from before RR24 says none.
+   */
+  points: z
+    .array(
+      z.object({
+        point: z.int().positive(),
+        take: z.string().min(1),
+        recordedAt: Instant,
+      })
+    )
+    .default([]),
   opens: z.int().nonnegative(),
 })
 
@@ -40,6 +63,26 @@ export const WeekRecordSchema = z.object({
     .object({ at: Instant, receivedAt: Instant, draft: z.boolean() })
     .nullable(),
   tickets: z.array(TicketRecordSchema),
+  /**
+   * The opening's answers this week's essay plays (#3269, C736), as home
+   * resolves them: for each question n, the newest kept take of its answer
+   * recorded under the week's opening `version`, from this week or an
+   * earlier one (`week`, its ref being `<week>:opening:<n>`), and how long
+   * it runs (`ms`) when the phone measured it. A question with no such take
+   * is absent. A home from before it, or a week with no opening, says none.
+   */
+  opening: z
+    .array(
+      z.object({
+        n: z.int().min(1).max(CONVERSATION_MOST),
+        take: z.string().min(1),
+        recordedAt: Instant,
+        week: z.string().regex(WEEK_ID),
+        version: z.int().positive(),
+        ms: z.int().nonnegative().optional(),
+      })
+    )
+    .default([]),
   unanswered: z.array(z.string()),
   pastes: z.array(PasteSchema),
 })
@@ -62,12 +105,25 @@ export function readFinalRecord(
     return { ok: false, why: "home hasn't made it final yet" }
   }
   for (const ticket of record.tickets) {
-    if (ticket.answered !== (ticket.take !== null)) {
+    if (
+      ticket.answered !== (ticket.take !== null || ticket.points.length > 0)
+    ) {
       return {
         ok: false,
         why: `${ticket.ticket} says answered and its take disagree`,
       }
     }
+  }
+  const answered = new Set<number>()
+  for (const { n, week } of record.opening) {
+    if (answered.has(n))
+      return { ok: false, why: `the opening's question ${n} has two takes` }
+    answered.add(n)
+    if (week > record.week)
+      return {
+        ok: false,
+        why: `the opening's question ${n} plays a take from ${week}, after the week`,
+      }
   }
   return { ok: true, record }
 }
@@ -83,8 +139,14 @@ export const TranscriptSchema = z.object({
   text: z.string(),
 })
 
-/** A transcript's name in the mailbox: `transcript-<note>-<n>.json`. */
-export const TRANSCRIPT_NAME = /^transcript-(.+)-([1-9]\d{0,18})\.json$/
+/**
+ * What home heard in a note, by its verdict (`hearingOf`): only a heard
+ * note keeps its text, so no essay can read garble as an answer.
+ */
+export type Heard =
+  | { readonly hearing: "heard"; readonly text: string }
+  | { readonly hearing: "silent" }
+  | { readonly hearing: "unheard" }
 
 /**
  * What home heard in each note, by the note's id: the transcript with the
@@ -94,19 +156,27 @@ export const TRANSCRIPT_NAME = /^transcript-(.+)-([1-9]\d{0,18})\.json$/
  */
 export function heardByNote(
   files: ReadonlyArray<{ name: string; body: unknown }>
-): ReadonlyMap<string, string> {
-  const best = new Map<string, { n: bigint; text: string }>()
+): ReadonlyMap<string, Heard> {
+  const best = new Map<string, { n: bigint; heard: Heard }>()
   for (const file of files) {
-    const [, note, n] = TRANSCRIPT_NAME.exec(file.name) ?? []
-    if (note === undefined || n === undefined) continue
+    const named = transcriptName(file.name)
+    if (named === null) continue
+    const { note, n } = named
     const parsed = TranscriptSchema.safeParse(file.body)
     if (!parsed.success || parsed.data.note !== note) continue
     const held = best.get(note)
-    if (held === undefined || BigInt(n) > held.n) {
-      best.set(note, { n: BigInt(n), text: parsed.data.text })
+    if (held === undefined || n > held.n) {
+      const hearing = hearingOf(file.body)
+      best.set(note, {
+        n,
+        heard:
+          hearing === "heard"
+            ? { hearing, text: parsed.data.text }
+            : { hearing },
+      })
     }
   }
-  return new Map([...best].map(([note, { text }]) => [note, text]))
+  return new Map([...best].map(([note, { heard }]) => [note, heard]))
 }
 
 /**

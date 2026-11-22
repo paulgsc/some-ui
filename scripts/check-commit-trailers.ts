@@ -15,7 +15,15 @@
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 
-import { CALLS_FILE, readCalls } from "../packages/eslint/src/calls.ts"
+// Relative imports on purpose: Node's type stripping resolves no path aliases.
+// eslint-disable-next-line no-restricted-imports
+import {
+  callsAtCommit,
+  callsInTree,
+} from "../packages/eslint/src/calls-record.ts"
+// eslint-disable-next-line no-restricted-imports
+import { callPath } from "../packages/eslint/src/calls.ts"
+// eslint-disable-next-line no-restricted-imports
 import {
   callIdsOf,
   checkCommitTrailers,
@@ -23,6 +31,8 @@ import {
   describeTrailerFinding,
   isBotIdentity,
 } from "../packages/eslint/src/commit-trailers.ts"
+// eslint-disable-next-line no-restricted-imports
+import { repoRoot } from "../packages/eslint/src/git-tree.ts"
 
 // `hash` is null for the message being written, whose record is the tree's.
 type Commit = { label: string; message: string; hash: string | null }
@@ -65,25 +75,21 @@ if (args[0] === "--message-file" && args[1]) {
   commits = commitsIn(args[0] ?? "origin/main..HEAD")
 }
 
+const root = repoRoot()
+
 /**
- * The call ids docs/calls.json holds at `hash`, or in the tree for null;
- * null when it can't be read there.
+ * The call ids the record holds at `hash`, or in the tree for null; null
+ * when it can't be read there.
  */
 function recordedCalls(hash: string | null): Set<string> | null {
-  let text: string
+  let record
   try {
-    text =
-      hash === null
-        ? readFileSync(CALLS_FILE, "utf8")
-        : execFileSync("git", ["show", `${hash}:${CALLS_FILE}`], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "ignore"],
-          })
+    record = hash === null ? callsInTree(root) : callsAtCommit(root, hash)
   } catch {
     return null
   }
-  const calls = readCalls(text).calls
-  return calls === null ? null : new Set(calls.map((call) => call.id))
+  if (record.layout === "none" || record.calls === null) return null
+  return new Set(record.calls.map((call) => call.id))
 }
 
 let failed = 0
@@ -94,11 +100,11 @@ for (const commit of commits) {
     const known = recordedCalls(commit.hash)
     if (known === null)
       lines.push(
-        `names calls, but ${CALLS_FILE} can't be read at this commit (pnpm check:calls says why).`
+        `names calls, but the calls record can't be read at this commit (pnpm check:calls says why).`
       )
     for (const id of ids.filter((i) => known !== null && !known.has(i)))
       lines.push(
-        `Call: ${id} is not in ${CALLS_FILE} at this commit. Record the call there in the same commit.`
+        `Call: ${id} is not in the record at this commit. Add ${callPath(id)} in the same commit.`
       )
   }
   if (lines.length === 0) continue

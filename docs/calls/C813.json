@@ -1,0 +1,16 @@
+{
+  "id": "C813",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/cut-list.ts"],
+  "chose": "A spoken card plays 1 to 6 exchanges (SPOKEN_EXCHANGES_MOST), its own limit, not the Rust essay opening's 3: the owner's introduction runs about 3 to 5 (who I am, why synthetic voices, what AI-generated means here, why Rust Rounds, why on the phone).",
+  "options": [
+    "1 to 6, its own limit",
+    "the opening's 1 to 3 (CONVERSATION_MOST)",
+    "1 to 5, exactly the owner's range",
+    "no upper limit, bounded only by the essay's ten minutes"
+  ],
+  "gray": "A length limit on the owner's own introduction is a preference about content the owner sees; the run's coordinator relayed the owner's 3-to-5 count, and the bound above it is a guess with room for one more.",
+  "undo": "Change SPOKEN_EXCHANGES_MOST in cut-list.ts; record the move as a call that moves this one (C771).",
+  "refs": ["#3282", "#3312"]
+}

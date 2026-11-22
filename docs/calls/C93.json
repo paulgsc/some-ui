@@ -1,0 +1,15 @@
+{
+  "id": "C93",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["server:nix/modules/home-deploy.nix", "server:Makefile"],
+  "chose": "The on-demand unit gets its envctl the way `make up` always did: ExecStartPre builds it as the checkout's owner (runuser -u <user> -- bash -c 'HOME=~<user> exec make -s envctl', cargo through `nix develop .#rust`), and ExecStart, as root, runs <checkout>/target/debug/envctl deploy --on-demand.",
+  "options": [
+    "build as the owner in the checkout (ExecStartPre), run that binary as root",
+    "package envctl as a flake output (rustPlatform.buildRustPackage) and put it on the unit's path from the nix store",
+    "run the whole unit's make, envctl included, as the owner, with root only for docker and STORAGE (needs C83's second option)"
+  ],
+  "gray": "Root runs a binary the owner's user built from the owner's checkout. Before, root ran deploy.py from the same checkout, which is the same trust, and `make -s up`, which built envctl as the owner, already ran inside it. A store-built envctl would pin the deploy to the flake input dotfiles locks rather than the checkout, which changes what `git pull` on home deploys. No convention covers it. The owner chose Rust and envctl; this call is only how the unit gets that binary.",
+  "undo": "Add packages.envctl to flake.nix (buildRustPackage over the workspace, -p envctl, SQLX_OFFLINE=true) and set ExecStart to \"${envctl}/bin/envctl --repo ${cfg.checkout} deploy …\"; drop ExecStartPre; update nix/modules/test.nix's \"the deploy runs on demand…\" expectation.",
+  "refs": ["server#786"]
+}

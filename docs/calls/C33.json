@@ -1,0 +1,19 @@
+{
+  "id": "C33",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/ui/soundbites/src/lib/project",
+    "packages/ui/playoff-delta",
+    "apps/www/tests/record/playoff-delta.ts"
+  ],
+  "chose": "An episode a phone already holds in Studio stays, and is watched, never voiced: no Record or Shape sitting, Finish never asks it for a take, and a scene with no take reads Not made; one with every take still finishes and shows its pinned upload copy.",
+  "options": [
+    "keep a stored episode, watch-only for voicing",
+    "delete the whole episode-in-Studio path (ST33's home queue and its server routes)",
+    "keep its Record"
+  ],
+  "gray": "FEED6 retired the owner's voice from episodes (FEED decision 6, #2643), but a stored episode holds takes the owner recorded, and nothing said what becomes of it.",
+  "undo": "Restore record in view.ts' startView and the take kind in finish.ts; or delete the project.episode branches and ST33's home-link code, then the server routes in their own PR.",
+  "refs": ["#2772", "#2649", "#2643"]
+}

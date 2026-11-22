@@ -1,6 +1,6 @@
 // Not in `./index`, a React module, so this wait is not React's.
 import { nativeCredential } from "./credential"
-import { parsePairing } from "./runtime"
+import { parsePairing } from "./settle"
 
 /**
  * The pairing this phone holds, as the game day's live socket opens with it

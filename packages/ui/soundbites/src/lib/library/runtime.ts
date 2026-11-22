@@ -13,16 +13,24 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, TakePattern } from "@some-ui/voice-capture"
+import type { HearAgainAnswer } from "@soundbites/lib/hear-again/model"
+import type { Refresh } from "@soundbites/lib/refresh"
+import { checkAgainOf } from "@soundbites/lib/refresh"
 
+import type { TakeAbout } from "./compartments"
+import type { TakeNames, TakeOf } from "./kinds"
 import type {
   LibraryEffect,
   LibraryEvent,
   LibraryIntent,
   LibraryPhoneSnapshot,
+  LibraryQuery,
   LibraryRead,
   LibraryState,
+  LibraryTake,
 } from "./model"
-import { INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
+import { EVERY_KIND, INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
+import { LIBRARY_WORDS } from "./words"
 
 /** Home, as Takes on home reads it. Every call resolves. */
 export type TakesHome = {
@@ -33,10 +41,16 @@ export type TakesHome = {
    */
   readonly takes: (
     q: string | null,
-    wanted: () => boolean
+    wanted: () => boolean,
+    /** Where to read on from, as home marked it; null or absent, the first page. */
+    after?: string | null,
+    /** The kinds, topic and order asked for; absent, every kind, newest first. */
+    query?: LibraryQuery
   ) => Promise<LibraryRead>
   /** Take `id`'s audio from home; null when home can't give it back now. */
   readonly audio: (id: string) => Promise<Blob | null>
+  /** Asks home to hear take `id` again (#3339). */
+  readonly hearAgain: (id: string) => Promise<HearAgainAnswer>
 }
 
 /**
@@ -52,11 +66,87 @@ export type LibraryPhone = {
   readonly subscribe: (listener: () => void) => () => void
 }
 
+/**
+ * One of the phone's takes of any kind: what home is told of it
+ * and its audio, for those home doesn't list yet. Studio's takes with no
+ * scene come through `LibraryPhone` instead, where they are recorded.
+ */
+export type PhoneTake = {
+  readonly id: string
+  readonly of: TakeOf
+  readonly ref: string
+  readonly fields?: Readonly<Record<string, string>> | undefined
+  /** When it was recorded, ISO 8601. */
+  readonly recordedAt: string
+  /**
+   * Home holds it, though its list doesn't show it (a home before TAKES20
+   * lists Studio's alone): it plays from home.
+   */
+  readonly home?: boolean | undefined
+  readonly audio: () => Promise<Blob | null>
+}
+
+/** The phone's takes of every kind, as the build reads them. */
+export type LibraryOnPhone = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** The same array while nothing changed. */
+  readonly getSnapshot: () => ReadonlyArray<PhoneTake>
+}
+
 export type LibraryPorts = {
   readonly home: TakesHome
   readonly player: Player
   /** Absent in a build that records none here. */
   readonly phone?: LibraryPhone | undefined
+  /** The phone's moves along the conveyor (CONVEYOR1); absent, none. */
+  readonly stations?: LibraryStations | undefined
+  /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
+  readonly about?: LibraryAbout | undefined
+  /** The phone's takes of every kind; absent, none but `phone`'s. */
+  readonly onPhone?: LibraryOnPhone | undefined
+  /** What the build can name that a ref only points at; absent, none. */
+  readonly names?: TakeNames | undefined
+  /** The shell's refresh port: a pull reads the takes again (HERD2); absent, none. */
+  readonly refresh?: Refresh | undefined
+}
+
+/**
+ * What the build knows each take was said for (TAKES2, #3068), from the
+ * stores the phone keeps (a note on an episode names its spoken take; a
+ * video names its scenes), said again on each change it tells of.
+ */
+export type LibraryAbout = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `about` says may have. */
+  readonly getSnapshot: () => unknown
+  /**
+   * What take `id` was said for; null when the phone knows nothing more
+   * than its `ref` says (`aboutOfRef`). A take home doesn't have yet has
+   * no ref.
+   */
+  readonly about: (id: string, ref: string | null) => TakeAbout | null
+}
+
+/**
+ * Where each take stands on Studio's conveyor (CONVEYOR1): the build's own
+ * words for it, from home's word and the phone's moves, said again on each
+ * change it tells of.
+ */
+export type LibraryStations = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `standing` says may have. */
+  readonly getSnapshot: () => unknown
+  /** What a take's row says of where it stands; null when it's on none. */
+  readonly standing: (take: LibraryTake) => string | null
+  /** Every station's name, in the order a take moves along them (TAKES3). */
+  readonly names: ReadonlyArray<string>
+  /**
+   * The name of the station a take is at, and whether it is the shelf
+   * (Canned); null when it's on none.
+   */
+  readonly station: (
+    take: LibraryTake
+  ) => { readonly name: string; readonly canned: boolean } | null
 }
 
 export type LibraryRuntime = {
@@ -67,8 +157,11 @@ export type LibraryRuntime = {
   readonly attach: () => () => void
 }
 
-export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
-  let state = INITIAL_LIBRARY
+export function createTakeLibrary(
+  ports: LibraryPorts,
+  query: LibraryQuery = EVERY_KIND
+): LibraryRuntime {
+  let state: LibraryState = { ...INITIAL_LIBRARY, query }
   let attached = false
   let playback: Playback | null = null
   const listeners = new Set<() => void>()
@@ -120,23 +213,66 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
     ]
   }
 
+  /**
+   * Tells the machine when one of the phone's takes of any kind reaches
+   * home, so home's list is read again and shows it there.
+   */
+  function watchOnPhone(): ReadonlyArray<() => void> {
+    const { onPhone } = ports
+    if (onPhone === undefined) return []
+    const heldOf = (): ReadonlySet<string> =>
+      new Set(
+        onPhone
+          .getSnapshot()
+          .filter((take) => take.home === true)
+          .map(({ id }) => id)
+      )
+    let held = heldOf()
+    return [
+      onPhone.subscribe(() => {
+        const now = heldOf()
+        const arrived = [...now].some((id) => !held.has(id))
+        held = now
+        if (arrived) send({ type: "arrived" })
+      }),
+    ]
+  }
+
   function run(effect: LibraryEffect): void {
     switch (effect.type) {
       case "readTakes": {
         const { seq } = effect
         const wanted = (): boolean => attached && state.seq === seq
-        later(ports.home.takes(effect.q, wanted), (read) => ({
-          type: "takesRead",
-          seq,
-          read,
-        }))
+        later(
+          ports.home.takes(effect.q, wanted, effect.after, effect.query),
+          (read) => ({
+            type: "takesRead",
+            seq,
+            read,
+          })
+        )
         return
       }
       case "readAudio": {
         const { play } = effect
         // One sound at a time: the phone's own take stops for home's.
         ports.phone?.pattern.stopPlaying()
-        later(ports.home.audio(effect.id), (audio) => ({
+        // A take only on this phone plays from the phone; one
+        // home lists plays from home, whatever the phone still holds.
+        const listed =
+          state.read.kind === "read" &&
+          state.read.page.takes.some((take) => take.id === effect.id)
+        const own = listed
+          ? undefined
+          : ports.onPhone?.getSnapshot().find((take) => take.id === effect.id)
+        const audio =
+          own === undefined
+            ? ports.home.audio(effect.id)
+            : own.audio().catch(() => {
+                // Ignored: audio the phone can't read back plays as none, which its row says (`unplayable`).
+                return null
+              })
+        later(audio, (audio) => ({
           type: "audioRead",
           play,
           audio,
@@ -158,24 +294,46 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
         playback = null
         return
       }
+      case "sendHearAgain": {
+        const { seq } = effect
+        later(ports.home.hearAgain(effect.id), (answer) => ({
+          type: "hearAgainAnswered",
+          seq,
+          answer,
+        }))
+        return
+      }
       default: {
         assertNever(effect)
       }
     }
   }
 
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener)
+    return (): void => {
+      listeners.delete(listener)
+    }
+  }
+
   return {
     getSnapshot: () => state,
-    subscribe(listener): () => void {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
+    subscribe,
     dispatch: (intent) => send(intent),
     attach(): () => void {
       attached = true
-      const stops = watchPhone()
+      const stops = [
+        ...watchPhone(),
+        ...watchOnPhone(),
+        ports.refresh?.({
+          what: LIBRARY_WORDS.pullWhat,
+          checkAgain: checkAgainOf({
+            getSnapshot: () => state,
+            subscribe,
+            readAgain: () => send({ type: "readAgain" }),
+          }),
+        }) ?? ((): void => undefined),
+      ]
       send({ type: "entered" })
       return (): void => {
         for (const stop of stops) stop()

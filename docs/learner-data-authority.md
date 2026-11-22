@@ -152,7 +152,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Studio's time log and answers (the phone's)                                            | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | Studio's ideas (the phone's)                                                           | on the phone, never sent                     | on a paired phone, each idea sent whole goes to the paired home by the voice lane as one bundle (its title, subject, keywords, format, when it was begun and sent, and each answer as its take's voice note by id or its typed words), once home holds those notes; the phone keeps every idea whole (LA13, LA15)                                                                                                                                                                                                                                                                                                                                                                                   | the same                                   |
 | Studio's asks (GitHub's public issues)                                                 | not read                                     | in the Android app, read from GitHub's public list of open `ask` issues each time Asks opens, without credentials; nothing of the phone's sent (SFEED1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
-| Speech                                                                                 | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | the same                                   |
+| Speech                                                                                 | the browser's own voice                      | the browser's own voice                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
 | Reminders                                                                              | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
@@ -172,8 +172,9 @@ request for a lesson is a request. What they do not carry is a cookie, so the
 operator cannot tell a learner who chose the device from an account holder by
 them. This is a statement about application payloads. It is not network
 anonymity, and it says nothing about static-asset requests, the reverse proxy's
-logs or any service the learner themselves invokes (a user-selected speech
-provider, binding the music overlay to a WebSocket).
+logs or any service the learner themselves invokes (binding the music overlay
+to a WebSocket). The browser's own voice is the browser's: where its maker
+runs a voice online, the text it reads goes to that maker.
 
 ## Invariants
 
@@ -209,7 +210,7 @@ declared (checked by reading every call site and by the tests named).
   to `isCorpusRead` in `tests/local-mode/no-egress.spec.ts` a route that carries
   a learner's state.
 - _Scope:_ `apps/www/src`. Not covered: a package under `packages/` that makes
-  its own requests (`speech`, `ws`, `fetch-kit` corpus reads, and `resume`'s
+  its own requests (`ws`, `fetch-kit` corpus reads, and `resume`'s
   `renderResume`, which sends the owner's own contact details to the LAN
   résumé service), which carry no learner state by their own contracts.
   Nor is Studio's Asks page in the Android app (`lib/studio-asks`, SFEED1),
@@ -334,17 +335,23 @@ declared (checked by reading every call site and by the tests named).
 - _Falsified by:_ a hunk in `apps/www/vite.config.ts` that widens
   `PAGES_CONNECT_POLICY` beyond `'self'`, removes `pagesConnectPolicy()` from the
   plugin list, changes its `injectTo` from `head-prepend`, or changes the profile
-  name it keys on; or one that adds another `<meta http-equiv>` policy to
-  `apps/www/index.html` or `apps/www/resume/index.html` ahead of it.
-- _Scope:_ `apps/www/vite.config.ts`, and the two HTML entries.
+  name it keys on; one that makes `publicSite` write a page from anything but a
+  template Vite's HTML plugin emitted, or put a page's own words ahead of the
+  template's `<head>`; or one that adds another `<meta http-equiv>` policy ahead
+  of it to a template the Pages build carries (`SITE_TEMPLATES` in
+  `apps/www/src/landing/output.ts`: `apps/www/landing/*.html`) or to a page
+  `apps/www/src/landing` renders.
+- _Scope:_ `apps/www/vite.config.ts`, the Pages build's templates, and
+  `apps/www/src/landing`.
 - _Why not enforced:_ a type or a lint rule cannot see a build's output. The
   claim is checked against the output by `tests/local-mode/no-egress.spec.ts`,
-  which finds the tag, shows the policy blocks a real request, and loads five
-  routes with no violation; `pr.yml` runs it on any change to `apps/www/src` or
+  which finds the tag, shows the policy blocks a real request, and loads the
+  site's pages (the landing, the résumé, the authorship record and the 404
+  page) with no violation; `pr.yml` runs it on any change to `apps/www/src` or
   the files above (wiring, not reviewable here). The lan and Docker builds are
-  left out because they reach `file_host` on another port of the same host, a
-  speech provider the learner chose and a music-overlay socket, none of which a
-  `connect-src` can name without also blocking the learner's own choices.
+  left out because they reach `file_host` on another port of the same host and
+  a music-overlay socket, neither of which a `connect-src` can name without
+  also blocking the learner's own choices.
 
 ### LA6: behaviour reaches the account only with the person's opt-in
 
@@ -464,7 +471,19 @@ declared (checked by reading every call site and by the tests named).
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
-  sending nothing but the take's id; ST32), Studio's feed videos,
+  sending nothing but the take's id; ST32), its Needs your attention
+  (`lib/take-reconcile`, through `lib/home-link/attention`'s `keep`: one
+  `GET /voice-notes/attention` each time the page opens or Try again is
+  pressed, and each time Takes' first page opens, for its way in's count, asked again while the link is busy as Takes on home's read is;
+  per Play, one `GET /voice-notes/:id/audio`; and per act tapped, one
+  `POST /voice-notes/:id/attention` naming the act, asked again while the
+  link is busy, sending nothing of the phone's but the take's id and the
+  act's name; HEARD3, #3075), the ask to hear a take again that Takes on home
+  and Needs your attention both offer (`lib/hear-again`, through
+  `lib/home-link/attention`'s `keep`: per tap, one
+  `POST /voice-notes/:id/attention` of the act `hear-again`, asked again
+  while the link is busy, sending nothing of the phone's but the take's id
+  and the act's name; #3339), Studio's feed videos,
   the weekly call's and Playoff Delta's (`lib/call-videos`, through
   `lib/home-link/call-videos`' `keep`: one `GET /feeds/:feed/videos` each
   time a feed's screen opens, on a drag down, on Try again and once after a
@@ -490,7 +509,18 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/episode-notes-read`'s `keep`: one `GET /feeds/:feed/notes`
   per feed as the page opens and on a drag down, sending nothing of the
   phone's, asking again a second later while the link is busy, at most ten
-  times and not once the page has left it; SFEED6, #2745), and Studio's Finish
+  times and not once the page has left it; SFEED6, #2745), aph's screens
+  (`components/aph/device-aph-lane.tsx`, through `lib/home-link/aph`'s
+  `readAphOnOpen` and its `keep`, a read on its own, held while away: one
+  `GET /aph` (`@some-ui/aph`'s `readFromHome`) each time aph's layout mounts
+  with aph kept on home, sending nothing of the phone's, asking again a
+  second later while the link is busy, at most ten times; AR1, #3285), a
+  closed week's read-back (`@some-ui/rust-rounds`' week and
+  `lib/interview-week`, through `lib/home-link/week-record`'s `askWeekRecord`
+  and its `keep`, a read on its own: one `GET /rust-weeks/:id/record` or
+  `GET /interview-weeks/:id/record` each time a closed week opens, sending
+  nothing of the phone's but the week's id, never asked again in that
+  opening; RR30), and Studio's Finish
   (`routes/_dashboard/_apk/journal/episodes/making.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
@@ -505,10 +535,25 @@ declared (checked by reading every call site and by the tests named).
   once a minute, when a credentialed request is answered not found other
   than as home's JSON error (a route home lacks), one at a time and never on
   a timer;
-  #2843),
+  #2843), and the sign-in mark asking whether home still knows this phone
+  (`lib/home-link/standing`'s watch, through the link's `check`: one
+  `GET /auth/session` with the credential, on the drain's turn of the pace
+  and holding no activity of the person's, once as each pairing is read
+  back (the app's start; a new pairing is known already), or, if a check
+  was out then, once it ends, and each time the app comes back to the
+  foreground, one
+  at a time, never on a timer nor on any other change of the link, and none
+  while held away or home is busy, unpaired, or once home has refused the
+  key; sending nothing of the phone's; SIGNIN1, #3087),
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
-  (`components/settings/device-section.tsx`): the sync (published lessons
-  and dramas, read with no credential), pairing (the code only), unpairing,
+  (`components/settings/device-section.tsx`), or, for pairing alone, in the
+  first run's welcome the foyer draws on a phone not paired
+  (`components/settings/device-welcome.tsx`): the sync (published lessons
+  and dramas, read with no credential), pairing (the code, and a name for
+  the phone only where home takes one and only as the owner typed it, never
+  filled in; `components/settings/device-pair-form.tsx`, which the
+  first run's welcome, `components/settings/device-welcome.tsx`, draws too;
+  SIGNIN2, #3088), unpairing,
   and the clear of finished sessions home holds (`lib/home-link/clear`,
   after one confirm that names how many and the host): each finished
   session (`mayLeavePhone`: completed, not today's) read back from home
@@ -557,7 +602,9 @@ declared (checked by reading every call site and by the tests named).
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
   take's words, My data's reads, Ideas on home's reads, Takes on home's
-  reads, Studio's feed videos' list and the marks' ask whether home works
+  reads, Studio's feed videos' list, aph's read of its record as its
+  screens mount (AR1), a closed week's read of its record (RR30) and the
+  marks' ask whether home works
   with this build is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
@@ -580,7 +627,10 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from
   anywhere but a press handler in the Home server block or a module that
-  block calls, My data's delete (`lib/home-link/delete-note`, below), or the study list's let-go (`letSessionGo`, run through
+  block calls (the pairing form, which the welcome draws too), or draws the
+  pairing form (`components/settings/device-pair-form.tsx`) anywhere but
+  those two, or has it send a name the owner did not type there (a default,
+  the device's model), My data's delete (`lib/home-link/delete-note`, below), or the study list's let-go (`letSessionGo`, run through
   `letSessionGoFor`, which only keeps the asked host beside its end) started from
   anywhere but its confirm's `onConfirm` and the phone-full offer's "Remove
   it" `onPress` (`components/settings/device-storage.tsx`), or that confirm
@@ -596,13 +646,30 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
   `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
   `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts`,
+  `lib/home-link/attention.ts`,
   `lib/home-link/call-videos.ts`, `lib/home-link/renders.ts`,
-  `lib/home-link/previews.ts` and `lib/home-link/episode-notes-read.ts`; one
+  `lib/home-link/previews.ts`, `lib/home-link/episode-notes-read.ts`,
+  `lib/home-link/cards-essays.ts`, `lib/home-link/clips.ts`,
+  `lib/home-link/aph.ts` (AR1) and `lib/home-link/week-record.ts` (RR30);
+  one that has the `read` `aph.ts` hands its
+  `keep` send anything but one `GET /aph`, or lets anything but
+  `components/aph/device-aph-lane.tsx` call `readAphOnOpen`; one that has
+  `week-record.ts` send anything but one `GET` of `weekRecordPath(of, week)`,
+  or lets anything but the routes `_apk/rust-rounds.tsx` and
+  `_apk/jobs/interview.tsx` call `askWeekRecord`; one
   that calls its `look` from anywhere but `lib/home-link/compat-read.ts`,
   has `compat-read.ts` send anything but one `GET` of `compatPath(needs)`,
   lets anything but `lib/home-link/lanes.ts` call it, or has
   `lib/home-link/serves` ask but at the moments above, with a second ask
   out, or on a not-found sooner than `MISSING_GAP` after the last; one
+  that calls the link's `check` from anywhere but
+  `lib/home-link/standing.ts`, has `check` send anything but one
+  `GET /auth/session` or send while held away, home is busy, unpaired or
+  once home has refused the key, or take the person's turn of the pace or
+  hold an activity, lets anything but `components/device-sign-in-mark.tsx`
+  run that watch, mounts its `SignInWatch` anywhere but once in
+  `routes/_dashboard.tsx`, or has the watch ask but at the moments above or
+  with a second ask out (SIGNIN1); one
   that has `renders.ts` send anything but one `GET /renders`, `previews.ts`
   anything but the three asks above, or `episode-notes-read.ts` anything but
   one `GET /feeds/:feed/notes`, or lets anything but `lib/renders`,
@@ -618,13 +685,21 @@ declared (checked by reading every call site and by the tests named).
   video (`youtubeLink` (`@some-ui/core-utils`)); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
-  run (`voice-copy.ts`) and `lib/take-library` read
-  `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
+  run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`,
+  `lib/take-reconcile` (HEARD3) and the Rust Rounds route (an opening's
+  take on Play, #3269) read `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
   read but on the screen opening, Try again, a search (a blank one reads the
   newest), Show the newest, or once for the newest after one of the phone's
   takes reaches home (`arrived`) while no search is shown, or ask for audio
   but on a Play, or `lib/take-library` ask again but while the link is busy
-  and the read is still wanted, more than ten times in all; one that has `idea-reads.ts` send anything
+  and the read is still wanted, more than ten times in all; one that has
+  `attention.ts` send anything but one `GET` of `ATTENTION_PATH` per read
+  and one `POST` of `actPath(id)` per act or ask to hear again, lets anything
+  but `lib/take-reconcile` and `lib/hear-again` call it, or has
+  `@some-ui/soundbites`' `stepReconcile` read but on the page or Takes'
+  first page opening or Try again, or send an act
+  but on a tap, one at a time (HEARD3), or its hear-again slice
+  (`lib/hear-again`) ask but on a tap, one at a time (#3339); one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
   `lib/idea-home` call it, or has `@some-ui/soundbites`' `stepOnHome` read
   but on the screen opening or Try again, or write but on a tap (setting an
@@ -667,7 +742,7 @@ declared (checked by reading every call site and by the tests named).
   the voice run call it; one that has `routes/_dashboard/_apk/journal/episodes/making.tsx`
   or `lib/home-link/studio-videos.ts` call anything in `lib/home-link` but
   what Finish reads (`studioVideos`, and, in `studio-videos.ts`,
-  `pairingOf` and `./videos`' `videoAnswers`, `videoHanded`,
+  `pairing` and `./videos`' `videoAnswers`, `videoHanded`,
   `videosListed` and `videosMoved`), or has `studioVideos` call a
   `homeLink()` method that sends, `sendVideos` or `phoneVideos`; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
@@ -743,7 +818,8 @@ declared (checked by reading every call site and by the tests named).
   only the one asked last, one write goes at a time and setting an idea
   aside asks first), and Takes on home (`lib/take-library`, whose one
   request per read is the `GET` `takes-read.ts` sends, and only it calls
-  that module, and it and the voice run alone read `voice-audio.ts`;
+  that module, and it, the voice run, My data, Needs your attention and
+  the Rust Rounds route alone read `voice-audio.ts`;
   `lib/library/__tests__/model.test.ts` holds that a read answers only the
   one asked last, a search home would refuse is never asked, and audio is
   asked only on a Play, one at a time), and Studio's feed videos (`lib/call-videos`,
@@ -892,7 +968,8 @@ only from the lane's hook and the scene notes read for home only there
 (`egress-choke-points`). What no test can say is when a note is copied:
 
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
-  only while the phone is paired (`paired()`), and only from `copyAll` (each
+  only while the phone is known to be paired (`pairing().kind === "paired"`,
+  #3152), and only from `copyAll` (each
   spoken reflection, named Jobs note, scene note in the draft, game bite past
   its hold, Studio take still on the phone, soundbite, and grammar-lens and
   LeetType take on its desk, and Studio idea answer's take on its desk, a
@@ -989,7 +1066,7 @@ only from the lane's hook and the scene notes read for home only there
   is not `prompted` (an ask home holds named it, LA18) or that home does not
   hold; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
-  `copyAll`, removes its `paired()` checks (before every note and again
+  `copyAll`, removes its pairing checks (before every note and again
   after its audio is read), starts
   `copySoon` from anything but `watchVoiceNotes`, its subscriptions and
   `sendVoice`, or makes `sendVoice` anything but a copy pass, then
@@ -1073,7 +1150,7 @@ only from the lane's hook and the scene notes read for home only there
   copies only while the phone is paired is a reading of its guard, which a
   source scan sees as text and a lint rule cannot tie to the link's state.
   Held when declared (reworded for HF8, and for HF2), by reading every
-  call: `copy` only in `copyAll`, behind `paired()` before each note and
+  call: `copy` only in `copyAll`, behind the pairing check before each note and
   after its audio is read; `sceneNotes.read` only in `candidates`, over
   the draft's list, which `shelveTake` writes only after the audio is
   shelved; the soundbites, lens takes and LeetType takes read only in
@@ -1194,8 +1271,8 @@ that the shell's drain sends nothing unpaired and sends once paired on the
 moments below, a pull among them, asking each watched lane once and saying
 the pull fell short when one lane's run did, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`), and that a
-screen hears its lane's end in the pull under way, one run a lane between
-them (`lib/home-link/__tests__/pull.test.ts`). What no test
+pull on a Jobs screen reads the morning's picks as the person's own read,
+not by waiting on a lane's run (`lib/jobs/__tests__/pull.test.ts`, JP1). What no test
 can say is when a run is asked for. Rust Rounds' lane
 (`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`,
 `packages/ui/rust-rounds/src/lib/weeks/index.test.ts`,
@@ -1214,7 +1291,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   turned the lane's away, or home's busy ending after home turned it away
   (AD3: the link sends nothing while home's `Retry-After` lasts, answering
   each request busy itself, so the moments that come meanwhile run the
-  lane, say busy and send nothing, and its end asks once); from `askLane`,
+  lane, say busy and send nothing, and its end asks once), or the link's
+  hold away from home ending after a run found no answer (AW1,
+  `lib/home-link/away.ts`: the link sends nothing a lane asks while the hold
+  lasts, answering each request as unanswered itself; its end on its time or
+  home answering asks once, while a network change or a pull lets it go and
+  asks every lane itself, and Send now lets it go and asks its own); from
+  `askLane`,
   which a mark's sheet and Settings' readout call only from their Send now
   button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
@@ -1223,14 +1306,20 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   more for a lane whose run the link turned away, once the link frees up
   (the moment its watch asks it again too), through the refresher that
   `useHomePull` registers on `screenRefreshers` while `HomeLanes` is
-  mounted. In the same pull, that refresher's `ended` tells a screen how
-  its lane's run ended: `pulledLane` reads it, only for the Jobs refresher
-  (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
-  status page show), and it joins the pull under way, or starts the one
-  the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn. Nothing asks on a timer: home's busy ends on one (the
-  link's, `runtime.ts`), which only opens the link again to the lanes home
-  turned away. A run goes
+  mounted, each lane asked once, in turn. A screen never waits on a lane's
+  run for what it shows of home: the Jobs refresher (`lib/jobs/pull.ts`,
+  PULL2, registered while the Jobs screens or the status page show) reads
+  the morning's picks and runs as the person's own read, `askJobsPicks`
+  (`lib/home-link/jobs.ts`, JP1). A pull first lets the link's hold away from home go (AW1),
+  keeping the stretch's tries, so pulls one after another do not start its
+  backoff over (HERD1). A pull, the app coming back, the network coming back
+  or a watch mounted while a lane's run is under way joins that run rather
+  than asking another after it (`nudge`); only a change on this phone (an
+  edit, the link freeing up, home's busy or the hold ending) asks a run after
+  the one under way (HERD1, `lib/home-link/__tests__/herd.test.ts`).
+  Nothing asks on a timer: home's busy and the hold away each end on one
+  (the link's, `runtime.ts`), which only opens the link again to the lanes
+  home turned away. A run goes
   under the pairing the phone holds when it starts (`laneExchange`),
   through the link's `drain` (what goes beside it is
   `lib/home-link/model.ts`'s), each request at its turn on the pace every
@@ -1258,22 +1347,22 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   adds a timer, changes when a listener asks (the record subscription's
   check that the revision moved, the link subscription's test for a new
   pairing, for the link freeing up after a run it turned away, or for home's
-  busy ending after a run home turned away, each read from the lane's runs
-  as they end and asked once), removes or
+  busy or the hold away from home ending after a run home turned away or
+  that found no answer, each read from the lane's runs as they end and asked
+  once), removes or
   changes anything the cleanup `watchKept` returns undoes, or removes
   `mayAsk`'s check that the phone is paired or that the document is
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
   `homeRefresher` from anywhere but `lanes.ts`'s `homePullOf`, or
-  registers it anywhere but `useHomePull`'s effect; a hunk that calls
-  `pulledLane` from anywhere but `lib/jobs/pull.ts`'s `jobsRefresher`, or
-  registers that refresher (`registerJobsPull`) from anywhere but an effect
+  registers it anywhere but `useHomePull`'s effect; a hunk that registers
+  `lib/jobs/pull.ts`'s `jobsRefresher` (`registerJobsPull`) from anywhere but an effect
   in `routes/_dashboard/_apk/jobs.tsx` or
   `components/settings/status-board.tsx`; a hunk to
   `lib/home-link/pull.ts` that asks a lane other than through `pullKept`,
   asks any but the lanes `watched` names when its turn comes, asks two lanes
   at once, asks a lane again other than after a run the link turned away
   (`busy`) and the link freeing up (`free`), or more than once again, drops
-  that one ask again, lets `ended` or `checkAgain` start a pull while one
+  that one ask again, lets `checkAgain` start a pull while one
   is out, or lets a pull
   read as in step when a run that answered it ended in a way `resynced`
   (`kept-model.ts`) does not accept; a hunk to `lib/home-link/kept-runtime.ts` or
@@ -1297,8 +1386,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `drain`; a hunk to `lib/home-link/runtime.ts` or `model.ts` that sends a
   request other than at its turn on the link's pace (`ask`, `personal`),
   takes a turn for one it answers busy itself, starts a drain run beside
-  another or beside a send or an Unpair, or lets a send or an Unpair send
-  before the drain run it stopped has ended; a hunk to
+  another or beside a send, an Unpair or a pairing again over one home
+  forgot (SIGNIN3), or lets any of those send before the drain run it
+  stopped has ended; a hunk to
   `lib/home-link/leetype-log.ts`'s `sendLogs` that sends an event `taken`
   says home took, or forgets a log's events other than once it is read
   back; a hunk to
@@ -1317,9 +1407,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   home and -1 on the phone; a hunk to `lib/home-link/jobs.ts` that makes
   the lane's `revision` anything but twice the log's length, plus one while
   `noticeFiling` owes home a request, or its `exchange` anything but
-  `exchangeJobs` over the runtime's `keeping`; a hunk to `lib/jobs` that
-  reads home's digests, files a decisions or scouts file or the notice
-  token anywhere but in `exchangeJobs`, or that deletes, renames or moves
+  `exchangeJobs` over the runtime's `keeping`, or its `askJobsPicks`
+  anything but `readDigests` over that `keeping` through the link's `keep`;
+  a hunk that makes `lib/jobs/pull.ts`'s refresher wait on a lane's run or
+  read home other than through `askJobsPicks`; a hunk to `lib/jobs` that
+  reads home's digests anywhere but in `exchangeJobs` and `readDigests`
+  (which `askJobsPicks` calls), files a decisions or scouts file or the
+  notice token anywhere but in `exchangeJobs`, or that deletes, renames or moves
   `readDigests`, `fileOutgoing` or `fileNotice` (`lib/jobs/home.ts`) so
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
@@ -1470,6 +1564,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `apps/www/src/routes/_dashboard.tsx`,
   `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
   `apps/www/src/lib/jobs/home.ts`, `apps/www/src/lib/jobs/notice.ts`,
+  `apps/www/src/lib/jobs/pull.ts`,
   `packages/ui/aph/src/lib/sync.ts`, `packages/ui/aph/src/lib/store.ts`,
   `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
   `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
@@ -1700,11 +1795,20 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   only through topik's `AskScene`, from the port `session-viewport.tsx`
   hands it on the phone; and `lib/scene-ask` imports nothing that sends.
 
-### LA19: a record kept on home is deleted only from My data's sheet, and a draft's delete never reaches home
+### LA19: a record kept on home is deleted only through My data's sheet, and a draft's delete never reaches home
 
 The owner's rule on MY-DATA (#2473, MD0 #2474, 2026-11-01 and 2026-11-02):
 deleting is "dedicated to only one place". A record kept on home is
-deleted only from My data, white-gloved (MD3, #2477). A draft, something
+deleted only through My data's delete path, white-gloved (MD3, #2477). The
+owner added a second page on that same path on 2026-11-16 (#3070, the
+owner's comment: "I should be able to delete them"): Takes › Needs your
+attention (HEARD3, #3075) opens My data's sheet, with its words and its
+receipt, on one take home couldn't hear well; of any kind since the
+owner's answer on 2026-11-16 (#3076: "allow delete for any kind home
+couldn't hear"; HEARD4, #3079). My data's own rows offer that delete too
+since the owner's answer on 2026-11-17 (paulgsc/server#919, recorded on
+#3070: "yes, My data should offer the unheard delete too"; HEARD5, #3084,
+C460). A draft, something
 still being made that hasn't gone home (a retake, an unsent idea answer's
 Delete), is deleted where it was made, and that delete is the phone's
 alone.
@@ -1742,10 +1846,26 @@ reaches:
   a `confirmed`. It accepts one only from an `asking` sheet, or from an
   `ended` sheet's `retryable` notes. `confirm` is called only from the
   sheet's "Delete for good" and Try again buttons (`DeleteSheetView`'s
-  `onConfirm`, `components/settings/device-my-data-delete.tsx`). Before
-  that button, the sheet shows `DELETING.goes` and `DELETING.stays`, with
-  "Keep it" first. A sheet is asked (`asked`) only for recordings
-  `offersDelete` passes. Every other delete of a recording on the phone (a
+  `onConfirm`, `components/settings/device-my-data-delete.tsx`), on My
+  data's page or on Needs your attention's
+  (`routes/_dashboard/_apk/journal/takes/attention.tsx`), which share one
+  `phoneDeleting()`. Before that button, the sheet shows `DELETING.goes`
+  and `DELETING.stays`, with "Keep it" first. A sheet is asked (`asked`)
+  only for recordings `offersDelete` passes, or, on Needs your attention,
+  for one take of a kind this build knows (`isKind`, `lib/my-data/model.ts`).
+  Both offer every kind (the owner, #3076 and server#919), each of which
+  this phone lets go of its own copy of (`lib/home-link/voice-copy`'s
+  `DELETED_LETS_GO`). The page lists only
+  takes home couldn't hear, and home deletes such a take of any kind
+  (paulgsc/server#912); a take of a kind home keeps for good that home
+  heard, or any take a home before #912 holds, is answered `409`, which
+  the sheet says, and nothing goes. My data's own rows offer only what
+  home's list marks `deletable` (`lib/my-data/model.ts`, false when home
+  says nothing and for a recording only this phone holds): Studio's
+  recordings, and since paulgsc/server#919 a take of any kind home
+  couldn't hear; a home before #919 marks only Studio's. A Studio or
+  soundbite row is offered only once this phone's read says its store is
+  handed in (`offersDelete`'s `unread`, null until read). Every other delete of a recording on the phone (a
   draft's) neither imports the link or My data nor calls `deleteNotes`, and
   none sits in a module that reaches the link; what it reaches past its own
   file is LA20's. Likewise a call week's step: `deleteCallStep` is called
@@ -1763,12 +1883,30 @@ reaches:
   - a hunk to `deleting.ts` that lets `stepDeleting` reach `deleting` from
     any sheet but `asking`, or any `ended` sheet's notes but `retryable`'s;
     widens `retryable` to a final answer (`kept`, `notHeld`, `forgotten`);
-    lets `asked` open on a kind not in `PHONE_LETS_GO`; or widens
-    `offersDelete` past home's `deletable`;
+    or widens `offersDelete` past home's `deletable`, or past a store not
+    handed in or not known yet (`WAITS_ON_STORE`, `unread`);
   - a hunk that calls a `Deleting`'s `confirm` from anything but
     `DeleteSheetView`'s `onConfirm`, or `ask` with recordings
     `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
-    `MyDataKind` and its `?note=` opening);
+    `MyDataKind` and its `?note=` opening), or, on Needs your attention,
+    with more than the one take tapped or with a take `isKind` refuses;
+    or a hunk to `my-data/model.ts` that makes `deletable` true where home
+    didn't say so (its default, or a recording only this phone holds); or
+    a hunk to `my-data/index.ts` whose `readPhone` reads a store as handed
+    in that isn't; or a hunk to `device-my-data.tsx` that hands `MyDataKind`, or
+    `KindList`'s `?note=` check, an `unread` other than this phone's read
+    (null until it is in); or a hunk to `device-my-data.tsx` that
+    makes `MyDataKind`'s `unread` optional or defaults it, or passes
+    `offersDelete` anything but it; or a hunk to `voice-copy.ts` that changes which
+    kinds `readyToLetGo` waits on a handed-in store for without the same
+    change to `deleting.ts`'s `WAITS_ON_STORE`; or a hunk to `voice-home/model.ts` that adds a kind to
+    `VOICE_OFS`, which both pages then offer to delete, re-checked against home's delete and its list's `deletable`
+    (paulgsc/server `crates/db/voice/src/delete.rs` and `kept.rs`); or a
+    hunk to
+    `voice-copy.ts` that makes a kind's `DELETED_LETS_GO` let go of more than
+    the copies its receipt names, resolve true while a store kept its copy,
+    or drop more of a kind's record than its audio where its store keeps
+    one, marked (a reflection, a soundbite, a desk's take: C452);
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
@@ -1797,7 +1935,12 @@ reaches:
   `call-deleting.ts`, `call-deleting-runtime.ts`, `index.ts`,
   `apps/www/src/lib/home-link/delete-note.ts`,
   `apps/www/src/components/settings/device-my-data.tsx`,
-  `device-my-data-delete.tsx` and `device-my-data-calls.tsx`. For a draft's delete: every module in
+  `device-my-data-delete.tsx` and `device-my-data-calls.tsx`,
+  `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx`,
+  `apps/www/src/lib/my-data/model.ts` (`deletable`),
+  `apps/www/src/lib/home-link/voice-copy.ts` (`DELETED_LETS_GO`,
+  `readyToLetGo`) and
+  `apps/www/src/lib/voice-home/model.ts` (`VOICE_OFS`). For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
   - **Lint** can't hold that the port runs only after the person's confirm
@@ -1823,6 +1966,26 @@ reaches:
       `offer` finds home's list lets go. The phone's own copy of a week's
       video, which `forgetCopy` removes on the video's receipt, is a copy
       of what home kept, not a draft.
+    - Amended for Needs your attention (HEARD3, #3075), read the same
+      way: its route calls `ask(take.of, [take.id])` only from a take's
+      Delete…, which `TakeReconcile` shows only where `isKind` passes
+      (`reconcileDeletes` from HEARD4, #3079, to HEARD5, #3084, read the
+      same way),
+      and passes `confirm` only to `DeleteSheetView`'s `onConfirm`
+      (through `useDeleting`, beside it); it imports neither `delete-note`
+      nor `createDeleting`. What home deleted reaches the
+      page by `hearDeletes`, which hears the ids of each receipt.
+    - Amended for My data's rows on any kind (HEARD5, #3084, C460), read
+      the same way: `PHONE_LETS_GO` and `RECONCILE_LETS_GO` went, every
+      kind being offered; `MyDataKind` still asks only for ids
+      `offersDelete` passes and `KindList`'s `?note=` effect still runs
+      only where it passes; `offersDelete` still requires home's
+      `deletable` (`model.ts` defaults it false and sets it false for a
+      phone-only recording), which a home before paulgsc/server#919 sets
+      on Studio's recordings alone, and refuses a Studio or soundbite row
+      until `KindList` has this phone's read (`unread` null before it) and
+      that read says the store is handed in; a failed read names every
+      store not handed in (`readPhone`).
     - The phone's draft deletes (Studio's retake and take removal, an idea
       answer's Delete, the soundbites', lens and LeetType desks' and Rust
       Rounds' deletes, the reflection and scene voice budgets) live in
@@ -1870,8 +2033,12 @@ say is that no other path opens it:
   `choose` while open) and a `ping` every `PING_MS`; it drops the offer on
   every close, on `QUIET_MS` with nothing from home or `OPEN_MS` with no
   socket open, ignores an offer numbered no later than the last and every
-  event from an earlier opening; it tries again only after a close that
-  leaves it `away`, after `retryDelayMs`, or at once after a `4400` that
+  event from an earlier opening; it asks for no socket while the home link
+  holds the phone away from home (`held`, AW1, `lib/home-link/away.ts`), and
+  tells the link (`reached`) when a socket opens; it tries again only after
+  a close that leaves it `away`: after `retryDelayMs` while the link holds
+  nothing, or once the link's hold ends (`home`) while it does, or at once
+  after a `4400` that
   followed a hello with a `lastSeq` (with the `lastSeq` forgotten), and
   after `update` or `unpaired` not until the pairing changes, the app comes
   back to the front or Game day is opened again; `liveFeed` (`live.ts`) opens, sends and arms timers only as
@@ -1880,8 +2047,9 @@ say is that no other path opens it:
 - _Falsified by:_ a hunk to `lib/home-link/live-machine.ts` that returns a
   `read-pairing` effect from anything but `connect`, or calls `connect` from
   anything but `watch`, the shown branch of `visibility`, `relinked` (on a
-  changed pairing), the `retry` timer or the 4400 rule; that weakens
-  `connect`'s guard; that returns a `hello` or `ping` effect from anywhere but
+  changed pairing), the `retry` timer, the 4400 rule or `home` (the link's
+  hold ending); that weakens `connect`'s guard, its `held` check included;
+  that arms the `retry` timer while the link holds the phone away; that returns a `hello` or `ping` effect from anywhere but
   `hello`, `opened` and the `ping` timer; that keeps `offer` across `end`,
   removes the `seq` check in `heard` or the `stale` check in `step`, or
   removes or lengthens the quiet timer or the opening one (`OPEN_MS`); that retries after a close
@@ -1890,7 +2058,8 @@ say is that no other path opens it:
   `retryDelayMs` (`live-model.ts`) to retry sooner or after `update` or
   `unpaired`; a hunk to `lib/home-link/live.ts` that opens a socket, sends on
   it or arms a timer other than in `run` for the matching effect, or drops
-  `stop`'s `unwatch` or its unsubscribes; a hunk to `live-socket.ts` that
+  `stop`'s `unwatch` or its unsubscribes, or feeds `home` other than from
+  the link's own hold (`gameDayFeed`'s `held`); a hunk to `live-socket.ts` that
   removes the `wss:` check, sends the token anywhere but the offered
   subprotocols, or reports a close it asked for; a hunk to
   `routes/_dashboard/_apk/game-week.tsx` that calls `gameDayFeed` outside
@@ -1906,15 +2075,16 @@ say is that no other path opens it:
   new event or effect opens the socket at a moment the person is not on Game
   day is a reading of intent no test or lint can make. Held when declared, by
   reading every call: `connect` from `watch`, `visibility`, `relinked`, the
-  `retry` timer and `closed`'s 4400 rule; `hello` effects only from `hello`
+  `retry` timer, `closed`'s 4400 rule and `home` (amended for AW1, #2928); `hello` effects only from `hello`
   (called by `choose` and `opened`); `ping` effects only from `opened` and the
   `ping` timer; `socket.send` and `ports.open` only in `run`; `gameDayFeed`
   only in `gameWeekPorts`'s non-`DEV` branch. One limit, stated rather
   than held: home refuses a revoked session's upgrade with a 401 or 403,
   which a page sees only as close 1006, so a phone that still holds a
   pairing home has ended reads it as `away` and keeps trying (at most every
-  30 s, and only while Game day shows) until the pairing changes; `4401`
-  reaches it only on a socket already open.
+  30 s, or one try each of the link's holds while it holds the phone away,
+  and only while Game day shows) until the pairing changes; `4401` reaches
+  it only on a socket already open.
 
 ## Not covered, on purpose
 
@@ -1924,7 +2094,8 @@ say is that no other path opens it:
   backed up by the OS (the Android manifest allows backup), read by anyone with
   the device, or lost with it. There is no recovery channel, by design.
 - **What a learner chooses to send.** Binding the music overlay opens a WebSocket
-  to `file_host`; a user-selected speech provider receives the text it speaks; a
+  to `file_host`; a browser voice its maker runs online receives the text it
+  speaks; a
   kept shelf item is stored verbatim; the phone's "Share with an agent"
   (`lib/agent-export`) hands Android's share sheet a file of the device's
   sessions, reflections, stops, soundbites, grammar-lens record and
@@ -1940,8 +2111,8 @@ say is that no other path opens it:
   keeps to home on its own, since home is the owner's own store (LA15), and
   Korean reads the routine's files from it. Game day holds a live socket to
   home while it shows (LA21); what it says there (the mode, the game, which
-  games the owner is watching) decides home's offer and is kept nowhere. The share sheet and the speech
-  provider reach beyond home, and the share sheet's "arrived" is the
+  games the owner is watching) decides home's offer and is kept nowhere. The share sheet and an online
+  browser voice reach beyond home, and the share sheet's "arrived" is the
   receiver's copy, not home's (HF1, #2176).
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

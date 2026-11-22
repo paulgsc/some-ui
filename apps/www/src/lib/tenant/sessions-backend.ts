@@ -4,7 +4,7 @@
  *
  * - **Local**: `localStorage` (`sessions-repository`). Nothing leaves the
  *   browser. The default where `file_host` is optional, and the only store on
- *   the Pages build.
+ *   the viewer build.
  * - **Account**: `file_host`, through the credentialed account transport.
  *   Chosen by the person (signing in, or switching), never by default.
  *

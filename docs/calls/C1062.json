@@ -1,0 +1,22 @@
+{
+  "id": "C1062",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/mobile/android/app/src/main/java/dev/paulgsc/someui/HomeRoutes.java",
+    "some-ui:apps/mobile/android/app/src/main/java/dev/paulgsc/someui/HomeRoutePlugin.java",
+    "some-ui:apps/www/src/lib/device-backend/native-http/route.ts",
+    "some-ui:apps/www/src/lib/device-backend/native-http/index.ts"
+  ],
+  "chose": "Both: when a request to home finds no answer or no name over the network Android gave the app, the app's own HomeRoute plugin asks home once more over each other network, Wi-Fi first (Network.openConnection), and says which answered in the native log; when Android says it keeps the app off the network (onBlockedStatusChanged), the phone says so in the words of the phone's settings for the app. The S21 Ultra's log (home tried 'from /100.x', a carrier's address, at home) is the evidence that Android put this app's traffic on mobile data; which of Android's default or a per-app setting did it is the owner's settings check, and either half covers one of them. Reach: Capacitor's HTTP plugin can't take a network; OkHttp's per-network socket factory would add a library for the same Network call; a patched plugin would be ours to keep in step with Capacitor's.",
+  "options": [
+    "ask home over each other network, and say a held app as held (chosen)",
+    "only ask home over each other network",
+    "only say a held app as held",
+    "patch Capacitor's HTTP plugin to take a network",
+    "OkHttp with a per-network socket factory"
+  ],
+  "gray": "How the app gets past Android's choice of network for it, and what it says when it can't, changes what the owner sees on the S21 and what the phone sends where; no check or earlier decision set it.",
+  "undo": "Record a call that moves this one; take routeElsewhere out of native-http's homeRequest and HomeRoutePlugin out of MainActivity.",
+  "refs": ["#3411", "#3100"]
+}

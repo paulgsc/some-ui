@@ -4,13 +4,13 @@
  * holds it, one home refused stays and is counted apart, never as gone, and
  * one home holds is counted as kept there, since the first such (#2080).
  */
+import type { StoredBite } from "@some-ui/game-week"
 import { describe, expect, it } from "vitest"
 
-import type { PhoneBite } from "@/lib/game-bites"
 import { outboxView } from "@/lib/home-link/voice"
 import { INITIAL_VOICE_HOME } from "@/lib/voice-home/model"
 
-const bite = (id: string, homeSince?: number): PhoneBite => ({
+const bite = (id: string, homeSince?: number): StoredBite => ({
   id,
   gameId: "401772981",
   at: "2026-11-01T21:00:00.000Z",

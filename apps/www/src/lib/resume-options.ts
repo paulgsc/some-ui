@@ -1,36 +1,29 @@
 import { resumeData } from "@some-ui/resume"
 
+import type { ResumeComposition } from "@/lib/resume-files"
+import { RESUME_VERSIONS } from "@/lib/resume-files"
+
 /**
  * The résumé's two axes as `/resume` and the LAN résumé builder offer them.
- * Order and the layout labels are presentation, so they belong here; the
- * composition labels are résumé content and come from resumeData.
+ * The order and the layouts live in `@/lib/resume-files`, which imports
+ * nothing; the composition labels are résumé content and come from
+ * resumeData.
  */
-const RESUME_ORDER = [
-  "backend",
-  "platform",
-  "fullstack",
-  "data",
-  "qa",
-  "solutions",
-] as const
-export type ResumeComposition = (typeof RESUME_ORDER)[number]
+export type { ResumeComposition, ResumeTemplate } from "@/lib/resume-files"
 
 export function isResumeComposition(
   value: unknown
 ): value is ResumeComposition {
-  return RESUME_ORDER.some((id) => id === value)
+  return RESUME_VERSIONS.some((id) => id === value)
 }
 export const RESUME_COMPOSITIONS: ReadonlyArray<{
   id: ResumeComposition
   label: string
-}> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
+}> = RESUME_VERSIONS.map((id) => ({ id, label: resumeData[id].label }))
 
-/** The layout axis (packages/ui/resume/README.md, Templates). */
-export const RESUME_TEMPLATES = [
-  { id: "rail", label: "Rail (portfolio)" },
-  { id: "classic", label: "Classic (single column)" },
-  { id: "compact", label: "Compact" },
-  { id: "vanilla", label: "Vanilla (plain ATS)" },
-  { id: "safe", label: "Safe (ATS)" },
-  { id: "conventional", label: "Conventional (traditional)" },
-] as const
+export {
+  DEFAULT_RESUME_COMPOSITION,
+  DEFAULT_RESUME_TEMPLATE,
+  RESUME_TEMPLATES,
+  resumeStem,
+} from "@/lib/resume-files"

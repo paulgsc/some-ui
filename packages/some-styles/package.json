@@ -20,6 +20,8 @@
     "./theme/registry": "./src/theme/registry.ts",
     "./theme/video-palette": "./src/theme/video-palette.ts",
     "./theme/sources": "./src/theme/sources.ts",
+    "./brand/cast": "./src/brand/cast.ts",
+    "./brand/genres": "./src/brand/genres.ts",
     "./brand/mark": "./src/brand/mark.ts",
     "./preset": "./src/preset/index.ts",
     "./config": "./src/config.ts",
@@ -62,7 +64,7 @@
     "@types/node": "^26.6.6",
     "@unocss/cli": "^66.8.1",
     "unocss": "^66.0.0",
-    "vite": "8.3.7",
+    "vite": "8.3.8",
     "vitest": "^5.1.0",
     "happy-dom": "21.0.4"
   }

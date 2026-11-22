@@ -1,0 +1,15 @@
+{
+  "id": "C176",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": ["packages/video-render/src/engagement-report.ts"],
+  "chose": "In the weekly engagement report, each count (offered, taken, passed over, left) is banded on its own: where offered and taken are both 5 or more and passed over is under 5, the report still shows offered and taken, though their difference estimates passed over.",
+  "options": [
+    "band each count on its own, as the owner's rule reads",
+    "band offered and taken too whenever passed over is under 5",
+    "leave passed over out of the report"
+  ],
+  "gray": "The owner's rule (ask #2701) bands counts under 5 and lists passed over among the counts, and the issue's own example (\"Drama: offered 12, taken 0\") shows offered beside a banded taken; the visit runtime makes passed over close to offered less taken, so the bands cannot hide it without hiding counts the rule shows. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+  "undo": "In publicLines, band offered and taken for a week whose passed over is under 5, or drop passedOver from COUNT_KINDS.",
+  "refs": ["#2700", "#2701", "#2910"]
+}

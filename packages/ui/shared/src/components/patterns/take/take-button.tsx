@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import type { TakeButtonView } from "@some-ui/voice-capture"
+import type { TakeButtonView, TakeWords } from "@some-ui/voice-capture"
 import { buttonLabel, buttonSaid, TAKE_WORDS } from "@some-ui/voice-capture"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Square } from "lucide-react"
@@ -46,11 +46,18 @@ export type TakeButtonProps = {
    * under way can still be stopped.
    */
   canStart?: boolean
+  /**
+   * The take's words where a page says them its own way (Rust Rounds'
+   * opening, #3269): its stop word then shows under the time while a take
+   * records. The pattern's (`TAKE_WORDS`) otherwise.
+   */
+  words?: TakeWords | undefined
   className?: string
 } & Pick<VariantProps<typeof takeButtonVariants>, "size">
 
 function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
   switch (view.kind) {
+    case "counting":
     case "opening":
     case "recording":
     case "keeping": {
@@ -75,23 +82,25 @@ function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
  * under the options' `clock: "left"`), breathes with the input's level, and
  * warns when the time is nearly up; while the microphone
  * opens it can still be tapped, which lets the take go. Its words are the
- * pattern's (`TAKE_WORDS`); it renders `view` and forwards taps, nothing
- * else.
+ * pattern's (`TAKE_WORDS`) unless a page gives its own; it renders `view`
+ * and forwards taps, nothing else.
  */
 export const TakeButton = ({
   view,
   onTap,
   canStart = true,
+  words: own,
   size,
   className,
 }: TakeButtonProps): JSX.Element => {
-  const words = TAKE_WORDS
+  const words = own ?? TAKE_WORDS
   const recording = view.kind === "recording" ? view : null
   const progress = recording
     ? Math.min(1, recording.elapsedMs / Math.max(1, recording.capMs))
     : 0
   const tappable =
     (view.kind === "ready" && canStart) ||
+    view.kind === "counting" ||
     view.kind === "opening" ||
     view.kind === "recording"
   const large = size === "large"
@@ -101,7 +110,11 @@ export const TakeButton = ({
       onClick={onTap}
       disabled={!tappable}
       aria-label={buttonLabel(words, view)}
-      aria-pressed={view.kind === "opening" || view.kind === "recording"}
+      aria-pressed={
+        view.kind === "counting" ||
+        view.kind === "opening" ||
+        view.kind === "recording"
+      }
       data-take={view.kind}
       className={cn(
         takeButtonVariants({
@@ -154,6 +167,9 @@ export const TakeButton = ({
               ? words.left(recording.capMs - recording.elapsedMs)
               : words.elapsed(recording.elapsedMs, recording.capMs)}
           </span>
+          {own !== undefined && (
+            <span className="text-sm font-bold">{own.button.recording}</span>
+          )}
           {/* A countdown already says how little is left. */}
           {recording.nearlyUp && recording.clock === "elapsed" && (
             <span className="text-xs font-medium">
@@ -166,7 +182,9 @@ export const TakeButton = ({
           <TalkGlyph
             className={cn(
               large ? "size-10" : "size-5 shrink-0",
-              (view.kind === "opening" || view.kind === "keeping") &&
+              (view.kind === "counting" ||
+                view.kind === "opening" ||
+                view.kind === "keeping") &&
                 "motion-safe:animate-pulse"
             )}
           />

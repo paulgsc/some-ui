@@ -7,19 +7,23 @@
  *
  * YouTube shows chapters only when the first starts at 0:00, there are at
  * least three, and each lasts at least ten seconds; `chaptersOf` keeps those
- * rules, so what it gives is either shown whole or is empty.
+ * rules, so what it gives is either shown whole or is empty. A mark can be
+ * `finer` (C391): it counts only when the other marks give fewer than three,
+ * as in a part of a series that falls inside one long section.
  */
 
 import type { ShotTime } from "./timing"
 
 /**
  * A scene that opens a chapter, and the chapter's title. A slide's chapter
- * (`slide`) is one with what follows it when it is too short to show.
+ * (`slide`) is one with what follows it when it is too short to show. A
+ * `finer` one opens a chapter only when the others make fewer than three.
  */
 export type ChapterMark = {
   readonly scene: string
   readonly title: string
   readonly slide?: boolean
+  readonly finer?: boolean
 }
 
 export type Chapter = { readonly startMs: number; readonly title: string }
@@ -28,7 +32,8 @@ export type Chapter = { readonly startMs: number; readonly title: string }
 export const OPENING = "Opening"
 
 const SHORTEST_MS = 10_000
-const FEWEST = 3
+/** The fewest chapters YouTube shows. */
+export const FEWEST_CHAPTERS = 3
 
 /** Chapter slides as marks, each titled as it is said aloud. */
 export const chapterSlides = (
@@ -41,7 +46,7 @@ export const chapterSlides = (
   }))
 
 /** `said` without the full stop and spaces it ends with. */
-function withoutStop(said: string): string {
+export function withoutStop(said: string): string {
   let end = said.length
   while (end > 0 && (said[end - 1] === "." || /\s/.test(said[end - 1] ?? "")))
     end -= 1
@@ -61,6 +66,32 @@ const oneLine = (title: string): string =>
  * joins the one before. Fewer than three is none, as YouTube shows none.
  */
 export function chaptersOf(
+  times: ReadonlyArray<ShotTime>,
+  marks: ReadonlyArray<ChapterMark>
+): ReadonlyArray<Chapter> {
+  const found = chaptersFound(times, marks)
+  return found.length >= FEWEST_CHAPTERS ? found : []
+}
+
+/**
+ * The chapters a render's marks make, however few: from all but the `finer`
+ * marks, and from every mark when those make fewer than three (C391).
+ */
+export function chaptersFound(
+  times: ReadonlyArray<ShotTime>,
+  marks: ReadonlyArray<ChapterMark>
+): ReadonlyArray<Chapter> {
+  const coarse = joined(
+    times,
+    marks.filter((mark) => mark.finer !== true)
+  )
+  if (coarse.length >= FEWEST_CHAPTERS) return coarse
+  const fine = joined(times, marks)
+  return fine.length > coarse.length ? fine : coarse
+}
+
+/** Every mark's chapter, each too short joined to a neighbour. */
+function joined(
   times: ReadonlyArray<ShotTime>,
   marks: ReadonlyArray<ChapterMark>
 ): ReadonlyArray<Chapter> {
@@ -89,9 +120,7 @@ export function chaptersOf(
   }
   while (kept.length > 1 && end - (kept.at(-1)?.startMs ?? 0) < SHORTEST_MS)
     kept.pop()
-  return kept.length >= FEWEST
-    ? kept.map(({ startMs, title }) => ({ startMs, title }))
-    : []
+  return kept.map(({ startMs, title }) => ({ startMs, title }))
 }
 
 /** `ms` as a chapter line's time: `m:ss`, or `h:mm:ss` from an hour on. */

@@ -9,7 +9,7 @@
  */
 import type { JSX } from "react"
 import { useState } from "react"
-import type { GameWeekPorts, OutboxPort } from "@some-ui/game-week"
+import type { GameWeekPorts, OutboxPort, StoredBite } from "@some-ui/game-week"
 import { fixtureFeed, GameWeek, storedPrefs } from "@some-ui/game-week"
 import type { SpokenTakes, SpokenTakeSnapshot } from "@some-ui/leetype"
 import type { RefineCard, RustRoundsPorts } from "@some-ui/rust-rounds"
@@ -165,20 +165,33 @@ function gameWeekPorts(): { ports: GameWeekPorts; actions: FitActions } {
     fallback: { ...SPEAKING, level: 0.4, durationMs: 3_000 },
   })
   let undoes = true
+  // What the store keeps, so the game's newest bites show as rows (GWB14).
+  let kept: ReadonlyArray<StoredBite> = []
+  const listeners = new Set<() => void>()
+  const keepNow = (next: ReadonlyArray<StoredBite>): Promise<void> => {
+    kept = next
+    for (const listener of listeners) listener()
+    return Promise.resolve()
+  }
   const ports: GameWeekPorts = {
     startRecording: mic.startRecording,
     owner: microphoneOwner(),
     player: simulatedPlayer(),
     store: {
       audio: () => Promise.resolve(new Blob(["said"])),
-      keep: () => Promise.resolve(),
+      keep: (bite) => keepNow([...kept, bite]),
       amend: () => Promise.resolve("noted"),
       release: () => Promise.resolve(),
-      undo: () =>
-        undoes ? Promise.resolve() : Promise.reject(new Error("on its way")),
+      undo: (id) =>
+        undoes
+          ? keepNow(kept.filter((bite) => bite.id !== id))
+          : Promise.reject(new Error("on its way")),
       isKept: () => true,
-      homeSince: () => null,
-      subscribe: () => () => undefined,
+      getSnapshot: () => kept,
+      subscribe: (listener) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
     },
     feed: fixtureFeed(now),
     prefs: storedPrefs(null),

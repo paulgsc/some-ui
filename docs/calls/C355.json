@@ -1,0 +1,18 @@
+{
+  "id": "C355",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/__tests__/showcase-coverage.test.ts",
+    "some-ui:packages/video-render/src/sample/videos/rust-scratchpad/covers.json"
+  ],
+  "chose": "A showcase cards essay is held to its source by a test: its folder keeps the source file byte for byte at the commit its stamp names (its git blob id recorded), and a covers.json maps every heading and bold bullet of that file to the cards that cover it; the test fails on a section no card covers, a copy that isn't the file at that commit, a source the stamp no longer names, and a mapped shot or section that is gone. Essays in paulgsc/testing are not checked this way.",
+  "options": [
+    "a showcase coverage test, offline, over a pinned copy of the source",
+    "a covers field in every cut list, checked by render cards-check against pinned copies kept in paulgsc/testing",
+    "no check: the routine's session reads the source live and the stamp dates the cards"
+  ],
+  "gray": "The owner asked how the essay is ensured to cover its source. The coordinator proposed the cards-check route; the smaller test catches today's gap (a showcase stamped at an older commit, whose source gained a section) without a schema field on every cut list or README copies in paulgsc/testing, but it leaves essays written by the routine unchecked. No check or earlier decision settles which.",
+  "undo": "Delete showcase-coverage.test.ts, covers.json and the sources/ copy; or widen it by adding a covers field to the cut-list schema and checking it in cardsFolderProblems.",
+  "refs": ["#2979"]
+}

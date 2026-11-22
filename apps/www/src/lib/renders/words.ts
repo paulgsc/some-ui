@@ -8,17 +8,45 @@ import { assertNever } from "@some-ui/core-utils"
 import { templateFormat } from "@some-ui/video-render"
 
 import { FEED_WORDS } from "@/lib/call-videos/words"
+import { dayOf, essayName } from "@/lib/cards-essay-key"
+import type { Feed } from "@/lib/feeds"
 import { isFeed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 import { PREVIEW_WORDS } from "@/lib/template-preview/words"
 
-import type { Board, HeldBy, Now, RenderEpisode, RenderFailed } from "./model"
+import type {
+  Board,
+  HeldBy,
+  Now,
+  Refusal,
+  RenderEpisode,
+  RenderFailed,
+} from "./model"
+import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
 import { subjectOf } from "./subject"
 
-/** A feed's name, or what a render of another kind is. */
+/** The board's rows that are no feed's: what `kindName` and `feedName` call them. */
+const OWN_ROWS = {
+  preview: "Preview",
+  "clip-walk": "A clip's walk-through",
+} as const
+
+const isOwnRow = (feed: string): feed is keyof typeof OWN_ROWS =>
+  Object.hasOwn(OWN_ROWS, feed)
+
+/**
+ * A feed's name: the phone's own for a feed it knows, else home's name for
+ * it said as words (`new-feed` is "New feed"), so a row from a feed this
+ * phone doesn't know yet still says which it is (#3235).
+ */
 export function feedName(feed: string): string {
-  return isFeed(feed) ? FEED_FACTS[feed].name : "Something else"
+  if (isFeed(feed)) return FEED_FACTS[feed].name
+  if (isOwnRow(feed)) return OWN_ROWS[feed]
+  const words = feed.replaceAll(/[-_]+/g, " ").trim()
+  return words === ""
+    ? "Something else"
+    : words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 /** What kind of thing a row is: its feed's name, a preview, a clip's walk. */
@@ -28,13 +56,16 @@ export function kindName(subject: Subject): string {
       return FEED_FACTS[subject.feed].name
     }
     case "preview": {
-      return "Preview"
+      return OWN_ROWS.preview
     }
     case "walk": {
-      return "A clip's walk-through"
+      return OWN_ROWS["clip-walk"]
+    }
+    case "essay": {
+      return "Cards essay"
     }
     case "other": {
-      return "Something else"
+      return feedName(subject.feed)
     }
     default: {
       return assertNever(subject)
@@ -56,8 +87,11 @@ export function thingName(subject: Subject): string {
     case "walk": {
       return `The ${subject.side} side of a clip`
     }
+    case "essay": {
+      return essayName(subject.key)
+    }
     case "other": {
-      return "A video"
+      return "A video this phone can't open yet"
     }
     default: {
       return assertNever(subject)
@@ -87,6 +121,9 @@ export function openWords(subject: Subject): string | null {
     }
     case "walk": {
       return "Open the clip"
+    }
+    case "essay": {
+      return "Open the essay"
     }
     case "other": {
       return null
@@ -128,18 +165,6 @@ export function roughly(seconds: number): string {
   if (minutes < 60) return `about ${String(minutes)} minutes`
   const hours = Math.round(minutes / 60)
   return hours === 1 ? "about an hour" : `about ${String(hours)} hours`
-}
-
-/** A day home expects something, as a person reads it. */
-export function dayOf(on: string): string {
-  const [year = 0, month = 1, day = 1] = on.split("-").map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  })
 }
 
 export type NowLines = {
@@ -197,6 +222,117 @@ export function nowLines(now: Now): NowLines {
   }
 }
 
+/** Each feed's videos, as the limit on their length is said of them. */
+const FEED_VIDEOS = {
+  call: "the call's videos",
+  "cards-essay": "cards essays",
+  "interview-essay": "interview essays",
+  "playoff-delta": "Playoff Delta videos",
+  report: "engagement reports",
+  "rust-essay": "Rust Rounds essays",
+} as const satisfies Record<Feed, string>
+
+/**
+ * A length to the tenth of a minute, as a person says it: "24.4 minutes",
+ * "30 minutes", "1 hour 52 minutes" (never a number of three digits).
+ */
+export function minutesSaid(minutes: number): string {
+  const tenths = Math.round(minutes * 10) / 10
+  const plural = (n: number, one: string): string =>
+    `${String(n)} ${one}${n === 1 ? "" : "s"}`
+  if (tenths < 60) return plural(tenths, "minute")
+  const whole = Math.round(tenths)
+  const hours = Math.floor(whole / 60)
+  const rest = whole % 60
+  return rest === 0
+    ? plural(hours, "hour")
+    : `${plural(hours, "hour")} ${plural(rest, "minute")}`
+}
+
+/** How much larger than the cap, in a person's terms (never "MB"). */
+function largerSaid(mb: number, capMb: number): string {
+  if (mb >= capMb * 2) return "at least twice as large as"
+  const share = ((mb - capMb) / capMb) * 100
+  return share < 1
+    ? "a little larger than"
+    : `${String(Math.min(99, Math.round(share)))}% larger than`
+}
+
+/**
+ * What the render policy refused, and that home leaves it be (RNR1;
+ * paulgsc/server#937 holds a refusal until what it was made from, its cap
+ * or home's way of making videos changes, so "as it is" is true).
+ */
+const REFUSAL_WORDS = {
+  tooLong: (feed: string, minutes: number, capMinutes: number): string => {
+    const videos = isFeed(feed) ? FEED_VIDEOS[feed] : "videos like it"
+    const cap = minutesSaid(capMinutes)
+    // Sent in tenths, a length just past its cap can read as the cap itself.
+    const run =
+      minutesSaid(minutes) === cap
+        ? `a little past ${cap}, where ${videos} stop`
+        : `${minutesSaid(minutes)}, and ${videos} stop at ${cap}`
+    return `Too long to make: it would run ${run}. Home doesn't try it again as it is.`
+  },
+  tooLarge: (mb: number, capMb: number): string =>
+    `Too large to keep: it came out ${largerSaid(mb, capMb)} home keeps a video. Home doesn't try it again as it is.`,
+  /** Scenes too full for their frame, by name, the rest counted. */
+  overflow: (scenes: ReadonlyArray<string>, sceneCount: number): string => {
+    const more = sceneCount - scenes.length
+    if (more <= 0 && scenes.length === 1)
+      return `${scenes.join("")} doesn't fit the frame. Home doesn't try it again as it is.`
+    const named =
+      more > 0 ? `${scenes.join(", ")} and ${more} more` : scenes.join(", ")
+    return `Some scenes don't fit the frame: ${named}. Home doesn't try it again as it is.`
+  },
+} as const
+
+function refusalLine(feed: string, refusal: Refusal): string {
+  switch (refusal.kind) {
+    case "too-long": {
+      return REFUSAL_WORDS.tooLong(feed, refusal.minutes, refusal.capMinutes)
+    }
+    case "too-large": {
+      return REFUSAL_WORDS.tooLarge(refusal.mb, refusal.capMb)
+    }
+    case "overflow": {
+      return REFUSAL_WORDS.overflow(refusal.scenes, refusal.sceneCount)
+    }
+    default: {
+      return assertNever(refusal)
+    }
+  }
+}
+
+/**
+ * Why home set a cards essay aside before making it (WALK7,
+ * paulgsc/server#1052; SNIPS2, server#1076), by home's word for each: its
+ * `essay_media` refusals, a closed set. A take home hasn't finished listening
+ * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
+ * waits for its takes. A take the owner deleted is no refusal either: home
+ * withdraws the essay for good, its video included, and it leaves every list
+ * (paulgsc/server#1055, #1071), so `take-missing` is a take home never had, or
+ * one deleted while no account is linked to resolve it (paulgsc/server#1064).
+ */
+const ESSAY_REFUSAL_WORDS = {
+  "take-missing":
+    "A spoken card in it plays a recording home doesn't have. It isn't made until the essay names one home keeps.",
+  "take-unheard":
+    "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
+  "snip-missing":
+    "It shows a picture of the app that home couldn't get. It isn't made until the essay names a picture its capture holds, and home can fetch it.",
+  // C875: home never captures pictures itself; the owner runs it again.
+  "snip-gone":
+    "It shows pictures of the app that home couldn't get from their capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.",
+  "clip-missing":
+    "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
+} as const
+
+type EssayRefusal = keyof typeof ESSAY_REFUSAL_WORDS
+
+const isEssayRefusal = (reason: string): reason is EssayRefusal =>
+  Object.hasOwn(ESSAY_REFUSAL_WORDS, reason)
+
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
   // A preview is made once a person asks, never again on its own.
@@ -204,6 +340,14 @@ export function failedLine(failed: RenderFailed): string {
     return (
       PREVIEW_WORDS.failedWhy(failed.reason) ?? PREVIEW_WORDS.standing.failed
     )
+  if (
+    failed.feed === "cards-essay" &&
+    failed.reason !== undefined &&
+    isEssayRefusal(failed.reason)
+  )
+    return ESSAY_REFUSAL_WORDS[failed.reason]
+  const refusal = refusalOf(failed)
+  if (refusal !== null) return refusalLine(failed.feed, refusal)
   return failed.by === "home"
     ? "Home couldn't keep its files. It tries again in an hour."
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."
@@ -307,6 +451,9 @@ export const RENDERS_WORDS = {
   older:
     "Home doesn't say what it's making yet. It will after its next update.",
   unpaired: "Pair this phone with home to see what it's making.",
+  busy: "This phone was busy with home just then. It asks again in half a minute.",
+  busyStale:
+    "This phone was busy with home just then. This is what home said last; it asks again in half a minute.",
   open: "See what home is making",
   lineUntilRead: "Home's renders",
 } as const

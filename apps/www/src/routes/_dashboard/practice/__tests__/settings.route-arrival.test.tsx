@@ -56,7 +56,6 @@ afterEach(() => {
 })
 
 const FIXTURE_SETTINGS: UserSettings = {
-  ttsVoice: { provider: "openai", voiceId: null },
   deviceVoiceId: "",
   audio: DEFAULT_AUDIO_PREFERENCES,
   notifications: DEFAULT_NUDGE_PREFERENCES,

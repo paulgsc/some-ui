@@ -15,6 +15,7 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import { setAsidePath } from "@/lib/home-link/set-aside"
 import { asideAt, sendVoice, watchVoiceNotes } from "@/lib/home-link/voice-copy"
 import type { JobsState, VoiceNote } from "@/lib/jobs/model"
@@ -28,7 +29,7 @@ import { createVoiceHome } from "@/lib/voice-home/runtime"
 import { setAsideOwing, voiceMarks } from "@/lib/voice-marks"
 
 /** The pairing a run goes under. */
-const AT_PAIRING = { pairing: "p1" }
+const AT_PAIRING = { pairing: "pairing-1" }
 
 /** A note's audio, and a takes desk over `takes`, as the voice lane reads them. */
 const { AUDIO, desk } = vi.hoisted(() => {
@@ -64,6 +65,8 @@ const fakes = vi.hoisted(
     redo: Array<Take>
     scene: Array<KeptSceneNote>
     paired: boolean
+    /** Who listens to the home link, told when the pairing moves (`pair`). */
+    linked: Set<() => void>
     /** Whether the soundbites page has handed its store in this launch. */
     bitesHanded: boolean
   } => ({
@@ -79,9 +82,17 @@ const fakes = vi.hoisted(
     redo: [],
     scene: [],
     paired: true,
+    linked: new Set(),
     bitesHanded: true,
   })
 )
+
+// The conveyor's moves (CONVEYOR1) are `../take-stations`' to test: none owed here.
+vi.mock("@/lib/take-conveyor", () => ({
+  takeConveyor: (): object => ({
+    port: { due: (): ReadonlyArray<never> => [], answered: vi.fn() },
+  }),
+}))
 
 vi.mock("@/lib/session-reflection", () => ({
   reflections: {
@@ -169,10 +180,28 @@ vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
-  paired: (): boolean => fakes.paired,
-  pairingOf: (): string => "pairing-1",
+  // Read as paired unless a test says not: the voice record follows its
+  // pairing (HP1), told by the link when it moves.
+  homeLink: (): unknown => ({
+    subscribe: (listener: () => void) => {
+      fakes.linked.add(listener)
+      return (): void => {
+        fakes.linked.delete(listener)
+      }
+    },
+    getSnapshot: () => ({
+      link: { kind: fakes.paired ? "paired" : "unpaired" },
+    }),
+  }),
+  pairing: (): Pairing =>
+    fakes.paired ? { kind: "paired", id: "pairing-1" } : { kind: "unpaired" },
 }))
+/** Pairs the phone with home, or not, and tells whoever listens to the link. */
+function pair(to: boolean): void {
+  fakes.paired = to
+  for (const listener of [...fakes.linked]) listener()
+}
+
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
   reportFailure: vi.fn(),
@@ -608,13 +637,13 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
   })
 
   it("forgets a mark whose note left the phone before home had it, once its store is read, and keeps one whose copy waits", async () => {
-    fakes.paired = false
+    pair(false)
     const stop = watchVoiceNotes()
     expect(voiceMarks.owe("r1", LET_GO, "reflection")).toBe(true)
     expect(voiceMarks.owe("b1", LET_GO, "soundbite")).toBe(true)
     stop()
     // Both let go from the phone before any copy was made.
-    fakes.paired = true
+    pair(true)
     fakes.bitesHanded = false
     await sendVoice(home([]), AT_PAIRING)
     // The reflections are read at each look; the soundbites aren't yet.
@@ -673,7 +702,12 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     const storage = memoryStorage()
     storage.setItem(
       "some-ui:voice-home",
-      JSON.stringify({ ...INITIAL_VOICE_HOME, held: ["s1", "s2"] })
+      // Under the pairing the run goes under, so following it steps nothing.
+      JSON.stringify({
+        ...INITIAL_VOICE_HOME,
+        pairing: AT_PAIRING.pairing,
+        held: ["s1", "s2"],
+      })
     )
     const refusing = {
       ...storage,

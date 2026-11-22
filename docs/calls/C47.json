@@ -1,0 +1,15 @@
+{
+  "id": "C47",
+  "made": "2026-11-09",
+  "by": "claude",
+  "paths": ["packages/video-render/src/essay.ts"],
+  "chose": "The essay opens each ticket with a chapter slide naming it (\"QM-311: …\"), and Over the weeks with one; Next week has none. A ticket's scenes keep one order whether it was answered or not, and only the lit bubble and the answer scene's words change.",
+  "options": [
+    "a chapter per ticket and one for Over the weeks",
+    "a chapter per section, as the call has",
+    "no chapters"
+  ],
+  "gray": "The call puts a chapter before each section; the essay's sections repeat per ticket, so a section's chapter would come back with each ticket, and #2690 names no chapters.",
+  "undo": "A new essay format version whose shape lists other chapters (ESSAY_SHAPE in essay.ts).",
+  "refs": ["#2690", "#2670"]
+}

@@ -4,6 +4,7 @@ import {
   displacedBy,
   fitsMaxBytes,
   nextReplaced,
+  patternTakes,
   SOUNDBITE_LIMIT,
   SOUNDBITES_MAX_BYTES,
 } from "@soundbites/lib/policy"
@@ -89,5 +90,31 @@ describe("the byte cap", () => {
     const fifth = SOUNDBITES_MAX_BYTES / SOUNDBITE_LIMIT
     expect(fitsMaxBytes(Array(5).fill(fifth), fifth)).toBe(true)
     expect(fitsMaxBytes(Array(5).fill(fifth), fifth + 1)).toBe(false)
+  })
+})
+
+describe("a soundbite home deleted for good (HEARD4)", () => {
+  it("is listed as deleted, kept on neither", () => {
+    const deleted = { ...bite("b1", 0), deletedAt: "2026-11-16T12:00:00.000Z" }
+    const [take] = patternTakes([deleted], () => true)
+    expect(take).toMatchObject({
+      kept: null,
+      deleted: "2026-11-16T12:00:00.000Z",
+    })
+    expect(patternTakes([bite("b2", 0)], () => true)[0]).toMatchObject({
+      kept: { place: "home" },
+    })
+  })
+
+  it("makes room first, held by home or not, so it never blocks a new one", () => {
+    const six = kept(6).map((each) =>
+      each.id === "b2"
+        ? { ...each, deletedAt: "2026-11-16T12:00:00.000Z" }
+        : each
+    )
+    const none = (): boolean => false
+    expect(nextReplaced(six, null, none)?.id).toBe("b2")
+    expect(nextReplaced(six, null, () => true)?.id).toBe("b2")
+    expect(displacedBy(six, null, none)).toEqual(["b2"])
   })
 })

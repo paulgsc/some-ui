@@ -16,6 +16,7 @@ import {
   findCacheViolations,
   findChangesetsPairingViolations,
   findInlineInstallViolations,
+  findPathsFilterViolations,
   findPrCommitHookViolations,
   findRetentionViolations,
   findRs2Violations,
@@ -591,6 +592,16 @@ describe("findChangesetsPairingViolations", () => {
     ])
   })
 
+  it("reads a commit pin's version from the comment beside it (C953)", () => {
+    const sha = "e4f2a1b9c0d3e5f6a7b8c9d0e1f2a3b4c5d6e7f8"
+    expect(
+      findChangesetsPairingViolations(F, step(`${sha} # v2.1.2`), 3)
+    ).toEqual([])
+    expect(
+      findChangesetsPairingViolations(F, step(`${sha} # v1.9.0`), 3)
+    ).toEqual([violation(sha, 3, 2)])
+  })
+
   it("fails a CLI major with no known pair", () => {
     expect(findChangesetsPairingViolations(F, step("v3.0.0"), 4)).toEqual([
       violation("v3.0.0", 4, null),
@@ -617,12 +628,15 @@ describe("findChangesetsPairingViolations", () => {
 
 describe("checkRetentionTriggers", () => {
   const names = new Set([
+    "Site Assets",
     "Mobile APK",
     "Pages",
     "Extension CI",
     "Extension Release",
     "Sign Firefox Extension (Manual)",
     "WASM Release",
+    "Android Compat",
+    "Snips Capture",
   ])
 
   it("reads only the workflow_run list, and asks for each kept family's workflow", () => {
@@ -632,6 +646,8 @@ describe("checkRetentionTriggers", () => {
       "    workflows:",
       "      - Mobile APK",
       '      - "Extension Release"',
+      "      - Snips Capture",
+      "      - Site Assets",
       "    types: [completed]",
       "  pull_request:",
       "    paths:",
@@ -653,6 +669,121 @@ describe("checkRetentionTriggers", () => {
       file: RETENTION_FILE,
       workflow: "WASM Release",
     })
+  })
+})
+
+describe("findPathsFilterViolations (CD1)", () => {
+  const step = (withLines: string): string =>
+    [
+      "jobs:",
+      "  detect:",
+      "    steps:",
+      "      - name: Filter paths",
+      "        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3",
+      "        with:",
+      withLines,
+    ].join("\n")
+
+  it("fails a leading `!` under the default quantifier", () => {
+    const text = step(
+      [
+        "          filters: |",
+        "            rust:",
+        "              - 'crates/**'",
+        "              - '!**/*.md'",
+        "            node:",
+        '              - added|modified: "!docs/**"',
+      ].join("\n")
+    )
+    expect(findPathsFilterViolations(F, text)).toEqual([
+      { kind: "pathsFilterNegation", file: F, line: 10, pattern: "!**/*.md" },
+      { kind: "pathsFilterNegation", file: F, line: 12, pattern: "!docs/**" },
+    ])
+  })
+
+  it("fails it under an explicit `some` too", () => {
+    const text = step(
+      [
+        "          predicate-quantifier: 'some'",
+        "          filters: |",
+        "            rust:",
+        "              - '!**/*.md'",
+      ].join("\n")
+    )
+    expect(findPathsFilterViolations(F, text)).toHaveLength(1)
+  })
+
+  it("passes a positive extglob, and a `!` under another quantifier", () => {
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          filters: |",
+            "            rust:",
+            "              - 'crates/**/!(*.md)'",
+          ].join("\n")
+        )
+      )
+    ).toEqual([])
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          predicate-quantifier: some-with-excludes",
+            "          filters: |",
+            "            rust:",
+            "              - 'crates/**'",
+            "              - '!**/*.md'",
+          ].join("\n")
+        )
+      )
+    ).toEqual([])
+  })
+
+  it("fails a negation in a flow list, and a quantifier it cannot read", () => {
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          filters: |",
+            "            rust: ['crates/**', '!**/*.md']",
+          ].join("\n")
+        )
+      )
+    ).toEqual([
+      { kind: "pathsFilterNegation", file: F, line: 8, pattern: "!**/*.md" },
+    ])
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          predicate-quantifier: ${{ inputs.q }}",
+            "          filters: |",
+            "            rust:",
+            "              - '!**/*.md'",
+          ].join("\n")
+        )
+      )
+    ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 4 }])
+  })
+
+  it("fails a step it cannot read", () => {
+    expect(
+      findPathsFilterViolations(
+        F,
+        step("          filters: .github/filters.yml")
+      )
+    ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 4 }])
+    expect(
+      findPathsFilterViolations(
+        F,
+        "    steps:\n      - {uses: dorny/paths-filter@abc, with: {filters: x}}"
+      )
+    ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 2 }])
   })
 })
 
@@ -683,6 +814,11 @@ describe("describeWorkflowViolation", () => {
       [{ kind: "rs1Changed", file: RS1_FILE, actual: "abc" }, "abc"],
       [{ kind: "rs1Changed", file: RS1_FILE, actual: null }, "missing"],
       [{ kind: "rs2Named", file: F, line: 5 }, "RS2"],
+      [
+        { kind: "pathsFilterNegation", file: F, line: 9, pattern: "!**/*.md" },
+        "!(*.md)",
+      ],
+      [{ kind: "pathsFilterUnreadable", file: F, line: 8 }, "filters: |"],
       [
         { kind: "artifactUndeclared", file: F, line: 2, name: "x" },
         "ARTIFACT_FAMILIES",

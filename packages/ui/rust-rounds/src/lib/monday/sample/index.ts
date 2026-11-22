@@ -9,7 +9,9 @@
  *   QM-313 opened twice and left silent, and one error pasted on Thursday.
  * - `transcript/`: what home heard in both takes and the paste's note.
  * - `values.json`: what the model wrote from the bundle: the essay's words,
- *   and week 47, Tallowbrook, whose programs rustc 1.97.0 checked.
+ *   and week 47, Tallowbrook, a `/2` week (`lib/sample-week/tallowbrook`
+ *   with TB-103 seeded), whose programs and academy starters rustc 1.97.0
+ *   checked (`runs.json`).
  *
  * A run at `SAMPLE_NOW`, Monday 16 November 04:00 Pacific, writes week 46's
  * essay and week 47.

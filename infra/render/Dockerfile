@@ -52,27 +52,29 @@ RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* \
 WORKDIR /opt/some-ui
 COPY . .
 
-# One install and one build for all of it: www's graph (the recorders, the
-# stage and @some-ui/video-motion, a devDependency of www) and the workspace
-# packages the stage and the recorders load built (their `exports` name
-# dist/), never the whole app. `record:playoff-delta` imports
-# @some-ui/playoff-delta's `recording` entry, which exists only once that
-# package is built. Then the stage, into /opt/stage. The turbo filters are
-# render-docker-release.yml's detect graph too: keep the two in step.
+# One install and one build for all of it (infra/render/build.sh says what it
+# builds, and who else runs it), then the stage into /opt/stage.
 RUN corepack enable \
-    && pnpm install --frozen-lockfile --filter "www..." \
-    && pnpm exec turbo run build \
-       --filter="@some-ui/playoff-delta..." \
-       --filter="@some-ui/honeycomb..." \
-       --filter="@some-ui/video-render^..." \
-       --filter="@some-ui/video-motion^..." \
-    && pnpm --filter www build:stage \
+    && sh infra/render/build.sh \
     && mv apps/www/out/stage /opt/stage \
     && rm -rf apps/www/out /root/.cache /root/.local/share/pnpm/store
 
 ARG SOME_UI_COMMIT=
 LABEL org.opencontainers.image.source="https://github.com/paulgsc/some-ui" \
       org.opencontainers.image.revision="${SOME_UI_COMMIT}"
+
+# What this image needs from the release it runs in (RELEASE R3,
+# paulgsc/server#790; U2, #792). paulgsc/server's check_release.py reads these
+# from the published digest and refuses a release whose file_host does not
+# provide what render requires.
+# - render-folders: the layout of the folders file_host writes and this image
+#   reads (call-weeks, playoff-delta-episodes, preview-requests, rust-essays),
+#   RENDER_FOLDERS_EPOCH in server's apps/servers/file_host/src/contract.rs.
+#   Raise it here in the same change that makes the recorders read a new
+#   layout. 2 (RR24, #3248): an essay's takes/ may hold a take of one
+#   speak-to point, `<ticket>.<n>.<ext>`, beside a ticket's.
+LABEL io.paulgsc.provides="" \
+      io.paulgsc.requires="render-folders=2"
 
 # The root is read-only at run time (call-render.yml); tsx and the renderer
 # write only under /tmp.

@@ -13,6 +13,7 @@ import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { KeptItem, WeekSent } from "@some-ui/rust-rounds"
 import {
+  currentWeek,
   exchangeRustRounds,
   keptGoing,
   weekSendKey,
@@ -21,12 +22,14 @@ import {
 import { phoneRounds, phoneWeeks } from "@/lib/rust-rounds"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { homeLink, pairingOf } from "./index"
+import { homeLink, pairing } from "./index"
 import type { EachSent } from "./leetype-log"
-import { emptyLogReport, sendEach } from "./leetype-log"
+import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
+import { sendRustSpans } from "./rust-spans"
 import type { Sent } from "./sent"
-import { fingerprintOf, readSent, rememberSent } from "./sent"
-import { answerOrEnd, endedPart } from "./shelf"
+import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
+import { servesNow } from "./serves-now"
+import { answerOrEnd } from "./shelf"
 
 /** Whether `sent` says home holds `item` as it is now. */
 const heldNow = (sent: Sent, item: KeptItem): boolean =>
@@ -61,15 +64,14 @@ export function holdsWeekSend(memory: Sent | null, sent: WeekSent): boolean {
 
 /** `holdsWeekSend` under the pairing this phone holds now: the week's port. */
 export const homeHoldsWeekSend = (sent: WeekSent): boolean => {
-  const pairing = pairingOf()
-  return holdsWeekSend(
-    pairing === null ? null : readSent(browserLocalStorage, pairing),
-    sent
-  )
+  return holdsWeekSend(sentUnder(browserLocalStorage, pairing()), sent)
 }
 
-/** Calls `listener` each time the link changes, when what home holds may have. */
-export const onHomeHoldsWeekSend = (listener: () => void): (() => void) =>
+/**
+ * Calls `listener` each time the link changes, when what home holds of a
+ * week's send may have: the week screens' `onHomeHolds`.
+ */
+export const onHomeHeard = (listener: () => void): (() => void) =>
   homeLink().subscribe(listener)
 
 /** The key home's answer to a PUT holds the item under, where it echoes one. */
@@ -115,17 +117,15 @@ export async function sendRustKept(
   } finally {
     rememberSent(storage, sent, held)
   }
-  const ended = endedPart(report)
-  if (ended !== null) return ended
-  return report.refused + report.other + report.differs > 0
-    ? { kind: "failed", why: "refused" }
-    : { kind: "synced" }
+  return sentOutcome(report)
 }
 
 /**
  * The Rust Rounds lane's run (`./rust-rounds`): the rounds and the weeks
  * (`exchangeRustRounds`), then, once they are synced, what goes home for
- * good, under `pairing`.
+ * good, under `pairing`, then the work tracker's spans (`./rust-spans`,
+ * RR26), once home serves this build: a home before them has no route for
+ * them.
  */
 export async function exchangeRustRoundsLane(
   send: HomeCall,
@@ -133,10 +133,19 @@ export async function exchangeRustRoundsLane(
 ): Promise<HomeExchanged> {
   const done = await exchangeRustRounds(phoneRounds(), phoneWeeks(), send)
   if (done.kind !== "synced") return done
-  return sendRustKept(
+  const serves = servesNow() === "fits"
+  const kept = await sendRustKept(
     send,
-    keptGoing(browserLocalStorage, Date.now()),
+    keptGoing(browserLocalStorage, Date.now(), serves),
     browserLocalStorage,
     pairing
+  )
+  if (kept.kind !== "synced" || !serves) return kept
+  const week = currentWeek(phoneWeeks().held().weeks, Date.now())
+  return sendRustSpans(
+    send,
+    browserLocalStorage,
+    pairing,
+    week?.week.id ?? null
   )
 }

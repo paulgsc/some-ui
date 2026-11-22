@@ -5,7 +5,7 @@
  *
  * The return type is deliberately free of internals, voices included: an
  * item names its language (`TTSOptions.language`), and the session picks the
- * voice (`lib/voices`).
+ * voice (`adapters/types`, `SpeakOptions`).
  */
 
 import { useCallback, useEffect, useId, useMemo } from "react"

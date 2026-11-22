@@ -17,6 +17,7 @@ import {
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import type { SessionRecord } from "@/lib/tenant/types"
 import type { Unsendable } from "@/lib/voice-home/model"
 
@@ -164,19 +165,19 @@ const sendable = (): Array<HTMLButtonElement> =>
 describe("what this phone keeps on home", () => {
   it("says each record is kept on home once paired, and sends nothing", async () => {
     await mount()
-    // Practice's four kinds, aph, the Jobs record, voice notes, Studio's
-    // ideas, notes on episodes, Rust Rounds' four (weeks sent, pastes,
-    // rounds, the card log) and how each recording ended.
+    // Practice's four kinds, aph, the Jobs record and its interview weeks,
+    // voice notes, Studio's ideas, notes on episodes, Rust Rounds' four
+    // (weeks sent, pastes, rounds, the card log) and how each recording ended.
     expect(
       screen.getAllByText(/: Kept on home$|: Nothing on home yet$/)
-    ).toHaveLength(14)
+    ).toHaveLength(15)
     expect(home.sent).toEqual([])
   })
 
   it("says everything is only on this phone while it isn't paired", async () => {
     home.record = null
     await mount()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(14)
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(15)
     expect(sendable()).toEqual([])
     expect(home.sent).toEqual([])
   })
@@ -227,7 +228,7 @@ describe("what this phone keeps on home", () => {
 /** The status page's rows, as `useLaneRows` gives them now. */
 async function rows(): Promise<{
   rows: ReadonlyArray<{ id: string; line: string; mark: unknown }>
-  paired: boolean
+  pairing: Pairing
 }> {
   const { useLaneRows } = await import(
     "@/components/settings/device-kept-on-home"
@@ -251,7 +252,7 @@ describe("the status page's rows", () => {
       line: "How its last send went shows once aph opens.",
       mark: { kind: "lane", where: "kept", how: null },
     })
-    expect(board.paired).toBe(true)
+    expect(board.pairing.kind).toBe("paired")
   })
 })
 

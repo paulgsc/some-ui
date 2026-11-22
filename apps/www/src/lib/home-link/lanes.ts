@@ -13,24 +13,22 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 
+import type { Refresher } from "@/lib/pull-refresh/refreshers"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
-import { askCompat } from "./compat-read"
-import { homeLink, LINK_CLOCK, paired, pairingOf, useHomeLink } from "./index"
-import type { KeptRun, KeptState } from "./kept-model"
+import { homeLink, LINK_CLOCK, pairing, useHomeLink } from "./index"
+import type { KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
-import type { HomeLinkState } from "./model"
-import { homeBusy } from "./model"
-import type { HomeRefresher } from "./pull"
+import type { HomeLinkState, Pairing } from "./model"
+import { drainStopping, homeBusy } from "./model"
 import { homeRefresher } from "./pull"
-import type { ServesRun } from "./serves"
-import { createServes, servesRefresher, watchServes } from "./serves"
+import { servesRefresher, watchServes } from "./serves"
 import type { Serves } from "./serves-model"
+import { servesRun } from "./serves-now"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
 
@@ -55,6 +53,7 @@ export type LaneKind =
   | "episodeNotes"
   | "rounds"
   | "rustWeeks"
+  | "interviewWeeks"
   | "rustPastes"
   | "roundLog"
   | "endings"
@@ -106,8 +105,11 @@ export function busyNow(): boolean {
 /** How every run here reaches home: through the link's drain, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().drain(run),
-  paired,
+  pairing: () => pairing(),
   homeBusy: busyNow,
+  stopping: () => drainStopping(homeLink().getSnapshot()),
+  inFront: () =>
+    typeof document === "undefined" || document.visibilityState === "visible",
   now: LINK_CLOCK.now,
 }
 
@@ -119,7 +121,7 @@ function wire(lane: Lane): Wired {
     record: { revision: lane.revision, subscribe: lane.subscribe },
     sending: createKept({
       ...LINK_PORTS,
-      exchange: laneExchange(lane, () => pairingOf()),
+      exchange: laneExchange(lane, () => pairing()),
     }),
   }
   wired.set(lane.id, made)
@@ -143,10 +145,10 @@ export function useLaneHome(lane: Lane): KeptState {
   return useLaneRun(lane)
 }
 
-let homePull: HomeRefresher | null = null
+let homePull: Refresher | null = null
 
 /** The one pull of home, made on first use (`document` is read then). */
-function homePullOf(): HomeRefresher {
+function homePullOf(): Refresher {
   homePull ??= homeRefresher({ watched: () => watched, doc: document })
   return homePull
 }
@@ -157,14 +159,6 @@ function homePullOf(): HomeRefresher {
  */
 export function useHomePull(): void {
   useEffect(() => screenRefreshers.register(homePullOf()), [])
-}
-
-/**
- * How `lane`'s run in the pull under way ended (`./pull`'s `ended`), for a
- * screen that names that lane in its own words (Jobs, PULL2).
- */
-export function pulledLane(lane: Lane): Promise<KeptRun | null> {
-  return homePullOf().ended(wire(lane).sending)
 }
 
 /**
@@ -205,8 +199,12 @@ function offersSendNow(
 /** A lane as its mark and Settings show it. */
 export type LaneReading = {
   readonly run: KeptState
-  /** The phone is paired with home, so the lane drains. */
-  readonly paired: boolean
+  /**
+   * Whether the phone is paired with home, so the lane drains (#3152), with
+   * `reading` while its record is read: a reader that would say "not paired"
+   * holds back then (#3157).
+   */
+  readonly pairing: Pairing
   readonly view: LaneView
   readonly sendNow: boolean
 }
@@ -219,16 +217,22 @@ export function laneReading(
   state: HomeLinkState,
   serves: Serves | null
 ): LaneReading {
-  const isPaired = pairingOf(state) !== null
+  const now = pairing(state)
+  const isPaired = now.kind === "paired"
   return {
     run,
-    paired: isPaired,
+    pairing: now,
     view: laneView(WORDS[id], {
       ...counts,
       known: state.link.kind !== "reading",
       paired: isPaired,
       run,
       serves,
+      away:
+        state.away === null
+          ? null
+          : { since: state.away.since, now: LINK_CLOCK.now() },
+      blocked: state.blocked?.reason ?? null,
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }
@@ -243,17 +247,6 @@ export function useLaneView(lane: Lane): LaneReading {
     useHomeLink(),
     useServes()
   )
-}
-
-let serves: ServesRun | null = null
-
-/** One ask of whether home works with this build, per page load. */
-function servesRun(): ServesRun {
-  serves ??= createServes({
-    read: () => askCompat(SERVER_CONTRACT_EPOCH),
-    now: LINK_CLOCK.now,
-  })
-  return serves
 }
 
 /**
@@ -278,8 +271,12 @@ export function useServes(): Serves | null {
   return useSyncExternalStore(run.subscribe, run.getSnapshot).serves
 }
 
-/** "Send now": asks for a run, as any moment the watch names would. */
+/**
+ * "Send now": asks for a run, as any moment the watch names would; the
+ * person's tap, so away from home it lets the link's hold go first (AW1).
+ */
 export function askLane(lane: Lane): void {
+  homeLink().lookAgain()
   askKept(wire(lane).sending, document)
 }
 

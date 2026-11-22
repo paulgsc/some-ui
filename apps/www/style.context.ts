@@ -53,6 +53,18 @@ const context: StyleContext = {
     ],
     outFile: "dist/styles.css",
   },
+  // The public site (the Pages build; C1055, #3401): its pages besides the
+  // landing (src/landing/page.css) render the résumé's reading view and the
+  // authorship record, and nothing else of the app.
+  pages: {
+    content: [
+      "src/landing/**/*.{ts,tsx}",
+      "src/lib/web-surface/burn-ins/authorship.tsx",
+      "../../packages/ui/burn-ins/src/**/*.{ts,tsx}",
+      "../../packages/ui/resume/src/react/**/*.{ts,tsx}",
+    ],
+    outFile: "dist/pages.css",
+  },
 }
 
 export default context

@@ -638,8 +638,8 @@ function* sequences(length: number): Generator<ReadonlyArray<Event>> {
 async function runInterleaving(
   events: ReadonlyArray<Event>
 ): Promise<string | null> {
-  // A hosted voice: a line is handed over, then starts when its audio
-  // arrives, so anything can happen in between.
+  // A line is handed over, then starts some time later (a browser's or a
+  // phone's voice getting ready), so anything can happen in between.
   const session = createSession("later")
   const words = session.manager.speakerFor("honeycomb")
   let showsSpeaking = false

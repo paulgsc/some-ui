@@ -14,7 +14,7 @@
  *   episode (`bringVideo`). Each Watch is its own run, stopped once a read
  *   lets its preview go.
  */
-import type { PartRead } from "@/lib/call-videos/model"
+import type { PartAsked } from "@/lib/call-videos/model"
 import { bringVideo, keptCopy } from "@/lib/call-videos/parts"
 import type { VideoFiles } from "@/lib/call-videos/runtime"
 
@@ -25,11 +25,7 @@ export type PreviewPorts = {
   read: () => Promise<HomeState>
   make: () => Promise<MakeAsked>
   /** Bytes `start` to `end` of preview `id`'s video. */
-  part: (
-    id: string,
-    start: number,
-    end: number
-  ) => Promise<PartRead | { readonly kind: "away" }>
+  part: (id: string, start: number, end: number) => Promise<PartAsked>
   files: VideoFiles
   partBytes: number
 }
@@ -62,7 +58,8 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
     const asOf = reads
     dispatch({ type: "readAsked" })
     const home = await ports.read()
-    const answered = home.kind !== "away" && home.kind !== "unreadable"
+    const answered =
+      home.kind !== "away" && home.kind !== "busy" && home.kind !== "unreadable"
     if (asOf !== reads) return answered
     // The copy held as the read lands, a Watch pressed during it included.
     const had = state.fetch?.id ?? null

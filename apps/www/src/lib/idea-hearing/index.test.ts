@@ -2,6 +2,7 @@
 import type { Listened, Listening, TurnListener } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link"
 import { AWAY_MS, eitherListener, reachOf } from "@/lib/idea-hearing"
 
 /** A listener that says who it is in what it hears, unless told otherwise. */
@@ -33,7 +34,7 @@ describe("IH1: where an idea answer's words come from", () => {
     const device = fake("device", false)
     const listener = eitherListener({
       loaded: () => Promise.resolve(),
-      pairing: () => "p1",
+      pairing: (): Pairing => ({ kind: "paired", id: "p1" }),
       home,
       device,
       now: () => 0,
@@ -58,7 +59,7 @@ describe("IH1: where an idea answer's words come from", () => {
     const device = fake("device", false)
     const listener = eitherListener({
       loaded: () => Promise.resolve(),
-      pairing: () => null,
+      pairing: (): Pairing => ({ kind: "unpaired" }),
       home,
       device,
       now: () => 0,
@@ -83,7 +84,8 @@ describe("IH1: where an idea answer's words come from", () => {
             resolve()
           }
         }),
-      pairing: () => (paired ? "p1" : null),
+      pairing: (): Pairing =>
+        paired ? { kind: "paired", id: "p1" } : { kind: "unpaired" },
       home: fake("home", true),
       device: fake("device", false),
       now: () => 0,
@@ -105,7 +107,7 @@ describe("IH1: where an idea answer's words come from", () => {
       const device = fake("device", recognizer)
       const listener = eitherListener({
         loaded: () => Promise.resolve(),
-        pairing: () => "p1",
+        pairing: (): Pairing => ({ kind: "paired", id: "p1" }),
         home,
         device,
         now: () => now,
@@ -130,7 +132,7 @@ describe("IH1: where an idea answer's words come from", () => {
     const device = fake("device", false)
     const listener = eitherListener({
       loaded: () => Promise.resolve(),
-      pairing: () => "p1",
+      pairing: (): Pairing => ({ kind: "paired", id: "p1" }),
       home,
       device,
       now: () => 0,
@@ -143,7 +145,7 @@ describe("IH1: where an idea answer's words come from", () => {
   })
 
   it("tries home again at once when the phone is paired anew within the window", async () => {
-    let pairing = "p1"
+    let pairing: Pairing = { kind: "paired", id: "p1" }
     const home = fake("home", true, { kind: "kept", on: "phone", why: "away" })
     const device = fake("device", false)
     const listener = eitherListener({
@@ -155,7 +157,7 @@ describe("IH1: where an idea answer's words come from", () => {
     })
     await listener.listen(vi.fn(), vi.fn()).done
     expect(await listener.available()).toBe(false)
-    pairing = "p2"
+    pairing = { kind: "paired", id: "p2" }
     expect(await listener.available()).toBe(true)
     await listener.listen(vi.fn(), vi.fn()).done
     expect(home.listened).toHaveLength(2)
@@ -165,13 +167,8 @@ describe("IH1: where an idea answer's words come from", () => {
 
 describe("where a new idea goes (ST26 b)", () => {
   it("is away while the voice lane's last run found home out of reach, near otherwise, unpaired with no pairing, and unknown while the pairing is being read", () => {
-    const paired = {
-      kind: "paired",
-      base: "https://home.lan",
-      id: "p1",
-      notForgotten: false,
-    } as const
-    const unpaired = { kind: "unpaired", note: null } as const
+    const paired: Pairing = { kind: "paired", id: "p1" }
+    const unpaired: Pairing = { kind: "unpaired" }
     expect(reachOf(unpaired, { kind: "unreachable", at: 1 })).toBe("unpaired")
     expect(reachOf(paired, { kind: "unreachable", at: 1 })).toBe("away")
     expect(reachOf(paired, { kind: "synced", at: 2 })).toBe("near")

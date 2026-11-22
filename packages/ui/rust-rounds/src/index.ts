@@ -37,6 +37,10 @@ export {
   WeekSchema,
 } from "./lib/formats/week"
 export { QUILLMOSS_WEEK } from "./lib/sample-week"
+export {
+  TALLOWBROOK_HELD,
+  TALLOWBROOK_WEEK_FILE,
+} from "./lib/sample-week/tallowbrook"
 export type { WeekProblem, WeekReading } from "./lib/week-check"
 export { describeWeekProblem, readWeek } from "./lib/week-check"
 export type { ReplyIntake } from "./lib/intake"
@@ -57,21 +61,40 @@ export {
 } from "./lib/worked-example"
 export type { RustRoundsProps } from "./components/rust-rounds"
 export { RustRounds } from "./components/rust-rounds"
-export type { RustWeekProps } from "./components/rust-week"
-export { RustWeek } from "./components/rust-week"
+export type { RustWeekProps, TicketScreenProps } from "./components/rust-week"
+export { RustWeek, TicketScreen } from "./components/rust-week"
 export type { RustWeekPorts } from "./lib/week-play/runtime"
 export { currentWeek } from "./lib/week-play/runtime"
 export type { WeekSent } from "./lib/week-play/spec"
+export type {
+  HomeOpening,
+  HomeWeekRecord,
+  OpeningAtHome,
+} from "./lib/week-play/opening"
+export { OPENING_UNKNOWN } from "./lib/week-play/opening"
 export { ticketLine, weekSendKey } from "./lib/week-play/spec"
 export { WEEK_WORDS } from "./lib/week-play/words"
 export { WEEK_TAKES_KEY } from "./lib/play/keys"
 export type { RoundsCounts, RoundsHomePort } from "./lib/home"
 export { exchangeRounds, roundsCounts, roundsTaken } from "./lib/home"
 export type { HeldWeek, WeeksHeld, WeeksStore } from "./lib/weeks"
-export { exchangeRustRounds, keptWeeks } from "./lib/weeks"
+export { exchangeRustRounds, heldFromHome, keptWeeks } from "./lib/weeks"
 export type { KeptItem } from "./lib/kept-home"
 export { keptGoing } from "./lib/kept-home"
 export { homeRef } from "./lib/play/home-ref"
 export type { NotesPort, RustRoundsPorts } from "./lib/play/runtime"
 export type { RoundsStore } from "./lib/play/store"
 export { keptRounds } from "./lib/play/store"
+export type { OpenSpan, SpanWhere } from "./lib/work-tracker"
+export type { HomeSpan, SpansExchanged } from "./lib/work-tracker/home"
+export { exchangeWorkSpans } from "./lib/work-tracker/home"
+export type { EventAtHome, SpanEvent } from "./lib/work-tracker/record"
+export { eventKey, workSpans } from "./lib/work-tracker/record"
+export type {
+  TrackerPorts,
+  WeekSpansKnown,
+  WorkPorts,
+  WorkTracker,
+} from "./lib/work-tracker/runtime"
+export { createWorkTracker } from "./lib/work-tracker/runtime"
+export { WeekTimeChart, WorkTrackerControl } from "./components/work-tracker"

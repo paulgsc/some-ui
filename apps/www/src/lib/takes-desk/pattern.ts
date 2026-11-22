@@ -151,7 +151,8 @@ const takenAt = (take: Take): number => take.takenAt
  */
 export type DeskShape = Pick<TakePatternOptions, "takes" | "play" | "send">
 
-function deskPatternOptions(
+/** The pattern options a desk records under: its shape, and its cap on a take. */
+export function deskPatternOptions(
   limits: TakeLimits,
   shape: DeskShape
 ): TakePatternOptions {
@@ -181,7 +182,10 @@ export function createPatternTakes(
         durationMs: take.durationMs,
         recordedAt: new Date(take.takenAt).toISOString(),
         standing: take.standing ?? "current",
-        kept: keptOf(take),
+        // One home deleted is on neither, and says so (LA19).
+        ...(take.deletedAt === undefined
+          ? { kept: keptOf(take) }
+          : { kept: null, deleted: new Date(take.deletedAt).toISOString() }),
         ...(take.waits === true ? { waits: true as const } : {}),
       })
     )

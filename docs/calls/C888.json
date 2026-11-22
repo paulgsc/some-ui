@@ -1,0 +1,17 @@
+{
+  "id": "C888",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": [
+    "server:apps/servers/file_host/src/game_feed/pass.rs",
+    "server:apps/servers/file_host/docs/game-feed.md"
+  ],
+  "chose": "With teams named, a game of no named team gets no live summaries, but once the scoreboard calls it completed its summary is fetched until one reads final (about 15 requests a week), so the record keeps every game's end and bites about any game still reconcile. So that it is seen completed while the scoreboard still lists it, the scoreboard also reads at every listed game's end (kickoff plus PRE_GRACE, 4 h), chosen or not, and stays awake while a game still live then has not read over, to at most POST_GRACE (8 h) after kickoff: about one more read per kickoff time on a game day.",
+  "options": [
+    "one final summary per unchosen completed game",
+    "no summary for unchosen games, as #3329's done-means first read"
+  ],
+  "gray": "#3329 said summaries only for followed teams' games; the review found the bite reconciler and the record lose unchosen games silently, and the owner chose.",
+  "undo": "Make Track::fetched require chosen(teams) alone and drop the end read (Track::end_read, Track::overrunning) from Schedule::watch; GA3's wording moves back with it.",
+  "refs": ["#3329"]
+}

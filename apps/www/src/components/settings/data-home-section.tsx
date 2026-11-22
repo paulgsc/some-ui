@@ -4,7 +4,7 @@
  *
  * Which of the four screens this is follows `lib/authority`:
  *
- * - **No server**: not reached; the Pages build shows a viewer the front
+ * - **No server**: not reached; the viewer build shows a viewer the front
  *   desk's own sample-data note instead (`routes/_dashboard/settings/index.tsx`).
  * - **On this device**: nothing about the sessions is sent anywhere and no
  *   account is needed. One button to keep an account (the passkey screen).

@@ -1,0 +1,17 @@
+{
+  "id": "C886",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/settings.rs",
+    "server:apps/servers/file_host/src/game_feed/pass.rs"
+  ],
+  "chose": "The followed teams are a settings namespace of their own, game-teams ({ teams: [] }, every game by default), beside game-feed, not a field of game-feed: the web app PUTs the switch as { following } alone, so a field there would be reset to every game by each flip of the switch. Each pass reads both, so an idle wake is two indexed reads while following, one when paused. A game is chosen when either side is named; only a chosen game gets live summaries or wakes the scoreboard at its kickoff (C888: any game's end read also wakes it, and an unchosen game's summary is fetched once completed, until final) (every listed game is still learnt from each read, and the sleep state, pass::Watch, is worked out each pass from what the schedule holds, never stored, so choosing a team takes effect at the next pass).",
+  "options": [
+    "a game-teams namespace beside game-feed",
+    "a teams field on game-feed with serde(default), and the web client read-modify-writes the whole value"
+  ],
+  "gray": "Where the setting lives is what the web page and the contract harness read; no earlier decision says one lever per namespace or one namespace per feature.",
+  "undo": "Remove GameTeams from settings.rs and NAMESPACES the read in game_feed.rs and pass.rs's Teams parameter; its stored revisions stay, unread.",
+  "refs": ["#3329"]
+}

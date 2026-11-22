@@ -94,7 +94,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     to: "/home-switches",
     title: "Home's switches",
     blurb:
-      "What home does while it runs, and who last changed it: Rust Rounds recording, on or paused.",
+      "What home does while it runs, and who last changed it: Rust Rounds recording, and whether home follows NFL games.",
     icon: ToggleRight,
     audience: "lan",
     purpose: "administration",

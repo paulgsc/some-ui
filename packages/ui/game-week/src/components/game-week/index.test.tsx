@@ -1,9 +1,15 @@
 import type { FeedPort } from "@game-week/lib/feed"
 import { fixtureFeed } from "@game-week/lib/feed"
-import type { OutboxPort } from "@game-week/lib/ports"
+import type { OutboxPort, StoredBite } from "@game-week/lib/ports"
 import { storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
-import { noGamesLine, noOfferLine, NOTICES, WORDS } from "@game-week/lib/words"
+import {
+  noGamesLine,
+  noOfferLine,
+  NOTICES,
+  TIER_TITLES,
+  WORDS,
+} from "@game-week/lib/words"
 import {
   microphoneOwner,
   TAKE_ENDING_WORDS,
@@ -38,8 +44,8 @@ const awayFeed: FeedPort = {
 type Store = {
   /** Whether a keep is refused, held by the store to try again. */
   failKeep: boolean
-  /** Since when home holds a bite; null while it doesn't. */
-  homeSince: number | null
+  /** What it keeps, newest last. */
+  bites: Array<StoredBite>
   /** Tells the screen the store changed. */
   changed: () => void
 }
@@ -62,7 +68,7 @@ function phone(feed = fixtureFeed(() => NOW)): Phone {
   const listeners = new Set<() => void>()
   const store: Store = {
     failKeep: false,
-    homeSince: null,
+    bites: [],
     changed: () => {
       for (const listener of listeners) listener()
     },
@@ -77,15 +83,21 @@ function phone(feed = fixtureFeed(() => NOW)): Phone {
       player,
       store: {
         audio: () => Promise.resolve(new Blob(["said"])),
-        keep: () =>
-          store.failKeep
-            ? Promise.reject(new Error("full"))
-            : Promise.resolve(),
+        keep: (bite): Promise<void> => {
+          if (store.failKeep) return Promise.reject(new Error("full"))
+          store.bites = [...store.bites, bite]
+          store.changed()
+          return Promise.resolve()
+        },
         amend: () => Promise.resolve("noted"),
         release: () => Promise.resolve(),
-        undo: () => Promise.resolve(),
+        undo: (id): Promise<void> => {
+          store.bites = store.bites.filter((bite) => bite.id !== id)
+          store.changed()
+          return Promise.resolve()
+        },
         isKept: () => !store.failKeep,
-        homeSince: () => store.homeSince,
+        getSnapshot: () => store.bites,
         subscribe: (listener) => {
           listeners.add(listener)
           return () => listeners.delete(listener)
@@ -229,7 +241,12 @@ describe("GameWeek", () => {
     fireEvent.click(await sayTheCard())
     await settle()
     expect(playOnRow()?.closest("li")).toHaveTextContent(TAKE_WORDS.place.going)
-    on.store.homeSince = NOW + 60_000
+    // Under the recorder, among the game's newest bites (GWB14).
+    expect(screen.getByText(WORDS.recentBites)).toBeTruthy()
+    on.store.bites = on.store.bites.map((bite) => ({
+      ...bite,
+      homeSince: NOW + 60_000,
+    }))
     act(() => on.store.changed())
     const play = playOnRow()
     expect(play).toBeDisabled()
@@ -261,16 +278,87 @@ describe("GameWeek", () => {
     expect(screen.getByRole("button", { name: WORDS.sayItFirst })).toBeTruthy()
   })
 
+  it("links to choosing the teams home follows live, only when the app gives the way", () => {
+    const { unmount } = render(
+      <GameWeek ports={ports(awayFeed)} outbox={outbox} />
+    )
+    expect(screen.queryByText(WORDS.teamsFollowed)).toBeNull()
+    expect(screen.queryByText(WORDS.teamsFollowedHow)).toBeNull()
+    unmount()
+    render(
+      <GameWeek
+        ports={ports(awayFeed)}
+        outbox={outbox}
+        teamsLink={(label) => <a href="#teams">{label}</a>}
+      />
+    )
+    expect(
+      screen.getByRole("link", { name: WORDS.teamsFollowed })
+    ).toHaveAttribute("href", "#teams")
+    expect(screen.getByText(WORDS.teamsFollowedHow)).toBeInTheDocument()
+  })
+
   it("with no games yet, says why", () => {
     render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     expect(screen.getByText(noGamesLine("away"))).toBeTruthy()
+  })
+
+  it("names who a bite is about while it is said, and one tap moves it on (#3049)", async () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    await sayTheCard()
+    const chip = screen.getByRole("button", { name: /^SF offense/ })
+    expect(chip).toHaveAccessibleName(`SF offense. ${WORDS.unitChange}`)
+    fireEvent.click(chip)
+    expect(screen.getByRole("button", { name: /^SF defense/ })).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: WORDS.aboutTeam("SEA") })
+    )
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: WORDS.aboutTeam("SF") })
+    ).toBeTruthy()
+    // Each control keeps its place as taps change it (HS1).
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toHaveClass(
+      "w-full"
+    )
+    // A pick from the list would name nothing now: the bubble is away.
+    expect(
+      screen.queryByRole("button", { name: WORDS.everyScenario })
+    ).toBeNull()
+  })
+
+  it("names a play that just happened by its own unit, not the list's", async () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    fireEvent.click(screen.getByText("SEA corner down, now off"))
+    await screen.findByRole("button", {
+      name: TAKE_WORDS.buttonLabel.recording,
+    })
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toBeTruthy()
+  })
+
+  it("ranks the list most plausible first when home ranks it", () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
+    const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
+    const text = sheet.textContent
+    expect(text.indexOf(TIER_TITLES.now)).toBeLessThan(
+      text.indexOf(TIER_TITLES.always)
+    )
+    expect(text.indexOf(TIER_TITLES.always)).toBeLessThan(
+      text.indexOf(TIER_TITLES.rest)
+    )
+    expect(text).toContain(WORDS.legendLede(true))
+    expect(text).toContain("SF offense")
   })
 
   it("opens every scenario in a sheet over the screen, and closes it", () => {
     render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
     const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
-    expect(sheet.textContent).toContain(WORDS.legendLede)
+    expect(sheet.textContent).toContain(WORDS.legendLede(false))
+    // Away, every scenario is there, in the catalog's order, all in one tier.
+    expect(sheet.textContent).toContain(TIER_TITLES.rest)
+    expect(sheet.textContent).not.toContain(TIER_TITLES.now)
     fireEvent.keyDown(sheet, { key: "Escape" })
     expect(screen.queryByRole("dialog")).toBeNull()
   })

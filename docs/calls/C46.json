@@ -1,0 +1,15 @@
+{
+  "id": "C46",
+  "made": "2026-11-09",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/web-surface/call/essay-stage.tsx"],
+  "chose": "In template A the owner's bubble is the prototype's plain person icon, and the tutor's its plain hexagon, both in the theme's colours; the owner's brand mark stays on the brand intro and outro only.",
+  "options": [
+    "the prototype's plain person icon",
+    "the owner's brand mark",
+    "a photo or avatar of the owner"
+  ],
+  "gray": "#2690 asks for the tutor's icon and the owner's, the tutor's neutral, and says nothing of what the owner's is.",
+  "undo": "Draw another icon in YouIcon (essay-stage.tsx).",
+  "refs": ["#2690"]
+}

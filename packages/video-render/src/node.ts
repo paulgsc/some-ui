@@ -22,8 +22,10 @@ import { parseCutList } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { parseFormat } from "./format"
 import type { Format } from "./format"
+import type { Mailbox } from "./mailbox"
 import type { SourceFacts } from "./plan"
 import { DEFAULT_POLICY } from "./policy"
+import { fail, Refused } from "./refused"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
 import { parseSeries, versionFile, versionOfFile } from "./series"
@@ -367,6 +369,8 @@ export async function renderFolder(
       readonly stepCacheDir?: string
       /** Where a step not kept, over the cache's budget, is said. */
       readonly warn?: (line: string) => void
+      /** Where a step answered from the cache is said, by the file it wrote. */
+      readonly hit?: (what: string) => void
       /**
        * Home's brand folder: the series' brand files are copied into `root`
        * from it first (`placeBrandFiles`). Without it, they must be there.
@@ -392,6 +396,7 @@ export async function renderFolder(
     compositions,
     stepCacheDir,
     warn,
+    hit,
     brand,
     ...rest
   } = options
@@ -407,14 +412,17 @@ export async function renderFolder(
   }
   let version: Promise<string> | null = null
   const cache = stepCacheDir
-    ? stepCache(
-        resolvePath(root, stepCacheDir),
-        rest.policy ?? DEFAULT_POLICY,
-        warn ??
-          ((line): void => {
-            process.stderr.write(`${line}\n`)
-          })
-      )
+    ? {
+        ...stepCache(
+          resolvePath(root, stepCacheDir),
+          rest.policy ?? DEFAULT_POLICY,
+          warn ??
+            ((line): void => {
+              process.stderr.write(`${line}\n`)
+            })
+        ),
+        ...(hit ? { hit } : {}),
+      }
     : null
   const ports = cache
     ? withCachedCompositions(
@@ -446,12 +454,7 @@ export const TEMPLATES_DIR = join(import.meta.dirname, "templates")
 export const here = (p: string): string =>
   resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
 
-/** Stops a command, saying why; `runCommand` prints it and sets the exit code. */
-export class Refused extends Error {}
-
-export function fail(lines: ReadonlyArray<string>): never {
-  throw new Refused(lines.join("\n"))
-}
+export { fail, Refused } from "./refused"
 
 /** Runs `main`, printing a refusal's reasons rather than a stack. */
 export async function runCommand(main: () => Promise<void>): Promise<void> {
@@ -461,5 +464,58 @@ export async function runCommand(main: () => Promise<void>): Promise<void> {
     if (!(e instanceof Refused)) throw e
     process.stderr.write(`${e.message}\n`)
     process.exitCode = 1
+  }
+}
+
+export * from "./mailbox"
+export * from "./speaking"
+
+/** `value` as a routine writes a JSON file: two-space indent, one trailing newline. */
+export const jsonText = (value: unknown): string =>
+  `${JSON.stringify(value, null, 2)}\n`
+
+/** Each `.json` file in `dir`, by name in order, parsed; none when `dir` is missing. */
+export async function jsonFilesIn(
+  dir: string
+): Promise<Array<{ name: string; body: unknown }>> {
+  const names = await readdir(dir).catch((): Array<string> => {
+    // Ignored: a folder `pull` never made holds no files, which is what this answers.
+    return []
+  })
+  return Promise.all(
+    names
+      .filter((name) => name.endsWith(".json"))
+      .sort()
+      .map(async (name) => ({ name, body: await readJson(join(dir, name)) }))
+  )
+}
+
+/**
+ * The Jobs mailbox a routine reads and puts to, from `JOBS_MAILBOX_URL` and
+ * `JOBS_MAILBOX_TOKEN`; refused when either is unset. The token is never
+ * printed.
+ */
+export function mailboxFromEnv(): Mailbox {
+  const url = process.env["JOBS_MAILBOX_URL"]
+  const token = process.env["JOBS_MAILBOX_TOKEN"]
+  if (url === undefined || url === "" || token === undefined || token === "") {
+    return fail(["JOBS_MAILBOX_URL and JOBS_MAILBOX_TOKEN must be set"])
+  }
+  return { url: url.replace(/\/+$/, ""), token, fetch }
+}
+
+/**
+ * `url`'s JSON, or null where it can't be read; under CI an unread file
+ * throws, never a skip that proved nothing.
+ */
+export async function readPinned(url: string): Promise<unknown> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`${url}: ${String(response.status)}`)
+    const json: unknown = await response.json()
+    return json
+  } catch (error) {
+    if (process.env["CI"]) throw error
+    return null
   }
 }

@@ -1,0 +1,17 @@
+{
+  "id": "C206",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/home-link/live-model.ts",
+    "apps/www/src/lib/home-link/live-machine.ts"
+  ],
+  "chose": "When home closes the game day socket 4400 (it could not read what the phone sent) after a hello that told it a lastSeq, the phone forgets that lastSeq and says hello again at once; after any other hello, a 4400 leaves Game day saying this app needs an update, and it stops trying, as for 4426.",
+  "options": [
+    "(a) any other 4400 is an update, and the phone stops trying",
+    "(b) any other 4400 counts as home being out of reach, and the phone keeps trying, 1 s doubling to 30 s"
+  ],
+  "gray": "Home sends 4400 for a lastSeq it could not have sent and for a frame it cannot read. Only the first is the phone's to repair; the second means this build and home disagree on the messages, which retrying cannot fix, but saying 'update' could be wrong if home misreads a frame for another reason.",
+  "undo": "In live-model.ts, drop UNREADABLE from linkAfterClose's update branch, so a 4400 not explained by a lastSeq reads as away and retries.",
+  "refs": ["#2078", "server#824"]
+}

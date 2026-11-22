@@ -6,14 +6,17 @@
  *
  * `__tests__/game-live-messages.snapshot.json` is a copy of what the
  * server's `dump-game-live-messages` writes (its `check_client_fixtures.py`
- * compares the two), and `__tests__/live-wire.test.ts` reads every message
+ * compares the two), and
+ * `__tests__/live-wire.test.ts` reads every message
  * in it with `readHome` and writes every phone message with `helloText` and
  * `pingText`, so a change on either side the other cannot read fails a test.
  */
 import { isRecord, jsonOf } from "@some-ui/core-utils"
-import { isScenarioId } from "@some-ui/game-scenarios"
+import { isScenarioId, UNITS } from "@some-ui/game-scenarios"
 
 import type { FeedChoice, Game, JustHappened, Offer, OfferCard } from "./feed"
+import type { BiteUnit, RankedEntry } from "./ranked"
+import { isTeamCode, TIERS } from "./ranked"
 import { gameLabel, wantLine } from "./words"
 
 /** The one version of the messages this build speaks. */
@@ -76,6 +79,9 @@ function asGame(game: HomeGame): Game {
     label: gameLabel(game.home, game.away),
     want: wantLine(game.want),
     kickoff: game.kickoff,
+    ...(isTeamCode(game.home) && isTeamCode(game.away)
+      ? { teams: { home: game.home, away: game.away } }
+      : {}),
   }
 }
 
@@ -85,6 +91,62 @@ function lineOf(value: unknown): Line | null {
   return isRecord(value) && isString(value.id) && isString(value.line)
     ? { id: value.id, line: value.line }
     : null
+}
+
+/**
+ * The unit home names on a ranked entry or a play that just happened,
+ * `{unit, unitSide}` (#3049): null for none, `undefined` for a pair this
+ * build doesn't read (a newer catalog's unit, a side that is not a team's
+ * code, or a side with no unit). A unit's side is a team's code, or null.
+ */
+function unitFrom(value: Record<string, unknown>): BiteUnit | null | undefined {
+  const unit = value.unit ?? null
+  const side = value.unitSide ?? null
+  if (!(side === null || isTeamCode(side))) return undefined
+  if (unit === null) return side === null ? null : undefined
+  const named = UNITS.find((each) => each === unit)
+  return named === undefined ? undefined : { unit: named, side }
+}
+
+/** An entry of home's moment log, read; its `id` may be a scenario this build lacks. */
+export type MomentEntry = Line & {
+  /** When it happened, ISO 8601. */
+  readonly at: string
+  /** The unit its play was about; undefined from a home before it named one. */
+  readonly unit: BiteUnit | null | undefined
+}
+
+/**
+ * One entry of home's moment log, `{id, line, at, unit, unitSide}`, as
+ * "just happened" sends it and a game's moments list it: null when it
+ * doesn't read.
+ */
+export function momentEntryOf(value: unknown): MomentEntry | null {
+  const read = lineOf(value)
+  return read !== null && isRecord(value) && isString(value.at)
+    ? {
+        ...read,
+        at: value.at,
+        // A home before #3049's play units sends none: the list's is used.
+        // One this build can't read is none, never the list's guess.
+        unit: "unit" in value ? (unitFrom(value) ?? null) : undefined,
+      }
+    : null
+}
+
+/**
+ * One entry of home's ranked list, `{id, tier, unit, unitSide}`, or null
+ * for one this build doesn't know (a newer catalog's scenario, tier or
+ * unit): left out, and the scenario stays pickable at the end of the list
+ * (`rankedList`).
+ */
+function rankedOf(value: unknown): RankedEntry | null {
+  if (!isRecord(value) || !isString(value.id) || !isScenarioId(value.id))
+    return null
+  const tier = TIERS.find((each) => each === value.tier)
+  const unit = unitFrom(value)
+  if (tier === undefined || unit === undefined) return null
+  return { scenario: value.id, tier, unit }
 }
 
 /**
@@ -102,12 +164,7 @@ function asOffer(seq: number, value: unknown): Offer | null {
   if (!Array.isArray(value.scenarios) || !Array.isArray(value.justHappened))
     return null
   const scenarios = value.scenarios.map(lineOf)
-  const happened = value.justHappened.map((each) => {
-    const read = lineOf(each)
-    return read !== null && isRecord(each) && isString(each.at)
-      ? { ...read, at: each.at }
-      : null
-  })
+  const happened = value.justHappened.map(momentEntryOf)
   if (scenarios.includes(null) || happened.includes(null)) return null
   const cards: Array<OfferCard> = []
   for (const each of scenarios) {
@@ -122,15 +179,27 @@ function asOffer(seq: number, value: unknown): Offer | null {
   const justHappened: Array<JustHappened> = []
   for (const each of happened) {
     if (each !== null && isScenarioId(each.id)) {
-      justHappened.push({ scenario: each.id, context: each.line, at: each.at })
+      justHappened.push({
+        scenario: each.id,
+        context: each.line,
+        at: each.at,
+        ...(each.unit === undefined ? {} : { unit: each.unit }),
+      })
     }
   }
+  const ranked = Array.isArray(value.ranked)
+    ? value.ranked.flatMap((each) => {
+        const read = rankedOf(each)
+        return read === null ? [] : [read]
+      })
+    : undefined
   return {
     seq,
     gameId: value.gameId,
     strip: parts.filter((part) => isString(part) && part !== "").join(" · "),
     cards,
     justHappened,
+    ...(ranked === undefined ? {} : { ranked }),
   }
 }
 

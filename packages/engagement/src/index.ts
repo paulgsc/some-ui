@@ -5,6 +5,7 @@ export type {
   VisitEnding,
 } from "./lib/events"
 export {
+  ELSEWHERE,
   EVENT_FIELDS,
   EVENT_KINDS,
   SURFACES,
@@ -17,15 +18,30 @@ export type {
   DomainId,
   OfferHow,
   Pipeline,
+  Opened,
   Unmeasured,
   WingId,
 } from "./lib/registry"
 export { findAffordance, findRegistryProblems } from "./lib/registry"
+export type { OpenPlace, PlaceOf, Places } from "./lib/places"
+export {
+  createPlaces,
+  SCREEN_HANDOFF,
+  stepPlace,
+  watchPlaces,
+} from "./lib/places"
 export type { Offer, Visit, VisitPage } from "./lib/visit"
 export { createVisit, pageVisit, watchVisit } from "./lib/visit"
 export { EARLY_WAITING, engage, setEngagementSink } from "./lib/sink"
 export type { EventCheck } from "./lib/check-event"
 export { checkEvent, isEventShape } from "./lib/check-event"
 export { PIPELINES, UNMEASURED } from "./lib/pipelines"
+export type { ModuleOpens, Silent } from "./lib/silence"
+export {
+  MODULE_OPENS_SCHEMA,
+  readModuleOpens,
+  SILENT_WEEKS,
+  silentModules,
+} from "./lib/silence"
 export type { ExtensionVerdict } from "./lib/extensions"
 export { EXTENSIONS } from "./lib/extensions"

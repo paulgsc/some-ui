@@ -1,7 +1,14 @@
 import type { CSSProperties, JSX } from "react"
 import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
+import { StatusBadgeLayer } from "@burn-ins/components/stage/badge"
+import { BarsLayer } from "@burn-ins/components/stage/bars"
 import { Caption } from "@burn-ins/components/stage/captions"
+import { CheatSheetLayer } from "@burn-ins/components/stage/cheat-sheet"
+import { FlowLayer } from "@burn-ins/components/stage/flow"
 import { GameCardLayer } from "@burn-ins/components/stage/game-card"
+import { LegendLayer } from "@burn-ins/components/stage/legend"
+import { RuleLayer } from "@burn-ins/components/stage/rule"
+import { TerminalLayer } from "@burn-ins/components/stage/terminal"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { unitsOf, type Units } from "@burn-ins/components/stage/units"
 import type { BurnInFrame } from "@burn-ins/lib/burn-in"
@@ -33,6 +40,27 @@ const Layer = ({
     }
     case "game-card": {
       return <GameCardLayer frame={frame.frame} units={units} />
+    }
+    case "status-badge": {
+      return <StatusBadgeLayer frame={frame.frame} units={units} />
+    }
+    case "terminal": {
+      return <TerminalLayer frame={frame.frame} units={units} />
+    }
+    case "cheat-sheet": {
+      return <CheatSheetLayer frame={frame.frame} units={units} />
+    }
+    case "legend": {
+      return <LegendLayer frame={frame.frame} units={units} />
+    }
+    case "rule": {
+      return <RuleLayer frame={frame.frame} units={units} />
+    }
+    case "flow": {
+      return <FlowLayer frame={frame.frame} units={units} />
+    }
+    case "bars": {
+      return <BarsLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)

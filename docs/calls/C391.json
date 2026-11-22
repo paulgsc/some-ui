@@ -1,0 +1,18 @@
+{
+  "id": "C391",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/chapters.ts",
+    "packages/video-render/src/call.ts"
+  ],
+  "chose": "Each item of the weekly call's moved, done, gray and mine sections marks a finer chapter, titled by its epic's tag or its title. A finer chapter counts only when a render's chapter slides and asks make fewer than three chapters on its real times, as in a part of a series that falls inside one long section; otherwise a video's chapters are exactly what they were.",
+  "options": [
+    "finer item chapters, counted only when the sections make fewer than three",
+    "every item of every repeated section always opens its own chapter, as each ask does",
+    "a part's own sections marked finer by splitting a section's chapter slide every few items"
+  ],
+  "gray": "The owner saw a part with no chapters (2026-11-15, #3032) and left how a one-section part gets them to the session; how many chapters a video shows, and what they are called, is on the screen of every upload.",
+  "undo": "Drop the finer marks from callChapterMarks in call.ts; a one-section part then has no chapters again, and the recorder says so in its log.",
+  "refs": ["#3032", "#2763", "#2918"]
+}

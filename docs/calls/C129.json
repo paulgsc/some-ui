@@ -1,0 +1,14 @@
+{
+  "id": "C129",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/clips/pass.rs"],
+  "chose": "A walk's kept frames are copied beside the render output they were checked from, so a walk side is on the drive twice, at most 24 MiB.",
+  "options": [
+    "copy them, so a walk side is on the drive twice, at most 24 MiB",
+    "hard-link them to the render output, kept once"
+  ],
+  "gray": "No check or owner decision says how kept frames relate to the render worker's folder. A copy stays independent of a folder the pass deletes when it rejects a walk, at the cost of space no real walk has measured yet (server#807).",
+  "undo": "Hard-link in put() in clips/pass.rs instead of writing the bytes again, once server#807 shows the space matters.",
+  "refs": ["server#801", "server#807"]
+}

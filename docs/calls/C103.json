@@ -1,0 +1,18 @@
+{
+  "id": "C103",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+    "packages/ui/rust-rounds/ROUTINE.md"
+  ],
+  "chose": "The routine's finish step holds each deep dive's said text to 300 to 750 words, the owner's 2 to 5 minutes at an estimated 150 words a minute, and leaves the essay's own format (parseEssay) as it is.",
+  "options": [
+    "a word bound in the routine's finish step",
+    "a bound in the essay's format itself",
+    "no bound until a rendered essay measures Kokoro's pace"
+  ],
+  "gray": "#2231 lists the missing 2-to-5-minute hold as a known gap and no one has measured Kokoro's pace; a bound in the format would refuse the template's sample, whose dives are about 100 words.",
+  "undo": "Drop the word check from essayTicket in finish.ts and DIVE_WORDS_* with ROUTINE.md's sentence, or set WORDS_A_MINUTE to the pace a rendered essay measures.",
+  "refs": ["#2693", "#2231"]
+}

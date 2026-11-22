@@ -178,8 +178,7 @@ before the request is made, and therefore not fixable by any server-side CORS
 change. It presents as a rejected promise and a console warning, which reads
 exactly like the server being down.
 
-The remedy is the one `lib/tts-config` already uses: a same-origin
-`/api/file-host/` path, proxied in three places that have to stay in step —
+The remedy is a same-origin `/api/file-host/` path, proxied in three places that have to stay in step —
 
 - `apps/www/src/lib/file-host-config` (`FILE_HOST_PROXY_PATH`)
 - `apps/www/vite.config.ts` (`vite dev` and `vite preview`)

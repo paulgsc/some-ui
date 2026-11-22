@@ -10,7 +10,12 @@
 
 import { z } from "zod"
 
+import { badgeProblems } from "./badges"
+import { ClaimSourcesSchema } from "./claims"
 import { LOOKS, VOICES } from "./plans"
+import { COMMIT, isPublicAddress, PAGE_FILE, SNIP_ID } from "./snip-id"
+import { SPOKEN_CATEGORIES } from "./spoken-categories"
+import { stampProblems } from "./stamp"
 import {
   BackgroundSchema,
   CueSchema,
@@ -57,6 +62,60 @@ const PictureSchema = z.discriminatedUnion("kind", [
       .refine(increasing, { message: "taps move forward in time" }),
   }),
   z.object({ kind: z.literal("still"), source: path }),
+  /**
+   * A screen that home keeps or is handed (SNIPS4, #3114; C865): a snip of
+   * the snip library by its id, a frame of the Clips Library by its
+   * clip, side and file, or a public page by its address and capture. Home hands the ones an essay names, and
+   * `resolveScreens` (`./snip`) draws each by the screen-zoom composition:
+   * the whole screen held above the captions or, for a snip given `at`,
+   * zoomed to those named parts in turn.
+   * Unresolved, it refuses the render.
+   */
+  z.object({
+    kind: z.literal("screen"),
+    of: z.discriminatedUnion("from", [
+      z.object({
+        from: z.literal("snips"),
+        id: z.string().regex(SNIP_ID, "it isn't a snip's id"),
+        /**
+         * The commit its bundle was captured at (`snips-bundle-<commit>`):
+         * which bundle home fetches, and how the snip is made again
+         * (SNIPS5, #3149; C868).
+         */
+        commit: z.string().regex(COMMIT, "a commit's 40 hex digits"),
+        /** The parts to zoom to, in order, as the page names them (`data-region`). */
+        at: z.array(z.string().min(1).max(200)).max(10).default([]),
+      }),
+      /**
+       * A public page, photographed logged out (`./page`): a pull request's
+       * checks, a run's jobs, a page of docs. Named by the address and the
+       * moment its picture was taken, the "as of" a viewer is told, and its
+       * file, which home hands beside the essay in `<key>.pages/`.
+       */
+      z.object({
+        from: z.literal("pages"),
+        url: z
+          .string()
+          .refine(
+            isPublicAddress,
+            "a public https address, with no user or password"
+          ),
+        capturedAt: z.iso.datetime(),
+        file: z
+          .string()
+          .regex(PAGE_FILE, "a page's picture, <slug>-<hash12>.png"),
+        /** The parts to zoom to, in order, as the capture named them. */
+        at: z.array(z.string().min(1).max(200)).max(10).default([]),
+      }),
+      z.object({
+        from: z.literal("clips"),
+        clip: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "a clip's id"),
+        side: z.enum(["before", "after"]),
+        /** The frame's name, as home keeps a side's frames (`frameName`). */
+        file: z.string().regex(/^[a-z0-9][a-z0-9._-]*\.png$/, "a PNG frame"),
+      }),
+    ]),
+  }),
   /** The series' ground alone, for a card burn-in to draw on. */
   z.object({ kind: z.literal("card") }),
   /**
@@ -125,6 +184,125 @@ export const TimedWordSchema = z.object({
 
 export type TimedWord = Readonly<z.infer<typeof TimedWordSchema>>
 
+/**
+ * The most characters home's speaker says in one line: it refuses a longer
+ * one (paulgsc/server `infra/kokoro/say.py`, `MOST_CHARS`).
+ */
+export const SAY_MOST_CHARS = 4_000
+
+/**
+ * A line home's Kokoro speaker can say: some words, no longer than it takes,
+ * with at least one letter or digit, since a line of punctuation alone gives
+ * it nothing to say and it refuses it (`say.py`'s "nothing to say").
+ */
+export const SayableSchema = z
+  .string()
+  .trim()
+  .min(1, "it says nothing")
+  .max(
+    SAY_MOST_CHARS,
+    `home's speaker says at most ${SAY_MOST_CHARS} characters in one line`
+  )
+  .refine((text) => /[\p{L}\p{N}]/u.test(text), {
+    message: "it has no letter or digit, so the speaker has nothing to say",
+  })
+
+/**
+ * A take's id as home keeps it, as the Rust essay's opening names one, and
+ * never with a dot first, which the takes folder would read as hidden.
+ */
+export const SPOKEN_TAKE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
+
+/**
+ * The most exchanges a spoken card plays (C813): the owner's introduction
+ * runs three to five (who I am, why synthetic voices, what AI-generated
+ * means here, why Rust Rounds, why on the phone), so six, past the
+ * opening's three. Policy, moved with the story (C771).
+ */
+export const SPOKEN_EXCHANGES_MOST = 6
+
+/**
+ * One turn of a spoken card's exchange, in one of its two voices (owner,
+ * 2026-11-20): a line home's Kokoro says, or a take of the owner's that home
+ * keeps, by its id (TAKES path A). Either may ask and either may answer:
+ * an introduction has Kokoro ask and the owner answer, and the DB essay the
+ * other way round.
+ */
+export const SpokenTurnSchema = z.discriminatedUnion("voice", [
+  z.strictObject({ voice: z.literal("kokoro"), said: SayableSchema }),
+  z.strictObject({
+    voice: z.literal("owner"),
+    take: z
+      .string()
+      .regex(SPOKEN_TAKE_ID, "it isn't a take's id, as home keeps it"),
+  }),
+])
+
+export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
+
+/**
+ * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
+ * intro, a scene's chapter line (its chapter's first scene only, C1027)
+ * and then its narration, or the close. The
+ * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
+ * Each but a spoken card may name the code it describes (`sources`, #3036),
+ * which `render cards-check` holds to the stamp's commits (`claims.ts`).
+ */
+export const SpokenSchema = z.discriminatedUnion("role", [
+  /** What the essay is for, what you'll be able to do, and what it is as of. */
+  z.strictObject({
+    role: z.literal("intro"),
+    said: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
+  /**
+   * Where this step sits and why it matters, then what the card teaches,
+   * and the code its narration describes (#3036, `claims.ts`).
+   * Only a chapter's first scene says its chapter line and marks it; a
+   * scene without one goes on in the chapter before it (C1027).
+   */
+  z.strictObject({
+    role: z.literal("scene"),
+    chapter: SayableSchema.optional(),
+    narration: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
+  /** What to do next, and where to look when it fails. */
+  z.strictObject({
+    role: z.literal("close"),
+    said: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
+  /**
+   * A walkthrough's stop (WALK5, #3337): its narration, the authored lines
+   * that add what its screens can't show (C945, C1000), in order, tied to
+   * no one screen. Each is said on its own and laid at its place in the
+   * stop's take (`laidTake`), and the stop is held for as long as they take;
+   * a cards essay plays no walk, so it refuses one (`parseCardsEssay`).
+   */
+  z.strictObject({
+    role: z.literal("walk"),
+    lines: z.array(SayableSchema).min(1),
+  }),
+  /**
+   * A spoken card (WALK7, #3282): its category's template plays each
+   * exchange, the question in Kokoro and then the owner's own take from
+   * home, whole (`spoken-card.ts`). Nothing in it is cut or edited.
+   */
+  z.strictObject({
+    role: z.literal("spoken"),
+    category: z.enum(SPOKEN_CATEGORIES),
+    exchanges: z
+      .array(
+        z.strictObject({ ask: SpokenTurnSchema, answer: SpokenTurnSchema })
+      )
+      .min(1)
+      .max(SPOKEN_EXCHANGES_MOST),
+  }),
+])
+
+export type Spoken = z.infer<typeof SpokenSchema>
+
 export const ShotSchema = z.object({
   id,
   /** The primer's cut this scene says. */
@@ -166,6 +344,8 @@ export const ShotSchema = z.object({
     .default({}),
   burnIns: z.array(BurnInSchema).default([]),
   idea: IdeaSchema.default({ origin: "agent" }),
+  /** What is said over it, in a spoken cards essay (EXPLAIN6). */
+  spoken: SpokenSchema.optional(),
 })
 
 const author = z.enum(["owner", "claude"])
@@ -182,6 +362,19 @@ export const CutListSchema = z.object({
   shots: z.array(ShotSchema).min(1),
   /** Burn-ins over the whole video, such as captions. */
   burnIns: z.array(BurnInSchema).default([]),
+  /**
+   * What every card is stamped with (CARDS4, `stamp.ts`): the commits its
+   * cards were checked against, `owner/repo@sha`, and the day.
+   */
+  stamp: z
+    .strictObject({
+      sources: z
+        .array(z.string().regex(/^[\w.-]+\/[\w.-]+@[0-9a-f]{7,40}$/))
+        .min(1)
+        .max(3),
+      date: z.iso.date(),
+    })
+    .optional(),
   revisions: z
     .array(
       z.object({
@@ -246,6 +439,8 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
   const problems = once([
     ...shotProblems(parsed.data.shots),
     ...authorshipProblems(parsed.data),
+    ...badgeProblems(parsed.data),
+    ...stampProblems(parsed.data),
     ...wholeVideoProblems(
       parsed.data,
       isCaptions,
@@ -285,10 +480,10 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
       say("a card has no picture to move")
     }
     const into = o.transitionIn ?? "cut"
-    if (isComposition(s)) {
+    if (drawsItself(s)) {
       if (o.motion || o.background) say("a composition draws its own picture")
       if (into !== "cut") say("a composition draws its own way in")
-    } else if (isComposition(shots[i - 1]) && into !== "cut") {
+    } else if (drawsItself(shots[i - 1]) && into !== "cut") {
       say("the composition before it draws its own way out")
     }
     const m = o.motion
@@ -324,6 +519,14 @@ const CAPTIONS = "captions"
 
 /** Whether a burn-in is the captions. */
 export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/**
+ * Whether a scene draws its own picture and way in and out: a composition,
+ * or a screen of the app, which is drawn as one once home hands it
+ * (`resolveScreens`), so the essay is refused for it before anything is said.
+ */
+const drawsItself = (s: Shot | undefined): boolean =>
+  s?.picture.kind === "composition" || s?.picture.kind === "screen"
 
 /** Whether a scene's picture is a composition, which draws its own (HYPER2). */
 export const isComposition = (s: Shot | undefined): boolean =>

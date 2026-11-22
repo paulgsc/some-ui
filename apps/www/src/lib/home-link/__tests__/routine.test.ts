@@ -51,7 +51,8 @@ function homeOf(over: Partial<Home> = {}): Home {
 /** The link's `keep`, as the runtime's `credentialed` runs it. */
 function keepOf(home: Home): HomeLink["keep"] {
   return async (run) => {
-    if (home.busy || home.pairing === null) return null
+    if (home.pairing === null) return { kind: "refused", why: "unpaired" }
+    if (home.busy) return { kind: "refused", why: "busy" }
     const send: HomeCall = (method, path, body) => {
       home.sent.push(`${method} ${path}`)
       home.bodies.push(typeof body === "string" ? body : undefined)

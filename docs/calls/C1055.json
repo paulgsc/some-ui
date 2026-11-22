@@ -1,0 +1,15 @@
+{
+  "id": "C1055",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "CLAUDE.md",
+    "apps/www/src/lib/data-mode",
+    "apps/www/src/lib/demo",
+    "apps/www/src/routes/mission.tsx",
+    "apps/www/build.profiles.ts"
+  ],
+  "chose": "The public Pages site is a curriculum vitae and nothing else: the landing, the résumé and its PDFs, and /authorship, which every published video's end card links. A viewer sees each project by its clip and its source, not by trying the apps there. The owner (2026-11-22, close paraphrase): \"Pages is a curriculum vitae, nothing else. Cut all the other fluff. I don't go there, none of my applications are for other people, and the site gets very little traffic, so let's not waste a route for no reason. I only exist in the APK.\" On the mandate wording: \"yes, go ahead with the mandate change; that user story moved a long time ago.\"",
+  "undo": "Restore CLAUDE.md's \"A way in for every reader\" and \"A viewer tries, and nothing is kept\" bullets and the /mission line to their wording before this call; the code keeps the viewer's routes until the prune lands, so nothing else changes back.",
+  "refs": ["#3401", "#3361"]
+}

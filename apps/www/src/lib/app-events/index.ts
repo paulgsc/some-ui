@@ -21,7 +21,7 @@
  * home refuses any field outside its family's own (paulgsc/server
  * `app_event_repo`, docs/identity.md invariant 33).
  *
- * Kept in the page's storage, so the Pages build's in-memory copy holds it
+ * Kept in the page's storage, so the viewer build's in-memory copy holds it
  * there (`lib/demo/viewer-storage`) and nothing is sent. At most
  * `APP_EVENTS_WAITING` wait; past that a new one is not kept, and the old
  * ones stay until home holds them: nothing waiting is let go before home has

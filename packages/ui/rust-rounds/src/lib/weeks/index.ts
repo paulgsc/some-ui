@@ -26,7 +26,11 @@
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { RustcRunSchema } from "@rust-rounds/lib/formats"
 import type { Week } from "@rust-rounds/lib/formats/week"
-import { WeekSchema } from "@rust-rounds/lib/formats/week"
+import {
+  upgradeWeek,
+  WeekSchema,
+  WeekV1Schema,
+} from "@rust-rounds/lib/formats/week"
 import type { RoundsHomePort } from "@rust-rounds/lib/home"
 import { exchangeRounds } from "@rust-rounds/lib/home"
 import { WEEKS_KEY } from "@rust-rounds/lib/play/keys"
@@ -70,7 +74,8 @@ export type WeeksHeld = {
 const NO_WEEKS: WeeksHeld = { weeks: [], unread: [] }
 
 const HeldWeekSchema = z.object({
-  week: WeekSchema,
+  // A week kept in its `/1` shape reads by `upgradeWeek`.
+  week: z.union([WeekSchema, WeekV1Schema.transform(upgradeWeek)]),
   sha256: z.string(),
   runs: z.record(z.string(), RustcRunSchema),
   ended: z.array(z.string()),
@@ -188,6 +193,18 @@ function takeFromHome(held: WeeksHeld, from: WeekFromHome): WeeksHeld {
         ...held,
         weeks: held.weeks.map((each) => (each === mine ? next : each)),
       }
+}
+
+/**
+ * A week as home serves it (`GET /rust-weeks/<id>`, parsed), read as the
+ * phone would hold it fresh: through the same door, `readWeek`, with each
+ * ticket's recorded run. Null when the phone couldn't read it. Home's essay
+ * recorder draws the week's cards from this (RR31, #3288).
+ */
+export function heldFromHome(value: unknown): HeldWeek | null {
+  const from = WeekWithRunsSchema.safeParse(value)
+  if (!from.success) return null
+  return takeFromHome(NO_WEEKS, from.data).weeks[0] ?? null
 }
 
 const FORGOTTEN: HomeExchanged = { kind: "forgotten" }

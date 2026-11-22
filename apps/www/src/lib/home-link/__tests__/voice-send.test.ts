@@ -17,10 +17,16 @@ import { reportFailure } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
-import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
+import {
+  keptSaid,
+  ON_PHONE,
+  ShelfFullError,
+  TAKE_WORDS,
+} from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
@@ -29,12 +35,14 @@ import {
   storesRead,
   voiceKept,
   watchVoiceNotes,
+  whenPlacesKnown,
 } from "@/lib/home-link/voice-copy"
 import { keepIdeas } from "@/lib/idea-keeping"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
+import type { StationMove } from "@/lib/take-conveyor/model"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
 
@@ -57,8 +65,10 @@ const fakes = vi.hoisted(
     deleted: Array<ReadonlyArray<string>>
     /** Whether Studio's store fails to let a deleted take go. */
     deleteFails: boolean
-    /** Whether the phone is paired with home. */
-    paired: boolean
+    /** Whether the phone is paired with home, as its record was read. */
+    paired: Pairing["kind"]
+    /** Who listens to the link, to hear the pairing become known. */
+    linkListeners: Set<() => void>
   } => ({
     jobs: null,
     audio: new Map(),
@@ -69,7 +79,8 @@ const fakes = vi.hoisted(
     onDrive: [],
     deleted: [],
     deleteFails: false,
-    paired: true,
+    paired: "paired",
+    linkListeners: new Set(),
   })
 )
 
@@ -77,7 +88,10 @@ vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
     getSnapshot: () => fakes.jobs,
     subscribe: () => (): void => undefined,
-    letGo: (): void => undefined,
+    letGo: (named: ReadonlySet<string>): boolean => {
+      fakes.deleted.push([...named])
+      return !fakes.deleteFails
+    },
   }),
   jobVoiceAudio: (): unknown => ({
     get: (id: string): Promise<Blob | null> => {
@@ -88,6 +102,30 @@ vi.mock("@/lib/jobs", () => ({
     },
   }),
 }))
+/**
+ * The conveyor's moves (CONVEYOR1): what `../take-stations` answers is its
+ * own test's; here, only where a run sends them. None owed but where a test
+ * says.
+ */
+const conveyor = vi.hoisted(
+  (): {
+    owed: Array<StationMove>
+    answered: Array<string>
+  } => ({ owed: [], answered: [] })
+)
+
+vi.mock("@/lib/take-conveyor", () => ({
+  takeConveyor: (): object => ({
+    port: {
+      due: (): ReadonlyArray<StationMove> => conveyor.owed,
+      answered: (move: string): void => {
+        conveyor.answered.push(move)
+        conveyor.owed = conveyor.owed.filter((owed) => owed.move !== move)
+      },
+    },
+  }),
+}))
+
 vi.mock("@/lib/session-reflection", () => {
   const snapshot = { kept: [] }
   return {
@@ -122,9 +160,20 @@ vi.mock("@/lib/home-link/lanes", () => ({
   useLaneHome: (): unknown => null,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
-  paired: (): boolean => fakes.paired,
-  pairingOf: (): string => PAIRING,
+  // Read as paired: the voice record follows its pairing (HP1).
+  homeLink: (): unknown => ({
+    subscribe: (listener: () => void): (() => void) => {
+      fakes.linkListeners.add(listener)
+      return (): void => {
+        fakes.linkListeners.delete(listener)
+      }
+    },
+    getSnapshot: () => ({ link: { kind: "paired" } }),
+  }),
+  pairing: (): Pairing =>
+    fakes.paired === "paired"
+      ? { kind: "paired", id: PAIRING }
+      : { kind: fakes.paired },
 }))
 vi.mock("@some-ui/topik", () => ({
   lensRecordHeldByHome: (): void => undefined,
@@ -224,7 +273,7 @@ function setUp(
   audio: Record<string, Blob | Error | null>,
   { arrived = false, storage = memoryStorage(), now = Date.now } = {}
 ): void {
-  fakes.paired = true
+  fakes.paired = "paired"
   fakes.jobs = record(Object.keys(audio), arrived)
   fakes.scene = []
   fakes.audio = new Map(
@@ -242,6 +291,35 @@ const waiting = (): number =>
   renderHook(() => voiceLane.useCounts()).result.current.waiting
 
 describe("the voice lane's run, after its copy pass (LA14)", () => {
+  it("HEARD4: home's deleted_for_good lets a Jobs note go while Studio's store isn't handed in", async () => {
+    const deletedForGood: HomeCall = () =>
+      Promise.resolve({
+        status: 409,
+        body: JSON.stringify({ error: { code: "deleted_for_good" } }),
+      })
+    // Jobs' let-go failing keeps the copy waiting: the exchange waited on it.
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.deleteFails = true
+    try {
+      await sendVoice(deletedForGood, AT_PAIRING)
+    } finally {
+      fakes.deleteFails = false
+    }
+    expect(fakes.home?.getSnapshot().waiting.map(({ id }) => id)).toEqual([
+      "v1",
+    ])
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.deleted = []
+    await sendVoice(deletedForGood, AT_PAIRING)
+    expect(fakes.deleted[0]).toEqual(["v1"])
+    expect(fakes.home?.getSnapshot()).toMatchObject({
+      waiting: [],
+      refused: [],
+    })
+    // Studio's own kind still waits for its store.
+    expect(await letGoDeleted("studio", ["t9"])).toBe(false)
+  })
+
   it("fails for no room, counts no note whose audio is gone, and sends the rest once there is room", async () => {
     setUp(1, { v1: new Blob(["a"]), gone: null, v3: new Blob(["c"]) })
     expect(await sendVoice(send, AT_PAIRING)).toEqual({
@@ -293,10 +371,44 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect((await sendVoice(busy, AT_PAIRING)).kind).toBe("failed")
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
     // Unpaired, its copy goes nowhere: kept here until paired again.
-    fakes.paired = false
+    fakes.paired = "unpaired"
     expect(said("v1")).toBe(TAKE_WORDS.place.phone)
-    fakes.paired = true
+    // While the pairing record is read, on this phone, and nothing said of
+    // home (PO1, #3157).
+    fakes.paired = "reading"
+    expect(voiceKept("v1")).toEqual({ place: "unknown" })
+    expect(said("v1")).toBe(TAKE_WORDS.place.unknown)
+    expect(said("v1")).not.toMatch(/home/i)
+    fakes.paired = "paired"
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
+
+    // My data hears the pairing become known (#3152), once, and from
+    // then on every take's place is known.
+    fakes.paired = "reading"
+    let heardKnown = 0
+    const others = new Set(fakes.linkListeners)
+    whenPlacesKnown(() => {
+      heardKnown += 1
+    })
+    // Its own listener alone: the lane's watchers hear the link as well.
+    const mine = (): Array<() => void> =>
+      [...fakes.linkListeners].filter((listener) => !others.has(listener))
+    for (const listener of mine()) listener()
+    expect(heardKnown).toBe(0)
+    fakes.paired = "unpaired"
+    const [heard1] = mine()
+    heard1()
+    heard1()
+    expect(heardKnown).toBe(1)
+    expect(mine()).toEqual([])
+    expect(voiceKept("v1")).toEqual(ON_PHONE)
+    // Known already: heard at once, with nothing to wait on.
+    whenPlacesKnown(() => {
+      heardKnown += 1
+    })
+    expect(heardKnown).toBe(2)
+    expect(mine()).toEqual([])
+    fakes.paired = "paired"
 
     expect(await sendVoice(send, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(voiceKept("v1")).toEqual({ place: "home", since: heard })
@@ -384,7 +496,7 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
       "t1",
     ])
     fakes.deleted = []
-    expect(await letGoDeleted(["t1"])).toBe(true)
+    expect(await letGoDeleted("studio", ["t1"])).toBe(true)
     expect(fakes.home?.getSnapshot().waiting).toEqual([])
     expect(await fakes.home?.keeping.audio("t1")).toBeNull()
     expect(fakes.deleted).toEqual([["t1"]])
@@ -536,6 +648,7 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
         audio: (id: string) =>
           Promise.resolve(id === "b1" ? new Blob(["bite"]) : null),
         subscribe: () => (): void => undefined,
+        letGoDeleted: () => Promise.resolve(),
       },
       heldByHome: (next): void => {
         told.push(next()("b1"))
@@ -650,5 +763,43 @@ describe("Studio's ideas, sent whole (ST26 b)", () => {
     sent.length = 0
     await sendVoice(recording, AT_PAIRING)
     expect(sent.filter((line) => line.startsWith("PUT /ideas/"))).toEqual([])
+  })
+})
+
+describe("Studio's takes on the conveyor (CONVEYOR1)", () => {
+  it("go home last in a run, after what the lane carried before them", async () => {
+    setUp(5, { v1: new Blob(["a"]) })
+    conveyor.owed = [
+      {
+        move: "m1",
+        take: "t1",
+        from: "in-the-oven",
+        to: "cooking",
+        at: "2026-11-13T10:00:00.000Z",
+        seq: 0,
+        labels: null,
+        comment: null,
+      },
+    ]
+    conveyor.answered = []
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(`${method} ${path}`)
+      return path === "/voice-notes/t1/station"
+        ? Promise.resolve({
+            status: 200,
+            body: JSON.stringify({
+              change: "moved",
+              take: { id: "t1", station: "cooking", seq: 1 },
+            }),
+          })
+        : send(method, path, init)
+    }
+    expect(await sendVoice(recording, AT_PAIRING)).toEqual({ kind: "synced" })
+    expect(sent.at(-1)).toBe("POST /voice-notes/t1/station")
+    expect(
+      sent.slice(0, -1).some((line) => line.includes("/voice-notes/v1"))
+    ).toBe(true)
+    expect(conveyor.answered).toEqual(["m1"])
   })
 })

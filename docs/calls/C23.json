@@ -1,0 +1,11 @@
+{
+  "id": "C23",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["packages/video-motion/src/promo.ts"],
+  "chose": "The promo's cues sit on the dry run's beats: a whoosh 0.55 s before the hook ends, a pop as the frame opens, a click on each tap, a whoosh 0.5 s before the feature ends, a ding 0.3 s into the close.",
+  "options": ["the dry run's cue sheet", "no cues until the owner places them"],
+  "gray": "The dry run's sheet was a placeholder the owner never confirmed.",
+  "undo": "Change CUE_AT in promo.ts.",
+  "refs": ["#2726", "#2727", "#2790"]
+}

@@ -2,12 +2,17 @@
 import type { PatternTake, Playback, Player } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
+import type { HearAgainAnswer } from "@soundbites/lib/hear-again/model"
 import type {
   LibraryPage,
   LibraryPhoneSnapshot,
   LibraryRead,
 } from "@soundbites/lib/library/model"
-import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
+import type {
+  LibraryPhone,
+  PhoneTake,
+  TakesHome,
+} from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { describe, expect, it, vi } from "vitest"
 
@@ -20,6 +25,9 @@ function later<T>(): { promise: Promise<T>; settle: (value: T) => void } {
   return { promise, settle }
 }
 
+/** Home, as a test that asks nothing of it again sees it. */
+const NO_HEAR_AGAIN = (): Promise<HearAgainAnswer> =>
+  Promise.resolve({ kind: "notTaken" })
 const page = (by: LibraryPage["by"], id: string): LibraryRead => ({
   kind: "read",
   page: {
@@ -75,6 +83,7 @@ describe("Takes on home's runtime (ST32)", () => {
         return new Promise(() => undefined)
       },
       audio: () => Promise.resolve(null),
+      hearAgain: NO_HEAR_AGAIN,
     }
     const library = createTakeLibrary({ home, player: player().player })
     library.attach()
@@ -96,6 +105,7 @@ describe("Takes on home's runtime (ST32)", () => {
         return takes.promise
       },
       audio: () => audio.promise,
+      hearAgain: NO_HEAR_AGAIN,
     }
     const played = player()
     const library = createTakeLibrary({ home, player: played.player })
@@ -120,6 +130,7 @@ describe("Takes on home's runtime (ST32)", () => {
     const home: TakesHome = {
       takes: () => Promise.resolve(page("newest", "t1")),
       audio,
+      hearAgain: NO_HEAR_AGAIN,
     }
     const played = player()
     const library = createTakeLibrary({ home, player: played.player })
@@ -187,7 +198,11 @@ describe("Takes on home's runtime (ST32)", () => {
       )
       const { phone, move } = phoneTakes()
       const library = createTakeLibrary({
-        home: { takes, audio: () => Promise.resolve(null) },
+        home: {
+          takes,
+          audio: () => Promise.resolve(null),
+          hearAgain: NO_HEAR_AGAIN,
+        },
         player: player().player,
         phone,
       })
@@ -197,7 +212,12 @@ describe("Takes on home's runtime (ST32)", () => {
       move([{ ...OWN, kept: { place: "home", since: null } }])
       await settle()
       expect(takes).toHaveBeenCalledTimes(2)
-      expect(takes).toHaveBeenLastCalledWith(null, expect.any(Function))
+      expect(takes).toHaveBeenLastCalledWith(
+        null,
+        expect.any(Function),
+        null,
+        expect.anything()
+      )
       move([{ ...OWN, kept: { place: "home", since: "2026-11-05T09:01:00Z" } }])
       await settle()
       expect(takes).toHaveBeenCalledTimes(2)
@@ -212,6 +232,7 @@ describe("Takes on home's runtime (ST32)", () => {
         home: {
           takes: () => Promise.resolve(page("newest", "t1")),
           audio: () => Promise.resolve(new Blob(["take"])),
+          hearAgain: NO_HEAR_AGAIN,
         },
         player: played.player,
         phone,
@@ -236,5 +257,95 @@ describe("Takes on home's runtime (ST32)", () => {
       detach()
       expect(leave).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it("reads the takes again on a pull while its screen shows, and asks no pull once it has gone (HERD2)", async () => {
+    const answers: Array<LibraryRead> = [
+      page("newest", "t1"),
+      { kind: "away" },
+      page("newest", "t2"),
+    ]
+    let reads = 0
+    const home: TakesHome = {
+      takes: () => {
+        reads += 1
+        return Promise.resolve(answers.shift() ?? page("newest", "t3"))
+      },
+      audio: () => Promise.resolve(null),
+      hearAgain: NO_HEAR_AGAIN,
+    }
+    const registered: Array<() => Promise<void>> = []
+    let dropped = 0
+    const library = createTakeLibrary({
+      home,
+      player: player().player,
+      refresh: ({ checkAgain }) => {
+        registered.push(checkAgain)
+        return (): void => {
+          dropped += 1
+        }
+      },
+    })
+    const detach = library.attach()
+    await settle()
+    expect(reads).toBe(1)
+    expect(registered).toHaveLength(1)
+    // A pull while home is away says it could not read; the next reads.
+    await expect(registered[0]?.()).rejects.toThrow()
+    await expect(registered[0]?.()).resolves.toBeUndefined()
+    expect(reads).toBe(3)
+    expect(library.getSnapshot().read).toEqual(page("newest", "t2"))
+    detach()
+    expect(dropped).toBe(1)
+  })
+})
+
+describe("the phone's takes of every kind reaching home", () => {
+  it("reads home's newest again once one of them reaches home, and not for one already there", async () => {
+    const takes = vi.fn(() => Promise.resolve(page("newest", "t1")))
+    const listeners = new Set<() => void>()
+    const own = (home: boolean): PhoneTake => ({
+      id: "b1",
+      of: "game",
+      ref: "401772",
+      recordedAt: "2026-11-16T21:00:00.000Z",
+      home,
+      audio: () => Promise.resolve(null),
+    })
+    let snapshot: ReadonlyArray<PhoneTake> = [
+      own(false),
+      { ...own(true), id: "b0" },
+    ]
+    const library = createTakeLibrary({
+      home: {
+        takes,
+        audio: () => Promise.resolve(null),
+        hearAgain: NO_HEAR_AGAIN,
+      },
+      player: player().player,
+      onPhone: {
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return (): void => {
+            listeners.delete(listener)
+          }
+        },
+        getSnapshot: () => snapshot,
+      },
+    })
+    const detach = library.attach()
+    await settle()
+    expect(takes).toHaveBeenCalledTimes(1)
+    const tell = (): void => {
+      for (const listener of listeners) listener()
+    }
+    tell()
+    await settle()
+    expect(takes).toHaveBeenCalledTimes(1)
+    snapshot = [own(true), { ...own(true), id: "b0" }]
+    tell()
+    await settle()
+    expect(takes).toHaveBeenCalledTimes(2)
+    detach()
   })
 })

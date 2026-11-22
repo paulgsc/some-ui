@@ -1,0 +1,17 @@
+{
+  "id": "C1019",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/handlers/voice.rs",
+    "server:crates/db/voice/src/fast_track.rs"
+  ],
+  "chose": "POST /voice-notes/:id/fast-track {fast} answers 201 recorded, 200 unchanged, 404 not held, 422 a bad body, and 409 when the note is already heard or found silent, for either act, or, for fast: true only, when home won't hear it as it stands (set aside, out of attempts, no audio).",
+  "options": [
+    "409 for a note home won't hear as it stands",
+    "record the mark anyway (201) and let it order nothing"
+  ],
+  "gray": "Whether home will hear a note is read from the attempts per model, so after a model bump a note refused today may become hearable; the refusal says as it stands.",
+  "undo": "Drop the not-waiting check; the mark records and orders nothing.",
+  "refs": ["server#1090", "server#1100"]
+}

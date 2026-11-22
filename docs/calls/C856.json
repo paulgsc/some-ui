@@ -1,0 +1,19 @@
+{
+  "id": "C856",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/game-scenarios/src/words.ts",
+    "packages/game-scenarios/src/icons.ts",
+    "packages/game-scenarios/src/catalog.ts"
+  ],
+  "chose": "Catalog v2's phone words and icons (#3048): Halftime's outcomes read Leading, Trailing, Tied; the onside kick's read 'We recovered it' and 'They recovered it' (whichever side kicked); the halves read '1st half', '2nd half', 'Overtime'; the big-play sizes 'Big', 'Huge', 'One to remember'; its kinds 'Pass', 'Run', 'Kick return', 'Punt return', 'Interception return', 'Fumble return'. Halftime's icon is the field cut at midfield with an arrow to the half to come; the onside kick's a short kick bouncing once. The halves and the big-play algebra are unions the dump must name in full, so a value either side adds fails until the other has it.",
+  "options": [
+    "these words and icons, with the dimensions as closed unions",
+    "read the dimensions as plain strings and show the server's slugs",
+    "leave the dimensions out of the phone until a surface shows them"
+  ],
+  "gray": "The server names the slugs; how each reads on the phone, and how the two new scenarios are drawn, is copy and art the owner sees on Game day and in Takes, which no check or earlier decision settles.",
+  "undo": "Change the words in words.ts or the paths in icons.ts; the slugs stay the server's.",
+  "refs": ["#3048", "#2908"]
+}

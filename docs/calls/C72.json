@@ -1,0 +1,14 @@
+{
+  "id": "C72",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+  "chose": "A corrected essay script goes under a new name, rust-essay-YYYY-wNN-rN.json with N from 2, since a name in the mailbox holds one body for good.",
+  "options": [
+    "a correction under -rN, N from 2",
+    "no corrections: one script per week"
+  ],
+  "gray": "Nothing settled whether a week's essay can be corrected once put, and a held name refuses other bytes (MB5), so a fix needs a new name or none can be made.",
+  "undo": "Drop the (-rN) part of the rust-essay name in brief's also in core.ts, and its tests.",
+  "refs": ["#2691", "#2833"]
+}

@@ -42,8 +42,11 @@ const ITEM: KindItem = {
   at: "2026-11-01T10:00:00.000Z",
   bytes: 120,
   where: "home",
-  playable: true,
+  plays: "here",
+  durationMs: null,
+  heard: { kind: "notYet" },
   deletable: true,
+  wentAt: null,
 }
 
 describe("what home's answer to a delete says", () => {
@@ -244,15 +247,17 @@ describe("the sheet's step", () => {
 })
 
 describe("what My data offers to delete", () => {
-  it("offers Delete… only on what home marks deletable, of a kind this phone lets go", () => {
-    expect(offersDelete("studio", ITEM, [])).toBe(true)
-    expect(offersDelete("studio", { ...ITEM, deletable: false }, [])).toBe(
+  it("offers Delete… on what home marks deletable, of any kind (HEARD5)", () => {
+    expect(offersDelete("reflection", ITEM, [])).toBe(true)
+    expect(offersDelete("reflection", { ...ITEM, deletable: false }, [])).toBe(
       false
     )
-    expect(offersDelete("reflection", ITEM, [])).toBe(false)
-    expect(offersDelete("soundbite", ITEM, [])).toBe(false)
-    // Studio's store not handed in: this phone couldn't let its copy go.
+    // A store not handed in, or not known yet: its copy couldn't be let go.
+    expect(offersDelete("studio", ITEM, [])).toBe(true)
     expect(offersDelete("studio", ITEM, ["studio"])).toBe(false)
+    expect(offersDelete("soundbite", ITEM, ["soundbite"])).toBe(false)
+    expect(offersDelete("soundbite", ITEM, null)).toBe(false)
+    expect(offersDelete("reflection", ITEM, null)).toBe(true)
   })
 })
 

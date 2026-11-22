@@ -1,0 +1,17 @@
+{
+  "id": "C36",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/ui/playoff-delta/src/lib/sample-fill.ts",
+    "packages/ui/playoff-delta/src/lib/sample.ts"
+  ],
+  "chose": "Playoff Delta's previews show the legend and the sample season's newest week (2025 week 18), each in its format's newest version, said from a fixed fill whose words Claude wrote and checkNarration holds to the sample's facts.",
+  "options": [
+    "the sample's newest week",
+    "an earlier, more open week of the sample"
+  ],
+  "gray": "#2757 asked for a fixed sample fill per template so a preview never calls a model; which week of the sample to show, and the words themselves, were not settled.",
+  "undo": "Change sampleWeekOf and rewrite the week's words in sample-fill.ts; its test fails until they fit the facts.",
+  "refs": ["#2757"]
+}

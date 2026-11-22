@@ -1,7 +1,16 @@
 import type { PathRules } from "@some-ui/vite-config/bundle-paths"
 import { definePaths } from "@some-ui/vite-config/bundle-paths"
 
-import { MOBILE_PROFILE, profiles, routeGates } from "./build.profiles.ts"
+import {
+  CAPTURE_PROFILE,
+  MOBILE_PROFILE,
+  profiles,
+  routeGates,
+} from "./build.profiles.ts"
+import {
+  DEFAULT_RESUME_TEMPLATE,
+  RESUME_TEMPLATES,
+} from "./src/lib/resume-files.ts"
 
 /**
  * What each profile's output may carry, checked against a real build of it
@@ -21,9 +30,21 @@ function isProfile(name: string): name is Profile {
   return name in profiles
 }
 
-/** Every profile build.profiles.ts defines, in its order. */
-export const PROFILES: ReadonlyArray<Profile> =
-  Object.keys(profiles).filter(isProfile)
+/**
+ * Every profile build.profiles.ts defines that ships somewhere, in its order:
+ * the ones these rules and check-bundle-paths.ts hold. The capture profile
+ * (`CAPTURE_PROFILE`) is left out: Snips Capture photographs it and nothing
+ * deploys it, so no visit to a deployable can load what it carries.
+ */
+type Deployable = Exclude<Profile, typeof CAPTURE_PROFILE>
+
+function isDeployable(profile: Profile): profile is Deployable {
+  return profile !== CAPTURE_PROFILE
+}
+
+export const PROFILES: ReadonlyArray<Deployable> = Object.keys(profiles)
+  .filter(isProfile)
+  .filter(isDeployable)
 
 /**
  * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
@@ -34,7 +55,7 @@ export const PROFILES: ReadonlyArray<Profile> =
  * (Vite prefers it to any .env file) can change which modules are checked.
  */
 export const profileBuildEnv: Readonly<
-  Record<Profile, Readonly<Record<string, string>>>
+  Record<Deployable, Readonly<Record<string, string>>>
 > = {
   lan: { VITE_DEVICE_BACKEND: "", VITE_STATIC_DATA: "", VITE_BASE_PATH: "/" },
   pages: {
@@ -59,7 +80,24 @@ export const profileBuildEnv: Readonly<
 const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
   {
     lan: [],
-    pages: [],
+    pages: [
+      // The résumé's layout renders (`resume-<version>-<layout>.pdf`): the
+      // public site offers one PDF per version, in its default layout, and
+      // resume.pdf (C1055, #3401); the layouts are the owner's tool at home.
+      new RegExp(
+        `^resume-.+-(${RESUME_TEMPLATES.map(({ id }) => id)
+          .filter((id) => id !== DEFAULT_RESUME_TEMPLATE)
+          .join("|")})\\.pdf$`
+      ),
+      // The app's service worker and install manifest, and the manifest's
+      // icons: the public site carries no app (C1055, #3401), so nothing
+      // registers the worker. One a browser registered on an earlier deploy
+      // has no fetch handler (public/sw.js), so it serves no page.
+      /^sw\.js$/,
+      /^manifest\.json$/,
+      /^logo(192|512)\.png$/,
+    ],
+    [CAPTURE_PROFILE]: [],
     [MOBILE_PROFILE]: [
       // What scripts/sync-resume.mjs copies in for /resume, which is not on
       // the Android app's surface (src/lib/app-surface).
@@ -110,16 +148,20 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/ask-answer/**",
   "apps/www/src/lib/drive-filing/**",
+  "apps/www/src/lib/engagement-places/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
+  "apps/www/src/lib/game-moments/**",
   "apps/www/src/lib/handed-in/**",
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/idea-hearing/**",
   "apps/www/src/lib/call-videos/**",
+  "apps/www/src/lib/episodes-feed/**",
   "apps/www/src/lib/renders/**",
   "apps/www/src/lib/idea-keeping/**",
   "apps/www/src/lib/idea-home/**",
   "apps/www/src/lib/idea-takes/**",
+  "apps/www/src/lib/interview-week/**",
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/limits/**",
@@ -139,9 +181,17 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/studio-clips/home.ts",
   "apps/www/src/lib/studio-clips/frames-read.ts",
   "apps/www/src/lib/studio-keeping/**",
+  "apps/www/src/lib/studio-spoken/**",
+  // A runtime's one-value store, used by the phone's runtimes alone today.
+  "apps/www/src/lib/cell/**",
+  "apps/www/src/lib/take-about/**",
+  "apps/www/src/lib/take-conveyor/**",
   "apps/www/src/lib/take-library/**",
+  "apps/www/src/lib/take-reconcile/**",
+  "apps/www/src/lib/hear-again/**",
   "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/template-preview/**",
+  "apps/www/src/lib/cards-essay-video/**",
   "apps/www/src/lib/voice-home/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
@@ -151,14 +201,20 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/call-videos.tsx",
+  "apps/www/src/components/studio/episodes-by-week.tsx",
+  "apps/www/src/components/studio/genre-thumbs.tsx",
   "apps/www/src/components/video-fetch.tsx",
   "apps/www/src/components/studio/ask-answer.tsx",
   "apps/www/src/components/studio/clip-frames.tsx",
   "apps/www/src/components/studio/renders.tsx",
+  "apps/www/src/components/studio/take-conveyor.tsx",
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/studio/template-preview.tsx",
+  "apps/www/src/components/studio/cards-essay.tsx",
+  "apps/www/src/components/studio/spoken.tsx",
   "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
+  "apps/www/src/components/device-sign-in-mark.tsx",
   "apps/www/src/components/pair-home-link.tsx",
   "apps/www/src/components/player/device-*.ts",
   "apps/www/src/components/aph/device-*.tsx",
@@ -197,6 +253,28 @@ const SHARED_ROUTE_TREE =
 const TAKE_PATTERN_ON_THE_WEB =
   "LeetType's record screen and play runtime use the take pattern's view and words, which the web builds bundle and never run: they give LeetType no microphone, so it offers typing only. Removed when those words and the view get a subpath entry of their own, or LeetType's web builds stop bundling the take parts (#2433)"
 
+/**
+ * The deployables held whole by an allowlist of what they carry
+ * (`allowlists`, below), and so left out of `checkExclusivity`'s comparison
+ * across builds: beside a build this small, every other module would read as
+ * "ships only in lan and the Android app". The public site is one (C1055).
+ */
+export const ALLOWLISTED_PROFILES: ReadonlyArray<Deployable> = ["pages"]
+
+/**
+ * Everything of www's own the public site carries (`allowlists`, below),
+ * named one by one, so a module that reaches it later fails until someone
+ * adds it here. Its pages are static (src/landing, render-public-site.ts);
+ * what runs is the authorship record's one script and the web door it
+ * reaches the record through.
+ */
+const PAGES_MODULES: ReadonlyArray<string> = [
+  "apps/www/src/landing/authorship.tsx",
+  "apps/www/src/lib/build-profile/index.ts",
+  "apps/www/src/lib/web-surface/burn-ins/authorship.tsx",
+  "apps/www/src/lib/web-surface/index.ts",
+]
+
 export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
     ...gatedRoutes,
@@ -204,6 +282,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["packages/job-desk/dist/@some-ui/job-desk.es.js"],
       profiles: [MOBILE_PROFILE],
       why: "job-desk's main entry: the Jobs wing's Drive files, which only the Android app's Jobs wing reads and writes (src/lib/jobs). The web builds take only its id rule (the résumé builder) and its sample entry (/job-run)",
+    },
+    {
+      modules: ["apps/www/src/lib/home-web/index.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the home network's web pages the phone opens in its browser rather than carrying (the résumé builder, the teams home follows live): only the Android app links out to them; the web builds are those pages",
     },
     {
       modules: ["apps/www/src/lib/app-events/index.ts"],
@@ -215,11 +298,24 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
         "apps/www/src/lib/auth/account-erases.ts",
+        "apps/www/src/lib/auth/phone-pairing-words.ts",
+        "apps/www/src/lib/auth/phones/**",
         "apps/www/src/components/settings/account-section.tsx",
+        "apps/www/src/components/settings/account-phones.tsx",
         "apps/www/src/components/settings/data-home-section.tsx",
       ],
-      profiles: ["lan", "pages"],
-      why: "web-only code: the Android app has no account to move sessions to or sign out of, and no hosted voice (it speaks with the phone's engine)",
+      profiles: ["lan"],
+      why: "web-only code: the Android app has no account to move sessions to or sign out of, nor a list of the account's phones to name or sign out (SIGNIN7), and the public site is a CV with no account (C1055)",
+    },
+    {
+      modules: ["packages/some-styles/src/brand/genres.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "each genre's paint and shape (EPISODES3, C1026): Studio's episode rows draw them, and only the Android app has Studio; the thumbnails home renders draw the same data in the render stage, not in a page",
+    },
+    {
+      modules: ["packages/some-styles/src/brand/cast.ts"],
+      profiles: ["lan"],
+      why: "the cast the essays' speaking bubbles draw (PDA6, #2883): only the web surface's essay stages draw it, and neither the Android app nor the public site (C1055) has an essay stage",
     },
     {
       modules: [
@@ -227,8 +323,16 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/auth/account-keeps.ts",
         "apps/www/src/lib/auth/errors.ts",
       ],
-      profiles: ["lan", "pages"],
-      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost)",
+      profiles: ["lan"],
+      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost). The public site is a CV with no sign-in page (C1055)",
+    },
+    {
+      modules: [
+        "apps/www/src/components/auth/viewer-auth.tsx",
+        "apps/www/src/lib/auth/viewer-words.ts",
+      ],
+      profiles: [],
+      why: "the viewer's /auth (SIGNIN5): only the capture build Snips photographs has viewers now, and no deployable ships it; the public site is a CV with no sign-in page (C1055, #3401)",
     },
     {
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
@@ -237,13 +341,20 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       modules: [
+        "packages/video-render/src/badges.ts",
         "packages/video-render/src/dna.ts",
         "packages/video-render/src/episode.ts",
         "packages/video-render/src/review.ts",
+        "packages/video-render/src/stamp.ts",
         "packages/video-render/src/timing.ts",
       ],
       profiles: [MOBILE_PROFILE],
-      why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, and a video's DNA, which Finish keeps for home to make (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
+      why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, a video's DNA, which Finish keeps for home to make, the status badges a cut list's scenes show, which its check refuses written by hand, and its cards' stamp, which its check refuses on a card (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
+    },
+    {
+      modules: ["packages/video-render/src/spoken-line.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "how a take's ref names a spoken card's part (#3339): Takes groups a spoken card's takes by card, and a take home couldn't hear links back to its part, both in the Android app's Studio (@some-ui/soundbites, lib/library and lib/reconcile); the web builds keep no takes",
     },
     {
       modules: ["packages/video-render/src/pending.ts"],
@@ -258,57 +369,64 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     {
       modules: [
         "packages/video-render/src/call.ts",
+        "packages/video-render/src/call-fit.ts",
+        "packages/video-render/src/frame-text.ts",
         "packages/video-render/src/essay.ts",
+        "packages/video-render/src/essay-fit.ts",
+        "packages/video-render/src/screen.ts",
+        "packages/video-render/src/interview-essay.ts",
+        "packages/video-render/src/spoken-card.ts",
+        "packages/video-render/src/opening.ts",
         "packages/video-render/src/engagement-report.ts",
         "packages/video-render/src/engagement-report-video.ts",
         "packages/video-render/src/stills.ts",
+        "packages/video-render/src/verdict.ts",
       ],
-      profiles: ["lan", "pages"],
-      why: "the weekly call's template and its sample week, the Rust Rounds essay's and its sample essay, and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
+      profiles: ["lan"],
+      why: "the weekly call's template and its sample week, the model of its frame that pages a long scene (call-fit), the Rust Rounds essay's and the model of what its frame holds (essay-fit), both setting text as frame-text does, the phone's photographed cards the essay zooms into (screen), and the interview essay's, each with its sample essay, a cards essay's spoken card with its sample (spoken-card), with the opening's limits and word count, which the Rust Rounds essay and the spoken card both read (opening) and what each says over a take home couldn't make out (verdict), and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
       modules: ["apps/www/src/lib/clipboard/**"],
-      profiles: [MOBILE_PROFILE, "pages"],
-      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor, and that same copy in the viewer's Rust Rounds sample on Pages (src/lib/demo/rust-rounds-sample.ts). The home network's build copies nothing through it",
+      profiles: [MOBILE_PROFILE],
+      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor. The web builds copy nothing through it",
     },
     {
-      modules: ["apps/www/src/lib/demo/**"],
-      profiles: ["pages"],
-      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
-    },
-    {
+      // Not viewer-storage.ts: main.tsx imports it first in every build that
+      // runs the app, lan and the Android app included, where it leaves the
+      // browser's storage as it is (CLAUDE.md, "A viewer tries, and nothing
+      // is kept").
       modules: [
-        `${SPEECH_ENTRY}/http.es.js`,
-        "apps/www/src/lib/tts-config/**",
-        "apps/www/src/components/settings/hosted-voice-fields.tsx",
+        "apps/www/src/lib/demo/index.ts",
+        "apps/www/src/lib/demo/leetype-sample*",
+        "apps/www/src/lib/demo/rust-rounds-sample.ts",
       ],
-      profiles: ["lan"],
-      why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
+      profiles: [],
+      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the capture build Snips photographs seeds them now, and no deployable ships them; the public site is a CV with no app to draft in (C1055, #3401), and the owner's builds keep to their own records",
     },
     {
       modules: ["apps/www/src/lib/web-surface/playoff-delta/**"],
-      profiles: ["lan", "pages"],
-      why: "the Playoff Delta stage's live season, a desktop recording stage for the vlog: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+      profiles: ["lan"],
+      why: "the Playoff Delta stage's live season, a desktop recording stage for the vlog: only the web door (src/lib/web-surface) binds it, and not in the Android app's build or the public site's (C1055)",
     },
     {
       modules: ["apps/www/src/lib/web-surface/burn-ins/**"],
       profiles: ["lan", "pages"],
-      why: "what every video carries, its preview, its recorder page and their font, desktop pages for tuning and recording what the renderer lays over a video: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+      why: "what every video carries, its preview, its recorder page and their font, desktop pages for tuning and recording what the renderer lays over a video, and the authorship record every published video's end card links, the one the public site serves (C1055): only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
       modules: ["apps/www/src/lib/testing-data/**"],
-      profiles: ["lan", "pages"],
-      why: "reading what paulgsc/testing publishes for the desktop stages, Playoff Delta's season and the weekly call's weeks: only those stages read it, through the web door (src/lib/web-surface), and not in the Android app's build",
+      profiles: ["lan"],
+      why: "reading what paulgsc/testing publishes for the desktop stages, Playoff Delta's season and the weekly call's weeks: only those stages read it, through the web door (src/lib/web-surface), and not in the Android app's build or the public site's (C1055)",
     },
     {
       modules: ["apps/www/src/lib/web-surface/call/**"],
-      profiles: ["lan", "pages"],
-      why: "the weekly call's stage and the Rust Rounds essay's, desktop recording stages for their videos: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+      profiles: ["lan"],
+      why: "the weekly call's stage and the Rust Rounds essay's, desktop recording stages for their videos: only the web door (src/lib/web-surface) binds it, and not in the Android app's build or the public site's (C1055)",
     },
     {
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
-      profiles: ["lan", "pages"],
-      why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+      profiles: ["lan"],
+      why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build or the public site's (C1055)",
     },
     {
       modules: ["apps/www/src/components/reflection/copy.ts"],
@@ -353,6 +471,12 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
   ],
   allowlists: [
     {
+      profile: "pages",
+      within: "apps/www/src/**",
+      allow: PAGES_MODULES,
+      why: "off the public site's path: it is a CV (C1055, #3401), static pages and the authorship record's one script, with no app",
+    },
+    {
       profile: MOBILE_PROFILE,
       within: "apps/www/src/routes/**",
       allow: MOBILE_ROUTE_FILES,
@@ -374,6 +498,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the Android app answers file_host, speaks, nudges and logs its failures through these; a build without one is an APK that installs and then fails, or fails and says nothing",
     },
     {
+      profile: "pages",
+      modules: [
+        "apps/www/src/landing/authorship.tsx",
+        "apps/www/src/lib/web-surface/burn-ins/authorship.tsx",
+      ],
+      why: "the record every published video's end card links to (C1055, #3401): without these its page draws nothing",
+    },
+    {
       profile: MOBILE_PROFILE,
       modules: ["apps/www/src/components/auth/device-session-lost.tsx"],
       why: "the Android app's /auth: without it the route renders the web's passkey screen, which this build cannot use",
@@ -382,11 +514,8 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     // by matching nothing, should the speech dist layout or lib/ move.
     {
       profile: "lan",
-      modules: [
-        `${SPEECH_ENTRY}/http.es.js`,
-        `${SPEECH_ENTRY}/web-speech.es.js`,
-      ],
-      why: "the home server speaks through these (src/providers/tts.tsx); a build without them is silent",
+      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
+      why: "the home server speaks through this (src/providers/tts.tsx); a build without it is silent",
     },
     {
       profile: "lan",
@@ -410,6 +539,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/call/rust-screen-stage.tsx"],
+      why: "the Rust Rounds card's stage, photographed for the essay (RR31), renders through this; without it /rust-screen renders nothing",
+    },
+    {
+      profile: "lan",
       modules: ["apps/www/src/lib/web-surface/call/report-stage.tsx"],
       why: "the engagement report's stage renders through this; without it /report renders nothing",
     },
@@ -423,43 +557,26 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/passkey/index.ts"],
       why: "a passkey is the only way into an account on the home server (src/lib/auth/session.ts)",
     },
-    {
-      profile: "pages",
-      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
-      why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
-    },
-    {
-      profile: "pages",
-      modules: ["apps/www/src/lib/demo/index.ts"],
-      why: "a viewer starts from these sample drafts (src/main.tsx); without them the demo opens empty. Also what keeps its `exclusive` rule from passing by matching nothing",
-    },
   ],
-  // Every profile builds one route tree, shared by design until now
-  // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
-  // there as a stub in the startup chunk plus its page chunk, which the
-  // profile redirects or 404s away from before it renders. Paid off by giving
-  // each deployable a route tree of its own routes; each entry goes with the
-  // change that drops it.
+  // lan and the Android app build one shared route tree (AUDIENCES.md, "Build
+  // audiences"): a route off one's path ships there as a stub in the startup
+  // chunk plus its page chunk, which the profile redirects or 404s away from
+  // before it renders. Paid off by giving each deployable a route tree of its
+  // own routes; each entry goes with the change that drops it.
   debt: [
-    ...(["lan", "pages"] as const).map(
-      (profile): Debt => ({
-        profile,
-        module: "apps/www/src/routes/_dashboard/_apk**",
-        why: SHARED_ROUTE_TREE,
-      })
-    ),
-    ...(["lan", "pages"] as const).flatMap(
+    {
+      profile: "lan",
+      module: "apps/www/src/routes/_dashboard/_apk**",
+      why: SHARED_ROUTE_TREE,
+    },
+    ...(["lan"] as const).flatMap(
       (profile): Array<Debt> =>
         [
           "packages/voice-capture/dist/@some-ui/voice-capture.es.js",
           "packages/voice-capture/dist/take-pattern-*.js",
         ].map((module) => ({ profile, module, why: TAKE_PATTERN_ON_THE_WEB }))
     ),
-    {
-      profile: "pages",
-      module: "apps/www/src/routes/_dashboard/_lan**",
-      why: SHARED_ROUTE_TREE,
-    },
+
     ...[
       "_dashboard/_lan**",
       "index.tsx*",
@@ -470,6 +587,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "burn-ins.tsx*",
       "call.tsx*",
       "essay.tsx*",
+      "rust-screen.tsx*",
       "report.tsx*",
       "captions.tsx*",
       "authorship.tsx*",

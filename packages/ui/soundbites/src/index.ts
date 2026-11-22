@@ -27,9 +27,46 @@ export type {
 } from "./lib/idea/hearing"
 export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
-export type { LibraryPage, LibraryRead } from "./lib/library/model"
-export type { LibraryPhone, TakesHome } from "./lib/library/runtime"
-export { LIBRARY_WORDS } from "./lib/library/words"
+export type { TopicGap } from "./components/take-library"
+export type {
+  LibraryPage,
+  LibraryQuery,
+  LibraryRead,
+  LibraryTake,
+} from "./lib/library/model"
+export type {
+  LibraryAbout,
+  LibraryOnPhone,
+  LibraryPhone,
+  LibraryStations,
+  PhoneTake,
+  TakesHome,
+} from "./lib/library/runtime"
+export type { TakeNames, TakeOf } from "./lib/library/kinds"
+export { TAKE_OFS } from "./lib/library/kinds"
+export type {
+  Chips,
+  Compartment,
+  TakeAbout,
+  TakeKind,
+} from "./lib/library/compartments"
+export { isCompartment, TAKE_KINDS } from "./lib/library/compartments"
+export { ABOUT_WORDS, LIBRARY_WORDS } from "./lib/library/words"
+export { AttentionWayIn, TakeReconcile } from "./components/take-reconcile"
+export type {
+  ActAnswer,
+  AttentionPage,
+  AttentionRead,
+  AttentionTake,
+  ReconcileAct,
+} from "./lib/reconcile/model"
+export type { HearAgain, HearAgainAnswer } from "./lib/hear-again/model"
+export { HEAR_AGAIN_WORDS } from "./lib/hear-again/words"
+export type { ReconcileHome } from "./lib/reconcile/runtime"
+export type { TakeVerdict } from "./lib/reconcile/codes"
+export { RECONCILE_WORDS } from "./lib/reconcile/words"
+export type { TakeSource } from "./lib/reconcile/source"
+export { sourceOf } from "./lib/reconcile/source"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"
 export type { StudioRecordsProps } from "./components/studio-records"
@@ -47,6 +84,7 @@ export type { SoundbitesProps } from "./components/soundbites"
 export type { SoundbiteSituation } from "./lib/machine"
 export {
   phoneProjectStore,
+  phoneSoundbiteKeeping,
   phoneSoundbiteStore,
   phoneStudioKeeping,
 } from "./lib/phone"

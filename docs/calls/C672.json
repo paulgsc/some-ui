@@ -1,0 +1,16 @@
+{
+  "id": "C672",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/lib/formats/week.ts"],
+  "chose": "A starter's recorded rustc result is never shown on the phone: predicting it and running it at the desk is the exercise. The week carries the starter's `expect` only for home's run to be checked against.",
+  "options": [
+    "never shown",
+    "shown after the owner ticks the exercise",
+    "shown beside the starter"
+  ],
+  "gray": "Showing rustc's answer would make the exercise recall; hiding it makes the desk the only place to learn it. A judgement on how the owner learns, not a fact.",
+  "undo": "Show the run after the tick, as RunView does for a ticket's program.",
+  "refs": ["#3249"]
+}

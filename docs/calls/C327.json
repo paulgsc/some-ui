@@ -1,0 +1,19 @@
+{
+  "id": "C327",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/cards-essay.ts",
+    "packages/video-render/CARDS-ROUTINE.md",
+    "apps/www/tests/record/cards.ts"
+  ],
+  "chose": "A cards essay reaches home the way the weekly call's week does: as cards/<slug>-<stamp day>.json in paulgsc/testing, listed newest first in cards/index.json, which home reads hourly and keeps as first served. The file is the cut list itself. The folder has no keep and nothing leaves it; the call's leave rule waits until the folder grows.",
+  "options": [
+    "paulgsc/testing's cards folder, read hourly, as the call's weeks are",
+    "The mailbox's brief folder, as the Rust Rounds essay is",
+    "Keep each essay in some-ui beside its series, as the two showcases are"
+  ],
+  "gray": "Both of home's existing paths would carry it. The Rust essay goes through the private mailbox because it plays the owner's takes and must match the week's final record; a cards essay is public claims about public repositories and holds no owner data, so the owner's \"published by default\" and a reviewable pull request point at testing. some-ui keeps no data (ST36). Recommended to the coordinator session, which agreed on 2026-11-14 (#2979).",
+  "undo": "Point home's keeper at the mailbox's brief folder instead, change CARDS-ROUTINE.md's steps 6 to 8 to put the cut list there, and drop cards-check's index.",
+  "refs": ["#2979", "#2980"]
+}

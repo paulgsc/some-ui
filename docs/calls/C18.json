@@ -1,0 +1,17 @@
+{
+  "id": "C18",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/some-styles/src/theme/video-palette.ts",
+    "packages/some-styles/themes/mochi-night.css"
+  ],
+  "chose": "Mochi Night's success colour is #8ccf9a, which the research palette lacked and a theme needs.",
+  "options": [
+    "#8ccf9a, passing every rule",
+    "no success role, falling back to the base theme's"
+  ],
+  "gray": "The owner's chosen palette had no success colour.",
+  "undo": "Change `success` in MOCHI_NIGHT and mochi-night.css together.",
+  "refs": ["#2675", "#2774"]
+}

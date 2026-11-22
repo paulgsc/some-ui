@@ -1,0 +1,87 @@
+{
+  "schema": "some-ui.snips-given/1",
+  "bundles": [
+    {
+      "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
+      "snips": [
+        {
+          "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "surface": "web",
+          "build": "release",
+          "route": "/rust-rounds-sample",
+          "path": "/rust-rounds-sample",
+          "viewport": "phone",
+          "width": 824,
+          "height": 1830,
+          "scale": 2,
+          "regions": [
+            {
+              "ref": "QM-311:question",
+              "box": {
+                "x": 26,
+                "y": 51,
+                "width": 360,
+                "height": 110
+              }
+            },
+            {
+              "ref": "QM-311:point:1",
+              "box": {
+                "x": 46,
+                "y": 203,
+                "width": 340,
+                "height": 21
+              }
+            },
+            {
+              "ref": "QM-311:point:2",
+              "box": {
+                "x": 46,
+                "y": 224,
+                "width": 340,
+                "height": 21
+              }
+            },
+            {
+              "ref": "QM-311:point:3",
+              "box": {
+                "x": 46,
+                "y": 245,
+                "width": 340,
+                "height": 21
+              }
+            },
+            {
+              "ref": "QM-311:program",
+              "box": {
+                "x": 26,
+                "y": 312,
+                "width": 360,
+                "height": 129
+              }
+            },
+            {
+              "ref": "QM-311:diagnostic:1",
+              "box": {
+                "x": 26,
+                "y": 451,
+                "width": 360,
+                "height": 165
+              }
+            }
+          ],
+          "appVersion": "0.1.71",
+          "module": "Rust Rounds",
+          "shows": "Rust Rounds",
+          "description": "Rust Rounds, on a phone browser, with sample data: a mock card, not the app's own drawing.",
+          "image": {
+            "name": "web/phone/rust-rounds-sample-7da9fd68697e.png",
+            "kind": "png",
+            "bytes": 173915,
+            "sha256": "7da9fd68697ef768482680f3c681b3325a0befac4143c5820e5f8ceb78fe97da"
+          }
+        }
+      ]
+    }
+  ]
+}

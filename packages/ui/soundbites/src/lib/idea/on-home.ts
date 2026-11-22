@@ -90,6 +90,8 @@ export type HomeRead<T> =
   | { readonly kind: "unpaired" }
   /** Home didn't answer. */
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was asked. */
+  | { readonly kind: "busy" }
   /** Home answered, but keeps no ideas yet: it runs an older version. */
   | { readonly kind: "older" }
   /** Home answered with something this phone can't read. */
@@ -100,6 +102,8 @@ export type HomeWrite<T> =
   | { readonly kind: "written"; readonly value: T }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was sent. */
+  | { readonly kind: "busy" }
   /** Home didn't take it. */
   | { readonly kind: "refused" }
 
@@ -252,6 +256,8 @@ export type OnHomeNotice =
   | "removed"
   | "notWritten"
   | "away"
+  /** This phone was busy with home, so nothing was sent. */
+  | "busy"
   /** The idea was sent again with its answers said again (#2579). */
   | "sentAgain"
   /** It was kept, but its new takes didn't all start home: next time. */
@@ -559,7 +565,9 @@ function readAll(state: OnHomeState): OnHomeStep {
 
 /** The notice for a write that didn't go. */
 function unwritten(write: { readonly kind: string }): OnHomeNotice {
-  return write.kind === "away" ? "away" : "notWritten"
+  return write.kind === "away" || write.kind === "busy"
+    ? write.kind
+    : "notWritten"
 }
 
 export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {

@@ -1,0 +1,18 @@
+{
+  "id": "C304",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/mailbox/pass.rs",
+    "server:crates/db/voice/src/conveyor.rs"
+  ],
+  "chose": "A picked answer for a ready move the take has since left is kept, and moves nothing.",
+  "options": [
+    "(a) keep it and move nothing",
+    "(b) refuse it",
+    "(c) move the take anyway"
+  ],
+  "gray": "The agreed shape moves a take only while its newest move is the seq the answer names, and keeping the file records that the issue exists; refusing it would lose that record, and moving anyway would undo the owner's later move.",
+  "undo": "Add a refusal kind in keep().",
+  "refs": ["#2872", "#2875", "server#851"]
+}

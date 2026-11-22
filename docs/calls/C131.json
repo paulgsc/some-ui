@@ -1,0 +1,15 @@
+{
+  "id": "C131",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["packages/video-render/src/clip.ts"],
+  "chose": "Testing's clips/index.json stays at some-ui.clip-index/1 until the owner's APK, the Pages build and home's www image all carry #2870's reader; testing#7, which moves it to /2, waits as a draft.",
+  "options": [
+    "keep the index at /1 until every shipped reader reads /2",
+    "make the reader accept the new fields, and move the index to /2 now",
+    "move the index to /2 now, and let builds made before #2870 show no Library until they are rebuilt"
+  ],
+  "gray": "The owner chose /2 for new clips but not when testing's file moves. Every build made before #2870 pins the schema to /1 and refuses a /2 file on that string alone, so a looser reader saves no build already in use; both clips listed today are valid /1 as they are.",
+  "undo": "Mark testing#7 ready and merge it, which moves clips/index.json to /2; the builds made before #2870 then show no Library until they are rebuilt.",
+  "refs": ["#2870"]
+}

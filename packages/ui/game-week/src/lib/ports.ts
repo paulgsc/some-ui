@@ -10,6 +10,13 @@ import type { KeptBite } from "./bite"
 import type { ModeId } from "./modes"
 import { DEFAULT_MODE, isModeId } from "./modes"
 
+/**
+ * A bite as the store keeps it: kept on this phone, and since when home holds
+ * it (ms since the epoch) once it does. The record stays when its sound has
+ * left for home (#2080).
+ */
+export type StoredBite = KeptBite & { readonly homeSince?: number }
+
 /** What became of an answer: noted, or too late, the bite already on its way. */
 type AmendOutcome = "noted" | "on-its-way"
 
@@ -47,8 +54,8 @@ export type BiteStore = {
   undo: (id: string) => Promise<void>
   /** A kept bite's audio while this phone has it; null once it has gone. */
   audio: (id: string) => Promise<Blob | null>
-  /** Since when home holds the bite `id` (ms since the epoch); null while it doesn't. */
-  homeSince: (id: string) => number | null
+  /** Every bite kept on this phone, of every game, home's or not yet. */
+  getSnapshot: () => ReadonlyArray<StoredBite>
   /** Whether the bite `id` is kept on this phone, not only held to try again. */
   isKept: (id: string) => boolean
   /** Calls `listener` after each change to what is kept; returns the unsubscribe. */
@@ -71,8 +78,11 @@ export type OutboxView = {
    * first held one (ms since the epoch); null for none.
    */
   readonly onHome: { readonly count: number; readonly since: number } | null
-  /** Whether this phone sends voice notes home at all. */
-  readonly sending: boolean
+  /**
+   * Whether this phone sends voice notes home at all; null while that isn't
+   * known yet (the phone still reading its pairing), so nothing is said of it.
+   */
+  readonly sending: boolean | null
 }
 
 export type OutboxPort = {

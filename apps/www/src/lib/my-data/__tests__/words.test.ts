@@ -6,15 +6,20 @@
  */
 import { describe, expect, it } from "vitest"
 
+import { LET_GO_FEEDS } from "@/lib/feeds"
+import { lengthOf } from "@/lib/format"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
 import {
   CALL_DELETING,
   DELETABLE_NAMES,
   DELETING,
+  heardLine,
   homeLine,
   itemLine,
   itemName,
+  itemWent,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
   keptNote,
@@ -22,12 +27,15 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  onDay,
   receiptKind,
   receiptParts,
   RECEIPTS,
   receiptsLine,
   unreadLine,
+  wentAtClose,
   WHERE_WORDS,
+  WORD_SETS,
 } from "@/lib/my-data/words"
 
 /** Every string in `value`, however deep. */
@@ -46,9 +54,26 @@ describe("My data's words", () => {
     expect(Object.keys(KIND_NAMES).sort()).toEqual([...KINDS].sort())
   })
 
+  it("name a game's recordings as the owner asked (2026-11-17)", () => {
+    expect(KIND_NAMES.game).toBe("Recordings from a game")
+  })
+
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),
+      ...strings(WORD_SETS),
+      WORD_SETS.inUse(3, 50),
+      WORD_SETS.added(AT),
+      WORD_SETS.opened(AT),
+      WORD_SETS.opened(null),
+      WORD_SETS.archivedOn(AT),
+      WORD_SETS.sentences(1),
+      WORD_SETS.archiveName("Cafe"),
+      WORD_SETS.bringBackName("Cafe"),
+      WORD_SETS.full(50),
+      WORD_SETS.said.archived("Cafe"),
+      WORD_SETS.said.broughtBack("Cafe"),
+      WORD_SETS.said.noRoom(50),
       ...strings(KIND_NAMES),
       ...strings(WHERE_WORDS),
       ...Object.values(KEPT_FOR_GOOD),
@@ -62,15 +87,57 @@ describe("My data's words", () => {
         .filter((line): line is string => line !== null),
       MY_DATA.kind.play(itemName(AT)),
       MY_DATA.kind.stop(itemName(AT)),
+      MY_DATA.kind.fetching(itemName(AT)),
       MY_DATA.kind.newest(5, 8),
       ...[unreadLine(["studio"]), unreadLine(["studio", "soundbite"])].filter(
         (line): line is string => line !== null
       ),
       kindLine(4, AT, true),
       kindLead(4, 2_048, AT),
-      itemLine(AT, 2_048),
+      itemLine(AT, null),
+      itemLine(AT, 42_000),
+      itemWhere("home", 2_048),
+      itemWent(AT, false, false),
+      itemWent(AT, true, true),
+      RECEIPTS.closedLine(itemName(AT)),
+      RECEIPTS.stayedLine(receiptParts(["note", "words"])),
+      ...(["home", "phone"] as const).flatMap((where) =>
+        (
+          [
+            { kind: "silent" },
+            { kind: "notYet" },
+            { kind: "words", text: "a word", cut: false },
+          ] as const
+        ).map((heard) => heardLine(heard, where) ?? "")
+      ),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+  })
+
+  it("say when a recording was made apart from how long it is (MD8, MDL1)", () => {
+    expect(lengthOf(0)).toBe("1 s")
+    expect(lengthOf(42_400)).toBe("42 s")
+    expect(lengthOf(60_000)).toBe("1 min")
+    expect(lengthOf(185_000)).toBe("3 min 5 s")
+    expect(itemLine(AT, null)).toMatch(/^Recorded 20 Oct at \d\d:\d\d$/)
+    expect(itemLine(AT, 42_000)).toMatch(
+      /^Recorded 20 Oct at \d\d:\d\d · 42 s long$/
+    )
+  })
+
+  it("say what home heard only of a recording home holds (MD8, MDL1)", () => {
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: false }, "home")
+    ).toBe("“hello there”")
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: true }, "home")
+    ).toBe("“hello there…”")
+    expect(heardLine({ kind: "notYet" }, "aside")).toBe(
+      "Home hasn't heard it yet."
+    )
+    expect(heardLine({ kind: "notYet" }, "phone")).toBeNull()
+    expect(heardLine({ kind: "notYet" }, "going")).toBeNull()
+    expect(heardLine({ kind: "unsaid" }, "home")).toBeNull()
   })
 
   it("never name the machinery when deleting, nor on a receipt (MD3)", () => {
@@ -79,9 +146,11 @@ describe("My data's words", () => {
       ...strings(DELETABLE_NAMES),
       ...strings(RECEIPTS),
       ...[1, 3].flatMap((n) => [
-        DELETING.title("studio", n),
+        ...KINDS.flatMap((of) => [
+          DELETING.title(of, n),
+          ...DELETING.stays(of, n),
+        ]),
         ...DELETING.goes(n),
-        ...DELETING.stays(n),
         DELETING.keep(n),
         DELETING.confirm(n),
         DELETING.gone(n),
@@ -91,12 +160,18 @@ describe("My data's words", () => {
         DELETING.unreachable(n),
         DELETING.deleteSelected(n),
       ]),
+      DELETING.waitsOn("studio"),
+      DELETING.waitsOn("soundbite"),
       DELETING.rowName(itemName(AT)),
       DELETING.selectName(itemName(AT)),
       ...(["reading", "unpaired", "unreachable", "older", "read"] as const)
         .map(receiptsLine)
         .filter((line): line is string => line !== null),
       receiptParts(["recording", "words", "set-aside mark"]),
+      receiptParts(["recording", "conveyor history"]),
+      receiptParts(["verdict"]),
+      receiptParts(["verdict", "reconciliation"]),
+      receiptParts(["recording", "game bite"]),
       receiptParts(["mailbox copy", "drive copy", "a newer part"]),
       receiptParts([]),
       receiptKind("studio"),
@@ -108,7 +183,11 @@ describe("My data's words", () => {
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
     // Home's fixed words never reach the screen as they are.
     expect(
-      said.filter((text) => /set-aside mark|mailbox copy|drive copy/.test(text))
+      said.filter((text) =>
+        /set-aside mark|mailbox copy|drive copy|conveyor history|verdict|reconciliation|game bite/.test(
+          text
+        )
+      )
     ).toEqual([])
   })
 
@@ -121,7 +200,11 @@ describe("My data's words", () => {
       CALL_DELETING.video("95 MB"),
       CALL_DELETING.rest("1.2 GB"),
       CALL_DELETING.goes.video("95 MB"),
-      CALL_DELETING.goes.rest("1.2 GB"),
+      ...LET_GO_FEEDS.flatMap((feed) => [
+        CALL_DELETING.goes.rest("1.2 GB", feed),
+        CALL_DELETING.stays(feed),
+        CALL_DELETING.episode(feed, "2026-W46"),
+      ]),
       CALL_DELETING.gone(itemName(AT)),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
@@ -131,9 +214,55 @@ describe("My data's words", () => {
     )
   })
 
+  it("say a delete takes any essay video that plays it, never its YouTube copy (rule (d))", () => {
+    for (const n of [1, 3]) {
+      const essay = DELETING.goes(n).find((line) => /essay video/.test(line))
+      expect(essay).toMatch(/a cards essay's included/)
+      expect(essay).toMatch(/won't make that essay again/)
+      expect(essay).toMatch(
+        /A copy you uploaded to YouTube is yours to take down/
+      )
+    }
+  })
+
+  it("say when a week's middle take's recording went, what stayed, and where it still plays (IW14)", () => {
+    const at = "2026-11-23T08:00:00.000Z"
+    const went = `Its recording went when its week closed, on ${onDay(at)}. What home heard in it stays.`
+    expect(itemWent(at, false, false)).toBe(went)
+    expect(itemWent(at, true, true)).toBe(
+      `${went} You'd set it aside. It still plays from this phone.`
+    )
+  })
+
+  it("tell a week's closing from the owner's delete on a receipt, and name what stayed (IW14)", () => {
+    expect(wentAtClose({ stayed: ["note", "words"] })).toBe(true)
+    expect(wentAtClose({ stayed: ["drive copy"] })).toBe(false)
+    expect(wentAtClose({ stayed: [] })).toBe(false)
+    expect(receiptParts(["note", "words"])).not.toMatch(/something else/i)
+  })
+
   it("say what went and stayed as a sentence", () => {
     expect(receiptParts(["recording", "words"])).toBe(
       "The recording and home's words for it"
+    )
+    expect(receiptParts(["recording", "conveyor history"])).toBe(
+      "The recording and each move it made along the conveyor"
+    )
+    // Home's verdict on a take outlives it (HEARD1, server#911).
+    expect(receiptParts(["verdict"])).toBe("Whether home could make it out")
+    // A game note's moment stays after its recording goes (server#912).
+    expect(receiptParts(["recording", "game bite"])).toBe(
+      "The recording and the game moment it was about"
+    )
+    // What the owner chose on Needs your attention outlives it too (HEARD3).
+    expect(receiptParts(["verdict", "reconciliation"])).toBe(
+      "Whether home could make it out and what you chose to do with it after home couldn't hear it well"
+    )
+    // The whole receipt home sends for a take heard, let go and moved.
+    expect(
+      receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
+    ).toBe(
+      "The recording, home's words for it, its Let go mark and each move it made along the conveyor"
     )
     expect(receiptParts([])).toBe("Nothing else")
   })
@@ -141,5 +270,12 @@ describe("My data's words", () => {
   it("say where home's numbers are missing, and say nothing once they're in", () => {
     expect(homeLine("read")).toBeNull()
     expect(homeLine("unpaired")).toContain("isn't paired")
+  })
+})
+
+describe("a receipt's kind (HEARD4)", () => {
+  it("names every kind home can delete, and says Recording for one it doesn't know", () => {
+    expect(receiptKind("reflection")).toBe("Spoken reflection")
+    expect(receiptKind("a newer kind")).toBe("Recording")
   })
 })

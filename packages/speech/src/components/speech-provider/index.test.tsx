@@ -9,7 +9,7 @@
 
 import type { JSX } from "react"
 import { useEffect } from "react"
-import type { SpeechAdapterRegistry } from "@speech/lib/adapters"
+import type { SpeechAdapterFactory } from "@speech/lib/adapters"
 import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { useSpeechQueue } from "@speech/lib/hooks"
 import { peekSpeechQueue, resetSpeechQueue } from "@speech/lib/queue"
@@ -29,7 +29,7 @@ afterEach(() => {
 })
 
 function trackingRegistry(): {
-  registry: SpeechAdapterRegistry
+  registry: SpeechAdapterFactory
   adapters: Array<ControllableAdapter>
 } {
   const adapters: Array<ControllableAdapter> = []
@@ -38,7 +38,7 @@ function trackingRegistry(): {
     adapters.push(adapter)
     return adapter
   }
-  return { registry: { server: create, static: create }, adapters }
+  return { registry: create, adapters }
 }
 
 const Speaker = ({ phrase }: { phrase: string }): JSX.Element => {
@@ -56,7 +56,7 @@ describe("SpeechProvider", () => {
 
     render(
       <SpeechProvider
-        config={{ mode: "server", adapters: registry }}
+        config={{ backend: registry }}
         fallback={<span>starting</span>}
       >
         <Speaker phrase="hello" />
@@ -72,7 +72,7 @@ describe("SpeechProvider", () => {
     const { registry, adapters } = trackingRegistry()
 
     render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }}>
+      <SpeechProvider config={{ backend: registry }}>
         <Speaker phrase="hello from the consumer" />
       </SpeechProvider>
     )
@@ -90,7 +90,7 @@ describe("SpeechProvider", () => {
     const { registry, adapters } = trackingRegistry()
 
     const view = render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }}>
+      <SpeechProvider config={{ backend: registry }}>
         <Speaker phrase="hello" />
       </SpeechProvider>
     )
@@ -118,13 +118,7 @@ describe("SpeechProvider", () => {
     const { registry, adapters } = trackingRegistry()
 
     const view = render(
-      <SpeechProvider
-        config={{
-          mode: "server",
-          hosted: { provider: "openai", voiceId: "onyx" },
-          adapters: registry,
-        }}
-      >
+      <SpeechProvider config={{ backend: registry, language: "english" }}>
         <Speaker phrase="first session" />
       </SpeechProvider>
     )
@@ -137,13 +131,7 @@ describe("SpeechProvider", () => {
 
     await act(async () => {
       view.rerender(
-        <SpeechProvider
-          config={{
-            mode: "server",
-            hosted: { provider: "openai", voiceId: "nova" },
-            adapters: registry,
-          }}
-        >
+        <SpeechProvider config={{ backend: registry, language: "korean" }}>
           <Speaker phrase="second session" />
         </SpeechProvider>
       )
@@ -160,7 +148,7 @@ describe("SpeechProvider", () => {
     const { registry, adapters } = trackingRegistry()
 
     const view = render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }}>
+      <SpeechProvider config={{ backend: registry }}>
         <Speaker phrase="hello" />
       </SpeechProvider>
     )
@@ -170,7 +158,7 @@ describe("SpeechProvider", () => {
       // A fresh object literal with identical values - what every caller
       // writing `config={{ ... }}` produces on each render.
       view.rerender(
-        <SpeechProvider config={{ mode: "server", adapters: registry }}>
+        <SpeechProvider config={{ backend: registry }}>
           <Speaker phrase="hello" />
         </SpeechProvider>
       )
@@ -196,7 +184,7 @@ describe("SpeechProvider", () => {
     }
 
     render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }}>
+      <SpeechProvider config={{ backend: registry }}>
         <Direct />
       </SpeechProvider>
     )
@@ -235,7 +223,7 @@ describe("SpeechProvider", () => {
     }
 
     render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }} muted>
+      <SpeechProvider config={{ backend: registry }} muted>
         <Direct />
       </SpeechProvider>
     )
@@ -264,7 +252,7 @@ describe("SpeechProvider", () => {
     }
 
     render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }} muted>
+      <SpeechProvider config={{ backend: registry }} muted>
         <SpeaksOnMount />
       </SpeechProvider>
     )
@@ -291,8 +279,7 @@ describe("SpeechProvider", () => {
     render(
       <SpeechProvider
         config={{
-          mode: "static",
-          adapters: { server: () => adapter, static: () => adapter },
+          backend: () => adapter,
         }}
       >
         <Report />
@@ -351,8 +338,7 @@ describe("SpeechProvider", () => {
     render(
       <SpeechProvider
         config={{
-          mode: "static",
-          adapters: { server: () => adapter, static: () => adapter },
+          backend: () => adapter,
         }}
       >
         <Report />

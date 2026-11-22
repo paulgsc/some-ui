@@ -28,7 +28,6 @@ export type LessonVoiceSummary = {
 }
 
 const PLATFORM: Readonly<Record<VoiceReport["platform"], string>> = {
-  hosted: "this site's voice service",
   browser: "your browser's own voice",
   phone: "this phone's text-to-speech",
 }
@@ -110,15 +109,6 @@ function missingVoice(
 ): LessonVoiceSummary {
   const label = `No Korean voice · ${platform}`
   switch (report.platform) {
-    case "hosted": {
-      return {
-        label,
-        detail:
-          "This voice service has no Korean voice, so lessons are not read aloud.",
-        fix: "Pick a provider with a Korean voice in Settings.",
-        warning: true,
-      }
-    }
     case "browser": {
       return {
         label,

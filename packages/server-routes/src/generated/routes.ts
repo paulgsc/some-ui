@@ -3,7 +3,7 @@
 export const API_BASE_PATH = "/api/v1";
 
 /** The server contract epoch this snapshot is (file_host's `contract::CONTRACT_EPOCH`). */
-export const SERVER_CONTRACT_EPOCH = 4;
+export const SERVER_CONTRACT_EPOCH = 27;
 /** The lowest epoch that server still serves (`contract::OLDEST_SUPPORTED`). */
 export const SERVER_OLDEST_SUPPORTED = 1;
 
@@ -23,6 +23,8 @@ export type ServerRoute =
   | "/api/v1/auth/pairing/start"
   | "/api/v1/auth/passkeys/finish"
   | "/api/v1/auth/passkeys/start"
+  | "/api/v1/auth/phones"
+  | "/api/v1/auth/phones/:id"
   | "/api/v1/auth/register/finish"
   | "/api/v1/auth/register/start"
   | "/api/v1/auth/session"
@@ -30,6 +32,7 @@ export type ServerRoute =
   | "/api/v1/auth/sign-in/start"
   | "/api/v1/auth/sign-out"
   | "/api/v1/auth/sign-out-everywhere"
+  | "/api/v1/cards-essays/:key/video"
   | "/api/v1/clips/:id/:side/:file"
   | "/api/v1/curriculum/:key"
   | "/api/v1/curriculum/manifest"
@@ -45,6 +48,7 @@ export type ServerRoute =
   | "/api/v1/feeds/:feed/videos/:key/link"
   | "/api/v1/feeds/:feed/videos/:key/rest"
   | "/api/v1/feeds/:feed/videos/:key/video"
+  | "/api/v1/games/:id/moments"
   | "/api/v1/idea-lists"
   | "/api/v1/idea-lists/keywords/:name"
   | "/api/v1/idea-lists/topics/:name"
@@ -52,6 +56,10 @@ export type ServerRoute =
   | "/api/v1/ideas/:id"
   | "/api/v1/ideas/:id/furnishing"
   | "/api/v1/ideas/:id/set-aside"
+  | "/api/v1/interview-weeks"
+  | "/api/v1/interview-weeks/:id"
+  | "/api/v1/interview-weeks/:id/record"
+  | "/api/v1/interview-weeks/:id/sent"
   | "/api/v1/jobs"
   | "/api/v1/jobs/digests"
   | "/api/v1/jobs/events/:id"
@@ -93,6 +101,9 @@ export type ServerRoute =
   | "/api/v1/rust-weeks/:id/pastes/:at"
   | "/api/v1/rust-weeks/:id/record"
   | "/api/v1/rust-weeks/:id/sent"
+  | "/api/v1/rust-work-spans"
+  | "/api/v1/rust-work-spans/close"
+  | "/api/v1/rust-work-spans/start"
   | "/api/v1/sessions"
   | "/api/v1/sessions/:id"
   | "/api/v1/sessions/:id/duplicate"
@@ -120,9 +131,14 @@ export type ServerRoute =
   | "/api/v1/tabs/summaries"
   | "/api/v1/utter"
   | "/api/v1/voice-notes/:id"
+  | "/api/v1/voice-notes/:id/attention"
   | "/api/v1/voice-notes/:id/audio"
+  | "/api/v1/voice-notes/:id/fast-track"
   | "/api/v1/voice-notes/:id/heard"
   | "/api/v1/voice-notes/:id/set-aside"
+  | "/api/v1/voice-notes/:id/station"
+  | "/api/v1/voice-notes/attention"
+  | "/api/v1/voice-notes/conveyor"
   | "/api/v1/voice-notes/deleted"
   | "/api/v1/voice-notes/kept"
   | "/api/v1/voice-notes/on-drive"

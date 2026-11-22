@@ -34,8 +34,10 @@ import {
   problemsOf,
 } from "./cut-list"
 import type { CutList, Parsed, Shot } from "./cut-list"
+import { CastIdSchema, ThemeIdSchema } from "./format"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, ms, SOUNDS, TRANSITIONS } from "./vocabulary"
+import { VoicesIdSchema } from "./voices"
 
 export const SERIES_SCHEMA = "some-ui.video-series/1"
 
@@ -73,6 +75,25 @@ export const SeriesSchema = z
       height: even,
       fps: z.number().int().min(12).max(60),
     }),
+    /**
+     * The app's theme a page the series draws on a stage is drawn in, so it
+     * matches the series' own look: a cards essay's spoken card (C816),
+     * which has no format of its own. A video drawn from a format takes its
+     * shape's `theme` instead, and never reads this. Absent, the stage draws
+     * in the page's own theme.
+     */
+    theme: ThemeIdSchema.optional(),
+    /**
+     * The cast such a page's speaking bubbles draw (`CastIdSchema`, C822), as
+     * `theme` is its theme. Absent, the flat icons.
+     */
+    cast: CastIdSchema.optional(),
+    /**
+     * The voice lanes a video drawn with no format of its own (a cards
+     * essay) is said in (`VoicesIdSchema`, C840), as `cast` is its cast.
+     * Absent, each speaker keeps one voice for the whole video.
+     */
+    voices: VoicesIdSchema.optional(),
     /** The colour behind the picture, as `#rrggbb`. */
     ground: z.string().regex(/^#[0-9a-f]{6}$/),
     /** Where the picture sits in the frame, in the frame's pixels. */

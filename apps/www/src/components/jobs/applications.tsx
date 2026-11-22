@@ -58,9 +58,8 @@ import {
   takeBackWhy,
   whatHappenedSince,
 } from "@/lib/jobs/words"
+import { Chips } from "@/components/chips"
 import { sectionHeading } from "@/components/job-reading"
-
-import { Chips } from "./parts"
 
 /** Each stand's colour: light on the card, stepped for a dark one. */
 const SWATCH: Readonly<Record<Stand, string>> = {

@@ -1,0 +1,19 @@
+{
+  "id": "C710",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/flow/index.ts",
+    "packages/ui/rust-rounds/src/lib/week-play/flow-runtime.ts",
+    "packages/ui/rust-rounds/src/components/rust-week/flow.tsx"
+  ],
+  "chose": "Only a step's own button marks it (RR25): Read's 'On to the academy' marks it gone through, and 'Skip to your decisions' also marks the academy skipped; leaving the academy marks it gone through with any exercise ticked, else skipped; leaving a ticket's voice (on to the next ticket, or to the look over) marks it gone through with any take said, else skipped. A swipe, Prev/Next or a tap on the step row only moves. A ticket opened from the brief opens at its first step still open, else its first.",
+  "options": [
+    "the step's own button marks it; moving marks nothing",
+    "every move forward marks the step left",
+    "marks only from explicit 'mark done' and 'skip' buttons on each step"
+  ],
+  "gray": "The approved prototype shows the buttons and the step row's standings but not which gesture writes a mark; the record of skipping (C670) is evidence the essay reads, so a swipe shouldn't write one by accident.",
+  "undo": "Change lib/flow's leave and the flow runtime's go to mark on a move.",
+  "refs": ["#3249", "#3257"]
+}

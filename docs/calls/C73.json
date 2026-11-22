@@ -1,0 +1,17 @@
+{
+  "id": "C73",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/feeds.rs",
+    "server:apps/servers/file_host/src/feeds/videos.rs"
+  ],
+  "chose": "The Rust Rounds essay is a third Feed (`rust-essay`) on the existing /feeds/:feed/videos routes, keyed by week, with the caller's subject threaded through every Feed method so the essay feed answers only the caller's own.",
+  "options": [
+    "a third Feed on the existing routes, subject threaded",
+    "a separate essay-videos route module"
+  ],
+  "gray": "The call's and Playoff Delta's videos are no one's, while an essay's plays the owner's voice, and nothing said whether a subject-scoped feed shares the feeds' routes.",
+  "undo": "Drop Feed::RustEssay and the subject parameters from Feed's methods and feeds::videos.",
+  "refs": ["#2691", "#2833", "server#774"]
+}

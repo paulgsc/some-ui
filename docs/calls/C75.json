@@ -1,0 +1,14 @@
+{
+  "id": "C75",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:scripts/check_assurance_ledger.py"],
+  "chose": "The stores and a family of existing server paths go in the ledger before server#774; rust_essays.rs and the proofs follow its merge, with rust_essays.rs in KNOWN_UNPLACED until then, as pd-kept followed server#687.",
+  "options": [
+    "stores before, family paths after",
+    "the whole family before the server PR"
+  ],
+  "gray": "A family naming a server file before it is on main fails every server PR's ledger rule 2, and the rule for a new process family said only 'before'.",
+  "undo": "Drop the KNOWN_UNPLACED entry once the family names rust_essays.rs.",
+  "refs": ["#2691", "#2833", "server#774"]
+}

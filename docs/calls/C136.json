@@ -1,0 +1,14 @@
+{
+  "id": "C136",
+  "made": "2026-11-12",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/renders/subject.ts"],
+  "chose": "Where a home from before #2899 sends a preview row without its template, the phone reads the template off the key's start (the longest known template id followed by a dash), and names and links it; a key that starts with none is named \"A preview of a template\" with no link.",
+  "options": [
+    "read the template off the key's start",
+    "name it generically with no link until home names the template"
+  ],
+  "gray": "Home's preview key is <template>-<stamp> today, but the board's contract gives the template as its own field; reading the key couples the phone to a naming the server could change, and the owner has no say recorded either way.",
+  "undo": "In subjectOf (subject.ts), return template: null when row.template is absent, and delete templateOfKey.",
+  "refs": ["#2899"]
+}

@@ -48,8 +48,9 @@ import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 
 import type { KeyedSend } from "./keyed-send"
 import { sendKeyed, untakenTold } from "./keyed-send"
+import type { Pairing } from "./model"
 import type { Sent } from "./sent"
-import { fingerprintOf, readSent, rememberSent } from "./sent"
+import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
 
 /** `answer` for `video`, as `sent.videos` keeps it. */
 function entryOf(answer: VideoAnswer, video: VideoForHome): string {
@@ -214,9 +215,11 @@ export const videosMoved = videoMoves.moves
 
 /** Home's list as this run of the app last read it under `pairing`; empty for another. */
 export function videosListed(
-  pairing: string | null
+  pairing: Pairing
 ): Readonly<Record<string, HomeVideo>> {
-  return known.listed !== null && known.listed.pairing === pairing
+  return known.listed !== null &&
+    pairing.kind === "paired" &&
+    known.listed.pairing === pairing.id
     ? known.listed.videos
     : {}
 }
@@ -317,10 +320,10 @@ export function phoneVideos(
  */
 export function videoAnswers(
   storage: KeyedStorage | null,
-  pairing: string | null
+  pairing: Pairing
 ): Readonly<Record<string, VideoAnswer>> {
-  if (pairing === null) return {}
-  const sent = readSent(storage, pairing)
+  const sent = sentUnder(storage, pairing)
+  if (sent === null) return {}
   return Object.fromEntries(
     known.videos.flatMap((video) => {
       const answer = answerOf(sent.videos[video.key], video)
@@ -332,8 +335,9 @@ export function videoAnswers(
 /** How many videos this run knows wait to go home under `pairing`. */
 export function videosWaiting(
   storage: KeyedStorage | null,
-  pairing: string | null
+  pairing: Pairing
 ): number {
-  if (pairing === null) return known.videos.length
-  return videosToSend(known.videos, readSent(storage, pairing)).length
+  const sent = sentUnder(storage, pairing)
+  if (sent === null) return known.videos.length
+  return videosToSend(known.videos, sent).length
 }

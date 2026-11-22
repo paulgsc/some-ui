@@ -239,8 +239,8 @@ describe("HandheldLesson", () => {
   it("asks the grammar lens about a lens set's lines from every set as one", async () => {
     const store = createReadAloudStore(memoryStorage())
     store.saveSets([
-      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "" },
-      { deck: LEVEL_ONE_LENS_SET, addedAt: "", openedAt: "" },
+      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "", archivedAt: null },
+      { deck: LEVEL_ONE_LENS_SET, addedAt: "", openedAt: "", archivedAt: null },
     ])
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
@@ -254,8 +254,8 @@ describe("HandheldLesson", () => {
   it("opens the read-aloud drill at the level held, and comes back", async () => {
     const store = createReadAloudStore(memoryStorage())
     store.saveSets([
-      { deck: STARTER_SET, addedAt: "", openedAt: "" },
-      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "" },
+      { deck: STARTER_SET, addedAt: "", openedAt: "", archivedAt: null },
+      { deck: LEVEL_ONE_SET, addedAt: "", openedAt: "", archivedAt: null },
     ])
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
@@ -528,6 +528,106 @@ describe("HandheldLesson", () => {
     ).not.toBeNull()
   })
 
+  it("leaves an archived set out of Read aloud and Ready for you, and counts it again once picked again", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets([
+      { deck: STARTER_SET, addedAt: "a", openedAt: "a", archivedAt: null },
+      { deck: LEVEL_ONE_SET, addedAt: "b", openedAt: null, archivedAt: "c" },
+    ])
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
+    const card = await screen.findByRole("button", { name: /Read aloud/ })
+    expect(card.textContent).toContain("1 word set")
+    expect(screen.queryByRole("region", { name: "Ready for you" })).toBeNull()
+
+    await pickFile(NEW_WORDS, () =>
+      Promise.resolve(JSON.stringify({ schemaVersion: 1, ...LEVEL_ONE_SET }))
+    )
+    expect(
+      (await screen.findByRole("button", { name: /Read aloud/ })).textContent
+    ).toContain("2 word sets")
+    expect(store.sets().every((set) => set.archivedAt === null)).toBe(true)
+  })
+
+  it("brings a scene's archived sets back when its scene is opened again", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const decks = [
+      routineDeck("plans-2", "Plans"),
+      routineDeck("plans-2-lens", "Plans, lens"),
+    ]
+    store.saveSets(
+      decks.map((raw) => {
+        const parsed = parseReadAloudDeck(raw)
+        if (!parsed.ok) throw new Error("fixture")
+        return {
+          deck: parsed.deck,
+          addedAt: "2026-10-01T00:00:00.000Z",
+          openedAt: "2026-10-02T00:00:00.000Z",
+          archivedAt: "2026-11-01T00:00:00.000Z",
+        }
+      })
+    )
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve([routineScene(decks)]) },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(
+      within(waiting).getByRole("button", { name: "Read aloud: 약속" })
+    )
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')
+    ).not.toBeNull()
+    expect(store.sets().map((set) => set.archivedAt)).toEqual([null, null])
+    expect(store.sets().map((set) => set.openedAt)).toEqual([
+      "2026-10-02T00:00:00.000Z",
+      "2026-10-02T00:00:00.000Z",
+    ])
+  })
+
+  it("brings no archived set of a scene back past the limit, and says so", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const decks = [
+      routineDeck("plans-2", "Plans"),
+      routineDeck("plans-2-lens", "Plans, lens"),
+    ]
+    const plans = parseReadAloudDeck(decks[0])
+    if (!plans.ok) throw new Error("fixture")
+    const fillers = Array.from({ length: 49 }, (_, index) => ({
+      deck: { ...STARTER_SET, id: `filler-${index}` },
+      addedAt: "a",
+      openedAt: "a",
+      archivedAt: null,
+    }))
+    store.saveSets([
+      ...fillers,
+      { deck: plans.deck, addedAt: "b", openedAt: "b", archivedAt: "c" },
+    ])
+    const before = store.sets()
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve([routineScene(decks)]) },
+    })
+    fireEvent.click(
+      within(
+        await screen.findByRole("region", { name: "From the routine" })
+      ).getByRole("button", { name: "Read aloud: 약속" })
+    )
+    expect(
+      await screen.findByText(
+        "This phone keeps 50 word sets in use and has 49, so this scene's sets weren't brought back. Archiving some makes room."
+      )
+    ).toBeTruthy()
+    expect(document.querySelector('[data-slot="read-aloud-level"]')).toBeNull()
+    expect(store.sets()).toEqual(before)
+  })
+
   it("opens a scene on its grammar lens set from the lens's own button", async () => {
     const store = createReadAloudStore(memoryStorage())
     const opened = createOpenedStore(memoryStorage())
@@ -635,7 +735,12 @@ describe("HandheldLesson", () => {
           routineDeck(`held-${at}`, `Held ${at}`)
         )
         if (!parsed.ok) throw new Error(parsed.error)
-        return { deck: parsed.deck, addedAt: "", openedAt: "" }
+        return {
+          deck: parsed.deck,
+          addedAt: "",
+          openedAt: "",
+          archivedAt: null,
+        }
       })
     )
     renderLesson({
@@ -660,7 +765,7 @@ describe("HandheldLesson", () => {
     expect(
       document.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe(
-      "This phone keeps 50 word sets and has 49, so these 2 weren't added."
+      "This phone keeps 50 word sets in use and has 49, so these 2 weren't added. Archiving some makes room."
     )
     expect(store.sets()).toHaveLength(49)
   })
@@ -1037,6 +1142,7 @@ describe("HandheldLesson", () => {
           deck: STARTER_SET,
           addedAt: "2026-10-01T00:00:00.000Z",
           openedAt: null,
+          archivedAt: null,
         },
       ])
       const orders = createPortionOrderStore(memoryStorage())

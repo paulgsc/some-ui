@@ -1,0 +1,18 @@
+{
+  "id": "C811",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/sample/series/cheat-sheet/v3.json",
+    "some-ui:packages/video-render/src/cards-essay.ts"
+  ],
+  "chose": "Spoken cards play from cheat-sheet version 3, which is version 2 with its window the whole frame, so a spoken card's template-A still fills the frame as the call's do; an essay that pins version 2 or older and holds a spoken card is refused. Version 2's 1728x450 window is left as it was.",
+  "options": [
+    "a new series version with a whole-frame window",
+    "edit version 2's window in place (no cards essay draws a still today, but a pinned version would change)",
+    "a framing field on a still picture in the cut list"
+  ],
+  "gray": "A series version is what a published video pins; which version a spoken card needs, and leaving the older ones frozen, is a choice the owner sees in every essay that uses one.",
+  "undo": "Delete v3.json and CARDS_SPOKEN_CARD_VERSION, and move a spoken card's essays back to version 2 with whatever framing replaces it.",
+  "refs": ["#3282"]
+}

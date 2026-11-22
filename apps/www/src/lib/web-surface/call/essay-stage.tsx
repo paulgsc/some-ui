@@ -1,24 +1,37 @@
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
+  ESSAY_POINT_COLUMN,
   essayFormat,
+  FORK_PLACEMENTS,
   hasCaptions,
+  hasPointAnswers,
+  LEITNER,
+  markOf,
   markThemeOf,
+  parseEssay,
+  pickedOf,
+  pointAnsweredBy,
+  pointCite,
   sampleEssay,
+  silenceSaid,
   SOLO_LEVELS,
   SOLO_SOURCE,
 } from "@some-ui/video-render"
 import type {
   CellView,
   Essay,
+  EssayFork,
+  EssayPointAnswer,
   EssayScene,
   EssayTicket,
-  Speaker,
+  Voicing,
 } from "@some-ui/video-render"
 
+import { Call, CastProvider, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayAt, EssayView } from "./essay-view"
 import { essayAt, essayStageOf } from "./essay-view"
-import { ESSAY_WORDS as W, weekNumber } from "./essay-words"
+import { leftOf, ESSAY_WORDS as W, weekNumber } from "./essay-words"
 import { essaySource } from "./feed"
 import {
   BrandSlide,
@@ -32,6 +45,8 @@ import {
   whereOf,
 } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
+import { InterviewEssayStagePage } from "./interview-essay-stage"
+import { SpokenCardStagePage } from "./spoken-card-stage"
 
 /**
  * The Rust Rounds essay's stage (`@some-ui/video-render`'s `essay.ts`, RR15):
@@ -46,6 +61,11 @@ import { STAGE_WORDS as SW } from "./frame-words"
  */
 
 export type EssayStageProps = {
+  /**
+   * Which essay: `interview` for the interview essay's (IW6), `spoken` for a
+   * cards essay's spoken card (WALK7), the Rust Rounds essay's otherwise.
+   */
+  kind?: string
   /** The essay shown, by its week's id ("2026-w46"), or "sample". */
   week?: string
   /** The scene shown, by its id; the first when absent or unknown. */
@@ -73,6 +93,8 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "chapter": {
       return W.chapter(scene.title)
     }
+    case "ask":
+    case "opening":
     case "open":
     case "weeks":
     case "next": {
@@ -82,15 +104,18 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "answer":
     case "best":
     case "beside":
+    case "fork":
     case "dive": {
       const ticket = essay.tickets.find((t) => t.id === scene.ticket)
+      const answer =
+        ticket === undefined ? undefined : answerAt(ticket, scene.point)
       const name =
-        scene.section === "answer" && ticket?.answer.kind === "silence"
-          ? W.noAnswer
+        scene.section === "answer" && answer?.kind === "silence"
+          ? leftOf(answer)
           : scene.section === "dive"
             ? W.dive((scene.dive ?? 0) + 1)
             : (NAMES[scene.section] ?? "")
-      return `${scene.ticket ?? ""} · ${name}`
+      return `${scene.ticket ?? ""}${pointTag(scene.point)} · ${name}`
     }
     default: {
       return assertNever(scene)
@@ -98,104 +123,184 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
   }
 }
 
-/** The tutor's icon: neutral, never any company's mark. */
-const TutorIcon = (): JSX.Element => (
-  <svg viewBox="0 0 48 48" aria-hidden="true" className="size-full">
-    <rect width="48" height="48" className="fill-muted" />
-    <path
-      d="M24 9 37 16.5v15L24 39 11 31.5v-15Z"
-      fill="none"
-      strokeWidth="2.5"
-      className="stroke-foreground"
-    />
-    <circle cx="24" cy="24" r="4.5" className="fill-foreground" />
-  </svg>
-)
+/** What an answer scene plays: the ticket's answer, or point `point`'s (from 0, RR24). */
+const answerAt = (
+  ticket: EssayTicket,
+  point: number | undefined
+): EssayTicket["answer"] | EssayPointAnswer =>
+  point === undefined ? ticket.answer : pointAnsweredBy(ticket, point).answer
 
-/** The owner's icon. */
-const YouIcon = (): JSX.Element => (
-  <svg viewBox="0 0 48 48" aria-hidden="true" className="size-full">
-    <rect width="48" height="48" className="fill-muted" />
-    <circle cx="24" cy="19" r="7" className="fill-foreground" />
-    <path d="M10 40c2-8 8-12 14-12s12 4 14 12" className="fill-foreground" />
-  </svg>
-)
+/** A point answer scene's place in its tag: " · Point 2". */
+const pointTag = (point: number | undefined): string =>
+  point === undefined ? "" : ` · ${W.pointN(point + 1)}`
 
-const Bubble = ({ who, lit }: { who: Speaker; lit: boolean }): JSX.Element => (
-  <div
-    data-speaker={who}
-    data-lit={lit ? "true" : undefined}
-    className={
-      lit
-        ? "text-foreground flex flex-col items-center gap-[0.4em]"
-        : "text-muted-foreground flex flex-col items-center gap-[0.4em] opacity-50"
-    }
-  >
-    <div
-      className={
-        lit
-          ? "ring-primary size-[7em] overflow-hidden rounded-full ring-[0.3em]"
-          : "size-[7em] overflow-hidden rounded-full"
-      }
-    >
-      {who === "tutor" ? <TutorIcon /> : <YouIcon />}
-    </div>
-    <p className="text-[0.9em] font-semibold">
-      {who === "tutor" ? W.tutor : W.you}
-    </p>
-  </div>
-)
-
-/** Template A: the two bubbles, the one speaking lit, and the content beside them. */
-const Call = ({
-  speaker,
-  tag,
-  children,
+/** A cell of the fork's table: whether a decision meets or breaks one stated constraint. */
+const TradeCell = ({
+  trade,
+  id,
 }: {
-  speaker: Speaker
-  tag: string
-  children: ReactNode
-}): JSX.Element => (
-  <div className="grid min-h-full grid-cols-[16%_1fr] gap-[1.2em]">
-    <div className="flex flex-col items-center justify-center gap-[2em]">
-      <Bubble who="tutor" lit={speaker === "tutor"} />
-      <Bubble who="you" lit={speaker === "you"} />
-    </div>
-    <div className="border-border bg-background/60 space-y-[0.6em] rounded-[0.6em] border px-[1.4em] py-[1em]">
-      <p className="text-primary text-[0.7em] tracking-wide uppercase">{tag}</p>
-      {children}
-    </div>
-  </div>
-)
+  trade: { meets: ReadonlyArray<string>; breaks: ReadonlyArray<string> }
+  id: string
+}): JSX.Element =>
+  trade.meets.includes(id) ? (
+    <td className="text-primary py-[0.12em] text-center" title={W.fork.meets}>
+      ✓
+    </td>
+  ) : trade.breaks.includes(id) ? (
+    <td
+      className="text-destructive py-[0.12em] text-center"
+      title={W.fork.breaks}
+    >
+      ✗
+    </td>
+  ) : (
+    <td className="py-[0.12em]" />
+  )
 
-/** Text with `code` spans drawn as code. */
-const Inline = ({ text }: { text: string }): JSX.Element => (
-  <>
-    {text.split(/(`[^`]+`)/).map((part, i) =>
-      part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
-        // eslint-disable-next-line react/no-array-index-key
-        <code key={i} className="font-mono text-[0.9em]">
-          {part.slice(1, -1)}
-        </code>
-      ) : (
-        // eslint-disable-next-line react/no-array-index-key
-        <span key={i}>{part}</span>
-      )
-    )}
-  </>
-)
+/**
+ * The fork (RR29, C697): every option an agent listed, and the best one if
+ * it wasn't listed, against each stated constraint by id; the owner's
+ * decision, and its place between A and A′ once it is on record.
+ */
+const ForkPanel = ({
+  fork,
+  stated,
+}: {
+  fork: EssayFork
+  stated: ReadonlyArray<{ id: string; says: string }>
+}): JSX.Element => {
+  const judged = fork.judged
+  const picked = pickedOf(fork)?.id
+  const recommended = fork.options.find((option) => option.recommended)?.id
+  const rows = [
+    ...fork.options.map((option) => ({
+      ...option,
+      label: option.id,
+      tags: [
+        ...(option.recommended ? [W.fork.recommended] : []),
+        ...(fork.best.kind === "option" && fork.best.option === option.id
+          ? [W.fork.best]
+          : []),
+        ...(picked === option.id ? [W.fork.yours] : []),
+      ],
+    })),
+    ...(fork.best.kind === "hidden"
+      ? [
+          {
+            ...fork.best,
+            label: "★",
+            tags: [W.fork.hidden, W.fork.best],
+          },
+        ]
+      : []),
+  ]
+  return (
+    <div className="space-y-[0.35em]">
+      {judged !== undefined && (
+        <p className="text-[0.7em]">
+          {W.fork.summary(
+            judged.decision,
+            recommended ?? "",
+            fork.best.kind === "hidden" ? null : fork.best.option
+          )}
+        </p>
+      )}
+      <table className="w-full text-left text-[0.7em]">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="w-[4em] font-normal">{W.fork.option}</th>
+            <th className="font-normal">{W.fork.decision}</th>
+            {stated.map((row) => (
+              <th
+                key={row.id}
+                title={row.says}
+                className="w-[3em] text-center font-normal"
+              >
+                {row.id}
+              </th>
+            ))}
+            <th className="w-[30%] pl-[1em] font-normal">{W.fork.why}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className="border-border border-t">
+              <td className="py-[0.12em] align-top font-semibold">
+                {row.label}
+              </td>
+              <td className="py-[0.12em] pr-[1em] align-top">
+                <Inline text={row.decision} />
+                {row.tags.length > 0 && (
+                  <span className="text-muted-foreground text-[0.85em]">
+                    {` · ${row.tags.join(" · ")}`}
+                  </span>
+                )}
+              </td>
+              {stated.map((col) => (
+                <TradeCell key={col.id} trade={row} id={col.id} />
+              ))}
+              <td
+                className={`py-[0.12em] pl-[1em] align-top text-[0.85em] ${row.refused === undefined ? "text-muted-foreground" : "text-destructive"}`}
+              >
+                {row.refused === undefined ? (
+                  <Inline text={row.because ?? ""} />
+                ) : (
+                  W.fork.refused(row.refused.code, row.refused.why)
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-muted-foreground text-[0.55em]">
+        {stated.map((row) => `${row.id}: ${row.says}`).join(" · ")}
+      </p>
+      {fork.best.kind === "hidden" && (
+        <p className="text-[0.65em]">
+          <span className="font-semibold">{W.fork.astute}</span>{" "}
+          <Inline text={fork.best.why} />
+        </p>
+      )}
+      {judged !== undefined && (
+        <Field label={W.fork.axis}>
+          {judged.decision.kind === "own" && (
+            <p className="text-[0.7em]">
+              <Inline text={W.fork.own(judged.decision.decision)} />
+            </p>
+          )}
+          <ol className="flex gap-[0.4em] text-[0.55em] whitespace-nowrap">
+            {FORK_PLACEMENTS.map((place) => (
+              <li
+                key={place}
+                aria-current={place === judged.placement ? "true" : undefined}
+                className={
+                  place === judged.placement
+                    ? "bg-primary text-primary-foreground min-w-0 flex-1 rounded-[0.3em] px-[0.5em] py-[0.2em] font-semibold"
+                    : "border-border text-muted-foreground min-w-0 flex-1 rounded-[0.3em] border px-[0.5em] py-[0.2em]"
+                }
+              >
+                {W.fork.place[place]}
+              </li>
+            ))}
+          </ol>
+          <p className="mt-[0.3em] text-[0.7em]">
+            <span className="font-semibold">
+              {W.fork.verdict[judged.verdict.kind]}
+            </span>
+            {": "}
+            <Inline text={judged.verdict.why} />
+          </p>
+        </Field>
+      )}
+    </div>
+  )
+}
 
 const Code = ({ code }: { code: string }): JSX.Element => (
   <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
     {code.trimEnd()}
   </pre>
 )
-
-const MARK_CLASS: Readonly<Record<string, string>> = {
-  covered: "text-primary font-semibold",
-  partly: "text-foreground font-semibold",
-  missing: "text-destructive font-semibold",
-}
 
 /** The whole SOLO scale, the answer's level marked when there is one. */
 const Solo = ({ level }: { level: number | undefined }): JSX.Element => (
@@ -236,7 +341,7 @@ const Cell = ({ cell }: { cell: CellView }): JSX.Element => {
     case "unmet": {
       return (
         <td
-          title={W.cell.unmet}
+          title={cell.since ? W.cell.unchecked : W.cell.unmet}
           className="border-border border border-dashed"
         />
       )
@@ -251,15 +356,29 @@ const Cell = ({ cell }: { cell: CellView }): JSX.Element => {
         </td>
       )
     }
-    case "level": {
+    case "faded": {
       return (
         <td
-          title={`${SOLO_LEVELS[cell.level - 1] ?? ""}${cell.decayed ? `: ${W.cell.decayed}` : ""}`}
+          title={W.cell.faded}
+          className="border-border text-muted-foreground border border-dotted text-center"
+        >
+          ~
+        </td>
+      )
+    }
+    case "level": {
+      const notes = [
+        ...(cell.known ? [] : [W.cell.notKnown]),
+        ...(cell.decayed === null ? [] : [W.cell.decayed]),
+      ]
+      return (
+        <td
+          title={[SOLO_LEVELS[cell.level - 1] ?? "", ...notes].join(": ")}
           className={`border-border border text-center font-bold ${cell.level >= 3 ? "text-primary-foreground" : "text-foreground"} ${LEVEL_CLASS[cell.level] ?? ""}`}
         >
           {/* A recording has no tooltips: the level is drawn. */}
           {cell.level}
-          {cell.decayed ? " ↓" : ""}
+          {cell.decayed === null ? "" : " ↓"}
         </td>
       )
     }
@@ -337,6 +456,23 @@ const Screen = ({
         />
       )
     }
+    case "ask": {
+      return (
+        <Call speaker={at.speaker} tag={W.question(view.n)} other="asker">
+          <p className="text-muted-foreground text-[0.8em]">{W.theyAsk}</p>
+          <Title>{view.ask}</Title>
+        </Call>
+      )
+    }
+    case "opening": {
+      return (
+        <Call speaker={at.speaker} tag={W.question(view.n)} other="asker">
+          <p className="text-muted-foreground text-[0.8em]">{view.ask}</p>
+          <p className="text-[0.8em] font-semibold">{W.yourAnswer}</p>
+          <p className="text-[1em] leading-snug">{view.transcript}</p>
+        </Call>
+      )
+    }
     case "open": {
       return (
         <Call speaker={at.speaker} tag={W.week(essay.week.id)}>
@@ -369,12 +505,19 @@ const Screen = ({
       )
     }
     case "answer": {
-      const answer = view.ticket.answer
+      const point =
+        view.point === undefined ? undefined : view.ticket.points[view.point]
+      const answer = answerAt(view.ticket, view.point)
       return (
         <Call
           speaker={at.speaker}
-          tag={`${view.ticket.id} · ${answer.kind === "take" ? NAMES.answer : W.noAnswer}`}
+          tag={`${view.ticket.id}${pointTag(view.point)} · ${answer.kind === "take" ? NAMES.answer : leftOf(answer)}`}
         >
+          {point !== undefined && (
+            <p className="text-muted-foreground text-[0.75em]">
+              <Inline text={point.to} />
+            </p>
+          )}
           {answer.kind === "take" ? (
             <>
               <Title>{W.youSaid}</Title>
@@ -382,11 +525,13 @@ const Screen = ({
             </>
           ) : (
             <>
-              <Title>{W.noAnswer}</Title>
-              <p className="text-muted-foreground text-[0.8em]">
-                {W.opened(answer.opened)}
-              </p>
-              <p className="text-[1em] leading-snug">{answer.guess}</p>
+              <Title>{leftOf(answer)}</Title>
+              {answer.unheard === true ? null : (
+                <p className="text-muted-foreground text-[0.8em]">
+                  {W.opened(answer.opened)}
+                </p>
+              )}
+              <p className="text-[1em] leading-snug">{silenceSaid(answer)}</p>
             </>
           )}
         </Call>
@@ -410,9 +555,14 @@ const Screen = ({
     }
     case "beside": {
       const answer = view.ticket.answer
+      const byPoint = hasPointAnswers(view.ticket)
       return (
         <Call speaker={at.speaker} tag={`${view.ticket.id} · ${NAMES.beside}`}>
-          <table className="w-full text-left text-[0.8em]">
+          <table className="w-full table-fixed text-left text-[0.8em]">
+            <colgroup>
+              <col style={{ width: `${String(100 * ESSAY_POINT_COLUMN)}%` }} />
+              <col />
+            </colgroup>
             <thead className="text-muted-foreground text-[0.85em]">
               <tr>
                 <th className="pr-[1em] font-normal">{W.point}</th>
@@ -421,8 +571,9 @@ const Screen = ({
             </thead>
             <tbody>
               {view.ticket.points.map((point, i) => {
-                const mark =
-                  answer.kind === "take" ? answer.marks[i] : undefined
+                const mark = markOf(view.ticket, i)
+                const answered = pointAnsweredBy(view.ticket, i)
+                const cite = pointCite(view.ticket, i)
                 return (
                   <tr key={point.to} className="border-border border-t">
                     <td className="py-[0.3em] pr-[1em] align-top">
@@ -431,19 +582,25 @@ const Screen = ({
                     <td className="py-[0.3em] align-top">
                       {mark === undefined ? (
                         <span className="text-muted-foreground">
-                          {W.unanswered}
+                          {answered.by === "own" &&
+                          answered.answer.kind === "silence"
+                            ? leftOf(answered.answer, W.unanswered)
+                            : W.unanswered}
                         </span>
                       ) : (
-                        <>
-                          <span className={MARK_CLASS[mark.mark]}>
-                            {W.mark[mark.mark]}
-                          </span>
-                          {mark.note !== undefined && (
-                            <span className="text-muted-foreground block text-[0.9em]">
-                              <Inline text={mark.note} />
-                            </span>
-                          )}
-                        </>
+                        <span className={MARK_CLASS[mark.mark]}>
+                          {W.mark[mark.mark]}
+                        </span>
+                      )}
+                      {cite !== null && (
+                        <span data-cite className="text-muted-foreground">
+                          {` · ${cite}`}
+                        </span>
+                      )}
+                      {mark?.note !== undefined && (
+                        <span className="text-muted-foreground block text-[0.9em]">
+                          <Inline text={mark.note} />
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -457,10 +614,25 @@ const Screen = ({
           <p className="text-[0.8em]">
             {answer.kind === "take" ? (
               <Inline text={answer.solo.why} />
+            ) : byPoint ? (
+              W.perPoint
             ) : (
               W.notJudged
             )}
           </p>
+        </Call>
+      )
+    }
+    case "fork": {
+      return (
+        <Call
+          speaker={at.speaker}
+          tag={`${view.ticket.id}${pointTag(view.point)} · ${NAMES.fork}`}
+        >
+          <p className="text-[0.85em] font-semibold">
+            <Inline text={view.ticket.points[view.point]?.to ?? ""} />
+          </p>
+          <ForkPanel fork={view.fork} stated={view.ticket.stated ?? []} />
         </Call>
       )
     }
@@ -507,7 +679,7 @@ const Screen = ({
             </thead>
             <tbody>
               {view.rows.map((row) => (
-                <tr key={row.name} className="h-[1.8em]">
+                <tr key={row.name} className="h-[1.6em]">
                   <th className="pr-[0.6em] text-left font-normal">
                     {row.name}
                   </th>
@@ -519,19 +691,45 @@ const Screen = ({
               ))}
             </tbody>
           </table>
-          <p className="text-muted-foreground flex flex-wrap gap-x-[1.2em] text-[0.6em]">
+          <p className="text-muted-foreground flex flex-wrap gap-x-[1em] text-[0.55em]">
             <span>{W.legendLevel}</span>
+            <span>1–3: {W.cell.notKnown}</span>
             <span>↓ {W.cell.decayed}</span>
+            {view.recheck && <span>~ {W.cell.faded}</span>}
             <span>○ {W.cell.silent}</span>
             <span>┆ {W.cell.unmet}</span>
           </p>
-          <Field label={W.role}>
-            <p className="text-[0.9em] font-semibold">{role.fits}</p>
-            <p className="text-[0.75em]">{W.roleNext(role.next, role.gap)}</p>
-            <p className="text-muted-foreground text-[0.6em]">
-              {W.roleSource(role.ladder, role.source)}
-            </p>
-          </Field>
+          <div className="grid grid-cols-[3fr_2fr] gap-[1.5em]">
+            <div className="space-y-[0.4em]">
+              {view.notes.length > 0 && (
+                <ul className="text-[0.6em]">
+                  {view.notes.map((note) => (
+                    <li key={`${note.kind}-${note.name}`}>
+                      {note.kind === "decayed"
+                        ? W.noteDecayed(note.name, note.week, note.below)
+                        : W.noteFaded(note.name, note.since)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {view.recheck && (
+                <p className="text-muted-foreground text-[0.55em]">
+                  {W.recheckSource(
+                    LEITNER.name,
+                    LEITNER.source,
+                    LEITNER.weeks.join(", ")
+                  )}
+                </p>
+              )}
+            </div>
+            <Field label={W.role}>
+              <p className="text-[0.8em] font-semibold">{role.fits}</p>
+              <p className="text-[0.65em]">{W.roleNext(role.next, role.gap)}</p>
+              <p className="text-muted-foreground text-[0.6em]">
+                {W.roleSource(role.ladder, role.source)}
+              </p>
+            </Field>
+          </div>
         </Call>
       )
     }
@@ -557,7 +755,7 @@ const Screen = ({
   }
 }
 
-export const EssayStagePage = ({
+const RustEssayStage = ({
   week,
   scene,
   record = false,
@@ -576,6 +774,7 @@ export const EssayStagePage = ({
       failed: read.isError,
     },
     sample: SAMPLE,
+    parse: parseEssay,
   })
   if (state.kind === "waiting") return null
   if (state.kind === "none")
@@ -586,6 +785,34 @@ export const EssayStagePage = ({
       />
     )
   const { essay, voicing } = state
+  return (
+    <EssaySceneFrame
+      essay={essay}
+      scene={scene}
+      voicing={voicing}
+      record={record}
+      onScene={onScene}
+    />
+  )
+}
+
+export type EssaySceneFrameProps = {
+  essay: Essay
+  /** The scene's id; the essay's first scene when it has none by that id. */
+  scene?: string | undefined
+  voicing?: Voicing
+  record: boolean
+  onScene?: ((scene: string) => void) | undefined
+}
+
+/** One scene of `essay` in the stage's frame. */
+export const EssaySceneFrame = ({
+  essay,
+  scene,
+  voicing = "owner",
+  record,
+  onScene,
+}: EssaySceneFrameProps): JSX.Element => {
   const at = essayAt(essay, scene, voicing)
   const format = essayFormat(essay.template.version)
   return (
@@ -615,7 +842,31 @@ export const EssayStagePage = ({
             }
       }
     >
-      <Screen essay={essay} at={at} />
+      <CastProvider cast={format.shape?.cast}>
+        <Screen essay={essay} at={at} />
+      </CastProvider>
     </StageFrame>
   )
 }
+
+/**
+ * The stage of the essay `kind` names: the interview essay's, a cards
+ * essay's spoken card (`spoken`, WALK7: `week` names the card), or the Rust
+ * Rounds essay's.
+ */
+export const EssayStagePage = ({
+  kind,
+  ...props
+}: EssayStageProps): JSX.Element | null =>
+  kind === "interview" ? (
+    <InterviewEssayStagePage {...props} />
+  ) : kind === "spoken" ? (
+    <SpokenCardStagePage
+      card={props.week}
+      scene={props.scene}
+      record={props.record}
+      onScene={props.onScene}
+    />
+  ) : (
+    <RustEssayStage {...props} />
+  )

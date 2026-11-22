@@ -1,0 +1,17 @@
+{
+  "id": "C788",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": ["packages/video-render"],
+  "chose": "Reach for cleaning any recorded video (remove static, hiss and street noise, keep the voice, lay the music bed under the pauses): use, rung 1. Auphonic's multitrack production does the whole story in one pass: noise and hum reduction on the voice track, the music bed as a second track set to Duck so it drops under speech, levelling, and the video merged back with its picture untouched. Adobe Podcast Enhance Speech (free tier) is the stronger voice cleanup for an audio track alone. The story is generic: nothing in it is peculiar to the owner's record. No tool has met real use yet, so nothing in render is built. It needs an Auphonic account and sends the footage to a third party, so it is also an ask (#3308). A later reach descends only on a pain point that use leaves, or on the owner keeping the footage on home. If it does, the candidate to fold in is DeepFilterNet, self-hosted on home. Speech found by Silero VAD would then drive planBed's lowering, which today follows the take windows of the cut list (duckExpr, deliberately no detector), so that is a design change: about 200 to 300 lines in video-render.",
+  "options": [
+    "Auphonic multitrack, as is: denoise, the music bed ducked under speech, levelling",
+    "Adobe Podcast Enhance Speech, as is",
+    "Descript Studio Sound, as is",
+    "fold in: DeepFilterNet or ffmpeg arnndn on home, with Silero VAD and the existing music bed",
+    "build: a denoiser of our own"
+  ],
+  "gray": "The owner asked whether to use a service or fold a pipeline into render; the music bed and the lowering under speech already exist, so building looked cheap. C787 says a generic story stops at use until real use leaves a pain point.",
+  "undo": "A new call that moves this one, naming the pain point real use left, then the fold-in.",
+  "refs": ["#3308", "#3197"]
+}

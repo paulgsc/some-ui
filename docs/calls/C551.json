@@ -1,0 +1,15 @@
+{
+  "id": "C551",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/snips/index.ts", "some-ui:docs/snips.md"],
+  "chose": "A snip's id is <surface>:<path>:<viewport>:<appVersion>:<first 12 hex of the PNG's SHA-256>, and the app version is www's package version for both surfaces.",
+  "options": [
+    "surface, path, viewport, version and a 12-digit content hash",
+    "a content hash alone",
+    "a run-scoped serial number"
+  ],
+  "gray": "Essays will name ids by hand, so they must be readable and stable across runs; the APK's own versionName is per-run, while www's version is what both builds carry.",
+  "undo": "Change snipId and the id grammar in docs/snips.md; home re-files by the new ids.",
+  "refs": ["#3114", "#3115"]
+}

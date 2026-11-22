@@ -4,8 +4,9 @@
  * one `GET` each time the page is opened or dragged down, through the
  * link's `keep` (LA8), sending nothing of the phone's but the kind asked
  * about. Home answers each kind's count, room, how many were set aside and
- * since when, what reached it each week, and with `of` that kind's newest:
- * descriptions only, never audio or what was said. On the overview the
+ * since when, what reached it each week, and with `of` that kind's newest,
+ * each with how long it is and the first words home heard in it, once heard
+ * (MD8): never audio, which a Play asks for (`./voice-audio`). On the overview the
  * same run also asks how much home keeps for good of the record
  * (paulgsc/server `GET /subjects/me/kept`, `storage_repo::kept`; MD2b,
  * #2519): per kind, how many and since when, sending nothing. What the page
@@ -16,7 +17,8 @@ import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { VoiceOut } from "@/lib/voice-home/model"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { answered } from "./while-busy"
 
 /**
  * The read of what home keeps, with `of`'s newest when one is asked, and
@@ -54,18 +56,14 @@ export async function askKept(
   of: VoiceOut["of"] | null,
   note: string | null = null
 ): Promise<KeptAsked> {
-  if (!paired()) return { kind: "unpaired" }
-  try {
-    const outcome = await homeLink().keep(async (send) => ({
-      answer: await send("GET", keptPath(of, note)),
-      record: of === null ? await askRecord(send) : null,
-    }))
-    return outcome?.kind === "done"
-      ? { kind: "answered", ...outcome.value }
-      : { kind: "busy" }
-  } catch {
-    return { kind: "unreachable" }
-  }
+  return answered(
+    () =>
+      homeLink().keep(async (send) => ({
+        answer: await send("GET", keptPath(of, note)),
+        record: of === null ? await askRecord(send) : null,
+      })),
+    (value): KeptAsked => ({ kind: "answered", ...value })
+  )
 }
 
 /** The record's count, whose failure leaves the recordings' answer standing. */

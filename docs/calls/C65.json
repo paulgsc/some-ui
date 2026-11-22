@@ -1,0 +1,14 @@
+{
+  "id": "C65",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+  "chose": "A Rust Rounds essay's script rides the mailbox's brief folder, beside the weeks of Rust Rounds, rather than a rust-essay folder of its own.",
+  "options": [
+    "a rust-essay folder of its own",
+    "the brief folder, as the weeks of Rust Rounds do"
+  ],
+  "gray": "The owner's answer on #2684 says the routine puts the script in a mailbox folder named rust-essay. Its point was that the script stays on home and in the mailbox. A folder of its own adds a listing to every pass home makes, which MI6 counts, while brief is listed anyway, and the home side of RR16 is built to read brief.",
+  "undo": "Add a rust-essay folder to FOLDERS, the routine's put and home's get in ROLES, and paulgsc/server's pass::READS, then move the essay kind out of brief's also.",
+  "refs": ["#2684", "#2691", "#2833"]
+}

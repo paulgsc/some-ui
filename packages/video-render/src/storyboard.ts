@@ -17,7 +17,7 @@ import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { itemOfRepeated, sceneId, showId, words } from "./format"
 import type { Format } from "./format"
-import { BRAND_MS, unsaidMs } from "./stills"
+import { BRAND_MS, heldMs, unsaidMs } from "./stills"
 import { ms } from "./vocabulary"
 
 export const STORYBOARD_SCHEMA = "some-ui.storyboard/1"
@@ -136,6 +136,8 @@ export type BoardScene =
        * the format's hold.
        */
       readonly said?: string
+      /** How long it holds with nothing said, when not its words' (a page after the first). */
+      readonly holdMs?: number
     }
 
 /**
@@ -148,6 +150,7 @@ export function boardSceneOf(scene: {
   readonly id: string
   readonly said: string
   readonly of?: string
+  readonly holdMs?: number
 }): BoardScene {
   if (scene.section === "chapter" && scene.of !== undefined)
     return { kind: "chapter", id: scene.id, of: scene.of, said: scene.said }
@@ -162,6 +165,7 @@ export function boardSceneOf(scene: {
     id: scene.id,
     scene: scene.section,
     said: scene.said,
+    ...(scene.holdMs === undefined ? {} : { holdMs: scene.holdMs }),
   }
 }
 
@@ -186,7 +190,10 @@ function frameOf(format: Format, scene: BoardScene): StoryFrame {
       ...(item === undefined ? {} : { item }),
       by: "fill",
       said: "",
-      ms: scene.said === undefined ? of.holdMs : unsaidMs(scene.said),
+      ms:
+        scene.said === undefined
+          ? of.holdMs
+          : heldMs({ said: scene.said, holdMs: scene.holdMs }),
     }
   }
   if (scene.kind === "chapter") {

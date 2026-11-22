@@ -3,9 +3,14 @@
  * grows, read only, as the prototype agreed (boards 2, 3 and 8 of
  * https://claude.ai/artifact/5BvL59CmrjzxQ2JbUj15PN). Three figures, three
  * charts (`./device-my-data-charts`), each kind of recording with how many
- * and since when, a kind's list, newest first, playable where its audio is
- * on this phone, and what is kept for good, with how many home keeps of
+ * and since when, a kind's list, newest first, and what is kept for good, with how many home keeps of
  * each and since when (MD2b, #2519).
+ *
+ * Each row of a kind's list says what it is (MD8): when it was recorded, how
+ * long it is and the first words home heard, once home heard it, and
+ * plays (`lib/my-data/runtime`). Away from home, home's rows aren't listed
+ * (home's line says it couldn't be reached). A Play whose audio didn't come
+ * is said in a `Notice` over the list (HS1).
  *
  * Deleting (MD3, #2477) is offered on a kind's list only for a recording
  * home marks deletable (`lib/my-data`'s `offersDelete`): "Delete…" on its
@@ -21,13 +26,13 @@
  */
 import type { JSX } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { formatSize } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { cn, formatSize } from "@some-ui/core-utils"
+import { Button, CardLink, CardLinkBody, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
   Check,
   ChevronLeft,
-  ChevronRight,
+  LoaderCircle,
   Lock,
   Pause,
   Play,
@@ -36,7 +41,6 @@ import {
 import { hasAudience } from "@/lib/build-profile"
 import type {
   DeletableKind,
-  DeleteSheet,
   KindItem,
   MyDataState,
   Of,
@@ -44,12 +48,10 @@ import type {
   ReceiptsState,
 } from "@/lib/my-data"
 import {
-  isDeletableKind,
   isKind,
   kindOf,
   offersDelete,
   overviewOf,
-  phoneDeleting,
   phoneMyData,
   phoneReceipts,
 } from "@/lib/my-data"
@@ -63,9 +65,12 @@ import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   CALL_DELETING,
   DELETING,
+  heardLine,
   homeLine,
   itemLine,
   itemName,
+  itemWent,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
   keptNote,
@@ -78,7 +83,8 @@ import {
   RECEIPTS,
   receiptsLine,
   unreadLine,
-  WHERE_WORDS,
+  wentAtClose,
+  WORD_SETS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -89,7 +95,7 @@ import {
   WHERE_FILL,
   WhereBar,
 } from "./device-my-data-charts"
-import { DeleteSheetView } from "./device-my-data-delete"
+import { DeleteSheetView, useDeleting } from "./device-my-data-delete"
 
 /**
  * What the page says of how its reading went (home asked, home silent, a
@@ -147,20 +153,14 @@ const KindRow = ({ kind }: { kind: KindLineOf }): JSX.Element => {
       <span className="text-muted-foreground text-xs tabular-nums">
         {formatSize(kind.bytes)}
       </span>
-      <ChevronRight
-        className="text-muted-foreground size-4 shrink-0"
-        aria-hidden
-      />
     </>
   )
   return hasAudience("apk") ? (
-    <Link
-      to="/settings/data/$kind"
-      params={{ kind: kind.of }}
-      className={`hover:bg-accent ${ROW}`}
-    >
-      {content}
-    </Link>
+    <CardLink asChild className="min-h-12 px-4 py-2">
+      <Link to="/settings/data/$kind" params={{ kind: kind.of }}>
+        {content}
+      </Link>
+    </CardLink>
   ) : (
     <div className={ROW}>{content}</div>
   )
@@ -259,7 +259,14 @@ export const MyDataOverview = ({
         {overview.kinds.length === 0 ? (
           <p className="text-muted-foreground text-sm">{MY_DATA.none}</p>
         ) : (
-          <ul className="bg-card divide-y rounded-xl border">
+          <ul
+            className={
+              // Each kind opens its list: a stack of card links (C647).
+              hasAudience("apk")
+                ? "flex flex-col gap-2"
+                : "bg-card divide-y rounded-xl border"
+            }
+          >
             {overview.kinds.map((kind) => (
               <li key={kind.of}>
                 <KindRow kind={kind} />
@@ -273,6 +280,11 @@ export const MyDataOverview = ({
         to="/settings/data/calls"
         title={CALL_DELETING.row}
         line={CALL_DELETING.rowLine}
+      />
+      <PageRow
+        to="/settings/data/word-sets"
+        title={WORD_SETS.row}
+        line={WORD_SETS.rowLine}
       />
       <PageRow
         to="/settings/data/deleted"
@@ -296,17 +308,25 @@ type RowDelete =
 const Item = ({
   item,
   playing,
+  fetching = false,
   onPlay,
   onStop,
   remove = { kind: "none" },
 }: {
   item: KindItem
   playing: boolean
+  /** Its audio is being read, here or from home. */
+  fetching?: boolean
   onPlay: (id: string) => void
   onStop: () => void
   remove?: RowDelete
 }): JSX.Element => {
   const name = itemName(item.at)
+  const heard = heardLine(item.heard, item.where)
+  const playLabel = (): string => {
+    if (!playing) return MY_DATA.kind.play(name)
+    return fetching ? MY_DATA.kind.fetching(name) : MY_DATA.kind.stop(name)
+  }
   return (
     <li className="flex min-h-12 items-center gap-3 px-3 py-2">
       {remove.kind === "select" ? (
@@ -321,37 +341,70 @@ const Item = ({
         >
           {remove.selected ? <Check className="size-4" aria-hidden /> : null}
         </Button>
-      ) : item.playable ? (
+      ) : item.plays === "none" ? (
+        <span className="size-11 shrink-0" aria-hidden />
+      ) : (
         <Button
           variant="outline"
           size="icon"
           className="size-11 shrink-0 rounded-full"
-          aria-label={
-            playing ? MY_DATA.kind.stop(name) : MY_DATA.kind.play(name)
-          }
+          aria-label={playLabel()}
           aria-pressed={playing}
+          aria-busy={playing && fetching}
           onClick={() => (playing ? onStop() : onPlay(item.id))}
         >
-          {playing ? (
+          {!playing ? <Play className="size-4" aria-hidden /> : null}
+          {playing && fetching ? (
+            <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          ) : null}
+          {playing && !fetching ? (
             <Pause className="size-4" aria-hidden />
-          ) : (
-            <Play className="size-4" aria-hidden />
-          )}
+          ) : null}
         </Button>
-      ) : (
-        <span className="size-11 shrink-0" aria-hidden />
       )}
       <span className="min-w-0 flex-1">
-        <span className="block text-sm tabular-nums">
-          {itemLine(item.at, item.bytes)}
-        </span>
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+        {heard === null ? null : (
           <span
-            className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
-            aria-hidden
-          />
-          {WHERE_WORDS[item.where]}
+            className={cn(
+              "line-clamp-2 text-sm break-words",
+              item.heard.kind !== "words" && "text-muted-foreground italic"
+            )}
+          >
+            {heard}
+          </span>
+        )}
+        <span
+          className={cn(
+            "block tabular-nums",
+            heard === null ? "text-sm" : "text-muted-foreground text-xs"
+          )}
+        >
+          {itemLine(item.at, item.durationMs)}
         </span>
+        {item.wentAt === null ? (
+          <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <span
+              className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
+              aria-hidden
+            />
+            {itemWhere(item.where, item.bytes)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground block text-xs">
+            {itemWent(
+              item.wentAt,
+              item.plays === "here",
+              item.where === "aside"
+            )}
+          </span>
+        )}
+        {item.plays === "none" &&
+        item.wentAt === null &&
+        remove.kind !== "select" ? (
+          <span className="text-muted-foreground block text-xs">
+            {MY_DATA.kind.noPlay}
+          </span>
+        ) : null}
       </span>
       {remove.kind === "offer" ? (
         <Button
@@ -371,17 +424,27 @@ const Item = ({
 export const MyDataKind = ({
   view,
   playing,
+  fetching = false,
+  missed = null,
   onPlay,
   onStop,
-  unread = [],
+  unread,
   onDelete,
 }: {
   view: KindView
   playing: string | null
+  /** `playing`'s audio is being read, here or from home. */
+  fetching?: boolean
+  /** The recording whose Play didn't get its audio, until the next Play. */
+  missed?: MyDataState["missed"]
   onPlay: (id: string) => void
   onStop: () => void
-  /** This kind's store, when its recordings on this phone aren't counted yet. */
-  unread?: PhoneRead["unread"]
+  /**
+   * This kind's store, when its recordings on this phone aren't counted yet;
+   * null while this phone's read isn't in, which offers no Studio or
+   * soundbite row for deleting.
+   */
+  unread: PhoneRead["unread"] | null
   /** Opens the delete sheet on `ids`; without it, nothing offers Delete…. */
   onDelete?: (of: DeletableKind, ids: ReadonlyArray<string>) => void
 }): JSX.Element => {
@@ -389,18 +452,17 @@ export const MyDataKind = ({
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const { of } = view
   const offered =
-    onDelete === undefined || !isDeletableKind(of)
+    onDelete === undefined
       ? []
       : view.items.filter((item) => offersDelete(of, item, unread))
   const offers = new Set(offered.map((item) => item.id))
-  const waits =
-    onDelete !== undefined &&
-    offered.length === 0 &&
-    view.items.some((item) => item.deletable) &&
-    unread.some((store) => store === of)
+  const waitsOn =
+    onDelete !== undefined && view.items.some((item) => item.deletable)
+      ? (unread?.find((store) => store === of) ?? null)
+      : null
   const chosen = [...selected].filter((id) => offers.has(id))
   const ask = (ids: ReadonlyArray<string>): void => {
-    if (onDelete !== undefined && isDeletableKind(of)) onDelete(of, ids)
+    if (onDelete !== undefined) onDelete(of, ids)
   }
   const removeOf = (item: KindItem): RowDelete => {
     if (!offers.has(item.id)) return { kind: "none" }
@@ -420,8 +482,20 @@ export const MyDataKind = ({
   return (
     <div className="space-y-4">
       <Status line={homeLine(view.home)} />
-      <Status line={unreadLine(unread)} />
-      {waits ? <Status line={DELETING.waitsOnStudio} /> : null}
+      <Status
+        line={
+          unread === null
+            ? MY_DATA.phoneReading
+            : waitsOn === null
+              ? unreadLine(unread)
+              : DELETING.waitsOn(waitsOn)
+        }
+      />
+      {missed === null ? null : (
+        <Notice key={missed} tone="warning" role="alert" dismissible>
+          {MY_DATA.kind.missed}
+        </Notice>
+      )}
       <p className="text-muted-foreground text-sm">
         {kindLead(view.notes, view.bytes, view.since)}
       </p>
@@ -463,6 +537,7 @@ export const MyDataKind = ({
               key={item.id}
               item={item}
               playing={playing === item.id}
+              fetching={fetching}
               onPlay={onPlay}
               onStop={onStop}
               remove={removeOf(item)}
@@ -514,24 +589,22 @@ const PageRow = ({
   title,
   line,
 }: {
-  to: "/settings/data/calls" | "/settings/data/deleted"
+  to:
+    | "/settings/data/calls"
+    | "/settings/data/deleted"
+    | "/settings/data/word-sets"
   title: string
   line: string
 }): JSX.Element | null =>
   hasAudience("apk") ? (
-    <Link
-      to={to}
-      className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="text-muted-foreground block text-xs">{line}</span>
-      </span>
-      <ChevronRight
-        className="text-muted-foreground size-4 shrink-0"
-        aria-hidden
-      />
-    </Link>
+    <CardLink asChild className="min-h-12 px-4 py-2">
+      <Link to={to}>
+        <CardLinkBody className="gap-0">
+          <span className="text-sm font-medium">{title}</span>
+          <span className="text-muted-foreground text-xs">{line}</span>
+        </CardLinkBody>
+      </Link>
+    </CardLink>
   ) : null
 
 /** A My data page's heading: its title, and the way back to My data. */
@@ -552,19 +625,6 @@ export const MyDataHeading = ({ title }: { title: string }): JSX.Element => (
   </div>
 )
 
-/** The delete sheet's snapshot, and its runtime. */
-function useDeleting(): {
-  sheet: DeleteSheet
-  deleting: ReturnType<typeof phoneDeleting>
-} {
-  const deleting = phoneDeleting()
-  const { sheet } = useSyncExternalStore(
-    deleting.subscribe,
-    deleting.getSnapshot
-  )
-  return { sheet, deleting }
-}
-
 const KindList = ({
   of,
   note,
@@ -582,16 +642,16 @@ const KindList = ({
     state.phone?.notes ?? [],
     new Date()
   )
-  const unread = (state.phone?.unread ?? []).filter((store) => store === of)
+  const unread =
+    state.phone === null
+      ? null
+      : state.phone.unread.filter((store) => store === of)
   // `?note=` opens the sheet on that recording once, when it offers Delete….
   const opened = useRef<string | null>(null)
   const named = view.items.find((item) => item.id === note)
-  const offersNamed =
-    named !== undefined &&
-    isDeletableKind(of) &&
-    offersDelete(of, named, unread)
+  const offersNamed = named !== undefined && offersDelete(of, named, unread)
   useEffect(() => {
-    if (note === undefined || !offersNamed || !isDeletableKind(of)) return
+    if (note === undefined || !offersNamed) return
     if (opened.current === note) return
     opened.current = note
     deleting.ask(of, [note])
@@ -602,6 +662,8 @@ const KindList = ({
         view={view}
         unread={unread}
         playing={state.playing}
+        fetching={state.fetching}
+        missed={state.missed}
         onPlay={data.play}
         onStop={data.stop}
         onDelete={deleting.ask}
@@ -662,11 +724,18 @@ export const MyDataReceipts = ({
                 )}
               </p>
               <p className="text-muted-foreground text-xs">
-                {RECEIPTS.deletedLine(itemName(receipt.deletedAt))}
+                {wentAtClose(receipt)
+                  ? RECEIPTS.closedLine(itemName(receipt.deletedAt))
+                  : RECEIPTS.deletedLine(itemName(receipt.deletedAt))}
               </p>
               <p className="text-muted-foreground text-xs">
                 {RECEIPTS.wentLine(receiptParts(receipt.went))}
               </p>
+              {wentAtClose(receipt) ? (
+                <p className="text-muted-foreground text-xs">
+                  {RECEIPTS.stayedLine(receiptParts(receipt.stayed))}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

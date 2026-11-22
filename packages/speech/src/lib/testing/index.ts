@@ -1,13 +1,6 @@
 export type { AdapterCall, ControllableAdapter } from "./controllable-adapter"
 export { createControllableAdapter } from "./controllable-adapter"
 export type {
-  FakeAudioContext,
-  FakeAudioContextHandle,
-  FakeAudioContextOptions,
-  FakeSourceNode,
-} from "./fake-audio-context"
-export { createFakeAudioContextHandle } from "./fake-audio-context"
-export type {
   FakeNativeEngineHandle,
   FakeNativeEngineOptions,
 } from "./fake-native-engine"
@@ -18,7 +11,5 @@ export type {
   FakeUtterance,
 } from "./fake-speech-synthesis"
 export { createFakeSpeechSynthesis } from "./fake-speech-synthesis"
-export type { PendingFetchCall } from "./pending-fetch"
-export { createPendingFetch } from "./pending-fetch"
 export type { Settlement } from "./settlement"
 export { flushAsync, track } from "./settlement"

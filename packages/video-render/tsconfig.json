@@ -5,6 +5,8 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "noEmit": true,
+    // cli.ts reads `@some-ui/eslint-kit/calls` as source (packages/eslint/tsconfig.json).
+    "rewriteRelativeImportExtensions": true,
     "types": ["node"],
     "rootDir": ".",
     "resolveJsonModule": true,

@@ -83,6 +83,7 @@ const NOTE_OF: ReadonlySet<unknown> = new Set([
   "scene",
   "studio",
   "rust-round",
+  "interview",
 ])
 const INSTANT =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
@@ -149,7 +150,7 @@ function shapeRefusal(
   if (extra === undefined) return null
   if (AUDIO_KEY.test(extra)) return noAudio
   if (DRIVE_KEY.test(extra)) return noDrive
-  return `${extra} is not part of a ${what}`
+  return `${extra} is not part of ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`
 }
 
 /**
@@ -181,7 +182,7 @@ function transcriptRefusal(
     return "the name must carry the note's id"
   }
   if (!NOTE_OF.has(body.of))
-    return "of must be reflection, jobs, scene, studio or rust-round"
+    return "of must be reflection, jobs, scene, studio, rust-round or interview"
   if (typeof body.ref !== "string" || !NOTE_REF.test(body.ref)) {
     return "ref must name what the note belongs to"
   }
@@ -328,6 +329,292 @@ function feedbackRefusal(
     return "take must be the spoken note's take id, or null"
   }
   if (!isInstant(body.writtenAt)) return "writtenAt must be when it was written"
+  return null
+}
+
+/**
+ * The keys of a `some-ui.take-pickup/1` body: a Studio take the owner moved
+ * to ready for pickup, as home files it for the routine (CONVEYOR3,
+ * paulgsc/some-ui#2875). Its labels go; the move's comment stays home
+ * (owner, 2026-11-13). Any other key is refused.
+ */
+const PICKUP_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "note",
+  "ref",
+  "heard",
+  "labels",
+  "readyAt",
+  "seq",
+])
+/** The keys of a `some-ui.take-picked/1` body: the routine's answer to one pickup. */
+const PICKED_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "note",
+  "seq",
+  "issue",
+])
+/** Home's bounds on a take's labels (`conveyor::MAX_LABELS`, `MAX_LABEL_CHARS` in paulgsc/server). */
+const LABELS_MAX = 8
+const LABEL_CHARS_MAX = 32
+// eslint-disable-next-line no-control-regex -- the point is to find control characters
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
+/**
+ * Space at either end, as Rust's `str::trim` takes it (Unicode White_Space,
+ * which leaves out U+FEFF, unlike JavaScript's `trim`): home trims a label so.
+ */
+const EDGE_SPACE = /^\p{White_Space}|\p{White_Space}$/u
+/** `<owner>/<repo>#<n>`, as home's `conveyor::is_issue` reads it. */
+const ISSUE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}#[1-9]\d{0,8}$/
+const NO_AUDIO_TAKE = "a take carries no audio: home keeps the audio"
+const NO_DRIVE_TAKE = "a take names no Drive file: home keeps the audio"
+
+/** A move's number on home: a whole number from 1. */
+function isMoveSeq(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1
+}
+
+/** Labels as home keeps them: at most 8, each 1 to 32 printable characters with no space at either end. */
+function isLabels(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length > LABELS_MAX) return false
+  return value.every(
+    (label) =>
+      typeof label === "string" &&
+      label !== "" &&
+      !EDGE_SPACE.test(label) &&
+      [...label].length <= LABEL_CHARS_MAX &&
+      !CONTROL.test(label)
+  )
+}
+
+/** The note and move a pickup or its answer is named for: `<folder>-<note>-<seq>.json`. */
+function moveNameRefusal(
+  body: Readonly<Record<string, unknown>>,
+  name: string,
+  folder: string
+): string | null {
+  if (typeof body.note !== "string" || !NOTE_ID.test(body.note)) {
+    return "note must be the take's id"
+  }
+  if (!isMoveSeq(body.seq)) {
+    return "seq must be the ready-for-pickup move's number"
+  }
+  if (name !== `${folder}-${body.note}-${String(body.seq)}.json`) {
+    return "the name must carry the take's id and the move's number"
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy": a take ready for pickup is its id, what
+ * it belongs to, what home heard, its labels, when it was moved and that
+ * move's number, and nothing else: no audio, and no comment.
+ */
+function pickupRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    PICKUP_KEYS,
+    NO_AUDIO_TAKE,
+    NO_DRIVE_TAKE,
+    "take ready for pickup"
+  )
+  if (shape !== null) return shape
+  const named = moveNameRefusal(body, name, "pickup")
+  if (named !== null) return named
+  if (typeof body.ref !== "string" || !NOTE_REF.test(body.ref)) {
+    return "ref must name the shot the take belongs to"
+  }
+  if (typeof body.heard !== "string" || body.heard.trim() === "") {
+    return "heard must be what home heard in the take"
+  }
+  if (!isLabels(body.labels)) {
+    return "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end"
+  }
+  if (!isInstant(body.readyAt)) {
+    return "readyAt must be when the take was moved to ready for pickup"
+  }
+  return null
+}
+
+/**
+ * The keys of a `some-ui.snips/1` body: a capture's own `manifest.json`, as
+ * home fetched it with its bundle (SNIPS2's fourth step, paulgsc/some-ui#3116;
+ * the bundle's contract is `docs/snips.md` at the repo's root). Any other is
+ * refused.
+ */
+const SNIPS_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "appVersion",
+  "commit",
+  "run",
+  "frozenAt",
+  "data",
+  "snips",
+  "unreached",
+])
+/** The keys of one snip's record (`SnipRecordSchema` in `@some-ui/video-render`). */
+const SNIP_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "surface",
+  "build",
+  "route",
+  "path",
+  "viewport",
+  "width",
+  "height",
+  "scale",
+  "regions",
+  "appVersion",
+  "module",
+  "shows",
+  "description",
+  "image",
+  "recording",
+])
+/** The keys of a snip's file: its name in the bundle, kind, size and SHA-256, never its bytes. */
+const SNIP_FILE_KEYS: ReadonlySet<string> = new Set([
+  "name",
+  "kind",
+  "bytes",
+  "sha256",
+])
+/** A snip's picture is a PNG; its recording, where the screen moved, an `mp4` or `webm`. */
+const SNIP_FILE_KINDS = {
+  image: new Set<unknown>(["png"]),
+  recording: new Set<unknown>(["mp4", "webm"]),
+} as const
+/** A key that names a picture's bytes, where any level of a snip list has one too many. */
+const PICTURE_KEY = /image|picture|png|pixel|frame|audio|bytes|base64|blob/i
+/** The capture's run, as its manifest names it: its id ends the address. */
+const RUN =
+  /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/runs\/([1-9]\d{0,19})$/
+/** A capture's commit: its 40 hex digits, as the bundle's name carries them. */
+const COMMIT = /^[0-9a-f]{40}$/
+const NO_PICTURE = "a snip list carries no picture: a capture makes it again"
+const NO_DRIVE_SNIP = "a snip list names no Drive file"
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/** Why one snip's file (`image` or `recording`) is refused, or `null`. */
+function snipFileRefusal(
+  file: unknown,
+  what: "image" | "recording"
+): string | null {
+  if (!isPlainObject(file))
+    return `${what} must be the file's name, kind, size and SHA-256`
+  const extra = Object.keys(file).find((key) => !SNIP_FILE_KEYS.has(key))
+  if (extra !== undefined) {
+    if (PICTURE_KEY.test(extra) || AUDIO_KEY.test(extra)) return NO_PICTURE
+    return `${extra} is not part of a snip's file: only its name, kind, size and SHA-256`
+  }
+  if (typeof file.name !== "string" || file.name === "")
+    return `${what} must name its file`
+  if (!SNIP_FILE_KINDS[what].has(file.kind))
+    return what === "image"
+      ? "image must be a png"
+      : "recording must be an mp4 or webm"
+  if (
+    typeof file.bytes !== "number" ||
+    !Number.isSafeInteger(file.bytes) ||
+    file.bytes < 1
+  ) {
+    return `${what} must say its size in bytes`
+  }
+  if (typeof file.sha256 !== "string" || !SHA256_HEX.test(file.sha256)) {
+    return `${what} must carry its SHA-256, in lower-case hex`
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy": a snip list is the capture's manifest,
+ * named for its commit and run, every record its own keys and each file
+ * by its name, size and hash, never its picture (owner, 2026-11-17, #3114: "the routine never
+ * sees images, only metadata").
+ */
+function snipsRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  if (
+    Object.keys(body).some(
+      (key) => !SNIPS_KEYS.has(key) && PICTURE_KEY.test(key)
+    )
+  )
+    return NO_PICTURE
+  const shape = shapeRefusal(
+    body,
+    text,
+    SNIPS_KEYS,
+    NO_PICTURE,
+    NO_DRIVE_SNIP,
+    "snip list"
+  )
+  if (shape !== null) return shape
+  if (typeof body.commit !== "string" || !COMMIT.test(body.commit)) {
+    return "commit must be the captured commit's 40 hex digits"
+  }
+  const run = typeof body.run === "string" ? RUN.exec(body.run)?.[1] : undefined
+  if (run === undefined) return "run must be the capture's run on GitHub"
+  if (name !== `snips-${body.commit}-${run}.json`)
+    return "the name must carry the commit and the run"
+  if (body.data !== "sample")
+    return "data must be sample: a capture shows sample data only"
+  if (!Array.isArray(body.unreached)) return "unreached must be a list"
+  if (!Array.isArray(body.snips)) return "snips must be a list"
+  const seen = new Set<unknown>()
+  for (const snip of body.snips) {
+    if (!isPlainObject(snip)) return "each snip must be a record"
+    const extra = Object.keys(snip).find((key) => !SNIP_KEYS.has(key))
+    if (extra !== undefined) {
+      if (PICTURE_KEY.test(extra) || AUDIO_KEY.test(extra)) return NO_PICTURE
+      return `${extra} is not part of a snip's record`
+    }
+    if (typeof snip.id !== "string" || snip.id === "")
+      return "each snip must carry its id"
+    if (seen.has(snip.id)) return "each snip is listed once"
+    seen.add(snip.id)
+    const image = snipFileRefusal(snip.image, "image")
+    if (image !== null) return image
+    if (snip.recording !== undefined) {
+      const recording = snipFileRefusal(snip.recording, "recording")
+      if (recording !== null) return recording
+    }
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy": the routine's answer to a pickup is the
+ * take, the move it answers and the issue it filed, and nothing else.
+ */
+function pickedRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    PICKED_KEYS,
+    NO_AUDIO_TAKE,
+    NO_DRIVE_TAKE,
+    "take picked up"
+  )
+  if (shape !== null) return shape
+  const named = moveNameRefusal(body, name, "picked")
+  if (named !== null) return named
+  if (typeof body.issue !== "string" || !ISSUE.test(body.issue)) {
+    return "issue must be the issue it was filed as, <owner>/<repo>#<n>"
+  }
   return null
 }
 
@@ -532,8 +819,8 @@ const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
 ])
 /** The keys of each week the call index lists; any other is refused. */
 const HELD_WEEK_KEYS: ReadonlySet<string> = new Set(["from", "to", "sha256"])
-/** The keys of a `some-ui.routine-index/1` body for the Rust Rounds routine; any other is refused. */
-const RUST_INDEX_KEYS: ReadonlySet<string> = new Set([
+/** The keys of a `some-ui.routine-index/1` body for a weekly routine (Rust Rounds, the interview week); any other is refused. */
+const WEEKLY_INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
   "routine",
   "asOf",
@@ -650,17 +937,21 @@ function pastedTexts(body: Readonly<Record<string, unknown>>): Array<string> {
   })
 }
 
+/** `lists` said as a sentence names them: "a and b", "a, b and c". */
+const listed = (lists: ReadonlyArray<string>): string =>
+  lists.length < 2
+    ? lists.join("")
+    : `${lists.slice(0, -1).join(", ")} and ${lists.at(-1) ?? ""}`
+
 /**
- * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
- * the newest home holds, each as home's record of it
- * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
- * each essay from the final record, never a draft. A pasted error is the
- * owner's own text, and a linker's symbol can run past 256 base64-like
- * characters, so the scan for encoded bytes leaves each paste's text out
- * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
- * home's own length.
+ * What a weekly routine's index (Rust Rounds', the interview week's) holds
+ * of each week, as home's record of it: a final week, named once by its id,
+ * whose `lists` are lists. Why not, or `null`.
  */
-const rustShape: IndexShape = (body) => {
+function finalWeeksRefusal(
+  body: Readonly<Record<string, unknown>>,
+  lists: ReadonlyArray<string>
+): string | null {
   const asOf = asOfRefusal(body)
   if (asOf !== null) return asOf
   const list = shapeOf([], ["weeks"], body)
@@ -681,10 +972,36 @@ const rustShape: IndexShape = (body) => {
     ) {
       return "each week's send must be its final, or null"
     }
-    if (!Array.isArray(week.tickets) || !Array.isArray(week.pastes)) {
-      return "each week's tickets and pastes must be lists"
+    if (!lists.every((key) => Array.isArray(week[key]))) {
+      return `each week's ${listed(lists)} must be lists`
     }
   }
+  return null
+}
+
+/**
+ * The interview week's index (IW4, paulgsc/some-ui#2935): every final week
+ * among the newest home holds, each as home's record of it (paulgsc/server
+ * `GET /interview-weeks/:id/record`), so the essay routine (IW6) writes from
+ * the final record, never a draft. It holds no text the owner typed, so the
+ * whole body is scanned for audio and Drive links.
+ */
+const interviewShape: IndexShape = (body) =>
+  finalWeeksRefusal(body, ["questions", "cards", "unanswered", "unread"])
+
+/**
+ * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
+ * the newest home holds, each as home's record of it
+ * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
+ * each essay from the final record, never a draft. A pasted error is the
+ * owner's own text, and a linker's symbol can run past 256 base64-like
+ * characters, so the scan for encoded bytes leaves each paste's text out
+ * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
+ * home's own length.
+ */
+const rustShape: IndexShape = (body) => {
+  const weeks = finalWeeksRefusal(body, ["tickets", "pastes"])
+  if (weeks !== null) return weeks
   for (const text of pastedTexts(body)) {
     // Home counts characters, not UTF-16 units (`chars().count()`).
     if ([...text].length > PASTE_MAX_CHARS) {
@@ -729,7 +1046,8 @@ const INDEX_ROUTINES: ReadonlyMap<
   ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
   ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
   ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
-  ["rust", { keys: RUST_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
+  ["rust", { keys: WEEKLY_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
+  ["interview", { keys: WEEKLY_INDEX_KEYS, shape: interviewShape }],
 ])
 
 /**
@@ -781,24 +1099,84 @@ function rustWeekRefusal(
     : "the name must carry the week's id"
 }
 
+/** IW1's id for a question or card (paulgsc/some-ui#2935): a kebab slug, at most 64 characters. */
+const TAKE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const TAKE_ID_MAX = 64
+
 /**
- * A Rust Rounds essay's script, named for the week it answers, and `-r2` on
- * for a correction (`some-ui.rust-essay/1`'s `week.id`, `EssaySchema` in
- * `@some-ui/video-render`).
+ * The ids of `list`'s objects, as home will hold a take's ref to them: each
+ * a slug, once each, and never `reserved`. Why not, or `null`.
  */
-function rustEssayRefusal(
+function takeIdsRefusal(
+  list: unknown,
+  what: "question" | "card",
+  reserved: string | null
+): string | null {
+  if (!Array.isArray(list)) return `${what}s must be a list`
+  const seen = new Set<unknown>()
+  for (const item of list.values()) {
+    const id: unknown = isRecord(item) ? item.id : undefined
+    if (
+      typeof id !== "string" ||
+      id.length > TAKE_ID_MAX ||
+      !TAKE_ID.test(id)
+    ) {
+      return `each ${what}'s id must be a kebab slug of at most ${TAKE_ID_MAX} characters`
+    }
+    if (id === reserved) return `no ${what} may be named ${reserved}`
+    if (seen.has(id)) return `each ${what}'s id is used once`
+    seen.add(id)
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy". A week of mock interview the interview
+ * week's routine writes (IW4, paulgsc/some-ui#2935), named for its id. Home
+ * takes an interview take only by IW1's refs, `<week>:<question>` and
+ * `<week>:read:<card>`, so the Worker holds the ids those refs name; the
+ * routine holds the rest of the format (`readWeek` in
+ * `@some-ui/interview-week`) before it puts one.
+ */
+function interviewWeekRefusal(
   body: Readonly<Record<string, unknown>>,
   _text: string,
   name: string
 ): string | null {
-  const week = isRecord(body.week) ? body.week.id : undefined
-  if (typeof week !== "string" || !WEEK_ID.test(week)) {
-    return "week.id must be the week's, like 2026-w46"
+  if (typeof body.id !== "string" || !WEEK_ID.test(body.id)) {
+    return "id must be the week's, like 2026-w47"
   }
-  return name.replace(/(-r\d+)?\.json$/, "") === `rust-essay-${week}`
-    ? null
-    : "the name must carry the week's id"
+  if (name !== `interview-week-${body.id}.json`) {
+    return "the name must carry the week's id"
+  }
+  return (
+    takeIdsRefusal(body.questions, "question", "read") ??
+    takeIdsRefusal(body.cards, "card", null)
+  )
 }
+
+/**
+ * An essay's script, named `<kind>-<week>.json` for the week it answers, and
+ * `-r2` on for a correction: a Rust Rounds essay's (`rust-essay`,
+ * `some-ui.rust-essay/1`) or an interview essay's (`interview-essay`,
+ * `some-ui.interview-essay/1`, IW6), each by its `week.id` (`EssaySchema` and
+ * `InterviewEssaySchema` in `@some-ui/video-render`).
+ */
+const essayRefusal =
+  (kind: string) =>
+  (
+    body: Readonly<Record<string, unknown>>,
+    _text: string,
+    name: string
+  ): string | null => {
+    const week = isRecord(body.week) ? body.week.id : undefined
+    if (typeof week !== "string" || !WEEK_ID.test(week)) {
+      return "week.id must be the week's, like 2026-w46"
+    }
+    return name.replace(/(-r\d+)?\.json$/, "") === `${kind}-${week}`
+      ? null
+      : "the name must carry the week's id"
+  }
 
 /** `WEEK_ID` in `packages/ui/rust-rounds/src/lib/formats/week.ts`, which this Worker cannot import. */
 const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
@@ -843,12 +1221,38 @@ function sharedDay(name: string): string | null {
   return null
 }
 
-/** What a name in a folder must carry: its schema, and any deeper check. */
-type FolderRules = {
+/**
+ * What a name in a folder must carry: a JSON file's schema and any deeper
+ * check (`JsonRules`), or a picture's type (`PictureRules`). The two are the
+ * family a folder is a case of; nothing else reaches `bodyOf`.
+ */
+type FolderRules = JsonRules | PictureRules
+
+/**
+ * A picture of one of home's screens for the public site (C1071): a PNG
+ * still or a silent MP4 clip, checked by its type and its first bytes. The
+ * folder holds no record, so a picture carries no schema (README, "The site's
+ * pictures").
+ */
+type PictureRules = {
+  readonly folder: Folder
+  /** Its kind and stamp; the extension fixes its type. */
+  readonly name: RegExp
+  readonly picture: PictureType
+  readonly also?: ReadonlyArray<FolderRules>
+  readonly backfill?: undefined
+}
+
+type PictureType = "image/png" | "video/mp4"
+
+/** A JSON file, under its schema. */
+type JsonRules = {
+  readonly picture?: undefined
   readonly folder: Folder
   /** Audio files match none, on purpose: the mailbox carries text. */
   readonly name: RegExp
-  readonly schema: string
+  /** The schema a body carries; one of several where a format kept its earlier version readable. */
+  readonly schema: string | readonly [string, ...Array<string>]
   /**
    * Checks deeper than the schema, for a folder whose shape the mailbox
    * itself must hold: why the body is refused, or `null`.
@@ -914,12 +1318,24 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         refuses: driveTakesRefusal,
       },
       // A week of Rust Rounds the Monday routine writes, for home to keep
-      // and record its programs (RR12, paulgsc/some-ui#2687).
+      // and record its programs (RR12, paulgsc/some-ui#2687). The second
+      // version carries each ticket's forks and academy (RR25, RR29); home
+      // reads it from paulgsc/server#1001.
       {
         folder: "brief",
         name: /^rust-week-\d{4}-w\d{2}\.json$/,
-        schema: "some-ui.rust-week/1",
+        schema: ["some-ui.rust-week/2", "some-ui.rust-week/1"],
         refuses: rustWeekRefusal,
+      },
+      // A week of mock interview the interview week's routine writes, for
+      // home to keep and serve to the phone (IW4, paulgsc/some-ui#2935).
+      {
+        folder: "brief",
+        name: /^interview-week-\d{4}-w\d{2}\.json$/,
+        // The second version carries each question's ready answer (IW8,
+        // paulgsc/some-ui#3175); the first is the weeks written before it.
+        schema: ["some-ui.interview-week/2", "some-ui.interview-week/1"],
+        refuses: interviewWeekRefusal,
       },
       // The script of the essay that answers a week, for home to keep and
       // render; `-r2` on is a correction (RR16, paulgsc/some-ui#2691; the
@@ -928,7 +1344,15 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         folder: "brief",
         name: /^rust-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
         schema: "some-ui.rust-essay/1",
-        refuses: rustEssayRefusal,
+        refuses: essayRefusal("rust-essay"),
+      },
+      // The script of the interview essay that answers a week, for home to
+      // keep and render, as the Rust essay's (IW6, paulgsc/some-ui#2937).
+      {
+        folder: "brief",
+        name: /^interview-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
+        schema: "some-ui.interview-essay/1",
+        refuses: essayRefusal("interview-essay"),
       },
     ],
   },
@@ -1014,6 +1438,46 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.episode-note/1",
     refuses: feedbackRefusal,
   },
+  {
+    // A Studio take the owner moved to ready for pickup, as home files it,
+    // named for the take's id and that move's number (CONVEYOR3).
+    folder: "pickup",
+    name: /^pickup-[A-Za-z0-9_.:-]{1,64}-[1-9]\d{0,18}\.json$/,
+    schema: "some-ui.take-pickup/1",
+    refuses: pickupRefusal,
+  },
+  {
+    // The routine's answer to a pickup: the issue it filed the take as,
+    // named as the pickup it answers is (CONVEYOR3).
+    folder: "picked",
+    name: /^picked-[A-Za-z0-9_.:-]{1,64}-[1-9]\d{0,18}\.json$/,
+    schema: "some-ui.take-picked/1",
+    refuses: pickedRefusal,
+  },
+  {
+    // A capture's list of snips, its manifest as home fetched it with the
+    // bundle, named for the commit and the run that captured it: records, never a picture (SNIPS2, #3116).
+    folder: "snips",
+    name: /^snips-[0-9a-f]{40}-[1-9]\d{0,19}\.json$/,
+    schema: "some-ui.snips/1",
+    refuses: snipsRefusal,
+  },
+  {
+    // The server card's clip: file_host's own dashboard, as home photographs
+    // it, named for the kind and when home put it (C1071, #3415). Only the
+    // newest of each kind stays (MB5, `VIEWS` in store.ts).
+    folder: "site-assets",
+    name: /^server-\d{8}T\d{9}Z\.mp4$/,
+    picture: "video/mp4",
+    also: [
+      // The cores card's still: the CPU panel's busy against waiting.
+      {
+        folder: "site-assets",
+        name: /^cores-\d{8}T\d{9}Z\.png$/,
+        picture: "image/png",
+      },
+    ],
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -1021,6 +1485,7 @@ type Tokens = {
   readonly routine: string | undefined
   readonly home: string | undefined
   readonly archive: string | undefined
+  readonly pages: string | undefined
 }
 
 type Grant = {
@@ -1058,18 +1523,30 @@ const RECORDS: ReadonlyArray<Folder> = [
   "reflection",
   "prompt",
   "feedback",
+  "pickup",
+  "picked",
 ]
 
-const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
+/**
+ * Every folder: the records, home's index, and `snips`, a capture's list,
+ * which nothing archives or asks back: home keeps no copy of what a capture
+ * can make again (owner, 2026-11-21, #3114; `docs/calls/C946.json`).
+ */
+const ALL: ReadonlyArray<Folder> = [...RECORDS, "index", "snips"]
 
-/** Every record but `reflection`, `prompt` and `feedback`, which the routine never asks back (README, "Who may do what"; MI6). */
+/** Every record but `reflection`, `prompt`, `feedback` and `pickup`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
   (folder) =>
-    folder !== "reflection" && folder !== "prompt" && folder !== "feedback"
+    folder !== "reflection" &&
+    folder !== "prompt" &&
+    folder !== "feedback" &&
+    folder !== "pickup"
 )
 
 /**
- * What home reads: the folders paulgsc/server's `mailbox::pass::READS` lists.
+ * What home reads: the folders paulgsc/server's `mailbox::pass::READS` lists,
+ * and `picked`, which home's half of CONVEYOR3 adds there once this is
+ * deployed (paulgsc/some-ui#2875).
  * A file added to one rings the bell (`RINGS`).
  */
 const HOME_READS: ReadonlyArray<Folder> = [
@@ -1078,6 +1555,7 @@ const HOME_READS: ReadonlyArray<Folder> = [
   "drama",
   "run",
   "leetype",
+  "picked",
 ]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -1086,7 +1564,7 @@ const ROLES: ReadonlyArray<Grant> = [
     role: "routine",
     token: (tokens) => tokens.routine,
     get: ALL,
-    put: ["brief", "scene", "drama", "run", "leetype"],
+    put: ["brief", "scene", "drama", "run", "leetype", "picked"],
     ask: ASKED,
     move: [],
     listen: false,
@@ -1105,6 +1583,9 @@ const ROLES: ReadonlyArray<Grant> = [
       "reflection",
       "prompt",
       "feedback",
+      "pickup",
+      "snips",
+      "site-assets",
     ],
     ask: [],
     move: [],
@@ -1117,6 +1598,17 @@ const ROLES: ReadonlyArray<Grant> = [
     put: [],
     ask: [],
     move: RECORDS,
+    listen: false,
+  },
+  {
+    // The Pages build's Site Assets run (C1071): it reads the site's
+    // pictures and nothing else, and its token lives in GitHub's secrets.
+    role: "pages",
+    token: (tokens) => tokens.pages,
+    get: ["site-assets"],
+    put: [],
+    ask: [],
+    move: [],
     listen: false,
   },
 ]
@@ -1356,8 +1848,7 @@ async function read(
 }
 
 function isJsonType(contentType: string | null): boolean {
-  const mediaType = contentType?.split(";").at(0)?.trim().toLowerCase()
-  return mediaType === "application/json"
+  return mediaTypeOf(contentType) === "application/json"
 }
 
 /** The body's bytes, or `null` as soon as it is past `cap`. */
@@ -1411,7 +1902,96 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-type Body = { readonly bytes: Uint8Array; readonly sha256: string }
+type Body = {
+  readonly bytes: Uint8Array
+  readonly sha256: string
+  readonly contentType: string
+}
+
+/**
+ * The PNG signature, then the first chunk's length (13) and type (`IHDR`).
+ * `pngSize` in `@some-ui/video-render`'s `snip.ts` reads the same header;
+ * the Worker depends on no workspace package (#2112), so it is read here.
+ */
+const PNG_HEAD = [
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44,
+  0x52,
+] as const
+/** The widest or tallest picture a card shows, far above any real one. */
+const PICTURE_SIDE_MAX = 4096
+
+/**
+ * Most bytes one picture may hold, below the folder-wide cap: D1 hands a
+ * body back as an array of byte values, and turning one near 1 MiB back into
+ * bytes may not fit Workers Free's 10 ms of CPU (README, "Limits"). Home
+ * encodes the clip to fit (C1072).
+ */
+const PICTURE_MAX_BYTES = 786_432
+
+function u32(bytes: Uint8Array, at: number): number {
+  return new DataView(bytes.buffer, bytes.byteOffset).getUint32(at)
+}
+
+/** Why a picture's bytes are not the type its name says, or `null`. */
+function pictureRefusal(type: PictureType, bytes: Uint8Array): string | null {
+  switch (type) {
+    case "image/png": {
+      if (
+        bytes.byteLength < 24 ||
+        PNG_HEAD.some((byte, at) => bytes[at] !== byte)
+      ) {
+        return "the body is not a PNG"
+      }
+      const width = u32(bytes, 16)
+      const height = u32(bytes, 20)
+      if (
+        width < 1 ||
+        height < 1 ||
+        width > PICTURE_SIDE_MAX ||
+        height > PICTURE_SIDE_MAX
+      ) {
+        return `a picture is at most ${PICTURE_SIDE_MAX} pixels a side`
+      }
+      return null
+    }
+    case "video/mp4": {
+      // An MP4 opens with its `ftyp` box: a size, then the type.
+      const box = new TextDecoder().decode(bytes.subarray(4, 8))
+      if (bytes.byteLength < 16 || box !== "ftyp") {
+        return "the body is not an MP4"
+      }
+      return null
+    }
+    default: {
+      return unreachable(type)
+    }
+  }
+}
+
+/** The bytes of a put, read up to `cap`, or the refusal. */
+async function cappedBody(
+  request: Request,
+  cap: number
+): Promise<Uint8Array | Response> {
+  // The declared length refuses before a byte is read; the capped read below
+  // covers a body that declares nothing or lies.
+  const declared = request.headers.get("content-length")
+  if (declared !== null && Number(declared) > cap) {
+    return refuse(413, "too_big")
+  }
+  let bytes: Uint8Array | null
+  try {
+    bytes = await readCapped(request.body, cap)
+  } catch {
+    return refuse(422, "the body could not be read")
+  }
+  if (bytes === null) return refuse(413, "too_big")
+  return bytes
+}
+
+function mediaTypeOf(contentType: string | null): string | undefined {
+  return contentType?.split(";").at(0)?.trim().toLowerCase()
+}
 
 /** The body of a put, checked as every put is, or the refusal. */
 async function bodyOf(
@@ -1423,31 +2003,44 @@ async function bodyOf(
   if (kind === null) {
     return refuse(422, "the name does not fit this folder")
   }
+  if (kind.picture !== undefined) {
+    if (mediaTypeOf(request.headers.get("content-type")) !== kind.picture) {
+      return refuse(422, `the content type must be ${kind.picture}`)
+    }
+    const bytes = await cappedBody(request, PICTURE_MAX_BYTES)
+    if (bytes instanceof Response) return bytes
+    const refusal = pictureRefusal(kind.picture, bytes)
+    if (refusal !== null) return refuse(422, refusal)
+    return {
+      bytes,
+      sha256: hex(await sha256(bytes)),
+      contentType: kind.picture,
+    }
+  }
   if (!isJsonType(request.headers.get("content-type"))) {
     return refuse(422, "the content type must be application/json")
   }
-  // The declared length refuses before a byte is read; the capped read below
-  // covers a body that declares nothing or lies.
-  const declared = request.headers.get("content-length")
-  if (declared !== null && Number(declared) > MAX_BODY_BYTES) {
-    return refuse(413, "too_big")
-  }
-  let bytes: Uint8Array | null
-  try {
-    bytes = await readCapped(request.body, MAX_BODY_BYTES)
-  } catch {
-    return refuse(422, "the body could not be read")
-  }
-  if (bytes === null) return refuse(413, "too_big")
+  const bytes = await cappedBody(request, MAX_BODY_BYTES)
+  if (bytes instanceof Response) return bytes
 
   const parsed = parseJson(bytes)
   if (!parsed.ok) return refuse(422, "the body is not JSON")
-  if (!isRecord(parsed.value) || parsed.value.schema !== kind.schema) {
-    return refuse(422, `the body's schema must be ${kind.schema}`)
+  const schemas: ReadonlyArray<string> =
+    typeof kind.schema === "string" ? [kind.schema] : kind.schema
+  if (
+    !isRecord(parsed.value) ||
+    typeof parsed.value.schema !== "string" ||
+    !schemas.includes(parsed.value.schema)
+  ) {
+    return refuse(422, `the body's schema must be ${schemas.join(" or ")}`)
   }
   const refusal = kind.refuses?.(parsed.value, parsed.text, name) ?? null
   if (refusal !== null) return refuse(422, refusal)
-  return { bytes, sha256: hex(await sha256(bytes)) }
+  return {
+    bytes,
+    sha256: hex(await sha256(bytes)),
+    contentType: "application/json",
+  }
 }
 
 async function write(
@@ -1457,19 +2050,24 @@ async function write(
   role: Role,
   deps: Deps
 ): Promise<Response> {
-  // The archive role puts nothing new (ROLES); `serve` routes its puts to `restore`.
-  if (role === "archive") return refuse(403, "forbidden")
+  // The archive role puts nothing new (ROLES); `serve` routes its puts to
+  // `restore`. The pages role puts nothing at all.
+  if (role === "archive" || role === "pages") return refuse(403, "forbidden")
   const body = await bodyOf(request, rules, name)
   if (body instanceof Response) return body
   const result = await deps.store.put(rules.folder, name, {
     ...body,
-    contentType: "application/json",
     putBy: role,
     putAt: deps.now().toISOString(),
   })
   if (result.change === "conflict") return refuse(409, "conflict")
   if (result.change === "superseded") {
-    return refuse(409, "a newer index of this routine is held")
+    return refuse(
+      409,
+      rules.folder === "index"
+        ? "a newer index of this routine is held"
+        : "a newer one of this kind is held"
+    )
   }
   if (result.change === "added" && RINGS.includes(rules.folder)) {
     ring(rules.folder, deps)

@@ -13,10 +13,23 @@
 // Runs on Node's built-in type stripping, like the check:* scripts.
 //   pnpm report:vestiges            candidates: unreached, or stale and drifting
 //   pnpm report:vestiges --all      every non-deployable workspace, scored
+//   pnpm report:vestiges --usage <friction.json>
+//                                   also the usage candidates (#3338): each
+//                                   module the aggregate (some-ui.friction/3,
+//                                   which `motion walkthrough --home` keeps
+//                                   beside its render) shows nobody opening, by
+//                                   the silence rule in
+//                                   packages/engagement/src/lib/silence.ts.
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
+import {
+  MODULE_OPENS_SCHEMA,
+  readModuleOpens,
+  SILENT_WEEKS,
+  silentModules,
+} from "../packages/engagement/src/lib/silence.ts"
 import type {
   CommitFacts,
   WorkspaceFacts,
@@ -139,3 +152,40 @@ for (const r of reports) {
 console.log(
   `[vestiges] ${reports.filter((r) => r.candidate).length} candidate(s)${all ? ` of ${reports.length} workspaces listed` : ""}. Higher is likelier dead; see CLAUDE.md "Vestiges".`
 )
+
+/**
+ * The usage candidates (#3338): modules the build offers that home's
+ * aggregate shows nobody opening. Read from `--usage`, never fetched: a
+ * report, never a gate, like the code candidates above.
+ */
+const usageAt = process.argv.indexOf("--usage")
+const usageFile = usageAt === -1 ? undefined : process.argv[usageAt + 1]
+if (usageFile === undefined) {
+  // eslint-disable-next-line no-console
+  console.log(
+    "[vestiges] usage candidates: none read; pass --usage <a walkthrough's friction.json> to list the modules nobody opens."
+  )
+} else {
+  const usage: unknown = JSON.parse(readFileSync(usageFile, "utf8"))
+  const read = readModuleOpens(usage)
+  if (!read.ok)
+    throw new Error(
+      read.at === -1
+        ? `${usageFile}: not a ${MODULE_OPENS_SCHEMA} aggregate`
+        : `${usageFile}: module ${String(read.at)} isn't one module's opens`
+    )
+  const { modules } = read
+  const silent = silentModules(modules)
+  // eslint-disable-next-line no-console
+  for (const s of silent)
+    console.log(
+      `silent  ${s.pipeline.padEnd(38)} ${s.weeksQuiet === null ? "never opened" : `not opened in ${String(s.weeksQuiet)} weeks`}`
+    )
+  const unmeasured = modules.filter(
+    (m) => m.opened.kind === "not-measured"
+  ).length
+  // eslint-disable-next-line no-console
+  console.log(
+    `[vestiges] ${String(silent.length)} usage candidate(s): quiet ${String(SILENT_WEEKS)} weeks or more; ${String(unmeasured)} module(s) not measured, so never called silent.`
+  )
+}

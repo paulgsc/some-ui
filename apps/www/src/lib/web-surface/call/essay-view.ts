@@ -1,15 +1,16 @@
 import { assertNever } from "@some-ui/core-utils"
 import {
   cellsOf,
+  ESSAY_DECAY_VERSION,
   essayIntro,
   essayScenes,
   isPast,
-  parseEssay,
 } from "@some-ui/video-render"
 import type {
   CellView,
   Essay,
   EssayDive,
+  EssayFork,
   EssayScene,
   EssayTicket,
   Parsed,
@@ -27,6 +28,17 @@ import { ESSAY_WORDS as W } from "./essay-words"
 
 export type EssayView =
   | { readonly section: "brand-in" | "brand-out" | "open" | "next" }
+  /**
+   * The opening conversation (#3269): a question asked, by its place in the
+   * opening (from 1), or the owner's take of its answer, played whole.
+   */
+  | { readonly section: "ask"; readonly n: number; readonly ask: string }
+  | {
+      readonly section: "opening"
+      readonly n: number
+      readonly ask: string
+      readonly transcript: string
+    }
   | {
       readonly section: "intro"
       readonly rows: ReturnType<typeof essayIntro>["rows"]
@@ -38,8 +50,21 @@ export type EssayView =
       readonly ticket?: { readonly n: number; readonly of: number }
     }
   | {
-      readonly section: "question" | "answer" | "best" | "beside"
+      readonly section: "question" | "best" | "beside"
       readonly ticket: EssayTicket
+    }
+  | {
+      readonly section: "fork"
+      readonly ticket: EssayTicket
+      /** The point it is, from 0. */
+      readonly point: number
+      readonly fork: EssayFork
+    }
+  | {
+      readonly section: "answer"
+      readonly ticket: EssayTicket
+      /** For a point answered by a take of its own (RR24), the point, from 0. */
+      readonly point?: number
     }
   | {
       readonly section: "dive"
@@ -56,7 +81,58 @@ export type EssayView =
         readonly name: string
         readonly cells: ReadonlyArray<CellView>
       }>
+      /** The cases the chart's cells can't say alone, decay before fading (`chartNotes`). */
+      readonly notes: ReadonlyArray<ChartNote>
+      /** Whether the chart draws the decay record's recheck (template version 2). */
+      readonly recheck: boolean
     }
+
+/** A case under the chart: a concept that decayed, or may have faded, and the weeks that say so. */
+type ChartNote =
+  | {
+      readonly kind: "decayed"
+      readonly name: string
+      readonly week: string
+      readonly below: string
+    }
+  | { readonly kind: "faded"; readonly name: string; readonly since: string }
+
+/** The most cases said under the chart, so it fits the frame. */
+const CHART_NOTES_MOST = 3
+
+/**
+ * The sentences under the chart: each concept's latest decay, then each
+ * concept's latest run of weeks it may have faded in, at most
+ * `CHART_NOTES_MOST`.
+ */
+function chartNotes(
+  weeks: ReadonlyArray<string>,
+  rows: ReadonlyArray<{
+    readonly name: string
+    readonly cells: ReadonlyArray<CellView>
+  }>
+): Array<ChartNote> {
+  const decayed: Array<ChartNote> = []
+  const faded: Array<ChartNote> = []
+  for (const { name, cells } of rows) {
+    let decay: ChartNote | null = null
+    let fadedFrom = -1
+    for (const [i, cell] of cells.entries()) {
+      if (cell.kind === "level" && cell.decayed !== null)
+        decay = {
+          kind: "decayed",
+          name,
+          week: weeks[i] ?? "",
+          below: cell.decayed,
+        }
+      if (cell.kind === "faded" && cells[i - 1]?.kind !== "faded") fadedFrom = i
+    }
+    if (decay !== null) decayed.push(decay)
+    if (fadedFrom !== -1)
+      faded.push({ kind: "faded", name, since: weeks[fadedFrom] ?? "" })
+  }
+  return [...decayed, ...faded].slice(0, CHART_NOTES_MOST)
+}
 
 export type EssayAt = {
   readonly scenes: ReadonlyArray<EssayScene>
@@ -84,6 +160,20 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
     case "intro": {
       return { section: "intro", rows: essayIntro(essay, voicing).rows }
     }
+    case "ask":
+    case "opening": {
+      const n = scene.exchange ?? 0
+      const exchange = essay.opening?.exchanges.find((e) => e.n === n)
+      if (exchange === undefined) throw new Error(`no opening question ${n}`)
+      return scene.section === "ask"
+        ? { section: "ask", n, ask: exchange.ask }
+        : {
+            section: "opening",
+            n,
+            ask: exchange.ask,
+            transcript: exchange.transcript,
+          }
+    }
     case "chapter": {
       const n = essay.tickets.findIndex((t) => t.id === scene.ticket)
       return {
@@ -93,10 +183,23 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
       }
     }
     case "question":
-    case "answer":
     case "best":
     case "beside": {
       return { section: scene.section, ticket: ticketOf(essay, scene.ticket) }
+    }
+    case "fork": {
+      const ticket = ticketOf(essay, scene.ticket)
+      const point = scene.point ?? 0
+      const fork = ticket.points.at(point)?.fork
+      if (fork === undefined) throw new Error(`no fork ${scene.id}`)
+      return { section: "fork", ticket, point, fork }
+    }
+    case "answer": {
+      return {
+        section: "answer",
+        ticket: ticketOf(essay, scene.ticket),
+        ...(scene.point === undefined ? {} : { point: scene.point }),
+      }
     }
     case "dive": {
       const ticket = ticketOf(essay, scene.ticket)
@@ -112,12 +215,19 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
       }
     }
     case "weeks": {
+      const rows = essay.weeks.concepts.map((concept) => ({
+        name: concept.name,
+        cells: cellsOf(
+          concept.cells,
+          essay.weeks.weeks,
+          essay.template.version
+        ),
+      }))
       return {
         section: "weeks",
-        rows: essay.weeks.concepts.map((concept) => ({
-          name: concept.name,
-          cells: cellsOf(concept.cells),
-        })),
+        rows,
+        notes: chartNotes(essay.weeks.weeks, rows),
+        recheck: essay.template.version >= ESSAY_DECAY_VERSION,
       }
     }
     default: {
@@ -151,19 +261,21 @@ export function essayAt(
   }
 }
 
-/** What the essay's stage draws: an essay, nothing yet, or why it can't. */
-export type EssayStageState =
+/** What an essay's stage draws: an essay, nothing yet, or why it can't. */
+export type EssayStageState<E = Essay> =
   | { readonly kind: "waiting" }
-  | { readonly kind: "show"; readonly essay: Essay; readonly voicing: Voicing }
+  | { readonly kind: "show"; readonly essay: E; readonly voicing: Voicing }
   | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
 
 /**
- * What the stage draws from its read (RR16): with a week named, that week's
- * essay, as read, or why it can't, never the sample in its place, so a
- * recording of a week fails instead of drawing someone else's; with none, or
- * `sample`, the template's sample, voiced as one.
+ * What an essay's stage draws from its read (RR16), for any kind of essay,
+ * read by `parse` and named by `idOf`: with one named, that essay, as read,
+ * or why it can't, never the sample in its place, so a recording fails
+ * instead of drawing someone else's; with none, or `sample`, the template's
+ * sample, voiced as one. A cards essay's spoken card (WALK7) is named by its
+ * card's id; the essays by their week.
  */
-export function essayStageOf(input: {
+export function namedStageOf<E>(input: {
   readonly week: string | undefined
   /** The named essay's file as read, parsed here. */
   readonly read: {
@@ -171,8 +283,16 @@ export function essayStageOf(input: {
     readonly pending: boolean
     readonly failed: boolean
   }
-  readonly sample: Parsed<Essay>
-}): EssayStageState {
+  readonly sample: Parsed<E>
+  readonly parse: (raw: unknown) => Parsed<E>
+  readonly idOf: (essay: E) => string
+  /** Why it draws none, in its own words: an essay's, unless given. */
+  readonly words?: {
+    readonly unread: (name: string) => string
+    readonly other: (asked: string, got: string) => string
+  }
+}): EssayStageState<E> {
+  const words = input.words ?? { unread: W.unread, other: W.otherWeek }
   const { week, read } = input
   if (week === undefined || week === "sample")
     return input.sample.ok
@@ -180,13 +300,18 @@ export function essayStageOf(input: {
       : { kind: "none", problems: input.sample.problems }
   if (read.pending) return { kind: "waiting" }
   if (read.failed || read.data === undefined)
-    return { kind: "none", problems: [W.unread(week)] }
-  const parsed = parseEssay(read.data)
+    return { kind: "none", problems: [words.unread(week)] }
+  const parsed = input.parse(read.data)
   if (!parsed.ok) return { kind: "none", problems: parsed.problems }
-  if (parsed.value.week.id !== week)
-    return {
-      kind: "none",
-      problems: [W.otherWeek(week, parsed.value.week.id)],
-    }
+  const id = input.idOf(parsed.value)
+  if (id !== week) return { kind: "none", problems: [words.other(week, id)] }
   return { kind: "show", essay: parsed.value, voicing: "owner" }
 }
+
+/** `namedStageOf` for an essay named by its week: the Rust Rounds and the interview essay. */
+export const essayStageOf = <
+  E extends { readonly week: { readonly id: string } },
+>(
+  input: Omit<Parameters<typeof namedStageOf<E>>[0], "idOf">
+): EssayStageState<E> =>
+  namedStageOf({ ...input, idOf: (essay) => essay.week.id })

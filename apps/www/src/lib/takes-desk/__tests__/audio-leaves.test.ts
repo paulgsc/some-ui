@@ -191,15 +191,39 @@ describe("a take whose audio is not on this phone plays from home (RR6)", () => 
   })
 })
 
-describe("a note home deleted for good from My data (#2579)", () => {
-  it("lets its audio go on any desk, keeping the take listed and marked first", async () => {
+describe("a note home deleted for good (#2579, HEARD4)", () => {
+  it("lets its audio go on any desk, keeping the take listed and marked deleted first", async () => {
     const { desk, shelf } = await deskOf(["a", "b"], false)
     expect(await desk.letGoDeleted(new Set(["a", "gone"]))).toBe(true)
     expect(await shelf.ids()).toEqual(["b"])
-    expect(desk.kept().map(({ id, onHome }) => [id, onHome ?? false])).toEqual([
-      ["b", false],
-      ["a", true],
+    expect(
+      desk
+        .kept()
+        .map(({ id, onHome, deletedAt }) => [
+          id,
+          onHome ?? false,
+          deletedAt !== undefined,
+        ])
+    ).toEqual([
+      ["b", false, false],
+      ["a", true, true],
     ])
+  })
+
+  it("marks deleted a take whose audio already left once home held it", async () => {
+    const { desk, shelf } = await deskOf(["a"], true)
+    desk.audioFrom(fromHome)
+    await desk.letGo(new Set(["a"]))
+    expect(await shelf.ids()).toEqual([])
+    expect(desk.kept()[0]?.deletedAt).toBeUndefined()
+    const shown = desk.phone().takes
+    expect(await desk.letGoDeleted(new Set(["a"]))).toBe(true)
+    expect(desk.kept()[0]?.deletedAt).toEqual(expect.any(Number))
+    // Its row says it was deleted, kept on neither.
+    expect(shown.getSnapshot()[0]).toMatchObject({
+      kept: null,
+      deleted: expect.any(String),
+    })
   })
   it("says it let nothing go when the phone could not store the mark", async () => {
     const { desk, shelf } = await deskOf(["a"], false)

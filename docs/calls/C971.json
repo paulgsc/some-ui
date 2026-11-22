@@ -1,0 +1,16 @@
+{
+  "id": "C971",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["packages/ui/game-week/src/lib/moments.ts"],
+  "chose": "D15's big moments, the ones shown dimmed when no bite was said about them, are decided per catalog moment in one total table (BIG_MOMENTS, Record<Moment, boolean>): a try (it follows every touchdown), a lead change, a turnover, a big play and an onside kick are big; every other moment, a kick included, is not. A bite covers every moment of the play home matched it to (by play id); a bite home hasn't matched covers none. The game's moment log is one family with \"just happened\": both read the same entry (momentEntryOf), and the phone, not home, decides which entries are big, so home serves the log and no policy.",
+  "options": [
+    "Scores, turnovers, big plays and onside kicks, per moment (chosen): the issue's \"scoring plays, turnovers, big plays\", read off the catalog's closed union so a new moment must be decided here.",
+    "Count a kick as big too: catches field goals, but every punt would show dimmed as a gap.",
+    "Every moment the engine read: the whole game greyed out, so a real gap is lost among third downs and snaps.",
+    "Have home mark which moments are big: puts a phone-screen policy on the server, and a second reading of the log would need a second flag."
+  ],
+  "gray": "Which moments count as a gap worth seeing is a judgement of what the owner wants to have reacted to; the issue names the categories, not the catalog's moments, and field goals fall between them because the catalog's kick moment is also every punt.",
+  "undo": "Flip an entry of BIG_MOMENTS in packages/ui/game-week/src/lib/moments.ts (kick: true to show field goals and punts).",
+  "refs": ["#3039", "#2074"]
+}

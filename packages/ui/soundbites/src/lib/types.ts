@@ -62,4 +62,10 @@ export type Soundbite = {
    * and on one set aside before the page noted when.
    */
   setAsideAt?: string
+  /**
+   * When this phone heard home deleted its recording for good, ISO 8601
+   * (LA19, HEARD4): its audio then left this phone too, and the soundbite
+   * stays listed, saying so. Absent on one never deleted.
+   */
+  deletedAt?: string
 }

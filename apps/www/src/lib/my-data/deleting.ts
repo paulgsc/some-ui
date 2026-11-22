@@ -5,11 +5,14 @@
  * the request and the phone's let-go, and decides which answer is stale;
  * `./words`' `DELETING` says each state; the page reads the snapshot.
  *
- * - **Only from My data, only what home marks deletable.** A recording is
- *   offered for deleting only when home's list marks it `deletable` (its
- *   kind switched on: Studio takes and idea answers) and this phone knows
- *   how to let go of its own copy of that kind (`PHONE_LETS_GO`: Studio's
- *   recordings, once Studio's store is handed in).
+ * - **Only what home deletes, only where the page may offer it.** My data
+ *   offers a recording of any kind for deleting only when home's list marks
+ *   it `deletable` (`./model`) and this phone can let go of its own copy:
+ *   Studio's and the soundbites' copies only once their store is handed in
+ *   (`WAITS_ON_STORE`), known only once this phone's read is in. Takes ›
+ *   Needs your attention (HEARD3) lists only takes home couldn't hear, and
+ *   offers it on each of a kind this build knows (HEARD4, C450; HEARD5,
+ *   C460).
  * - **It asks once,** "Keep it" first: `asked` opens the sheet, `confirmed`
  *   deletes. While it deletes, the sheet can't be closed or asked again.
  * - **Home's answer is final but for silence.** A receipt (`200`) is gone
@@ -20,7 +23,8 @@
  *
  * LA19 (docs/learner-data-authority.md): `deleting` is reached only from
  * `asking` or an `ended` sheet's `retryable` notes, and `asked` only for
- * what `offersDelete` passes.
+ * what `offersDelete` passes on My data, or `isKind` on Needs your
+ * attention.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
@@ -30,27 +34,28 @@ import type { DeleteAsked } from "@/lib/home-link/delete-note"
 
 import type { KindItem, Of } from "./model"
 
-/** The kinds whose copy on this phone it knows how to let go of on a receipt. */
-const PHONE_LETS_GO = ["studio"] as const
-
-/** A kind My data can ever offer to delete. */
-export type DeletableKind = (typeof PHONE_LETS_GO)[number]
-
-export function isDeletableKind(of: Of): of is DeletableKind {
-  return PHONE_LETS_GO.some((kind) => kind === of)
-}
+/** A kind the delete path can ever delete, and its sheet name. */
+export type DeletableKind = Of
 
 /**
- * Whether the page offers "Delete…" on `item` of kind `of`: home marks it
- * deletable, this phone can let go of its own copy of that kind, and that
- * kind's store is handed in this run (`unread` names those that aren't).
+ * The kinds whose copies this phone lets go only through a store a page
+ * hands in: those `lib/home-link/voice-copy`'s `readyToLetGo` waits on (LA19).
+ */
+const WAITS_ON_STORE: ReadonlyArray<Of> = ["studio", "soundbite"]
+
+/**
+ * Whether My data offers "Delete…" on `item` of kind `of`: home marks it
+ * deletable, and this phone can let go of its own copy. `unread` names the
+ * stores not handed in this run, or is null while this phone's read isn't in.
  */
 export function offersDelete(
   of: Of,
   item: KindItem,
-  unread: ReadonlyArray<string>
+  unread: ReadonlyArray<string> | null
 ): boolean {
-  return item.deletable && isDeletableKind(of) && !unread.includes(of)
+  if (!item.deletable) return false
+  if (!WAITS_ON_STORE.includes(of)) return true
+  return unread !== null && !unread.includes(of)
 }
 
 const ReceiptSchema = z.object({
@@ -327,6 +332,8 @@ export type ReceiptsReading =
   | { readonly kind: "reading" }
   | { readonly kind: "unpaired" }
   | { readonly kind: "unreachable" }
+  /** This phone stayed busy with home, so nothing was asked (#3155). */
+  | { readonly kind: "busy" }
   /** Home answered without this read: it runs an older version. */
   | { readonly kind: "older" }
   | {

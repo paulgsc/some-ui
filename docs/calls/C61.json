@@ -1,0 +1,15 @@
+{
+  "id": "C61",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+  "chose": "The reconnect backoff starts over only after a connection has held for 10 minutes, so a bell that connects and drops at once backs off to 5 minutes rather than costing a catch-up pass every second or two.",
+  "options": [
+    "start over after 10 minutes held",
+    "start over on every connect",
+    "start over after 60 seconds held"
+  ],
+  "gray": "server#500 asks for capped exponential backoff and a catch-up pass on every connect, but not when the backoff starts over, which sets MI6's worst case.",
+  "undo": "Change `steady` in Timings::new in bell.rs.",
+  "refs": ["server#500", "server#499", "#2142", "#2833"]
+}

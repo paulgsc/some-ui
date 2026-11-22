@@ -8,6 +8,7 @@ import { listed, ordinal } from "@some-ui/core-utils"
 
 import type { Actor } from "./authorship"
 import type { SceneRecord } from "./authorship-link"
+import type { BadgeState } from "./badge"
 import type { Kind } from "./burn-in"
 import type { ThemeId } from "./captions/theme"
 import type { GameCardTemplate, Quarter } from "./game-card"
@@ -69,6 +70,41 @@ export const WORDS = {
       about:
         "On a template's preview: a plate under the picture saying the video is a preview of sample data.",
     },
+    "status-badge": {
+      name: "Status badge",
+      about:
+        "How fresh a claim on screen is: on main, an open PR, planned, a known gap, or a step only you do. The first time each one appears in a video it spells out what it means, then it shrinks to its sign.",
+    },
+    terminal: {
+      name: "Terminal",
+      about:
+        "A card of commands as a terminal window shows them, a line at a time, each with a badge saying how fresh it is. It shows placeholders, never a value.",
+    },
+    "cheat-sheet": {
+      name: "Cheat sheet",
+      about:
+        "A card that closes a part: a row per task, each with its command, a note and a badge saying how fresh it is, a row at a time.",
+    },
+    legend: {
+      name: "Legend",
+      about:
+        "A card of the five status badges, each beside what it means, a row at a time.",
+    },
+    flow: {
+      name: "Flow",
+      about:
+        "A card of two to five steps joined by arrows, a step at a time: side by side in the wide video, one above the next in the short.",
+    },
+    rule: {
+      name: "Rule",
+      about:
+        "A card saying how far to trust a card as it ages, and what wins when it disagrees with the repo, as a small algebra, a line at a time.",
+    },
+    bars: {
+      name: "Bars",
+      about:
+        "A chart card: a row per thing measured, each a bar stacked from up to four parts, a row at a time, with a legend and an axis.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -105,8 +141,54 @@ export const WORDS = {
       name: "Plate",
       about: "Amber capitals on a dark plate with an amber edge.",
     },
+    "terminal-v1": {
+      name: "Window",
+      about:
+        "A dark window with a title bar; commands in blue, comments muted, in a monospace.",
+    },
+    "sheet-v1": {
+      name: "Rows",
+      about:
+        "A dark panel per row: the task in plain type, its command in blue monospace, a muted note under it.",
+    },
+    "legend-v1": {
+      name: "Key",
+      about:
+        "Each badge's sign in its colour, its meaning beside it in plain type.",
+    },
+    "flow-v1": {
+      name: "Steps",
+      about:
+        "A dark panel per step: its label in plain type, a command in blue monospace, a muted note; drawn arrows between.",
+    },
+    "rule-v1": {
+      name: "Algebra",
+      about:
+        "Three lines in a monospace; the signs for 'and' and 'so' drawn as shapes, the sources in blue.",
+    },
+    "bars-v1": {
+      name: "Stacked bars",
+      about:
+        "Horizontal bars in the chart palette's fixed order, parted by a thin gap of ground, over a faint grid; every word in the card's ink.",
+    },
+    "badge-v1": {
+      name: "Badge",
+      about:
+        "A small sign in its own colour; the first time, a tinted pill opens from it with the words.",
+    },
   } satisfies Record<
-    ThemeId | "v1" | "cells-v1" | "gridiron-v1" | "plate-v1",
+    | ThemeId
+    | "v1"
+    | "cells-v1"
+    | "gridiron-v1"
+    | "plate-v1"
+    | "badge-v1"
+    | "terminal-v1"
+    | "sheet-v1"
+    | "legend-v1"
+    | "rule-v1"
+    | "flow-v1"
+    | "bars-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",
@@ -193,6 +275,24 @@ export const WORDS = {
       more === 0 ? "Lose out" : `Win ${more} more`,
     seed: (seed: number): string => `as high as the ${ordinal(seed)} seed`,
     noWayIn: "No way in is left",
+  },
+  /** What each status badge means, as it spells itself out. */
+  badges: {
+    main: "on main",
+    pr: "open PR · may change",
+    next: "planned, not built",
+    gap: "known gap",
+    you: "a step only you do",
+  } satisfies Record<BadgeState, string>,
+  /** The rule card's fixed words, around its sources (`./rule`). */
+  rule: {
+    today: "what's true today = this card",
+    age: "card age ↑",
+    trust: "trust in",
+    falls: "↓",
+    slowest: "decays slowest",
+    disagree: "if they disagree:",
+    wins: "wins",
   },
   /** What the preview mark says inside a template's preview. */
   previewMark: "Preview, sample data",

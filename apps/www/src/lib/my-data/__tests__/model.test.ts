@@ -42,8 +42,7 @@ const note = (over: Partial<PhoneNote> & { id: string }): PhoneNote => ({
   of: "studio",
   at: "2026-11-01T09:00:00.000Z",
   bytes: 100,
-  held: false,
-  going: true,
+  place: "going",
   ...over,
 })
 
@@ -124,16 +123,22 @@ describe("the overview", () => {
     const view = overviewOf(
       READ,
       [
-        note({ id: "held", held: true, bytes: 999 }),
+        note({ id: "held", place: "home", bytes: 999 }),
         note({ id: "going", bytes: 300 }),
-        note({ id: "only", going: false, of: "lens", bytes: 50 }),
+        note({ id: "only", place: "phone", of: "lens", bytes: 50 }),
       ],
       NOW
     )
     expect(view.homeBytes).toBe(11_000)
     expect(view.phoneBytes).toBe(350)
     expect(view.recordings).toBe(7)
-    expect(view.where).toEqual({ home: 4, aside: 1, going: 1, phone: 1 })
+    expect(view.where).toEqual({
+      home: 4,
+      aside: 1,
+      going: 1,
+      phone: 1,
+      unknown: 0,
+    })
     expect(
       view.kinds.map((k) => [k.of, k.notes, k.bytes, k.phoneOnly])
     ).toEqual([
@@ -159,12 +164,22 @@ describe("the overview", () => {
       "unreachable",
       "older",
     ] as const) {
-      const view = overviewOf({ kind }, [note({ id: "a", going: false })], NOW)
+      const view = overviewOf(
+        { kind },
+        [note({ id: "a", place: "phone" })],
+        NOW
+      )
       expect(view.home).toBe(kind)
       expect(view.homeBytes).toBeNull()
       expect(view.growth).toEqual([])
       expect(view.recordings).toBe(1)
-      expect(view.where).toEqual({ home: 0, aside: 0, going: 0, phone: 1 })
+      expect(view.where).toEqual({
+        home: 0,
+        aside: 0,
+        going: 0,
+        phone: 1,
+        unknown: 0,
+      })
     }
   })
 })
@@ -239,6 +254,24 @@ describe("a kind's list", () => {
           size: 3_000,
           setAsideAt: null,
           deletable: true,
+          durationMs: 42_000,
+          heard: "  first words ",
+          heardCut: true,
+          playsBack: true,
+          recordingLetGoAt: null,
+        },
+        {
+          id: "let-go",
+          recordedAt: "2026-10-15T09:00:00.000Z",
+          storedAt: "2026-10-15T09:01:00.000Z",
+          size: 2_000,
+          setAsideAt: null,
+          deletable: false,
+          durationMs: 3_000,
+          heard: null,
+          heardCut: false,
+          playsBack: true,
+          recordingLetGoAt: null,
         },
         {
           id: "aside",
@@ -247,18 +280,23 @@ describe("a kind's list", () => {
           size: 3_000,
           setAsideAt: "2026-10-11T09:00:00.000Z",
           deletable: false,
+          durationMs: null,
+          heard: null,
+          heardCut: false,
+          playsBack: false,
+          recordingLetGoAt: null,
         },
       ],
     },
   }
 
-  it("lists home's newest and this phone's, newest first, playable where the audio is here", () => {
+  it("lists home's newest and this phone's, newest first, each playing from here, from home or not at all, with what home heard (MD8, MDL1)", () => {
     const view = kindOf(
       "studio",
       "studio",
       listed,
       [
-        note({ id: "on-home", held: true, at: "2026-10-20T09:00:00.000Z" }),
+        note({ id: "on-home", place: "home", at: "2026-10-20T09:00:00.000Z" }),
         note({ id: "going", at: "2026-11-01T09:00:00.000Z" }),
         note({ id: "lens", of: "lens" }),
       ],
@@ -270,28 +308,90 @@ describe("a kind's list", () => {
         at: "2026-11-01T09:00:00.000Z",
         bytes: 100,
         where: "going",
-        playable: true,
+        plays: "here",
+        durationMs: null,
+        heard: { kind: "notYet" },
         deletable: false,
+        wentAt: null,
       },
       {
         id: "on-home",
         at: "2026-10-20T09:00:00.000Z",
         bytes: 3_000,
         where: "home",
-        playable: true,
+        plays: "here",
+        durationMs: 42_000,
+        heard: { kind: "words", text: "first words", cut: true },
         deletable: true,
+        wentAt: null,
+      },
+      {
+        id: "let-go",
+        at: "2026-10-15T09:00:00.000Z",
+        bytes: 2_000,
+        where: "home",
+        plays: "home",
+        durationMs: 3_000,
+        heard: { kind: "silent" },
+        deletable: false,
+        wentAt: null,
       },
       {
         id: "aside",
         at: "2026-10-10T09:00:00.000Z",
         bytes: 3_000,
         where: "aside",
-        playable: false,
+        plays: "none",
+        durationMs: null,
+        heard: { kind: "notYet" },
         deletable: false,
+        wentAt: null,
       },
     ])
     expect(view.notes).toBe(4)
     expect(view.since).toBe("2026-09-12T10:00:00.000Z")
+  })
+
+  it("says when home let a week's middle take go, and plays it from this phone only if it is still here (IW14)", () => {
+    // As home sends a week's middle take once it let its recording go.
+    const home: HomeReading = {
+      kind: "read",
+      kept: {
+        ...KEPT,
+        notes: [
+          {
+            id: "middle",
+            recordedAt: "2026-11-18T09:00:00.000Z",
+            storedAt: "2026-11-18T09:01:00.000Z",
+            size: 2_000,
+            setAsideAt: null,
+            deletable: false,
+            durationMs: 3_000,
+            heard: "the options",
+            heardCut: false,
+            playsBack: false,
+            recordingLetGoAt: "2026-11-23T08:00:00.000Z",
+          },
+        ],
+      },
+    }
+    const gone = kindOf("interview", "interview", home, [], NOW).items[0]
+    expect(gone).toMatchObject({
+      plays: "none",
+      deletable: false,
+      wentAt: "2026-11-23T08:00:00.000Z",
+    })
+    const here = kindOf(
+      "interview",
+      "interview",
+      home,
+      [note({ id: "middle", of: "interview", place: "home" })],
+      NOW
+    ).items[0]
+    expect(here).toMatchObject({
+      plays: "here",
+      wentAt: "2026-11-23T08:00:00.000Z",
+    })
   })
 
   it("counts a recording home lists as home's, though this phone hasn't heard yet", () => {
@@ -305,11 +405,12 @@ describe("a kind's list", () => {
     expect(view.notes).toBe(3)
     expect(view.items.map((item) => [item.id, item.where])).toEqual([
       ["on-home", "home"],
+      ["let-go", "home"],
       ["aside", "aside"],
     ])
   })
 
-  it("reads a note as not deletable when home doesn't say (MD3: an older home)", () => {
+  it("reads a note as not deletable, not playing from home and not heard when home doesn't say (MD3, MD8: an older home)", () => {
     const answer = {
       status: 200,
       body: JSON.stringify({
@@ -330,7 +431,13 @@ describe("a kind's list", () => {
       expect.objectContaining({ id: "older", deletable: false }),
     ])
     expect(kindOf("studio", "studio", home, [], NOW).items).toEqual([
-      expect.objectContaining({ id: "older", deletable: false }),
+      expect.objectContaining({
+        id: "older",
+        deletable: false,
+        plays: "none",
+        durationMs: null,
+        heard: { kind: "unsaid" },
+      }),
     ])
   })
 

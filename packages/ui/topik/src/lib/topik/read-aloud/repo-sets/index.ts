@@ -66,7 +66,7 @@ export const LEVEL_ONE_LENS_SET: ReadAloudDeck = parsed("level-one.lens")
 /** All four added, starter first, as the owner's phone holds them. */
 const resolved = resolveSets(
   [STARTER_SET, LEVEL_ONE_SET, STARTER_LENS_SET, LEVEL_ONE_LENS_SET].map(
-    (deck) => ({ deck, addedAt: "", openedAt: null })
+    (deck) => ({ deck, addedAt: "", openedAt: null, archivedAt: null })
   )
 )
 

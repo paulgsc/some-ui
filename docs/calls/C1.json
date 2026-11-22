@@ -1,0 +1,12 @@
+{
+  "id": "C1",
+  "made": "2026-11-06",
+  "by": "owner",
+  "paths": [
+    "docs/ui-fit/README.md",
+    "packages/ui/shared/src/components/ui/notice/index.tsx"
+  ],
+  "chose": "What an app says about a tap floats over the screen as a Notice, never in the layout; content asked for grows below the tap (HS1, HS3).",
+  "undo": "Retire HS1 and HS3 in docs/ui-fit/README.md 2i.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

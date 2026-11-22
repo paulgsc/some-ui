@@ -562,6 +562,40 @@ export function reviewPluginConfig(label, configText, expected) {
   return findings
 }
 
+/**
+ * The page Capacitor loads instead of the app when the installed WebView is
+ * older than `android.minWebViewVersion` (`server.errorPath`, served from
+ * `assets/public`): it must be set once the minimum is, and be in the APK,
+ * or an old WebView opens on an empty page, the blank screen it exists to
+ * replace. The name sits in capacitor.config.ts and www's build apart, so
+ * only the built APK shows them agreeing.
+ */
+export function reviewErrorPage(label, configText, entryNames) {
+  if (configText === undefined) return []
+  const config = JSON.parse(configText)
+  const errorPath = at(config, "server.errorPath")
+  const minimum = at(config, "android.minWebViewVersion")
+  if (errorPath === undefined) {
+    return minimum === undefined
+      ? []
+      : [
+          {
+            level: "error",
+            check: "error-page",
+            message: `${label}: android.minWebViewVersion is ${minimum} but server.errorPath is not set, so an older WebView opens on a blank page.`,
+          },
+        ]
+  }
+  if (entryNames.includes(`assets/public/${errorPath}`)) return []
+  return [
+    {
+      level: "error",
+      check: "error-page",
+      message: `${label}: server.errorPath is ${JSON.stringify(errorPath)}, but the APK has no assets/public/${errorPath}, so an older WebView opens on an empty page (www's build emits it for the mobile profile).`,
+    },
+  ]
+}
+
 export function reviewSize(label, bytes, budget) {
   const mib = bytes / (1024 * 1024)
   if (mib > budget.warnMiB) {

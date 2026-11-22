@@ -1,7 +1,18 @@
-import type { Mark } from "@some-ui/video-render"
+import { ESSAY_STAGE_WORDS } from "@some-ui/video-render"
+import type {
+  ForkPlacement,
+  ForkVerdict,
+  Mark,
+  TurnRole,
+  TurnVoice,
+} from "@some-ui/video-render"
 
 /** A week's number within its year, from its id: "46" from "2026-w46". */
 export const weekNumber = (id: string): string => id.slice(id.indexOf("w") + 1)
+
+/** Words the essays' opening and a spoken card share, so the two stages say them alike. */
+const THEY_ASK = "They ask"
+const YOUR_ANSWER = "Your answer"
 
 /**
  * Every word the essay's stage shows besides the essay's own data, the
@@ -11,8 +22,8 @@ export const ESSAY_WORDS = {
   title: "Rust Rounds",
   sample: "Sample essay",
   chapter: (title: string): string => `Chapter: ${title}`,
-  tutor: "Tutor",
-  you: "You",
+  /** Each speaker's name under their bubble; the one asking the opening's questions (#3269) is someone new to Rust Rounds. */
+  speakers: { tutor: "Tutor", you: "You", asker: "Someone new" },
   /** A week by its id, "2026-w46", as the frame names it: "Week 46". */
   week: (id: string): string => `Week ${weekNumber(id)}`,
   sla: "The SLA",
@@ -20,7 +31,32 @@ export const ESSAY_WORDS = {
   speakTo: "Speak to",
   figures: "Figures the scenario gives",
   youSaid: "You said",
+  /** The opening conversation (#3269): a question, by its place, from 1. */
+  question: (n: number): string => `Question ${n}`,
+  theyAsk: THEY_ASK,
+  /** A spoken card's stage (WALK7): its header, and its sample's. */
+  spokenCard: "Spoken card",
+  sampleCard: "Sample card, made-up takes",
+  /**
+   * A spoken card's turn, by its place in the exchange and its voice
+   * (WALK7): Kokoro asks and the owner answers in an introduction, and the
+   * other way round in the DB essay.
+   */
+  turn: {
+    ask: { kokoro: THEY_ASK, owner: "You ask" },
+    answer: { kokoro: "Their answer", owner: YOUR_ANSWER },
+  } satisfies Record<TurnRole, Record<TurnVoice, string>>,
+  /** Why a spoken card's stage draws none of the card it was asked for. */
+  cardUnread: (card: string): string => `The spoken card ${card} wasn't read`,
+  otherCard: (asked: string, got: string): string =>
+    `The spoken card read is ${got}, not ${asked}`,
+  /** A spoken card's answer too long to write out: its words are the captions'. */
+  saidBelow: "In the captions below, as it was said",
+  /** The owner's answer to it: their own take, or in the sample a synthetic voice reading one. */
+  yourAnswer: YOUR_ANSWER,
   noAnswer: "Nothing came for this one",
+  /** A take that was sent and couldn't be made out (HEARD2): read as if unanswered. */
+  unheard: ESSAY_STAGE_WORDS.unheard,
   opened: (n: number): string =>
     n === 0
       ? "Not opened"
@@ -28,7 +64,11 @@ export const ESSAY_WORDS = {
         ? "Opened once, nothing sent"
         : `Opened ${n} times, nothing sent`,
   point: "Point",
+  /** A speak-to point by its place, from 1. */
+  pointN: (n: number): string => `Point ${n}`,
   yours: "Yours",
+  /** Under the SOLO scale of a ticket answered only point by point. */
+  perPoint: "Each point's own take is placed on its own row",
   mark: {
     covered: "Covered",
     partly: "Partly",
@@ -36,18 +76,80 @@ export const ESSAY_WORDS = {
   } satisfies Record<Mark, string>,
   unanswered: "No answer",
   solo: "SOLO",
-  level: (n: number, name: string): string => `${n}. ${name}`,
+  level: ESSAY_STAGE_WORDS.level,
   notJudged: "No answer to place on the scale",
   dive: (n: number): string => `Deep dive ${n}`,
+  /** The fork scene (RR29): the options against the stated constraints. */
+  fork: {
+    option: "Option",
+    decision: "Decision",
+    why: "Why",
+    recommended: "Recommended",
+    best: "Best",
+    hidden: "Not listed",
+    yours: "Yours",
+    meets: "Meets",
+    breaks: "Breaks",
+    /** A decision of the owner's own, under the table. */
+    own: (decision: string): string => `Yours, not listed: ${decision}`,
+    refused: (code: string, why: string): string =>
+      `Doesn't build: ${why} (${code})`,
+    /** D4's opening line: what you chose, what the agent recommended, and the best. */
+    summary: (
+      decision:
+        | { readonly kind: "option"; readonly option: string }
+        | {
+            readonly kind: "own" | "recommended-by-default"
+          },
+      recommended: string,
+      best: string | null
+    ): string =>
+      [
+        decision.kind === "option"
+          ? `You chose ${decision.option}.`
+          : decision.kind === "own"
+            ? "You said your own."
+            : "You left it, so the recommended stood.",
+        `The agent recommended ${recommended}.`,
+        best === null
+          ? "The best wasn't on the list (★)."
+          : `The best was ${best}.`,
+      ].join(" "),
+    astute: "What an astute observer would have called out:",
+    axis: "From A to A′",
+    place: {
+      trusted: "A: followed blind",
+      reasoned: "Followed, with reasons",
+      departed: "Chose another listed",
+      own: "Said your own",
+      astute: "A′: called out the list",
+    } satisfies Record<ForkPlacement, string>,
+    verdict: {
+      best: "The best decision",
+      close: "Close to the best",
+      off: "Not the best",
+    } satisfies Record<ForkVerdict, string>,
+  },
   past: "One step past the ticket",
-  into: "Into",
+  into: ESSAY_STAGE_WORDS.into,
   ticketOf: (n: number, of: number): string => `Ticket ${n} of ${of}`,
   cell: {
-    unmet: "Not met that week",
+    unmet: "Not met yet",
+    unchecked: "Not checked that week",
     silent: "Not answered",
-    decayed: "Lower than before: decayed",
+    decayed: "Decayed: lower than before",
+    faded: "May have faded: unchecked past its recheck",
+    notKnown: "Met, not yet known",
   },
-  legendLevel: "1–5: shown, by SOLO level",
+  legendLevel: "1–5: SOLO level shown",
+  /** Under the chart: a decay, which an answer showed. */
+  noteDecayed: (name: string, week: string, below: string): string =>
+    `${name}: lower in week ${weekNumber(week)} than in week ${weekNumber(below)}. That's decay, not something new.`,
+  /** Under the chart: a fading, which is presumed, never seen. */
+  noteFaded: (name: string, since: string): string =>
+    `${name}: unchecked past its recheck from week ${weekNumber(since)}, so it may have faded. A guess, not an answer.`,
+  recheckSource: (name: string, source: string, weeks: string): string =>
+    `${name} (${source}) rechecks after ${weeks} weeks: longer once shown known, sooner once it slips`,
   role: "The role it fits",
   roleNext: (next: string, gap: string): string => `Next, ${next}: ${gap}`,
   roleSource: (ladder: string, source: string): string =>
@@ -58,3 +160,9 @@ export const ESSAY_WORDS = {
   otherWeek: (asked: string, got: string): string =>
     `The essay read is ${got}'s, not ${asked}'s`,
 } as const
+
+/** What an answer left without a take is called: `nothing`, or said and not made out. */
+export const leftOf = (
+  silence: { readonly unheard?: true },
+  nothing: string = ESSAY_WORDS.noAnswer
+): string => (silence.unheard === true ? ESSAY_WORDS.unheard : nothing)

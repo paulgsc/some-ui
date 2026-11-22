@@ -1,0 +1,16 @@
+{
+  "id": "C678",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "The Pages viewer walks the flow on the sample week, with a sample academy and a sample chart; its tracker keeps time in memory and a reload clears it. Nothing a viewer does is kept.",
+  "options": [
+    "walk the flow, keep nothing",
+    "read-only screens",
+    "not offered"
+  ],
+  "gray": "Mandate B wants a viewer to try it; what a viewer can do on a sample is a choice.",
+  "undo": "Show the flow read-only on Pages.",
+  "refs": ["#3249", "#3250"]
+}

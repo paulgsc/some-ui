@@ -1,0 +1,15 @@
+{
+  "id": "C743",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["apps/www/Dockerfile", "packages/ui/resume/Dockerfile"],
+  "chose": "The www/resume-render edge is a new label, resume-api=1, provided by resume-render and required by www. www states no requirement on file_host's contract: clients check it at run time through /compat, as server's docs/release.md already says of contract.",
+  "options": [
+    "resume-api only",
+    "also require contract=<SERVER_CONTRACT_EPOCH> on www",
+    "no labels, empty both"
+  ],
+  "gray": "A www that needs a newer file_host is still caught only at run time, by /compat, not by the release check.",
+  "undo": "Add contract to www's requires, passed as a build arg from packages/server-routes so the snapshot sync moves it.",
+  "refs": ["server#853"]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "C807",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/lib/studio-spoken/model.ts",
+    "apps/www/src/lib/home-link/voice-copy.ts",
+    "server:crates/db/voice/src/about.rs"
+  ],
+  "chose": "A take of a spoken card's part is an ordinary Studio take on home, with no kind or record of its own and no server change. The owner, verbatim: \"The script just remains as it is. It doesn't have issue. So answering 3, it doesn't need its own home. We don't need to overcomplicate right now.\" It goes home named by its part's line, spoken:<card>.<part> (two parts on ':', which home keeps as a take with no scene), and the card with each part's take IDs stays on the phone beside the pasted card.",
+  "undo": "A new call that moves this one, giving spoken cards' takes a kind of their own on home (a server change) and carrying their card there.",
+  "refs": ["#3312", "#3311"]
+}

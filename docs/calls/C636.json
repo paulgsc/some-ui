@@ -1,0 +1,18 @@
+{
+  "id": "C636",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/renders/words.ts",
+    "some-ui:apps/www/src/lib/renders/subject.ts"
+  ],
+  "chose": "A Renders row from a feed the phone doesn't know names home's feed in words (`garden-log` is \"Garden log\") and says \"A video this phone can't open yet\"; an empty feed still reads \"Something else\".",
+  "options": [
+    "home's feed name said as words, plus a line that the phone can't open it yet",
+    "\"A feed this phone doesn't know\" without its name",
+    "keep \"Something else · A video\""
+  ],
+  "gray": "#3235 asks that the row say plainly which feed it is; home's feed id is the only name there is, and turning it into words is a choice the owner sees on Renders.",
+  "undo": "Change `feedName` and the `other` case of `thingName` in `lib/renders/words.ts`.",
+  "refs": ["#3235"]
+}

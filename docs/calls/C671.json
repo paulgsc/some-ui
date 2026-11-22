@@ -1,0 +1,19 @@
+{
+  "id": "C671",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts"
+  ],
+  "chose": "The academy is a per-ticket list in the week file (`/2`), 1 to 8 exercises, each naming the forks (speak-to points, 1-based) it builds toward. The weekly routine writes it; the phone renders it as written.",
+  "options": [
+    "per ticket, in the week file",
+    "per week, beside the tickets",
+    "a separate academy file"
+  ],
+  "gray": "#3249 left where the academy lives open; per ticket keeps each exercise beside the forks it serves, and one file moves the format once.",
+  "undo": "Move `academy` up to the week with a ticket key per exercise; readWeek's checks follow.",
+  "refs": ["#3249"]
+}

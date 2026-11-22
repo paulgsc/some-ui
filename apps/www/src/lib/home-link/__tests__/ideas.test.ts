@@ -14,8 +14,13 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it, vi } from "vitest"
 
 import { ideasWaiting, phoneIdeas, sendIdeas } from "@/lib/home-link/ideas"
+import type { Pairing } from "@/lib/home-link/model"
+import { READING, UNPAIRED } from "@/lib/home-link/model"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { ideasMoved, keepIdeas } from "@/lib/idea-keeping"
+
+/** A pairing by its id (#3152's union). */
+const pairedAs = (id: string): Pairing => ({ kind: "paired", id })
 
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
@@ -88,7 +93,7 @@ describe("Studio's ideas on home (ST26 b)", () => {
       ["PUT", "/ideas/i%2F2", JSON.stringify(bundle("i/2"))],
     ])
     expect(moved).toHaveBeenCalledTimes(2)
-    expect(ideasWaiting(storage, "p1")).toEqual({
+    expect(ideasWaiting(storage, pairedAs("p1"))).toEqual({
       waiting: 0,
       held: 2,
       refused: 0,
@@ -99,9 +104,23 @@ describe("Studio's ideas on home (ST26 b)", () => {
     expect(again).toEqual([])
     // Changed on the phone, it goes again; under another pairing, all go.
     handed = [bundle("i1", "A new title"), bundle("i/2")]
-    expect(ideasWaiting(storage, "p1")).toMatchObject({ waiting: 1, held: 1 })
-    expect(ideasWaiting(storage, "p2")).toMatchObject({ waiting: 2, held: 0 })
-    expect(ideasWaiting(storage, null)).toMatchObject({ waiting: 2, held: 0 })
+    expect(ideasWaiting(storage, pairedAs("p1"))).toMatchObject({
+      waiting: 1,
+      held: 1,
+    })
+    expect(ideasWaiting(storage, pairedAs("p2"))).toMatchObject({
+      waiting: 2,
+      held: 0,
+    })
+    expect(ideasWaiting(storage, UNPAIRED)).toMatchObject({
+      waiting: 2,
+      held: 0,
+    })
+    // While the record is read, nothing is known held either (#3152).
+    expect(ideasWaiting(storage, READING)).toMatchObject({
+      waiting: 2,
+      held: 0,
+    })
   })
 
   it("remembers home's answer onto what the drain wrote while the idea was on its way", async () => {
@@ -114,7 +133,7 @@ describe("Studio's ideas on home (ST26 b)", () => {
     }
     await sendIdeas(phoneIdeas(storage, "p1"), meanwhile)
     expect(readSent(storage, "p1").sessions).toEqual(drained)
-    expect(ideasWaiting(storage, "p1")).toMatchObject({ held: 1 })
+    expect(ideasWaiting(storage, pairedAs("p1"))).toMatchObject({ held: 1 })
   })
 
   it("counts held only an idea home carries back as sent", async () => {
@@ -125,7 +144,10 @@ describe("Studio's ideas on home (ST26 b)", () => {
       phoneIdeas(storage, "p1"),
       home({ i1: { status: 200, body: other } }, [])
     )
-    expect(ideasWaiting(storage, "p1")).toMatchObject({ waiting: 1, held: 0 })
+    expect(ideasWaiting(storage, pairedAs("p1"))).toMatchObject({
+      waiting: 1,
+      held: 0,
+    })
   })
 
   it("leaves an idea whose notes home lacks waiting, and goes on to the next", async () => {
@@ -139,7 +161,10 @@ describe("Studio's ideas on home (ST26 b)", () => {
       )
     ).toEqual({ kind: "synced" })
     expect(sent).toHaveLength(2)
-    expect(ideasWaiting(storage, "p1")).toMatchObject({ waiting: 1, held: 1 })
+    expect(ideasWaiting(storage, pairedAs("p1"))).toMatchObject({
+      waiting: 1,
+      held: 1,
+    })
   })
 
   it("keeps a refused idea on the phone, offers it again only once it changes, and says so", async () => {
@@ -151,7 +176,7 @@ describe("Studio's ideas on home (ST26 b)", () => {
       home({ i1: { status: 422 }, i2: { status: 409 } }, [])
     )
     expect(vi.mocked(reportFailure)).toHaveBeenCalledTimes(2)
-    expect(ideasWaiting(storage, "p1")).toEqual({
+    expect(ideasWaiting(storage, pairedAs("p1"))).toEqual({
       waiting: 0,
       held: 0,
       refused: 2,
@@ -173,7 +198,7 @@ describe("Studio's ideas on home (ST26 b)", () => {
       )
     ).toEqual({ kind: "synced" })
     expect(sent).toHaveLength(1)
-    expect(ideasWaiting(storage, "p1").waiting).toBe(2)
+    expect(ideasWaiting(storage, pairedAs("p1")).waiting).toBe(2)
 
     expect(
       await sendIdeas(
@@ -189,6 +214,6 @@ describe("Studio's ideas on home (ST26 b)", () => {
         )
       ).kind
     ).toBe("failed")
-    expect(ideasWaiting(storage, "p1").waiting).toBe(2)
+    expect(ideasWaiting(storage, pairedAs("p1")).waiting).toBe(2)
   })
 })

@@ -1,0 +1,19 @@
+{
+  "id": "C269",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/decay/index.ts",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts"
+  ],
+  "chose": "The role line is the Dreyfus model of skill acquisition (Dreyfus & Dreyfus, 1980), each stage beside a SOLO level (Novice 1, Advanced beginner 3, Competent 4, Proficient 5, Expert none). The fit is the highest stage whose level at least half the concepts met hold by their last answer, with silence and fading holding none. It shows the week the fit has held since and the gap to the next stage as counts of concepts, and says 'not worked out yet' before three weeks of answers.",
+  "options": [
+    "Dreyfus's stages by that rule",
+    "a public engineering career framework",
+    "Dreyfus's stages by the SOLO level of the median concept"
+  ],
+  "gray": "The owner's answer on #2694 asks for a published ladder and a stated rule and named neither; no public career framework grades Rust explanations, and the SOLO-to-stage pairing and 'half the concepts' are this call's.",
+  "undo": "Change DREYFUS and roleAt in the decay module; the sample essay's role follows in the decay test.",
+  "refs": ["#2694", "#2695"],
+  "moves": "C102"
+}

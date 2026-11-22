@@ -2,25 +2,21 @@
  * The settlement laws from `adapters/types.ts`, run against every adapter.
  *
  * They are written once and parameterized on purpose: the laws are what
- * makes an adapter substitutable, so "the HTTP one gets it right and the
+ * makes an adapter substitutable, so "the phone one gets it right and the
  * browser one doesn't" is the failure this file exists to catch. A new
  * backend joins the list below and inherits the whole suite.
  */
 
-import { createHttpSpeechAdapter } from "@speech/lib/adapters/http"
 import { createNativeSpeechAdapter } from "@speech/lib/adapters/native"
 import type { SpeechAdapter } from "@speech/lib/adapters/types"
 import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { isAbortError } from "@speech/lib/promise/abort"
-import type { FakeAudioContextHandle } from "@speech/lib/testing"
 import {
-  createFakeAudioContextHandle,
   createFakeNativeEngine,
   createFakeSpeechSynthesis,
   flushAsync,
   track,
 } from "@speech/lib/testing"
-import { hostedVoiceFor } from "@speech/lib/voices"
 import { describe, expect, it, vi } from "vitest"
 
 type Harness = {
@@ -34,34 +30,6 @@ type Harness = {
 type HarnessFactory = {
   name: string
   create: () => Harness
-}
-
-function httpHarness(): Harness {
-  const audio: FakeAudioContextHandle = createFakeAudioContextHandle()
-  const adapter = createHttpSpeechAdapter({
-    service: { provider: "openai", apiUrl: "http://tts.test/v1/audio/speech" },
-    voiceFor: (lang) =>
-      hostedVoiceFor({ provider: "openai", voiceId: null }, lang),
-    fetchImpl: () =>
-      Promise.resolve(
-        new Response(new ArrayBuffer(8), {
-          status: 200,
-          headers: { "Content-Type": "audio/mpeg" },
-        })
-      ),
-    playerOptions: { audioContextFactory: audio.factory },
-  })
-
-  return {
-    adapter,
-    finish: (): void => audio.current?.finishCurrent(),
-    fail: (): void => {
-      // The audio graph is the only failure surface once bytes have
-      // arrived; a transport failure is covered in `http.test.ts`.
-      const source = audio.current?.sources.at(-1)
-      if (source) source.onended = null
-    },
-  }
 }
 
 function webSpeechHarness(): Harness {
@@ -93,7 +61,6 @@ function nativeHarness(): Harness {
 }
 
 const HARNESSES: ReadonlyArray<HarnessFactory> = [
-  { name: "http", create: httpHarness },
   { name: "native", create: nativeHarness },
   { name: "web-speech", create: webSpeechHarness },
 ]

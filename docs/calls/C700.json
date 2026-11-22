@@ -1,0 +1,18 @@
+{
+  "id": "C700",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts",
+    "server:crates/db/rust_round/src/week.rs"
+  ],
+  "chose": "Home keeps a /2 week file of at most 128 KiB and a /1 week of 32 KiB as before; the routine refuses to write a week over its schema's ceiling, measured as it writes the file (two-space indent, one trailing newline). 128 KiB because a full /2 week comes to about 106 KB: 4 tickets x 8 exercises, 32 starters of about 1.5 KB (about 56 KB JSON-escaped), about 32 KB of exercise prose, 16 KB of forks and tickets, 2 KB of week prose; 96 KiB would refuse a full week.",
+  "options": [
+    "128 KiB for /2, 32 KiB for /1",
+    "96 KiB for /2",
+    "one ceiling for both"
+  ],
+  "gray": "The coordinator suggested 96 KiB; the arithmetic of a full week runs past it, and no check settles how full a week may be.",
+  "undo": "Change WEEK_V2_MAX_BYTES here and WEEK_V2_CEILING on home together.",
+  "refs": ["#3249", "#3257", "server#1001"]
+}

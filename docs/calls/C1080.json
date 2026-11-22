@@ -1,0 +1,19 @@
+{
+  "id": "C1080",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/game-essay.ts",
+    "packages/video-render/src/templates/game-essay/sample-essay.json"
+  ],
+  "chose": "The Game Week essay's template is the third data essay, beside the Rust Rounds and interview essays: its own DNA (`some-ui.game-essay/1`: the week, the team it is read for, games, their halves with bites, halftime, the open and the close) on the shared helpers (`Format`, `nightInMotion`, `Parsed`, `problemsOf`, `once`, `weekId`), with scenes open, game, bite, halftime and close. Section 0's four rules (D20) are held by the schema where a type can hold them and checked where it can't: a scene is made only from a bite and a half or game with none is refused; a bite carries one still at most, of the play home matched it to, and none when unmatched (D12); a bite's stance is one of the five of D21, each answered by the host its own way in a total record; and a line Kokoro says (the host's, or a bite read aloud by the second voice) repeating a run of a matched play's text is refused at parse, before anything renders. A bite in the owner's own voice is not held to that rule. A matched bite's half is its play's quarter's (C872). Scenes, the cut list and the stage wait for home's week file.",
+  "options": [
+    "A third data essay, with the rules held by type and one check (chosen): two members already share this shape, and a rule the type holds can't be written around.",
+    "A cards essay (a cut list written directly): its scenes are free shots, so section 0's first two rules would be checks over any shot instead of shapes the data can't take.",
+    "Lift a generic data-essay kind first, then add this as its member: the two members share helpers already, and their DNA, which is what differs, is per kind by nature; the lift is due when a third shared step appears (the recorder's `EssayKind`), not before.",
+    "All four rules as runtime checks, as D20 words them: a check is one more thing that can be skipped, where a type can't be."
+  ],
+  "gray": "D20 says the four rules are checked by code before anything renders, without saying by which mechanism, and the essay could join either essay family; the owner would see the difference in what a writer can and cannot hand home.",
+  "undo": "Delete packages/video-render/src/game-essay.ts, its sample and its test; nothing reads them yet.",
+  "refs": ["#2074", "#3041"]
+}

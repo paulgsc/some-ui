@@ -3,11 +3,16 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createReadAloudStore,
   onReadAloudWritten,
+  phoneWordSets,
   plainKey,
   READ_ALOUD_STORAGE_KEYS,
   readAloudForHome,
 } from "@topik/lib/topik/adapter/read-aloud-store"
-import { storedSet } from "@topik/lib/topik/read-aloud/added-sets"
+import {
+  ADDED_SET_LIMIT,
+  homeSet,
+  storedSet,
+} from "@topik/lib/topik/read-aloud/added-sets"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
@@ -73,6 +78,7 @@ const SET = {
   },
   addedAt: "2026-10-14T06:00:00.000Z",
   openedAt: null,
+  archivedAt: null,
 }
 
 describe("the read-aloud store", () => {
@@ -137,6 +143,38 @@ describe("the read-aloud store", () => {
       ])
     )
     expect(store.sets()).toEqual([set])
+  })
+
+  it("archives a set and brings it back, keeping it whole on this phone", () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    store.saveSets([SET])
+    expect(store.archive(SET.deck.id, "2026-11-13T00:00:00.000Z")).toBe(true)
+    expect(createReadAloudStore(storage).sets()).toEqual([
+      { ...SET, archivedAt: "2026-11-13T00:00:00.000Z" },
+    ])
+    // Home is sent the set as before: whether it is archived stays here.
+    expect(readAloudForHome(storage)[0]?.body).toEqual(homeSet(SET))
+
+    const sets = phoneWordSets(storage)
+    expect(sets.list(new Date()).archived.map((row) => row.id)).toEqual([
+      SET.deck.id,
+    ])
+    expect(sets.bringBack(SET.deck.id)).toBe(true)
+    expect(store.sets()).toEqual([SET])
+    expect(createReadAloudStore(refusing).archive(SET.deck.id, "x")).toBe(false)
+  })
+
+  it("brings no set back while the sets in use fill the limit", () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    const full = Array.from({ length: ADDED_SET_LIMIT }, (_, index) => ({
+      ...SET,
+      deck: { ...SET.deck, id: `set-${index}` },
+    }))
+    store.saveSets([...full, { ...SET, archivedAt: "a" }])
+    expect(phoneWordSets(storage).bringBack(SET.deck.id)).toBe(false)
+    expect(store.sets().at(-1)?.archivedAt).toBe("a")
   })
 
   it("resumes a set an older build stored with lenses, without them", () => {
@@ -263,7 +301,7 @@ describe("the read-aloud store", () => {
       "progress phone",
       "feedback phone",
     ])
-    expect(entries[0]?.body).toEqual(storedSet(SET))
+    expect(entries[0]?.body).toEqual(homeSet(SET))
     expect(entries[1]?.body).toEqual({ wordId: "juda", factor: 1.2, seen: 3 })
     expect(entries[2]?.body).toMatchObject({ sentence: "cafe-order:1x2" })
 

@@ -1,0 +1,18 @@
+{
+  "id": "C41",
+  "made": "2026-11-09",
+  "by": "claude",
+  "agreed": "2026-11-09",
+  "paths": [
+    "apps/www/src/lib/voice-home/home.ts",
+    "docs/learner-data-authority.md"
+  ],
+  "chose": "The phone lets go of its copy of a voice note whose PUT home refuses as deleted for good (409 `deleted_for_good`), by My data's own letGoDeleted, as if it had heard the delete's receipt; LA8's let-go rule gains that case.",
+  "options": [
+    "let the copy go on that refusal (amend LA8)",
+    "keep it as a refusal with true words, the audio staying until let go by hand"
+  ],
+  "gray": "LA8 let a copy go only on a tap's answer; this refusal follows the owner's own My data delete, but arrives on the voice lane's run, not the tap's.",
+  "undo": "Drop the deleted_for_good branch in exchangeVoice so the refusal is kept like any 409, and restore LA8's claim and falsifier.",
+  "refs": ["server#760", "#2758"]
+}

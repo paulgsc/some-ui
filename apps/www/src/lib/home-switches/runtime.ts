@@ -1,7 +1,7 @@
 /**
- * The runtime behind `./model`: it owns the calls to home (`./client`),
+ * The runtime behind `./model`, one per setting: it owns the calls to home (`./client`),
  * feeds each ending to `stepSwitches`, and says a failed set over the screen
- * through `notify`. The page reads `getSnapshot` and calls `read` and `turn`;
+ * through `notify`. The page reads `getSnapshot` and calls `read` and `set`;
  * it holds no request of its own.
  *
  * Stale answers: `stepSwitches` drops a read's answer once a set is under
@@ -11,28 +11,36 @@
  */
 import type { SwitchesClient } from "./client"
 import { refusalOf } from "./client"
-import type { Refusal, SwitchesEvent, SwitchesState } from "./model"
+import type {
+  Refusal,
+  SettingKey,
+  SettingValue,
+  SwitchesEvent,
+  SwitchesState,
+} from "./model"
 import { canSet, INITIAL_SWITCHES, stepSwitches } from "./model"
 
-export type SwitchesPorts = {
-  readonly client: SwitchesClient
+export type SwitchesPorts<K extends SettingKey> = {
+  readonly client: SwitchesClient<K>
   /** Says a set that did not land, over the screen. */
-  readonly notify: (why: Refusal, recording: boolean) => void
+  readonly notify: (why: Refusal, value: SettingValue[K]) => void
 }
 
-export type HomeSwitches = {
-  getSnapshot: () => SwitchesState
+export type HomeSwitches<K extends SettingKey> = {
+  getSnapshot: () => SwitchesState<K>
   subscribe: (listener: () => void) => () => void
-  /** Reads the switch from home, again if asked again. */
+  /** Reads its setting from home, again if asked again. */
   read: () => void
-  /** Sets recording on or paused; ignored while a set is under way. */
-  turn: (recording: boolean) => void
+  /** Sets it to `value`; ignored while a set is under way. */
+  set: (value: SettingValue[K]) => void
 }
 
-export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
-  let state = INITIAL_SWITCHES
+export function createHomeSwitches<K extends SettingKey>(
+  ports: SwitchesPorts<K>
+): HomeSwitches<K> {
+  let state: SwitchesState<K> = INITIAL_SWITCHES
   const listeners = new Set<() => void>()
-  const dispatch = (event: SwitchesEvent): void => {
+  const dispatch = (event: SwitchesEvent<K>): void => {
     const next = stepSwitches(state, event)
     if (next === state) return
     state = next
@@ -47,13 +55,13 @@ export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
     }
   }
 
-  const turn = async (recording: boolean): Promise<void> => {
+  const set = async (value: SettingValue[K]): Promise<void> => {
     try {
-      dispatch({ type: "set", standing: await ports.client.set(recording) })
+      dispatch({ type: "set", standing: await ports.client.set(value) })
     } catch (error) {
       const why = refusalOf(error)
       dispatch({ type: "set-failed", why })
-      ports.notify(why, recording)
+      ports.notify(why, value)
       // What home follows is unknown now; ask it (the state is `reading`).
       await read()
     }
@@ -72,10 +80,10 @@ export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
       // Not while a set is under way: its answer is the newer one.
       if (state.kind === "reading") void read()
     },
-    turn: (recording): void => {
+    set: (value): void => {
       if (!canSet(state)) return
-      dispatch({ type: "set-asked", recording })
-      void turn(recording)
+      dispatch({ type: "set-asked", value })
+      void set(value)
     },
   }
 }

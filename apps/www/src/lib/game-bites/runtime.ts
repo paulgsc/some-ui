@@ -31,11 +31,11 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
-import type { BiteStore, KeptBite } from "@some-ui/game-week"
+import type { BiteStore, KeptBite, StoredBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 
-import type { GameBitesEvent, PhoneBite } from "./model"
+import type { GameBitesEvent } from "./model"
 import { isReady, parseGameBites, stepGameBites } from "./model"
 
 const STORAGE_KEY = "some-ui:game-bites"
@@ -62,15 +62,15 @@ export type GameBitesPorts = {
 }
 
 export type GameBites = BiteStore & {
-  getSnapshot: () => ReadonlyArray<PhoneBite>
   /** The bites that may start on their way home now, and home doesn't hold. */
   ready: () => ReadonlyArray<KeptBite>
   /**
    * Notes since when home holds each of `homeHolds` this record has on its way,
-   * then lets the audio of every bite home holds go. Failures go to the
-   * log; the next call tries again.
+   * then lets the audio of every bite home holds go: also the let-go of
+   * those home deleted for good, which it held first (LA19). False when the
+   * record or the shelf refused, said to the log; the next call tries again.
    */
-  letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
+  letGo: (homeHolds: ReadonlySet<string>) => Promise<boolean>
   /** Bites the phone could not keep yet, held by this page load. */
   unkept: () => number
   audio: (id: string) => Promise<Blob | null>
@@ -94,7 +94,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     storage === null
       ? null
       : openRecord(storage, STORAGE_KEY, parseGameBites, QUARANTINE_PREFIX)
-  let bites: ReadonlyArray<PhoneBite> =
+  let bites: ReadonlyArray<StoredBite> =
     opened?.kind === "kept" ? opened.value : []
   // Storage that threw, or a record that could not be moved aside, is
   // written to by no one: a keep then fails, and the bite is held here.
@@ -136,7 +136,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     })
   }
 
-  function writeBites(next: ReadonlyArray<PhoneBite>): void {
+  function writeBites(next: ReadonlyArray<StoredBite>): void {
     if (
       !writable ||
       !writeRecord(storage, STORAGE_KEY, JSON.stringify(next), parseGameBites)
@@ -305,15 +305,19 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
         (bite) => bite.homeSince === undefined && isReady(bite, ports.now())
       ),
     letGo: (homeHolds) =>
-      inTurn(() => letGoNow(homeHolds)).catch((error: unknown) => {
+      inTurn(async () => {
+        if (!writable) return false
+        await letGoNow(homeHolds)
+        return true
+      }).catch((error: unknown) => {
         reportFailure({
           port: "game bites (let go once home holds them)",
           error: toIntentError(error),
         })
+        return false
       }),
     unkept: () => held.length,
     isKept: (id) => bites.some((bite) => bite.id === id),
-    homeSince: (id) => bites.find((bite) => bite.id === id)?.homeSince ?? null,
     audio: (id) => shelf.get(id),
     keep: (bite, audio) =>
       inTurn(async () => {

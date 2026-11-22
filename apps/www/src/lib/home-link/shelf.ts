@@ -16,7 +16,7 @@ import type { HomeAnswer, HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { stringFieldOf } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 
-import { unanswered } from "./runtime"
+import { unanswered } from "./settle"
 
 /**
  * A shelf send found no answer from home, or home busy (`unreachable`).

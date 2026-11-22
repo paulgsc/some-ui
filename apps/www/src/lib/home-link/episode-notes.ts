@@ -17,8 +17,9 @@
  *   note waits and goes on a later run, once its take has;
  * - `409` (a different note under the same id) or `422`: refused, kept on
  *   the phone, and not offered again, said to the native log;
- * - `404`: a home that doesn't keep notes yet, so every note waits, said to
- *   the native log once a launch;
+ * - `404`: a home that doesn't keep notes on that feed's episodes yet, so
+ *   that feed's notes wait (the other feeds' still go), said to the native
+ *   log once a launch;
  * - `401`: home no longer knows this phone, and the run ends there;
  * - anything else ends the run, each note still waiting.
  */
@@ -27,12 +28,14 @@ import { isRecord, jsonOf } from "@some-ui/core-utils"
 
 import type { Note } from "@/lib/episode-feedback"
 import { episodeFeedback } from "@/lib/episode-feedback"
+import { FEEDS } from "@/lib/feeds"
 import { movesSignal } from "@/lib/moves"
 
 import type { KeyedSend } from "./keyed-send"
 import { sendKeyed, untakenTold } from "./keyed-send"
+import type { Pairing } from "./model"
 import type { Sent } from "./sent"
-import { readSent, rememberSent } from "./sent"
+import { readSent, rememberSent, sentUnder } from "./sent"
 
 /** How home answered for one note, as `sent.episodeNotes` remembers it. */
 type Answered = "held" | "refused"
@@ -69,7 +72,7 @@ function carriesBack(body: string, note: Note): boolean {
 /** Home not taking a note, said to the native log. */
 const untaken = untakenTold("Episode notes (send to home)", {
   unkept:
-    "Home doesn't keep notes on episodes yet, so they wait on this phone until it runs a newer version.",
+    "Home doesn't keep notes on some episodes yet, so those wait on this phone until it runs a newer version.",
   refused: "Home didn't take a note on an episode, so it stays on this phone.",
 })
 
@@ -93,11 +96,26 @@ const notesSent = (port: EpisodeNotesPort): KeyedSend<Note> => ({
   },
 })
 
-/** Sends each note `port` names, oldest first, and says how the run ended. */
-export const sendEpisodeNotes = (
+/**
+ * Sends each note `port` names, a feed at a time and oldest first within
+ * it, and says how the run ended.
+ */
+export async function sendEpisodeNotes(
   port: EpisodeNotesPort,
   send: HomeCall
-): Promise<HomeExchanged> => sendKeyed(port.going(), notesSent(port), send)
+): Promise<HomeExchanged> {
+  const going = port.going()
+  const how = notesSent(port)
+  for (const feed of FEEDS) {
+    const ended = await sendKeyed(
+      going.filter((note) => note.feed === feed),
+      how,
+      send
+    )
+    if (ended.kind !== "synced") return ended
+  }
+  return { kind: "synced" }
+}
 
 /** The kept notes home has answered for under `pairing` neither way yet. */
 const unanswered = (sent: Sent): ReadonlyArray<Note> =>
@@ -131,16 +149,17 @@ export function phoneEpisodeNotes(
  */
 export function episodeNotesWaiting(
   storage: KeyedStorage | null,
-  pairing: string | null
+  pairing: Pairing
 ): {
   readonly waiting: number
   readonly held: ReadonlySet<string>
   readonly refused: ReadonlySet<string>
 } {
   const notes = episodeFeedback.getSnapshot()
-  if (pairing === null)
+  const known = sentUnder(storage, pairing)
+  if (known === null)
     return { waiting: notes.length, held: new Set(), refused: new Set() }
-  const sent = readSent(storage, pairing).episodeNotes
+  const sent = known.episodeNotes
   const ids = (answered: Answered): ReadonlySet<string> =>
     new Set(notes.filter((n) => sent[n.id] === answered).map((n) => n.id))
   return {

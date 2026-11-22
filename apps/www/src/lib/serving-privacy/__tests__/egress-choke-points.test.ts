@@ -28,19 +28,32 @@
  *   `GET /voice-notes/:id/heard`) may call `lib/home-link`. The voice lane
  *   also hands Rust Rounds' notes a way to hear a note from home
  *   (`lib/home-link/voice-audio`, RR6, whose read sends one
- *   `GET /voice-notes/:id/audio` per play), read only by that lane. My data
+ *   `GET /voice-notes/:id/audio` per play), which My data, Takes on home,
+ *   Needs your attention and Rust Rounds' opening read too (below). My data
  *   (`lib/my-data`, MD2) asks home what it keeps
  *   (`lib/home-link/kept-read`, whose read sends one `GET /voice-notes/kept`
  *   per open or drag down, and on the overview one `GET /subjects/me/kept`
  *   of the record kept for good, MD2b), and what home deleted for good
  *   (`lib/home-link/deleted-read`, MD3, whose read sends one
- *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
+ *   `GET /voice-notes/deleted` per open or drag down of its Deleted page),
+ *   and, per Play of a recording whose audio isn't on this phone, for its
+ *   audio (`lib/home-link/voice-audio`, MD8). Studio's Spoken
+ *   (`lib/studio-spoken`, W5) reads a take's audio the same way per Play,
+ *   and a take's words once a page (`lib/home-link/heard`).
  *   Studio's Takes on home (`lib/take-library`, ST32) asks home for the
  *   takes it keeps (`lib/home-link/takes-read`, whose read sends one
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
  *   newest, a blank search showing the newest, `?q=` holding the search's
  *   words) and, per Play, for one take's audio, through the same read Rust
- *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's feed videos
+ *   Rounds' notes use (`lib/home-link/voice-audio`). Its Needs your
+ *   attention (`lib/take-reconcile`, HEARD3) asks home for the takes it
+ *   couldn't hear well (`lib/home-link/attention`, one
+ *   `GET /voice-notes/attention` per open or Try again), per Play for one
+ *   take's audio, and per act tapped tells home of it (one
+ *   `POST /voice-notes/:id/attention`). Both Takes and Needs your attention
+ *   ask home to hear a take again on a tap (`lib/hear-again`, #3339: one
+ *   `POST /voice-notes/:id/attention` of the act `hear-again`), sending
+ *   nothing but the take's id and the act's name. Studio's feed videos
  *   (`lib/call-videos`, ST38, FEED4) asks home for the episodes of a feed
  *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
  *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
@@ -50,7 +63,9 @@
  *   and sends an episode's link on Save (one `PUT
  *   /feeds/:feed/videos/:key/link`).
  *
- * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
+ * - **LA19 (MY-DATA MD5): only My data's delete path deletes a record on
+ *   home** (its sheet, on My data's page or Takes › Needs your attention's,
+ *   HEARD3). Only
  *   `lib/home-link/delete-note` sends home a `DELETE` (a recording's notes,
  *   or a step of a feed's episode), only `lib/my-data` imports it, and only its
  *   two delete runtimes call it, once a run each
@@ -105,6 +120,17 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
+  // LA8 (W5): Studio's Spoken, which per Play of a take whose audio isn't on
+  // this phone asks home for it, and once a page asks home for the words of
+  // each take of a part, through the same reads Takes on home and Studio's
+  // idea answers use.
+  "lib/studio-spoken/index.ts",
+  // LA8 (SIGNIN2): the pairing form, Settings' Home server block's and the
+  // welcome's, whose Pair sends the code (and a typed name, where home
+  // takes one); and the welcome the foyer draws on a phone not paired,
+  // which reads the link to choose.
+  "components/settings/device-pair-form.tsx",
+  "components/settings/device-welcome.tsx",
   // Settings' readout of what this phone keeps on home and what waits
   // (LA15), with Send now; the status page's rows for the same records are
   // read here too, sending nothing of their own.
@@ -113,6 +139,9 @@ const HOME_LINK_CALLERS = new Set([
   // header, and what hands aph's lane to them.
   "components/device-home-glyph.tsx",
   "components/aph/device-aph-lane.tsx",
+  // LA8 (SIGNIN1): the sign-in mark on every phone screen, which reads the
+  // link and runs the standing watch, whose one ask is the link's `check`.
+  "components/device-sign-in-mark.tsx",
   // Settings' readout of Korean's look at the routine's files, and the port
   // Korean reads them through.
   "components/settings/device-routine-reads.tsx",
@@ -138,9 +167,12 @@ const HOME_LINK_CALLERS = new Set([
   // (`ideaHome`) and asks home once per opening for the words of each take
   // sent that the phone has none of.
   "routes/_dashboard/_apk/rust-rounds.tsx",
-  // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
-  // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
-  // of its own.
+  // LA8 (IW5): the interview week, which reads whether the phone is paired
+  // (`ideaHome`) and whether home holds a send from what the link last
+  // heard, asking home nothing of its own.
+  "routes/_dashboard/_apk/jobs/interview.tsx",
+  // LA15, PULL2, JP1: a pull on a Jobs screen or the status page reads the
+  // morning's picks and runs through `askJobsPicks` (`lib/home-link/jobs`).
   "lib/jobs/pull.ts",
   // LA8 (MY-DATA MD2): My data, which reads the recordings the voice lane
   // lists and where each is kept, and asks home what it keeps.
@@ -151,8 +183,17 @@ const HOME_LINK_CALLERS = new Set([
   "lib/idea-home/index.ts",
   // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
   // keeps as the screen opens and on Try again, a search (a blank one reads
-  // the newest) or Show the newest, and for one take's audio on each Play.
+  // the newest) or Show the newest, and for one take's audio on each Play;
+  // and reads the recordings the voice lane lists and where each
+  // is kept, as My data does, asking home nothing of its own.
   "lib/take-library/index.ts",
+  // LA8 (HEARD3): Studio's Takes › Needs your attention, which asks home for
+  // the takes it couldn't hear well as the page opens and on Try again, for
+  // one take's audio on each Play, and tells home of each act on a tap.
+  "lib/take-reconcile/index.ts",
+  // LA8 (#3339): Takes' and Needs your attention's ask to hear a take again,
+  // sent on a tap, with nothing but the take's id and the act's name.
+  "lib/hear-again/index.ts",
   // LA8 (ST38, FEED4): Studio's feed videos, which asks home for a feed's
   // episodes it holds as the screen opens, on a drag down, on Try again and
   // after a Save, for an episode's video a part at a time on Watch, and sends
@@ -163,9 +204,16 @@ const HOME_LINK_CALLERS = new Set([
   // half minute while home has something under way. It sends nothing of its
   // own.
   "lib/renders/read.ts",
+  // LA8 (GWB14 D15): Takes opened on a game, which asks home for that
+  // game's moment log as it opens and each minute while the game is on. It
+  // sends nothing of its own but the game's id.
+  "lib/game-moments/read.ts",
   // LA8 (SFEED12): a template's preview, which asks home to make one, reads
   // the newest, and asks for its video a part at a time on Watch.
   "lib/template-preview/index.ts",
+  // LA8 (CARDS7): a cards essay's page, which asks for its video a part at a
+  // time on Watch. It sends nothing of its own.
+  "lib/cards-essay-video/index.ts",
   // LA8 (SFEED6): Studio's Feedback page, which asks home for the notes it
   // keeps on each feed's episodes. It sends nothing of its own: the notes go
   // home on the voice lane's run (`lib/home-link/episode-notes`).
@@ -206,11 +254,20 @@ const KEEPERS = new Set([
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
   "lib/home-link/takes-read.ts",
+  "lib/home-link/attention.ts",
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
+  "lib/home-link/game-moments.ts",
   "lib/home-link/previews.ts",
+  "lib/home-link/cards-essays.ts",
   "lib/home-link/clips.ts",
   "lib/home-link/episode-notes-read.ts",
+  // RR30: a closed week's one read of home's record.
+  "lib/home-link/week-record.ts",
+  // AR1: aph's read of home's record as its screens open.
+  "lib/home-link/aph.ts",
+  // JP1: a pull on a Jobs screen's read of the morning's picks.
+  "lib/home-link/jobs.ts",
 ])
 
 /** LA8, #2843: whether home works with this build, its one ask through `look`. */
@@ -219,6 +276,10 @@ const COMPAT_READ = "lib/home-link/compat-read.ts"
 /** SFEED13: Studio › Renders' read, and the one request it may send. */
 const RENDERS_READ = "lib/home-link/renders.ts"
 const RENDERS_SENDS = [['"GET"', '"/renders"']]
+
+/** GWB14 D15: a game's moment log, and the one request it may send. */
+const MOMENTS_READ = "lib/home-link/game-moments.ts"
+const MOMENTS_SENDS = [['"GET"', "gameMomentsPath(gameId)"]]
 
 /** SFEED6: the Feedback page's read, and the one request it may send. */
 const NOTES_READ = "lib/home-link/episode-notes-read.ts"
@@ -258,7 +319,18 @@ const KEPT_SENDS = [
 
 /** LA8, ST32: the read of the takes home keeps, and the one request it may send. */
 const TAKES_READ = "lib/home-link/takes-read.ts"
-const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
+const TAKES_SENDS = [['"GET"', "takesPath(q, after, query)"]]
+
+/**
+ * LA8, HEARD3: the read of the takes home couldn't hear well, and the act
+ * on one: the two requests it may send.
+ */
+const ATTENTION_READ = "lib/home-link/attention.ts"
+const ATTENTION_SENDS = [
+  ['"GET"', "ATTENTION_PATH"],
+  ['"POST"', "actPath(id)", 'JSON.stringify({ act: "hear-again" })'],
+  ['"POST"', "actPath(id)", "JSON.stringify({ act })"],
+]
 
 /**
  * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes, of an
@@ -291,6 +363,12 @@ const PREVIEWS_SENDS = [
     "undefined",
     "{ start, end }",
   ],
+]
+
+/** LA8, CARDS7: a cards essay's video, and the one request it may send. */
+const ESSAYS_READ = "lib/home-link/cards-essays.ts"
+const ESSAYS_SENDS = [
+  ['"GET"', "videoPath(key)", "undefined", "{ start, end }"],
 ]
 
 /** LA8, server#801: a clip's frame, and the one request it may send. */
@@ -814,6 +892,24 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(CALLS_READ)).toContain("homeLink().keep(")
   })
 
+  it("asks whether home still knows this phone only from the standing watch, through the link's one GET of /auth/session (SIGNIN1)", () => {
+    const checks = (f: string): boolean => /\.check\(\)/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          checks(f)
+      )
+    ).toEqual(["lib/home-link/standing.ts"])
+    expect(read("lib/home-link/runtime.ts")).toContain(
+      "url: `${pairing.base}/auth/session`"
+    )
+    const watchers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) => /from "@\/lib\/home-link\/standing"/.test(read(f)))
+    expect(watchers).toEqual(["components/device-sign-in-mark.tsx"])
+  })
+
   it("looks at home's own word only for whether home works with this build: one GET of /compat, without the credential, which only the marks' wiring asks (#2843)", () => {
     const looks = (f: string): boolean => /\.look\(/.test(read(f))
     expect(
@@ -830,7 +926,13 @@ describe("LA8: the phone reaches home through one module", () => {
       .filter((f) =>
         /import \{[^}]*\} from "[^"]*compat-read(\.ts)?"/.test(read(f))
       )
-    expect(askers).toEqual(["lib/home-link/lanes.ts"])
+    // The one ask lives in `serves-now` (RR24), which others read without
+    // asking; only the marks' wiring makes it.
+    expect(askers).toEqual(["lib/home-link/serves-now.ts"])
+    const runners = sourceFiles()
+      .filter((f) => !isTestFile(f) && f !== "lib/home-link/serves-now.ts")
+      .filter((f) => /\bservesRun\(/.test(read(f)))
+    expect(runners).toEqual(["lib/home-link/lanes.ts"])
   })
 
   it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {
@@ -870,6 +972,26 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/take-library/index.ts"])
   })
 
+  it("sends nothing from Takes › Needs your attention but one GET of /voice-notes/attention and one POST of an act, and only the page and the ask to hear again ask them (HEARD3, #3339)", () => {
+    expect(sendCalls(ATTENTION_READ, read(ATTENTION_READ))).toEqual(
+      ATTENTION_SENDS
+    )
+    expect(read(ATTENTION_READ)).toContain('"/voice-notes/attention"')
+    expect(read(ATTENTION_READ)).toContain(
+      "`/voice-notes/${encodeURIComponent(id)}/attention`"
+    )
+    expect(read(ATTENTION_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/attention"|from "@\/lib\/home-link\/attention"/.test(read(f))
+      )
+    expect(readers.sort()).toEqual([
+      "lib/hear-again/index.ts",
+      "lib/take-reconcile/index.ts",
+    ])
+  })
+
   it("sends nothing from Studio's feed videos but a feed's list, its video's parts and an episode's link, and only Studio's feed videos asks them (ST38, FEED4)", () => {
     expect(sendCalls(CALLS_READ, read(CALLS_READ))).toEqual(CALLS_SENDS)
     for (const path of CALLS_PATHS) expect(read(CALLS_READ)).toContain(path)
@@ -905,6 +1027,18 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/renders/read.ts"])
   })
 
+  it("sends nothing from a game's moments but one GET of its log, and only Takes' read of it asks it (GWB14 D15)", () => {
+    expect(sendCalls(MOMENTS_READ, read(MOMENTS_READ))).toEqual(MOMENTS_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/game-moments"|from "@\/lib\/home-link\/game-moments"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/game-moments/read.ts"])
+  })
+
   it("sends nothing from a clip's frame but its one GET, and only the clips' read asks it (server#801)", () => {
     expect(sendCalls(CLIPS_READ, read(CLIPS_READ))).toEqual(CLIPS_SENDS)
     expect(read(CLIPS_READ)).toContain("`/clips/${")
@@ -931,6 +1065,22 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/template-preview/index.ts"])
   })
 
+  it("sends nothing from a cards essay but its video's parts, and only the essay's page asks them (CARDS7)", () => {
+    expect(sendCalls(ESSAYS_READ, read(ESSAYS_READ))).toEqual(ESSAYS_SENDS)
+    expect(read(ESSAYS_READ)).toContain(
+      "`/cards-essays/${encodeURIComponent(key)}/video`"
+    )
+    expect(read(ESSAYS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/cards-essays"|from "@\/lib\/home-link\/cards-essays"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/cards-essay-video/index.ts"])
+  })
+
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {
     expect(sendCalls(IDEA_READS, read(IDEA_READS))).toEqual(IDEA_SENDS)
     expect(read(IDEA_READS)).toContain("homeLink().keep(")
@@ -944,7 +1094,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane and Takes on home read it (RR6, ST32)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention, My data, Rust Rounds' opening and Studio's Spoken read it (RR6, ST32, MD8, HEARD3, #3269, W5)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -955,11 +1105,15 @@ describe("LA8: the phone reaches home through one module", () => {
       )
     expect(readers).toEqual([
       "lib/home-link/voice-copy.ts",
+      "lib/my-data/index.ts",
+      "lib/studio-spoken/index.ts",
       "lib/take-library/index.ts",
+      "lib/take-reconcile/index.ts",
+      "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
   })
 
-  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers and Rust Rounds' week read it (IH1, RR13)", () => {
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers, Rust Rounds' week and Studio's Spoken read it (IH1, RR13, W5)", () => {
     expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
     expect(read(HEARD_READ)).toContain("/heard`")
     const readers = sourceFiles()
@@ -969,6 +1123,7 @@ describe("LA8: the phone reaches home through one module", () => {
       )
     expect(readers).toEqual([
       "lib/idea-hearing/index.ts",
+      "lib/studio-spoken/index.ts",
       "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
   })

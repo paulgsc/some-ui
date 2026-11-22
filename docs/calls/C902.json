@@ -1,0 +1,17 @@
+{
+  "id": "C902",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:apps/servers/file_host/src/transcribe/pass.rs"
+  ],
+  "chose": "The transcriber's oldest arrival and count come from voice_repo::transcript::backlog, the queue's own predicate over every note waiting, read at a pass's start and after each attempt kept; never from the pass's batch.",
+  "options": [
+    "a whole-queue read, true whatever order the pass hears in",
+    "the batch's first row, free but wrong once the batch is ordered fewest attempts first, and capped at 20"
+  ],
+  "gray": "Each read is the queue's own work; the pass makes at most one more read than attempts.",
+  "undo": "Read once a pass, or take the batch's first row.",
+  "refs": ["#3333", "server#1066", "server#1087"]
+}

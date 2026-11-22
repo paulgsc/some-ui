@@ -1,15 +1,12 @@
 /**
  * @vitest-environment jsdom
  *
- * `SpeechProvider` builds a real adapter on mount (an audio context, a
- * network client), and where speech is made depends on whose data this is:
+ * `SpeechProvider` builds a real adapter on mount, and which one depends on
+ * the device the app runs on:
  *
- * - on the device, the browser's own voice (`mode: "static"`), so what a
- *   learner reads aloud never reaches the operator's TTS service;
- * - on the account, the server's speech service;
- * - in the Android app, the phone's own engine (`mode: "static"` with a
- *   `native` backend), in Korean, and no other backend;
- * - while a returning account user's authority is undecided, nothing is built.
+ * - on the web, signed in or not, the browser's own voice;
+ * - in the Android app, the phone's own engine, in Korean, and no other
+ *   backend.
  *
  * `children` (the routed app) renders in every case.
  */
@@ -18,7 +15,6 @@ import type { ReactNode } from "react"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const speechProviderSpy = vi.fn()
 const speechConfigSpy = vi.fn()
 
 vi.mock("@some-ui/speech", () => ({
@@ -27,16 +23,14 @@ vi.mock("@some-ui/speech", () => ({
     config,
   }: {
     children?: ReactNode
-    config: { mode: string }
+    config: unknown
   }): ReactNode => {
-    speechProviderSpy(config.mode)
     speechConfigSpy(config)
     return children
   },
 }))
 
-// Each backend is its own entry; which ones a build passes is the point.
-vi.mock("@some-ui/speech/http", () => ({ httpSpeech: "http backend" }))
+// Each backend is its own entry; which one a build passes is the point.
 vi.mock("@some-ui/speech/web-speech", () => ({ webSpeech: "web backend" }))
 vi.mock("@some-ui/speech/native", () => ({ nativeSpeech: "native backend" }))
 
@@ -52,92 +46,37 @@ vi.mock("@/lib/audio-preferences/use-audio-preferences", () => ({
   }),
 }))
 
-vi.mock("@/lib/tts-config", () => ({
-  describeTTSEndpoint: (): { endpoint: null; source: "unavailable" } => ({
-    endpoint: null,
-    source: "unavailable",
-  }),
-  resolveTTSEndpoint: (): undefined => undefined,
-}))
-
-let kind: "pending" | "local" | "account" = "pending"
-vi.mock("@/lib/authority", () => ({
-  useAuthority: (): { kind: typeof kind; epoch: number } => ({
-    kind,
-    epoch: 0,
-  }),
-}))
-
 afterEach(() => {
   cleanup()
-  speechProviderSpy.mockClear()
   speechConfigSpy.mockClear()
   vi.unstubAllEnvs()
 })
 
-describe("TTSProvider: where the speech is made follows whose data this is", () => {
+describe("TTSProvider: the voice is the device's own", () => {
   const children = <div>routed content</div>
 
-  it("builds nothing while a returning account user's authority is undecided", async () => {
-    kind = "pending"
+  it("speaks with the browser's own voice on the web", async () => {
     const { TTSProvider } = await import("@/providers/tts")
     render(<TTSProvider>{children}</TTSProvider>)
 
     screen.getByText("routed content")
-    expect(speechProviderSpy).not.toHaveBeenCalled()
+    expect(speechConfigSpy).toHaveBeenCalledWith({ backend: "web backend" })
   })
 
-  it("speaks with the browser's own voice on the device, so no lesson text leaves it", async () => {
-    kind = "local"
-    const { TTSProvider } = await import("@/providers/tts")
-    render(<TTSProvider>{children}</TTSProvider>)
-
-    screen.getByText("routed content")
-    expect(speechProviderSpy).toHaveBeenCalledWith("static")
-    expect(speechConfigSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        adapters: { server: "http backend", static: "web backend" },
-      })
-    )
-  })
-
-  it("uses the server's speech service on the account", async () => {
-    kind = "account"
-    const { TTSProvider } = await import("@/providers/tts")
-    render(<TTSProvider>{children}</TTSProvider>)
-
-    screen.getByText("routed content")
-    // The test build is a server build (`DATA_MODE` is "server").
-    expect(speechProviderSpy).toHaveBeenCalledWith("server")
-  })
-
-  it("speaks Korean with the phone's own engine in the Android app, whatever the account", async () => {
-    kind = "account"
+  it("speaks Korean with the phone's own engine in the Android app", async () => {
     // Read where it is branched on (src/vite-env.d.ts), at render.
     vi.stubEnv("VITE_DEVICE_BACKEND", "true")
     const { TTSProvider } = await import("@/providers/tts")
     render(<TTSProvider>{children}</TTSProvider>)
 
+    screen.getByText("routed content")
     expect(speechConfigSpy).toHaveBeenCalledWith({
-      mode: "static",
       language: "korean",
       native: expect.objectContaining({
         engine: expect.any(Object),
         voiceId: undefined,
       }),
-      adapters: { static: "native backend" },
-    })
-  })
-
-  it("has only the browser's voice on GitHub Pages, which has no speech service", async () => {
-    kind = "account"
-    vi.stubEnv("VITE_STATIC_DATA", "true")
-    const { TTSProvider } = await import("@/providers/tts")
-    render(<TTSProvider>{children}</TTSProvider>)
-
-    expect(speechConfigSpy).toHaveBeenCalledWith({
-      mode: "static",
-      adapters: { static: "web backend" },
+      backend: "native backend",
     })
   })
 })

@@ -1,0 +1,14 @@
+{
+  "id": "C74",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/rust_essays.rs"],
+  "chose": "Each minute the essays worker tidies the drive against what the subject holds: an account gone, a take deleted or a video made removes the files it no longer may keep. There are no hooks in account deletion or the voice delete route.",
+  "options": [
+    "a reconcile each minute",
+    "hooks in delete_subject and DELETE /voice-notes/:id"
+  ],
+  "gray": "No invariant said where file cleanup for a subject-scoped render lives. A reconcile catches every path within a minute, at a few local reads per essay week.",
+  "undo": "Remove rust_essays::tidy and add the hooks.",
+  "refs": ["#2691", "server#774"]
+}

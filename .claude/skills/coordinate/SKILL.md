@@ -5,8 +5,8 @@ description: How a coordinator session runs a choir of other cloud sessions acro
 
 # coordinate
 
-The rules the Nov 8–13 coordinator runs learned (#2814, with run records #2823, #2833 and
-#2885). A later statement by the owner supersedes this file; fold it in here in a PR.
+The rules the Nov 8–13 coordinator runs learned (#2814, with run records #2823, #2833,
+#2885 and #2918). A later statement by the owner supersedes this file; fold it in here in a PR.
 
 There are three roles. **You decide** is the owner. **Coordinator** is the session that holds
 the plan, the ledger and the merge queue. **Choir** is every worker session it starts. Write
@@ -64,11 +64,26 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
     ("Review coverage on every head").
   - Server's steward counts only bot review. On server, that fallback holds only when the
     owner extends it for the run; write that grant in the epic as well (#2814, Nov 13).
-- Hand each worker a call-ID range for `docs/calls.json`, and keep the next free ID on the
-  record issue (#2814, Nov 9).
-- Be the only writer of the ledger and of every epic body (#2823, #2833).
+- Hand each worker a call-ID range for `docs/calls/`, and keep the next free ID on the
+  record issue (#2814, Nov 9). On taking over, first collect every range a running worker
+  already holds or has used: workers keep their ranges across coordinators, and a range
+  taken from `docs/calls/` alone collided twice on Nov 21 (#3361).
+- Be the only writer of the ledger and of every epic body (#2823, #2833). A large body
+  (#2074's is about 30 KB) is rewritten by a script that replaces whole sections, then
+  diffed to show nothing else moved and read back to confirm it matches. A worker sends its
+  "Where we are" lines to the coordinator (below, "Choir"), or, when it can reach the epic, leaves
+  them as a comment for the coordinator to fold in (#3197, #3361, Nov 21).
 - Copy session ids from the roster; never retype them (#2814, Nov 8).
 - Put the choir's protocol (below) in every brief.
+- Before briefing a story, check whether a reach is owed (`CLAUDE.md`, "When a reach is
+  owed"). If one is and its epic's "Reach" section names no call, make the reach the worker's
+  first task, recorded as a call before any of the machinery's code (#3291).
+- Before briefing a new pipeline, schema, scene kind, voice path or render job, name the
+  existing one the worker extends (`CLAUDE.md`, "Reach before you build", C820). Pass the owner's
+  "make a new X" verbatim as the story, and say which existing X it lands in (#3317).
+- Name the family the story is a case of, in the brief, and tell the worker to push back to you
+  when its task as worded would overfit one case; relay that pushback to the owner (C830).
+  The worker carries on at the family's level meanwhile.
 
 ### Admission by free runners
 
@@ -78,25 +93,76 @@ default (owner, #2814 Nov 10; measurements on #2833).
 
 - Admit a worker's `ready` branch to CI only when no job is queued in either repo.
 - A PR that is ready (green and reviewed), or reviewed and docs-only (the coordinator's call,
-  Nov 13), skips that check: update it and arm auto-merge at once, however long the queue.
-  Under sustained load the queue never clears (#2814, Nov 13: #2916 waited 30 minutes behind
-  7–13 queued runs).
+  Nov 13), skips that check: it takes its repo's next merge slot (below, "While running"),
+  however long the runner queue. Under sustained load the queue never clears (#2814, Nov 13:
+  #2916 waited 30 minutes behind 7–13 queued runs).
 - A PR that is waiting on review, on a dependency or on the owner holds no slot.
-- Both repos require branches to be up to date. Update a PR once, at ready time (green and
-  reviewed), never on every merge: `update_pull_request_branch`, then `enable_pr_auto_merge`.
-- Merge first whichever PR is first green and reviewed. Up to date makes server merges serial
-  in practice, so set their order explicitly (#2885, Nov 11).
+- Both repos require branches to be up to date. Update a PR once, when it takes its repo's slot
+  (green and reviewed), never on every merge: `update_pull_request_branch`, then
+  `enable_pr_auto_merge`.
+- Merge first whichever PR is first green and reviewed, unless the critical path says
+  otherwise. Up to date makes server merges serial in practice, so set their order explicitly
+  (#2885, Nov 11).
 - Treat real dependencies as edges, not as a global queue. Examples: the ledger step, the
   route snapshot, a bookkeeping PR after its server PR.
 - Merge the image or release bot PR last, so one publish carries every content PR (#2833,
   #2885).
 
+### Buckets: n reviewed branches, k pull requests (C1021)
+
+CI rarely finds what review missed: on Nov 21 every red check was a flake (#3374) or a pair's
+planned red, while review found every real fault. Under strict up-to-date, though, each merge puts
+every open PR behind, and each update is a full 15–35 minute round; at least six of Nov 21's
+rounds were merges of `main` with no content change. So a PR is opened for settled work, and
+several branches share one (owner, Nov 21, agreeing to C1021).
+
+- **Settle on the branch.** A branch has its fresh-context review, every fix, and its local
+  checks (CLAUDE.md "Pre-commit verification"; server's fmt, clippy ratchet, tests, `sqlx
+prepare`) before it reaches a PR. Review after a PR opens is for the merge delta only.
+- **Every commit is reviewed before it is bucketed** (owner, Nov 22: "it has to pass the
+  reviews"). A commit added after a branch's review (a fix, a hand-resolved merge of `main`, the
+  coordinator's own fix on the bucket) gets its own fresh-context review of that delta first. The
+  coordinator reading it is not that review: it is not a fresh reader.
+- **One bucket per repo, lane and kind.** The coordinator merges settled worker branches into
+  `claude/bucket-<repo>-<n>` with merge commits (never squash or rebase there), so each
+  worker's commits and `Change-Kind`, `Promise`, `Relates` and `Call` trailers reach `main`
+  through the PR's squash (COMMIT_MESSAGES). Where two branches touch the same file, the
+  merge's resolution is reviewed as a delta before the bucket is pushed.
+- **Carried branches prune themselves.** Once a bucket PR merges, `bucket-prune.yml` deletes
+  each branch whose tip it holds, and keeps (and names) one that moved on or an open PR uses.
+  It knows a bucket only by the exact name `claude/bucket-<repo>-<n>`, the repository's own
+  name and a number. A branch named any other way is not a bucket: its PR is not pruned, and
+  its branch is deleted or kept like any worker's.
+- **Local checks on the bucket**, then one PR. Its body has one section per branch (what, its
+  review record, its Superseded) and "Calls I made" lists every branch's calls. The review
+  record is the findings and what became of each, not "reviewed": a branch's review that lives
+  only in a worker's message to the coordinator is not on the record until the PR carries it.
+- **The bucket gets its own review.** Before it merges, a fresh-context agent reads the whole
+  bucket diff for what no branch review could see: two branches that each hold alone but break
+  together (a shared file, schema, ledger entry, route or call ID), and every hand-resolved
+  hunk. Its findings and outcomes go on the PR, as a branch's do.
+- **A defect is never bucketed.** It carries its own proof, and "a change that is both a story
+  and a defect is two PRs" (CLAUDE.md).
+- **Small and timed.** Three to five branches; close a bucket when its last branch settles or
+  on the next timer, whichever comes first, so one slow branch never holds the rest. A branch
+  that misses the bucket waits for the next.
+- **Pairs ride as buckets.** One some-ui bucket carries every ledger entry, call and fixture
+  copy its server bucket needs, so the pair order (some-ui half first, then the server re-run)
+  is paid once per bucket.
+- **A red bucket** is fixed on the branch that broke it, merged into the bucket again; if that
+  branch can't be fixed this round, rebuild the bucket without it.
+- Fast-lane work that can't wait for a bucket may still go alone, by the coordinator's call.
+- **When Codex has no credits** (Nov 21, every PR of the run): a fresh-context agent reviews each
+  head and the PR carries a coverage comment naming the range it read and each finding's
+  outcome. A rebase or a merge of `main` gets its own range-diff check, recorded the same way.
+
 ### While running
 
 - While any PR is in CI, set a `send_later` timer about every 20 minutes and check every open
   PR yourself. Never wait on events alone (#2823).
-- Re-check a "clean" PR directly. When a re-run turns a PR green, re-arm auto-merge or merge
-  it, because a refused auto-merge does not re-arm itself (#2814, Nov 9).
+- Re-check a "clean" PR directly. When a re-run turns a PR green, merge it by hand with
+  `expectedHeadSha`: auto-merge doesn't fire again, and a refused one does not re-arm itself
+  (#2814, Nov 9; #2967, #2918, Nov 14).
 - You are the merger, so never stand down from babysitting a PR you are to merge (babysit's
   stand-down waits on a human merger).
 - Before merging, check the head and every check run yourself. Merge with `expectedHeadSha`
@@ -107,10 +173,38 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - A message reaches a session mid-turn only when its turn ends, sometimes batched with
   others. Restate whatever it supersedes (#2814, Nov 10).
 - Never pipe a command whose exit code matters (#2814, Nov 10; server `CLAUDE.md`).
+- Under strict up-to-date, keep one PR per repo updated and armed, chosen by critical path,
+  and update and arm the next only when it lands. Updating every ready PR at once costs about
+  N²/2 CI runs, and two armed PRs race, so the loser pays for every run again (#2918, Nov 13;
+  #2945 ran CI three times, #2918, Nov 14).
+- Workers update only on "your turn" (below, "Choir"): a CI round takes 25–35 minutes, so a
+  branch updated out of turn costs the queue a round (#3197, Nov 21).
+- Server's `automation/release` PR is re-cut after every merge to `main`, with auto-merge on,
+  and each release merge puts every open server PR behind. Disabling its auto-merge holds
+  only until the next re-cut, so disable it on the current release PR right before the PR
+  you need lands (#3197, Nov 21).
+- Two workers' migrations dated the same day took the same version twice (20261121000100,
+  then 000200). Before merging `main` into a branch with a migration, check its version
+  against `main`'s `migrations/` (#3197, Nov 21).
+- Merge a cross-repo pair's some-ui half first. The server PR's "Check some-ui against it"
+  stays red until it lands; then re-run that PR's failed jobs (#3197, Nov 21).
+- Before merging a server PR that adds a mailbox read or put, check every numeric bound the
+  assurance ledger states for the mailbox pass (MI6's requests a day; MI5's 120 seconds and
+  its request budget a pass). The server's `Assurance ledger` check reads stores, paths and
+  tasks, not counts written in prose, so a broken bound lands green. Raising one is the
+  owner's decision, so ask before the server PR merges (CLAUDE.md "Operational assurance";
+  server#851, #2972, #2918, Nov 14).
+- Before merging a some-ui PR that adds a `server:` path to the assurance ledger, check that the
+  file is on server `main` (AL1, #2924). Otherwise every server PR goes red (#2918, Nov 13).
+- After a some-ui merge that touches `apps/www/tests/record` or `infra/render`, check that
+  `render-docker-release.yml` pushed. It builds only on `main`, and a failed proof publishes
+  nothing (RI1, #2925). If server's `release-lock.yml` doesn't run after it, dispatch it by hand
+  (#2918, Nov 13).
 - A bot PR pushed with `GITHUB_TOKEN` runs no CI. To start it:
 
-  - approve its `action_required` runs (`actions_run_trigger` → `rerun_workflow_run`), again
-    after each regeneration of the www release PR;
+  - approve its `action_required` runs (`actions_run_trigger` → `rerun_workflow_run`, or
+    `gh api -X POST repos/paulgsc/some-ui/actions/runs/<id>/approve`), again after each
+    regeneration of the www release PR;
   - or, when it is behind, use Update branch as a person.
 
   Never push an empty commit, and never close and reopen (#2814, Nov 10; #2885).
@@ -144,7 +238,14 @@ default (owner, #2814 Nov 10; measurements on #2833).
 
 - Push each worker's session note to paulgsc/testing `sessions/`, after running
   `python3 scripts/guard.py --staged` there, and confirm it to the worker before it archives
-  (SFEED9; #2885, Nov 12).
+  (SFEED9; #2885, Nov 12). The guard checks size and media only. Also run
+  `pnpm --filter @some-ui/video-render render session-check <testing>/sessions`, which checks
+  each note against the schema: workers' notes often give `ended` as a timestamp, `epics` as
+  issue refs, `pulls` as strings or an issue, or `did` as an array (testing 4356f3e; #2918,
+  Nov 14). A note's file is `<ended>-<session>.json`, one per session per day: a session
+  resumed the same day merges into that day's note, never overwrites it, and one resumed on a
+  later day writes a new note covering what it did since (CLAUDE.md "Multi-session relay
+  work").
 - Write the closing record on the run's `[ORCH]` issue. List the merged PRs in both repos,
   what waits on the owner, the follow-ups filed, and the lessons. Lessons become rules here,
   through a PR.
@@ -166,6 +267,10 @@ default (owner, #2814 Nov 10; measurements on #2833).
   only on events (#2823).
 - Send a red check that isn't yours to the coordinator before any re-run (#2823).
 - Never merge. Send the coordinator `ready-to-merge <repo>#<n> <40-char sha>` (#2885).
+- Never arm auto-merge, and update your branch only when the coordinator says "your turn"
+  (#3197, Nov 21).
+- If the owner messages you directly, first tell them you aren't the coordinator and point them
+  to it, then pass what they said to the coordinator (the owner, #3361, Nov 21).
 - Never push to testing. Once the coordinator says merged, confirm, then send it your ledger
   lines, your "Where we are" lines and your session note's JSON (#2885, Nov 12).
 - Archive only once the coordinator confirms your note is in (SFEED9).

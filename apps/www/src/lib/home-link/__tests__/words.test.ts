@@ -48,6 +48,8 @@ const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   hidden: 0,
   pulled: true,
   serves: null,
+  away: null,
+  blocked: null,
   ...over,
 })
 
@@ -74,6 +76,14 @@ function every(): Array<LaneFacts> {
   for (const serves of ["updating", "not-yet", "too-old"] as const) {
     all.push(facts({ paired: true, waiting: 3, serves }))
   }
+  all.push(
+    facts({
+      paired: true,
+      waiting: 3,
+      run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 1 } },
+      away: { since: Date.UTC(2026, 10, 12, 20), now: Date.UTC(2026, 10, 13) },
+    })
+  )
   return all
 }
 
@@ -439,6 +449,11 @@ describe("the routine's files in Korean", () => {
       kept(last({ kind: "failed", why: "room" })),
       kept(last({ kind: "failed", why: "refused" })),
       kept(last({ kind: "failed", why: "fault" })),
+      facts({
+        paired: true,
+        run: last({ kind: "unreachable", at: 1 }),
+        blocked: "name",
+      }),
       kept(last({ kind: "failed", why: "an entry" })),
       facts({ paired: true, serves: "updating" }),
       facts({ paired: true, serves: "not-yet" }),
@@ -465,7 +480,78 @@ describe("the routine's files in Korean", () => {
     )
     expect(view).toMatchObject({ how: "unpaired", word: "Not paired" })
     expect(view.line).toBe(
-      "This phone isn't paired with home now. Pair it in Settings. 1 event waits on this phone and goes next time."
+      "This phone isn't paired with home now. Pair it in Settings. 1 item waits on this phone and goes next time."
     )
+  })
+})
+
+describe("away from home (AW1)", () => {
+  const unreachable: KeptState = {
+    ...INITIAL_KEPT,
+    last: { kind: "unreachable", at: 1 },
+  }
+
+  it("says since when, in place of no answer, with what waits", () => {
+    const since = Date.UTC(2026, 10, 13, 19, 57)
+    const view = laneView(
+      WORDS.practice,
+      facts({
+        paired: true,
+        waiting: 2,
+        run: unreachable,
+        away: { since, now: since + 60_000 },
+      })
+    )
+    expect(view.word).toBe("Away")
+    expect(view.line).toMatch(/^Away from home since .+\. /)
+    expect(view.line).toContain("wait on this phone and go next time.")
+  })
+
+  it("says home didn't answer when the phone is not away", () => {
+    expect(
+      laneView(WORDS.practice, facts({ paired: true, run: unreachable })).word
+    ).toBe("No answer")
+  })
+})
+
+describe("a request that couldn't reach home, though home may be there (NA1)", () => {
+  it("is never said as away, even within the hold, and says which it was in the person's terms", () => {
+    const blocked = (reason: "name" | "trust" | "door" | "held"): LaneFacts =>
+      facts({
+        paired: true,
+        waiting: 2,
+        // A run that met it, or one the link held back for it since.
+        run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 2 } },
+        blocked: reason,
+        away: { since: 1, now: 2 },
+      })
+    const views = (["name", "trust", "door", "held"] as const).map((reason) =>
+      laneView(WORDS.aph, blocked(reason))
+    )
+    for (const view of views) {
+      expect(view.how).toBe("blocked")
+      expect(view.line).not.toMatch(/away/i)
+      expect(view.line).not.toMatch(MACHINERY)
+      expect(view.line).toMatch(/on this phone and go next time/)
+    }
+    expect(views[0]?.line).toMatch(
+      /couldn't look up home's name on this network/
+    )
+    // Only what the phone knows (#3411): its lookup failed, not why.
+    expect(views[0]?.line).not.toMatch(/router|blocking/i)
+    expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
+    expect(views[2]?.line).toMatch(/home itself isn't answering/)
+    // NA2 (#3411): the phone's own settings for the app, named as the
+    // person finds them, with no word of how the phone routes it.
+    expect(views[3]?.line).toMatch(/isn't letting this app go online/)
+    expect(views[3]?.line).toMatch(/mobile data, Wi-Fi, battery/)
+    expect(views[3]?.line).not.toMatch(/network|route|uid|blocked/i)
+    // Once nothing is blocked, the same run is away again.
+    expect(
+      laneView(WORDS.aph, {
+        ...blocked("name"),
+        blocked: null,
+      }).line
+    ).toMatch(/^Away from home since/)
   })
 })

@@ -1,0 +1,14 @@
+{
+  "id": "C460",
+  "made": "2026-11-17",
+  "by": "owner",
+  "paths": [
+    "some-ui:apps/www/src/lib/my-data/deleting.ts",
+    "some-ui:apps/www/src/components/settings/device-my-data.tsx",
+    "server:crates/db/voice/src/kept.rs"
+  ],
+  "chose": "The owner, on server#919 (recorded on #3070): \"yes, My data should offer the unheard delete too\". My data's own rows offer Delete… on any recording home marks deletable, of any kind: a Studio recording, or a take home couldn't hear (paulgsc/server#919). My data's rows and Takes › Needs your attention both offer every kind, through the same sheet, receipt and per-kind let-go; home's `deletable` stays the one authority, so a home before #919 is offered only Studio's. This moves C450, which kept the unheard delete on Needs your attention alone.",
+  "undo": "Gate `offersDelete` in `lib/my-data/deleting.ts` on Studio's kind again; home's per-note `deletable` can stay.",
+  "refs": ["#3070", "#3084", "server#919", "#3080"],
+  "moves": "C450"
+}

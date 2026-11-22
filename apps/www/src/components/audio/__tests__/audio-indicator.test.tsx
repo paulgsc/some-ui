@@ -10,7 +10,6 @@ import type { JSX, ReactNode } from "react"
 import { withQueryClient } from "@/test-support/query-client"
 import type { SpeechAdapter, VoiceReport } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
-import { httpSpeech } from "@some-ui/speech/http"
 import {
   act,
   cleanup,
@@ -67,8 +66,7 @@ function renderWithAdapter(adapter: SpeechAdapter): void {
   renderIndicator((children) => (
     <SpeechProvider
       config={{
-        mode: "static",
-        adapters: { server: () => adapter, static: () => adapter },
+        backend: () => adapter,
       }}
     >
       {children}
@@ -101,22 +99,17 @@ afterEach(() => {
 })
 
 describe("AudioIndicator - who reads lessons aloud", () => {
-  it("names the hosted voice the session will use for Korean", async () => {
-    renderIndicator((children) => (
-      <SpeechProvider
-        config={{
-          mode: "server",
-          hosted: { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
-          fallbackWhenUnsupported: false,
-          adapters: { server: httpSpeech },
-        }}
-      >
-        {children}
-      </SpeechProvider>
-    ))
+  it("names the browser voice that will read Korean", async () => {
+    renderWithAdapter(
+      reportingAdapter({
+        platform: "browser",
+        voice: "Yuna",
+        availability: "available",
+      })
+    )
 
     expect((await trigger()).getAttribute("title")).toBe(
-      "Lessons: In-Joon (Korean Male) · this site's voice service"
+      "Lessons: Yuna · your browser's own voice"
     )
   })
 

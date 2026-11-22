@@ -14,6 +14,8 @@ import {
 import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
+import type { Pairing } from "@/lib/home-link/model"
+import { RESUME_BUILDER } from "@/lib/home-web"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
@@ -35,15 +37,7 @@ export function useVoiceBusy(owner: string): boolean {
   return take.kind !== "idle" && answers === owner
 }
 
-/**
- * The home network's résumé builder, a page of the lan build, as an
- * absolute URL: another deployable's, which Capacitor opens in the phone's
- * browser. The Android app bundles no résumé build and holds no
- * contact details.
- */
-const RESUME_BUILDER = "https://www.home.maishatu.com/resume-build"
-
-/** The builder with a composition and layout preselected, for pick or scout `id`. */
+/** The résumé builder with a composition and layout preselected, for pick or scout `id`. */
 export function builderHref(
   sends: { variant: string; template: string },
   id: string
@@ -53,40 +47,6 @@ export function builderHref(
     template: sends.template,
     pick: id,
   }).toString()}`
-}
-
-/** Toggle chips: each pressed or not, in the order given. */
-export const Chips = <T extends string>({
-  label,
-  options,
-  pressed,
-  onToggle,
-  disabled,
-}: {
-  label: string
-  options: ReadonlyArray<readonly [T, ReactNode]>
-  pressed: (value: T) => boolean
-  onToggle: (value: T) => void
-  disabled?: (value: T) => boolean
-}): JSX.Element => {
-  return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
-      {options.map(([value, text]) => (
-        <Button
-          key={value}
-          type="button"
-          size="sm"
-          className="gap-1.5 rounded-full"
-          variant={pressed(value) ? "default" : "outline"}
-          aria-pressed={pressed(value)}
-          disabled={disabled?.(value)}
-          onClick={() => onToggle(value)}
-        >
-          {text}
-        </Button>
-      ))}
-    </div>
-  )
 }
 
 /**
@@ -178,20 +138,25 @@ export const OpenDigest = (): JSX.Element => {
 
 /**
  * Whether this phone is paired with home, as the wing's layout reads it
- * (`usePairedWithHome`): only then does an exchange file the cards' files.
+ * (`usePairing`): only then does an exchange file the cards' files. Outside
+ * the wing, not known (#3157), so a card claims nothing of where its file is.
  */
-const KeptOnHomeContext = createContext(false)
+const KeptOnHomeContext = createContext<Pairing>({ kind: "reading" })
 
 export const KeptOnHome = KeptOnHomeContext.Provider
 
 /**
- * What the Jobs cards read their state from (`lib/jobs/journey`); `kept`
+ * What the Jobs cards read their state from (`lib/jobs/journey`); `pairing`
  * where a page outside the wing knows it, the wing's layout's otherwise.
  */
-export function useJourneyContext(kept?: boolean): JourneyContext {
+export function useJourneyContext(pairing?: Pairing): JourneyContext {
   const { state } = useJobs()
   const wing = useContext(KeptOnHomeContext)
-  return { state, kept: kept ?? wing, outgoing: phoneJobs().keeping.outgoing }
+  return {
+    state,
+    pairing: pairing ?? wing,
+    outgoing: phoneJobs().keeping.outgoing,
+  }
 }
 
 /** A card whose title bar wears where its file is, and what it holds. */

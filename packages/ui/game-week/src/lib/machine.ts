@@ -30,7 +30,10 @@
  *   change it; the clock closes the question, leaving the bite said first
  *   and Later, and an answer that still arrives too late says so.
  * - **Every field is set at the stop** (GW4): `biteFields` from what the
- *   screen showed when talking started. A pick after a bite said first
+ *   screen showed when talking started. Its unit (#3049) is the ranked
+ *   list's for its scenario unless one is named, and one tap moves it to the
+ *   next while the bite is said (`pickUnit`); it goes home once, with the
+ *   bite. A pick after a bite said first
  *   amends it with `pickedAfter`: the card picked, `seq` the offer on screen
  *   at the stop, and `how` still `said-first` (GB1).
  * - **Nothing records while the page is gone.** Leaving, or the screen
@@ -60,7 +63,7 @@ import {
 } from "@some-ui/voice-capture"
 
 import type { BiteMoment, KeptBite, Said } from "./bite"
-import { biteFields, pickedAfter } from "./bite"
+import { biteAbout, biteFields, pickedAfter } from "./bite"
 import type {
   Feed,
   FeedChoice,
@@ -72,10 +75,19 @@ import type {
 } from "./feed"
 import type { ModeId } from "./modes"
 import { BITE_LIMITS, MODE_RULES, pregameFrom } from "./modes"
-import type { Prefs } from "./ports"
+import type { Prefs, StoredBite } from "./ports"
 import type { Quiet } from "./quiet"
 import { hear, NOT_HEARD, quietEnough } from "./quiet"
+import type { RankedEntry } from "./ranked"
+import { nextUnit, otherSide, rankedList, unitOf } from "./ranked"
 import { keptLine, NOTICES } from "./words"
+
+/**
+ * How many of the game's bites show under the recorder, newest first
+ * (GWB14, #3039): enough to see the last few just said, while the screen
+ * stays the recorder. Policy, moved with the story (C970).
+ */
+export const RECENT_BITES = 3
 
 /** How long Undo stays offered after a bite is kept. */
 export const UNDO_MS = 5_000
@@ -91,7 +103,8 @@ const BITE_ITEM = "game-week"
 
 /**
  * The take pattern's options for a bite: each bite stands on its own (the
- * screen lists the newest, `max: 1`, and the next makes room), within
+ * pattern holds one at a time, `max: 1`, and the next makes room; the screen
+ * lists the game's newest, `RECENT_BITES`), within
  * `BITE_LIMITS`, played back on its row. Redo and Let go aren't offered:
  * a bite is Undone while its hold lasts, and past it is on its way home.
  */
@@ -123,6 +136,11 @@ export type Activity =
       readonly startedAt: number
       /** What the screen offered as the bite stopped. */
       readonly offer: OfferView | null
+      /**
+       * The ranked list as the bite stopped: the units a scenario picked
+       * now is about, as home ranked them for that same offer.
+       */
+      readonly ranked: ReadonlyArray<RankedEntry>
     }
 
 /** An offer as this mode shows it, at one moment. */
@@ -150,15 +168,20 @@ export type GameWeekState = {
   readonly activity: Activity
   /** The take pattern's state: the bite's take, and what plays. */
   readonly takes: TakePatternState
+  /** The newest bite taken on this visit: the one Undo may be offered on. */
+  readonly lastTaken: string | null
   /**
-   * The newest bite taken on this visit, as its row shows it, and whether
-   * the store has kept it on this phone yet (its row shows only once it
-   * has): where it is kept is the store's word, `homeHolds`.
+   * Every bite the store keeps on this phone, as it last said (`stored`):
+   * the game's newest show under the recorder (`biteView`), each from the
+   * moment the store has kept it.
    */
-  readonly lastBite: {
-    readonly take: PatternTake
-    readonly stored: boolean
-  } | null
+  readonly shelf: ReadonlyArray<StoredBite>
+  /**
+   * Bites Undo was tapped on and the store hasn't answered for: their rows
+   * stay gone whatever the store says meanwhile, and come back if it
+   * couldn't throw them away.
+   */
+  readonly undoing: ReadonlyArray<string>
   /**
    * Bites handed to the store and not yet kept, each with the hold the
    * store has for it (an answer given meanwhile moves it): Undo's end.
@@ -184,6 +207,10 @@ export type GameWeekIntent =
   | { readonly type: "say"; readonly said: Said }
   | { readonly type: "done" }
   | { readonly type: "answer"; readonly said: Said | null }
+  /** Moves the bite being said to the next unit (#3049). */
+  | { readonly type: "pickUnit" }
+  /** Makes the bite being said about the game's other team (#3049). */
+  | { readonly type: "switchSide" }
   | { readonly type: "undo" }
   | { readonly type: "pickGame"; readonly gameId: string }
   | { readonly type: "toggleWatching"; readonly gameId: string }
@@ -221,9 +248,9 @@ type GameWeekSignal =
       /** The bite was already on its way home, as it was. */
       readonly onItsWay: boolean
     }
-  | { readonly type: "undoFailed" }
-  /** The store says home holds the bite, since `since` (ms since the epoch). */
-  | { readonly type: "homeHolds"; readonly id: string; readonly since: number }
+  | { readonly type: "undoFailed"; readonly id: string }
+  /** What the store keeps now, after a change. */
+  | { readonly type: "stored"; readonly bites: ReadonlyArray<StoredBite> }
   | Extract<TakePatternEvent, { type: "loaded" | "played" }>
 
 export type GameWeekEvent = GameWeekIntent | GameWeekSignal
@@ -259,7 +286,9 @@ export function initialState(prefs: Prefs, now: number): GameWeekState {
     prefs,
     activity: { kind: "idle" },
     takes: initialTakePattern,
-    lastBite: null,
+    lastTaken: null,
+    shelf: [],
+    undoing: [],
     keeping: [],
     undo: null,
     blocked: null,
@@ -324,6 +353,42 @@ export function offerView(state: GameWeekState): OfferView | null {
   return { seq: offer.seq, strip: offer.strip, cards, justHappened }
 }
 
+/** The ranked list (`./ranked`) for the current game only: another game's offer ranks nothing here. */
+export function rankedNow(state: GameWeekState): ReadonlyArray<RankedEntry> {
+  const game = currentGame(state)
+  const { offer } = state
+  return rankedList(
+    game !== null && offer?.gameId === game.id ? (offer.ranked ?? null) : null
+  )
+}
+
+/**
+ * `said` with the unit `list` gives its scenario, unless it names one (a
+ * play that just happened names its own, when home read one off it). The
+ * owner sees it on the chip and can change it.
+ */
+function withUnit(list: ReadonlyArray<RankedEntry>, said: Said): Said {
+  if (said.how === "said-first" || said.unit !== undefined) return said
+  return { ...said, unit: unitOf(list, said.scenario) }
+}
+
+/**
+ * The team a bite is about when no unit is named on it: the play's own,
+ * when it just happened and home read one off it, else the list's.
+ */
+function teamOf(
+  state: GameWeekState,
+  said: Exclude<Said, { how: "said-first" }>
+): string | null {
+  if (said.how === "just-happened") {
+    const play = state.offer?.justHappened.find(
+      (each) => each.scenario === said.scenario && each.context === said.context
+    )
+    if (play?.unit !== undefined) return play.unit?.side ?? null
+  }
+  return unitOf(rankedNow(state), said.scenario)?.side ?? null
+}
+
 function withPrefs(state: GameWeekState, prefs: Prefs): Step {
   return {
     state: { ...state, prefs },
@@ -345,33 +410,64 @@ function takeOf(state: GameWeekState): TakeKitView {
   return takeKitView(state.takes.kit, BITE_LIMITS)
 }
 
+/** A bite the store keeps, as a take of the pattern. */
+function asPatternTake(bite: StoredBite): PatternTake {
+  return {
+    id: bite.id,
+    answers: BITE_ITEM,
+    durationMs: bite.durationMs,
+    recordedAt: bite.at,
+    standing: "current",
+    kept:
+      bite.homeSince === undefined
+        ? // On this phone, waiting there until home holds it.
+          { place: "going" }
+        : { place: "home", since: new Date(bite.homeSince).toISOString() },
+  }
+}
+
+/** One of the game's bites under the recorder: its row, and what it was about. */
+export type RecentBite = {
+  readonly row: TakeRowView
+  /** The clock it was said at, its scenario and unit, in the person's words. */
+  readonly about: string
+  /** Its sound couldn't play here: the take pattern's one line about it. */
+  readonly unplayable: boolean
+}
+
 /**
  * The bite as the take pattern's parts show it: its button while it records,
- * the newest bite the store has kept as a row, and the pattern's one line
- * about that row (a take that couldn't play). Home holds a bite's sound once
- * it holds the bite, and the phone lets it go then, so a bite on home has
- * nothing to play here.
+ * and the game's newest bites the store has kept as rows (`RECENT_BITES`,
+ * GWB14), each saying when it couldn't play. Home
+ * holds a bite's sound once it holds the bite, and the phone lets it go then,
+ * so a bite on home has nothing to play here.
  */
 export function biteView(state: GameWeekState): {
   readonly button: TakeButtonView
-  readonly row: TakeRowView | null
-  readonly unplayable: boolean
+  readonly recent: ReadonlyArray<RecentBite>
 } {
-  const { lastBite } = state
+  const gameId = currentGame(state)?.id
+  const recent = state.shelf
+    .filter(
+      (bite) => bite.gameId === gameId && !state.undoing.includes(bite.id)
+    )
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .slice(0, RECENT_BITES)
+  const snapshot = takePatternSnapshot(state.takes, BITE_TAKES)
   const view = takeItemView(
-    takePatternSnapshot(state.takes, BITE_TAKES),
-    lastBite?.stored === true ? [lastBite.take] : [],
+    snapshot,
+    recent.map(asPatternTake),
     BITE_ITEM,
     BITE_TAKES
   )
-  const [row] = view.current
+  const about = new Map(recent.map((bite) => [bite.id, biteAbout(bite.fields)]))
   return {
     button: view.button,
-    row:
-      row === undefined
-        ? null
-        : { ...row, canPlay: row.canPlay && row.take.kept?.place !== "home" },
-    unplayable: view.said?.kind === "unplayable",
+    recent: view.current.map((row) => ({
+      row: { ...row, canPlay: row.canPlay && row.take.kept?.place !== "home" },
+      about: about.get(row.take.id) ?? "",
+      unplayable: snapshot.unplayable === row.take.id,
+    })),
   }
 }
 
@@ -443,7 +539,8 @@ function ended(state: GameWeekState, before: TakeEnded | null): Step {
   }
 }
 
-function start(state: GameWeekState, said: Said): Step {
+function start(state: GameWeekState, told: Said): Step {
+  const said = withUnit(rankedNow(state), told)
   const game = currentGame(state)
   if (game === null) return stay({ ...state, notice: NOTICES.pickFirst })
   const view = offerView(state)
@@ -675,18 +772,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
           ...state.keeping,
           { id: bite.id, holdUntil: bite.holdUntil, held: false },
         ],
-        lastBite: {
-          take: {
-            id: bite.id,
-            answers: BITE_ITEM,
-            durationMs: bite.durationMs,
-            recordedAt: bite.at,
-            standing: "current",
-            // On this phone, waiting there until home holds it.
-            kept: { place: "going" },
-          },
-          stored: false,
-        },
+        lastTaken: bite.id,
         notice: keptLine(bite.durationMs),
       } satisfies GameWeekState
       const effects: Array<GameWeekEffect> = [
@@ -705,6 +791,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
             moment: activity.moment,
             startedAt,
             offer: offerView(at),
+            ranked: rankedNow(at),
           },
         },
         effects,
@@ -718,14 +805,9 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     case "kept": {
       const entry = state.keeping.find(({ id }) => id === event.id)
       if (entry === undefined) return stay(state)
-      const { lastBite } = state
       const settled = {
         ...state,
         keeping: state.keeping.filter((each) => each !== entry),
-        lastBite:
-          lastBite?.take.id === event.id
-            ? { ...lastBite, stored: true }
-            : lastBite,
       }
       // A try the store made later: its Undo was offered when it failed.
       if (entry.held)
@@ -736,7 +818,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
         })
       // Kept after the next bite was taken: Undo offers only the bite on
       // screen, so this one may go home now.
-      if (lastBite?.take.id !== event.id)
+      if (state.lastTaken !== event.id)
         return {
           state: settled,
           effects: [{ type: "release", id: event.id }],
@@ -756,7 +838,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
         ),
       }
       // Not the bite on screen any more: no Undo for it either.
-      if (state.lastBite?.take.id !== event.id)
+      if (state.lastTaken !== event.id)
         return stay({ ...held, notice: NOTICES.notKept })
       const offered = offerUndo(held, entry)
       return {
@@ -780,8 +862,33 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       return settle(
         state,
         activity.bite,
-        pickedAfter(said, moment, activity.startedAt)
+        pickedAfter(withUnit(activity.ranked, said), moment, activity.startedAt)
       )
+    }
+
+    case "pickUnit": {
+      if (activity.kind !== "taking" || activity.said.how === "said-first")
+        return stay(state)
+      const { said: was } = activity
+      const said = {
+        ...was,
+        unit: nextUnit(was.unit ?? null, teamOf(state, was)),
+      }
+      return stay({ ...state, activity: { ...activity, said } })
+    }
+
+    case "switchSide": {
+      const teams = currentGame(state)?.teams
+      if (
+        activity.kind !== "taking" ||
+        activity.said.how === "said-first" ||
+        activity.said.unit == null ||
+        teams === undefined
+      )
+        return stay(state)
+      const unit = otherSide(activity.said.unit, teams)
+      const said = { ...activity.said, unit }
+      return stay({ ...state, activity: { ...activity, said } })
     }
 
     case "undo": {
@@ -804,7 +911,9 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
             activity.kind === "asking" && activity.bite.id === undo.id
               ? { kind: "idle" }
               : activity,
-          lastBite: state.lastBite?.take.id === undo.id ? null : state.lastBite,
+          lastTaken: state.lastTaken === undo.id ? null : state.lastTaken,
+          // Its row goes now, until the store says whether it could.
+          undoing: [...state.undoing, undo.id],
           notice: NOTICES.thrownAway,
         },
         effects: [...quiet.effects, { type: "undo", id: undo.id }],
@@ -820,26 +929,23 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       })
     }
 
-    case "homeHolds": {
-      const { lastBite } = state
-      if (lastBite?.take.id !== event.id) return stay(state)
+    case "stored": {
+      // A bite the store no longer keeps needs hiding no longer.
+      const kept = new Set(event.bites.map(({ id }) => id))
       return stay({
         ...state,
-        lastBite: {
-          ...lastBite,
-          take: {
-            ...lastBite.take,
-            kept: {
-              place: "home",
-              since: new Date(event.since).toISOString(),
-            },
-          },
-        },
+        shelf: event.bites,
+        undoing: state.undoing.filter((id) => kept.has(id)),
       })
     }
 
     case "undoFailed": {
-      return stay({ ...state, notice: NOTICES.tooLateToUndo })
+      // Still kept, and on its way home: its row comes back.
+      return stay({
+        ...state,
+        undoing: state.undoing.filter((id) => id !== event.id),
+        notice: NOTICES.tooLateToUndo,
+      })
     }
 
     case "pickGame": {

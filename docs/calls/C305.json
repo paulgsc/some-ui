@@ -1,0 +1,14 @@
+{
+  "id": "C305",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/mailbox/pass.rs"],
+  "chose": "MI6's idle-pass test is renamed an_idle_pass_makes_twenty_six_requests_and_none_reaches_the_index, with its old name kept in a doc line.",
+  "options": [
+    "(a) keep the stale name",
+    "(b) rename it and keep the old name in a doc line"
+  ],
+  "gray": "The name now says 26, and text containment keeps any ledger proof naming the old test holding through the switch; keeping the old name would leave a test whose name is false.",
+  "undo": "Delete the doc line naming the old test in pass.rs once the ledger names the new test.",
+  "refs": ["#2872", "#2875", "server#851"]
+}

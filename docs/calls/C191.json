@@ -1,0 +1,18 @@
+{
+  "id": "C191",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/engagement-report-video.ts",
+    "apps/www/tests/record/report-recording.ts"
+  ],
+  "chose": "The report recorder refuses home's answer for a week that hasn't ended (complete: false), so a report is only ever made of a whole week.",
+  "options": [
+    "refuse a week still under way",
+    "record it, marked as partial",
+    "record it as if whole"
+  ],
+  "gray": "A week still under way gives a different report each time it is read, which breaks \"the same records give the same video\", but a mid-week look could still be wanted. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+  "undo": "Drop the complete check in reportWeeksOf.",
+  "refs": ["#2700"]
+}

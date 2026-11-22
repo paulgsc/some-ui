@@ -1,0 +1,10 @@
+{
+  "extends": ["./tsconfig.json", "@some-ui/tsconfig/build.json"],
+  "exclude": [
+    "**/*.test.ts",
+    "**/__tests__/**",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ]
+}

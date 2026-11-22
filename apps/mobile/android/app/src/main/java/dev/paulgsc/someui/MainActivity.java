@@ -92,6 +92,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeLogPlugin.class);
         registerPlugin(HomeCredentialPlugin.class);
         registerPlugin(ListenPlugin.class);
+        registerPlugin(HomeRoutePlugin.class);
         // Before the bridge is built, so no page can finish loading unseen.
         bridgeBuilder.addWebViewListener(new WebViewListener() {
             @Override
@@ -144,6 +145,14 @@ public class MainActivity extends BridgeActivity {
         setIntent(intent);
         Bridge bridge = getBridge();
         if (bridge == null || intent == null) return;
+        // A WebView older than android.minWebViewVersion: Capacitor has
+        // loaded the update page (server.errorPath, webview-too-old.html) in
+        // place of the app, and no entry may replace it with a page that
+        // WebView cannot run (OWV1, apps/mobile/compat/run-level.sh).
+        if (!bridge.isMinimumWebViewInstalled()) {
+            Log.i(NativeLogPlugin.TAG, "webview too old: update page");
+            return;
+        }
         // A notification tap: www's own listener (lib/study-nudge) opens the
         // page it names, and the entry root stays where it was.
         if (intent.hasExtra(NOTIFICATION_EXTRA)) return;

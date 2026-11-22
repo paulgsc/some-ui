@@ -34,12 +34,22 @@
     position: absolute;
   }
 
+  /* A whole-stage layer, so its opacity fades everything in it. */
+  .bi-badge {
+    inset: 0;
+    position: absolute;
+  }
+
   .bi-cell {
     box-sizing: border-box;
   }
 
   .bi-text {
     white-space: nowrap;
+  }
+
+  .bi-mono {
+    white-space: pre;
   }
 
   .cap-block {

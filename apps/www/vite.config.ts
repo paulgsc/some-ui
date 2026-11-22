@@ -9,34 +9,37 @@ import { defineConfig, loadEnv } from "vite"
 
 import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
-import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
+import {
+  buildAudiencePlugin,
+  MOBILE_PROFILE,
+  VIEWER_PROFILES,
+} from "./build.profiles.ts"
+import { moduleSideEffects } from "./build.treeshake.ts"
 import {
   describeTarget,
   fileHostDevPlugin,
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
+import type { RenderedSite, SitePage } from "./src/landing/output.ts"
+import {
+  isSiteTemplate,
+  MEDIA_PATH,
+  SITE_BASE,
+  SITE_FILE,
+  SITE_MEDIA_DIR,
+  SITE_TEMPLATES,
+} from "./src/landing/output.ts"
+import {
+  OLD_WEBVIEW_PAGE,
+  oldWebViewPage,
+} from "./src/lib/old-webview/index.ts"
 import styleContext from "./style.context.ts"
 
-// The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
-// same-origin /api/tts/ route, pointed at the port infra/compose/tts.yml
-// publishes on the host instead of at the container over the compose
-// network. Without it, `vite dev` opened over HTTPS (through Caddy, as
-// dev.home.maishatu.com) hits the mixed-content block that path exists to
-// avoid, since src/lib/tts-config resolves an HTTPS page to this path.
-//
-// Kept in step by hand with that nginx snippet and with TTS_PROXY_PATH in
-// src/lib/tts-config - importing the constant here would pull an
-// `import.meta.env` reader into the config's Node context for one string.
-// TTS_PROXY_TARGET covers a PORT other than 5050 in .env, or a backend
-// running somewhere other than this machine.
-const TTS_PROXY_PATH = "/api/tts"
-const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
-
-// The dev/preview counterpart of apps/www/nginx.resume-proxy.conf, for the
-// LAN /resume-build page. The container publishes no port, so in dev run the
-// service on the host instead: `node packages/ui/resume/scripts/serve.mjs`
-// (port 3100, or PORT).
+// The dev/preview counterpart of the /api/resume/ location in
+// apps/www/nginx.https.conf, for the LAN /resume-build page. The container
+// publishes no port, so in dev run the service on the host instead:
+// `node packages/ui/resume/scripts/serve.mjs` (port 3100, or PORT).
 const RESUME_PROXY_PATH = "/api/resume"
 const resumeProxyTarget =
   process.env.RESUME_PROXY_TARGET || "http://127.0.0.1:3100"
@@ -133,6 +136,9 @@ function fitPageEntry(): Record<string, string> {
 // `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
 // out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
+// The Pages deployable: the public site's static pages (publicSite, below),
+// and no app.
+const isPagesSiteBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
 
 function stageEntry(): Record<string, string> {
   const profile = process.env.SOME_UI_PROFILE
@@ -198,9 +204,9 @@ function omitOffPathPublicFiles(offPath: ReadonlyArray<RegExp>): Plugin {
 // and widening this to `default-src` would take on the font, image and
 // service-worker questions this change does not need to answer. The lan and
 // Docker builds are not covered, on purpose: they reach `file_host` on another
-// port of the same host (`lib/file-host-config`), a speech provider the person
-// chose and a music-overlay socket, none of which `connect-src` can name
-// without also blocking a learner's own choices. Those are checked by
+// port of the same host (`lib/file-host-config`) and a music-overlay socket,
+// neither of which `connect-src` can name without also blocking a learner's
+// own choices. Those are checked by
 // tests/local-mode/no-egress.spec.ts instead.
 //
 // LA5 (docs/learner-data-authority.md): this tag is the invariant; widening the
@@ -214,7 +220,8 @@ function pagesConnectPolicy(): Plugin {
     name: "pages-connect-policy",
     apply: "build",
     transformIndexHtml(): Array<HtmlTagDescriptor> {
-      if (process.env.SOME_UI_PROFILE !== "pages") return []
+      if (!VIEWER_PROFILES.includes(process.env.SOME_UI_PROFILE ?? ""))
+        return []
       return [
         {
           tag: "meta",
@@ -225,6 +232,136 @@ function pagesConnectPolicy(): Plugin {
           injectTo: "head-prepend",
         },
       ]
+    },
+  }
+}
+
+// The public site (PAGES, #3401; C1055): under the Pages profile the build's
+// entries are the site's templates (`SITE_TEMPLATES`) and nothing of the
+// app. Each template is written once for each page render-public-site.ts
+// rendered from the résumé's data (`SITE_FILE`): the landing as index.html,
+// the résumé's pages, the authorship record, and 404.html, which GitHub Pages
+// serves for every other path. No template is written under its own name.
+// Every other profile keeps the app at index.html and builds none of these.
+
+function isPagesBuild(): boolean {
+  return process.env.SOME_UI_PROFILE === "pages"
+}
+
+function isSitePage(value: unknown): value is SitePage {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "file" in value &&
+    typeof value.file === "string" &&
+    "template" in value &&
+    isSiteTemplate(value.template) &&
+    "head" in value &&
+    typeof value.head === "string" &&
+    "body" in value &&
+    typeof value.body === "string"
+  )
+}
+
+/**
+ * The pages render-public-site.ts rendered (the www build runs it before
+ * vite). Read from a file rather than rendered here, so this config, which
+ * every build loads, imports nothing of the résumé's: the recording stage's
+ * walk (scripts/stage-packages.ts, RI3) reads its imports.
+ */
+function readSite(): RenderedSite {
+  const file = resolve(import.meta.dirname, SITE_FILE)
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `The Pages build needs the rendered site (${SITE_FILE}): tsx render-public-site.ts, which the www build runs first.`
+    )
+  }
+  const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("pages" in parsed) ||
+    !Array.isArray(parsed.pages) ||
+    !parsed.pages.every(isSitePage) ||
+    !("media" in parsed) ||
+    !Array.isArray(parsed.media) ||
+    !parsed.media.every((key): key is string => typeof key === "string")
+  ) {
+    throw new Error(`${SITE_FILE} is not the rendered site`)
+  }
+  return { pages: parsed.pages, media: parsed.media }
+}
+
+const HEAD_MARKER = "<!--site:head-->"
+const BODY_MARKER = "<!--site:body-->"
+
+function publicSite(): Plugin {
+  let base = "/"
+  return {
+    name: "public-site",
+    apply: "build",
+    // After Vite's own HTML plugin has emitted every template, so their
+    // stylesheet and script are already the hashed files Rollup writes.
+    enforce: "post",
+    configResolved(config): void {
+      base = config.base
+    },
+    generateBundle(_options, bundle): void {
+      const { pages, media } = readSite()
+      // The media the pages show, from where render-public-site.ts found
+      // them, under media/ (never committed, C1029).
+      for (const key of media) {
+        this.emitFile({
+          type: "asset",
+          fileName: `${MEDIA_PATH}${key}`,
+          source: fs.readFileSync(
+            resolve(import.meta.dirname, SITE_MEDIA_DIR, key)
+          ),
+        })
+      }
+      for (const [kind, source] of Object.entries(SITE_TEMPLATES)) {
+        const template = bundle[source]
+        if (template?.type !== "asset" || typeof template.source !== "string") {
+          this.error(`the Pages build has no ${source}`)
+        }
+        delete bundle[source]
+        const html = template.source
+        for (const page of pages.filter((p) => p.template === kind)) {
+          // A template that has lost a marker would ship the page blank.
+          for (const [marker, fill] of [
+            [HEAD_MARKER, page.head],
+            [BODY_MARKER, page.body],
+          ] as const) {
+            if (fill !== "" && !html.includes(marker)) {
+              this.error(`${source} has no ${marker} for ${page.file}`)
+            }
+          }
+          // Functions, so a `$` in the résumé's text is written as it is.
+          this.emitFile({
+            type: "asset",
+            fileName: page.file,
+            source: html
+              .replace(HEAD_MARKER, () => page.head)
+              .replace(BODY_MARKER, () => page.body)
+              .replaceAll(SITE_BASE, () => base),
+          })
+        }
+      }
+    },
+  }
+}
+
+// Capacitor's errorPath for a WebView too old for the bundle (src/lib/old-webview).
+function oldWebViewPageAsset(): Plugin {
+  return {
+    name: "old-webview-page",
+    apply: "build",
+    generateBundle(): void {
+      this.emitFile({
+        type: "asset",
+        fileName: OLD_WEBVIEW_PAGE,
+        source: oldWebViewPage(),
+      })
     },
   }
 }
@@ -266,31 +403,6 @@ export default defineConfig(
       // `vite preview` inherits this (its own `preview.proxy` defaults to
       // `server.proxy`), so both dev servers speak.
       proxy: {
-        [TTS_PROXY_PATH]: {
-          target: ttsProxyTarget,
-          changeOrigin: true,
-          rewrite: (path): string =>
-            path.replace(new RegExp(`^${TTS_PROXY_PATH}`), ""),
-          // `docker compose up openai-edge-tts` publishes nothing on the
-          // host - that container only `expose`s 5050 to the compose
-          // network, and it is the `nginx` service beside it that maps
-          // ${PORT:-5050} to your machine. Starting one without the other
-          // leaves this proxy connecting to a closed port, and Vite's own
-          // "http proxy error: ECONNREFUSED" says nothing about which
-          // container is missing. Name it once, here.
-          configure: (proxy): void => {
-            proxy.on("error", (error: Error & { code?: string }): void => {
-              if (error.code !== "ECONNREFUSED") return
-              // eslint-disable-next-line no-console
-              console.warn(
-                `\n[www] nothing is listening on ${ttsProxyTarget} - speech will fail while everything else works.\n` +
-                  `  Both TTS containers have to be up, not just the backend:\n` +
-                  `    docker compose up -d openai-edge-tts nginx\n` +
-                  `  (set TTS_PROXY_TARGET if your PORT is not 5050 or the backend is on another host.)\n`
-              )
-            })
-          },
-        },
         [RESUME_PROXY_PATH]: {
           target: resumeProxyTarget,
           changeOrigin: true,
@@ -306,8 +418,7 @@ export default defineConfig(
             isBlockedProxyPath(req.url) ? false : undefined,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${FILE_HOST_PROXY_PATH}`), ""),
-          // Name the backend, the same way the TTS proxy names its
-          // container. Vite's bare "http proxy error: ECONNREFUSED" is the
+          // Name the backend. Vite's bare "http proxy error: ECONNREFUSED" is the
           // exact message that gets read as a CORS problem and sends
           // someone to reconfigure a server that was already correct.
           configure: (proxy): void => {
@@ -334,7 +445,10 @@ export default defineConfig(
       // Single Tailwind pass over www's declared graph (style.context.ts):
       // utilities + the shared design layer are generated exactly once, from an
       // explicit @source set, instead of once per package. See #636.
-      ...createStylePlugins(styleContext),
+      ...createStylePlugins(
+        styleContext,
+        isPagesSiteBuild ? "pages" : "default"
+      ),
       tanstackRouter({
         autoCodeSplitting: true,
         // src/routes/ is the routing tree: every filename in it is a route
@@ -356,7 +470,9 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
+      ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
+      ...(isPagesSiteBuild ? [publicSite()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -367,6 +483,12 @@ export default defineConfig(
     // loaded here to see one.
     define: {
       "import.meta.env.VITE_BUILD_COMMIT": JSON.stringify(buildCommit()),
+      // The public site's build (C1055, #3401): read inline by the web door
+      // (src/lib/web-surface), as it reads VITE_DEVICE_BACKEND, so the Pages
+      // bundle carries the authorship record and nothing else behind it.
+      "import.meta.env.VITE_PAGES_SITE": JSON.stringify(
+        isPagesSiteBuild ? "true" : ""
+      ),
       ...(command === "serve" &&
       fileHost.source !== "container" &&
       !loadEnv(mode, import.meta.dirname, "VITE_").VITE_FILE_HOST_ENDPOINT
@@ -378,9 +500,9 @@ export default defineConfig(
         : {}),
     },
     resolve: {
-      alias: {
-        "@": resolve(import.meta.dirname, "./src"),
-      },
+      alias: [
+        { find: "@", replacement: resolve(import.meta.dirname, "./src") },
+      ],
       tsconfigPaths: true,
     },
     // The grammars `@some-ui/shared`'s code-tokens loads. Each is a plain
@@ -398,24 +520,21 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {
-        // The fit and stage builds aside (above), two HTML entries, one JS app: both
-        // boot the same src/main.tsx/router, so the /resume shell isn't a
-        // second copy of the app - it's the same SPA under a route-specific document (see
-        // resume/index.html's header comment) that GitHub Pages can serve
-        // as a real 200 at /resume/ instead of the generic app-shell
-        // 404.html fallback every other unmatched path relies on.
+        // The fit and stage builds aside (above), one HTML entry, the app's.
+        // The Pages build's entries are the public site's templates alone
+        // (publicSite, above), and carry no app.
         input: isFitHarnessBuild
           ? fitPageEntry()
           : isStageBuild
             ? stageEntry()
-            : {
-                main: resolve(import.meta.dirname, "index.html"),
-                ...(isMobileBuild
-                  ? {}
-                  : {
-                      resume: resolve(import.meta.dirname, "resume/index.html"),
-                    }),
-              },
+            : isPagesSiteBuild
+              ? Object.fromEntries(
+                  Object.entries(SITE_TEMPLATES).map(([kind, source]) => [
+                    kind,
+                    resolve(import.meta.dirname, source),
+                  ])
+                )
+              : { main: resolve(import.meta.dirname, "index.html") },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm
@@ -436,11 +555,13 @@ export default defineConfig(
         output: { minify: RELEASE_MINIFY },
         // Tree shaking options
         treeshake: {
-          // Every module is treated as side-effect free, so an import that
-          // binds nothing (`import "@some-ui/x/register"`) is dropped from the
-          // bundle along with whatever that module does at load time. Keep
-          // that in mind before adding one: this line overrides the
-          // `sideEffects` field of every workspace package's manifest for JS.
+          // Every module but those build.treeshake.ts lists is treated as
+          // side-effect free, so an import that binds nothing
+          // (`import "@some-ui/x/register"`) is dropped from the bundle along
+          // with whatever that module does at load time, unless it is listed
+          // there (VS1, #3121: the viewer's storage was dropped this way).
+          // This overrides the `sideEffects` field of every workspace
+          // package's manifest for JS.
           //
           // It does NOT drop stylesheets (#1458, measured on Vite 8 /
           // Rolldown): with `import "@some-ui/auth/style.css"` added to a
@@ -450,7 +571,7 @@ export default defineConfig(
           // manifests that declare `sideEffects: ["*.css"]` are not being
           // overridden here; www imports no package CSS today anyway
           // (src/index.css runs one Tailwind pass over style.context.ts).
-          moduleSideEffects: false,
+          moduleSideEffects,
           // Custom tree shaking for your authored packages
           propertyReadSideEffects: false,
           // Enable pure annotation checking

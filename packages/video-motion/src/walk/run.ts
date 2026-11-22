@@ -1,192 +1,333 @@
 /**
- * A scripted walk of an app, replayed in a sandbox that holds only sample
- * data (SFEED7, the smallest part): the app's own built pages, served from
- * one made-up origin with every other request refused, driven by Playwright
- * step by step. Each step's screen is kept as a still (a snip), and each tap
- * as where it landed and when, on the walk's own timeline, never the clock's:
- * a walk's snips and `walk.json` are a function of the app's build and the
- * sample, on one machine.
+ * A scripted walk of an app, replayed on a stage that holds only sample data
+ * (SFEED7, the smallest part; WALK1, #3282), driven by Playwright step by
+ * step. Each step's screen is kept as a still (a snip), and each tap as where
+ * it landed and when, on the walk's own timeline, never the clock's: a walk's
+ * snips and `walk.json` are a function of the app's build and the sample, on
+ * one machine.
+ *
+ * One runner, three stages (C860, C1073): the same steps and the same
+ * `walk.json`, whether the app is a built web page in a sandbox
+ * (`./stage-sandbox`), the APK on an emulator (`./stage-apk`) or home's own
+ * Grafana (`./stage-grafana`). A new stage is a new case of `StageSpec`
+ * and of `openStage`'s switch, never a second runner. What a step does is a
+ * closed union too (`Action`), each case handled once here.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { extname, join, normalize } from "node:path"
+import { mkdir, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+import { assertNever } from "@some-ui/core-utils"
 import type { Page } from "playwright-core"
-import { chromium } from "playwright-core"
+import { z } from "zod"
 
-/** The sandbox's origin: a reserved name, so nothing real is ever reached. */
-const SANDBOX = "http://sandbox.invalid"
+import type { Microphone } from "./microphone"
+import { microphoneScript } from "./microphone"
+import type { ApkStageSpec } from "./stage-apk"
+import { openApkStage } from "./stage-apk"
+import type { GrafanaStageSpec } from "./stage-grafana"
+import { openGrafanaStage } from "./stage-grafana"
+import type { SandboxStageSpec } from "./stage-sandbox"
+import { openSandboxStage } from "./stage-sandbox"
 
-/** One step: an optional tap, then the screen it leaves, held `holdMs`. */
-type Step = {
+/** What a step does before its screen is taken. */
+type Action =
+  /** The first step: the screen the walk opens on. */
+  | { readonly kind: "open" }
+  /** Tap a control, a Playwright selector; `reopen` loads the page again after, as reopening a popup does. */
+  | { readonly kind: "tap"; readonly target: string; readonly reopen?: true }
+  /** Type into a field, which is tapped first, as a person would. */
+  | { readonly kind: "type"; readonly target: string; readonly text: string }
+  /** Hold on the screen for a while of real time (a take recording), shown once it has passed. */
+  | { readonly kind: "dwell"; readonly ms: number }
+  /** Go to another page of the stage's own origin, a path and query (a dashboard's next panel). */
+  | { readonly kind: "visit"; readonly path: string }
+
+/** One step: its action, then the screen it leaves, held `holdMs` on the walk's timeline. */
+export type Step = {
   readonly label: string
-  /** What is tapped first, a Playwright selector; none for the opening. */
-  readonly tap?: string
-  /** Load the page again after the tap, as reopening a popup does. */
-  readonly reopen?: boolean
+  readonly action: Action
+  /** A selector to see before the screen is taken: what the step is waiting for. */
+  readonly until?: string
+  /** The screen moves by nature (a take recording, a level ring): take it as it is, without waiting for it to hold still. */
+  readonly moving?: true
   readonly holdMs: number
 }
 
+/** Where the walk is played: a closed union, one case per stage. */
+type StageSpec = SandboxStageSpec | ApkStageSpec | GrafanaStageSpec
+
 export type Walk = {
   readonly app: string
-  readonly version: string
-  /** The page the walk opens, under the sandbox's origin. */
-  readonly page: string
-  /** The folder of built files the sandbox serves. */
-  readonly root: string
-  readonly viewport: { readonly width: number; readonly height: number }
-  /** Run in the page before its own scripts: the sample data's stand-ins. */
-  readonly sandbox: (page: Page) => Promise<void>
+  readonly stage: StageSpec
+  /** A microphone the page is given in place of the device's (WALK3). */
+  readonly microphone?: Microphone
   readonly steps: ReadonlyArray<Step>
 }
+
+/** The viewport a walk's places are in: CSS px, each `scale` px of a snip. */
+export type WalkViewport = {
+  readonly width: number
+  readonly height: number
+  readonly scale: number
+}
+
+/**
+ * A stage, open: the page the steps drive, and how its screen is taken.
+ * Opened by `openStage`, closed by the runner.
+ */
+export type Stage = {
+  readonly page: Page
+  /** The app's version, as its build says. */
+  readonly version: string
+  /** The snips' size, in `place`'s units. */
+  readonly viewport: WalkViewport
+  /** Where a point of the page (CSS px) is on the snip, in the viewport's units. */
+  readonly place: (x: number, y: number) => { x: number; y: number }
+  /** The origin a `visit` goes to: the stage's own pages, never another's. */
+  readonly origin: string
+  /** Opens the walk's first page, with `init` run before the page's own scripts. */
+  readonly open: (init: ReadonlyArray<string>) => Promise<void>
+  /** The page held still, ready to be taken. */
+  readonly settle: () => Promise<void>
+  /** The whole snip, written to `path`; once still, unless the screen is `moving`. */
+  readonly shoot: (path: string, moving: boolean) => Promise<void>
+  /** Why the screen is not the app's, if it is not (a script error, a request refused). */
+  readonly problems: () => ReadonlyArray<string>
+  readonly close: () => Promise<void>
+}
+
+/** What a walk leaves beside its snips, as `walk.json` (`some-ui.walk/1`). */
+export const WalkFileSchema = z.strictObject({
+  schema: z.literal("some-ui.walk/1"),
+  app: z.string().min(1),
+  version: z.string().min(1),
+  viewport: z.strictObject({
+    width: z.number().positive(),
+    height: z.number().positive(),
+    scale: z.number().positive(),
+  }),
+  /** Each step's screen, from `atMs` until the next one starts. */
+  snips: z.array(
+    z.strictObject({
+      file: z.string().regex(/^snips\/\d+\.png$/),
+      label: z.string(),
+      atMs: z.number().min(0),
+    })
+  ),
+  /** Each tap: when, and where in the snip before it, in the viewport's units. */
+  taps: z.array(
+    z.strictObject({
+      label: z.string(),
+      atMs: z.number(),
+      x: z.number(),
+      y: z.number(),
+    })
+  ),
+  lengthMs: z.number().min(0),
+})
+export type WalkFile = z.infer<typeof WalkFileSchema>
 
 /** How long before a step's screen its tap lands, so the ring is seen first. */
 const TAP_LEAD_MS = 400
 
-/** Snips are taken at twice the CSS size, sharp in a 1080-wide frame. */
-const SCALE = 2
+/** How long a step may wait for what it is waiting for. */
+const UNTIL_MS = 20_000
 
-/** What a walk leaves beside its snips, as `walk.json` (`some-ui.walk/1`). */
-export type WalkFile = {
-  readonly schema: "some-ui.walk/1"
-  readonly app: string
-  readonly version: string
-  readonly viewport: {
-    readonly width: number
-    readonly height: number
-    readonly scale: number
+/** A made-up origin a visit's path is resolved against, to see it stays there. */
+const ANY_STAGE = "http://stage.invalid"
+
+/**
+ * A path of the stage's own origin, as the URL parser reads it: `//host`,
+ * `/\\host` and a tab or newline inside all leave the origin, so the parsed
+ * origin is what is checked, never the text.
+ */
+function onStage(path: string): boolean {
+  if (!path.startsWith("/")) return false
+  try {
+    return new URL(path, ANY_STAGE).origin === ANY_STAGE
+  } catch {
+    return false
   }
-  /** Each step's screen, from `atMs` until the next one starts. */
-  readonly snips: ReadonlyArray<{
-    readonly file: string
-    readonly label: string
-    readonly atMs: number
-  }>
-  /** Each tap: when, and where in the snip before it, in CSS px. */
-  readonly taps: ReadonlyArray<{
-    readonly label: string
-    readonly atMs: number
-    readonly x: number
-    readonly y: number
-  }>
-  readonly lengthMs: number
 }
 
-const TYPES: Readonly<Record<string, string>> = {
-  ".html": "text/html",
-  ".js": "text/javascript",
-  ".css": "text/css",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".woff2": "font/woff2",
-  ".json": "application/json",
+/** Every reason `steps` can't be walked, before anything is opened. */
+export function stepProblems(
+  steps: ReadonlyArray<Step>
+): ReadonlyArray<string> {
+  const problems: Array<string> = []
+  if (steps.length === 0) problems.push("the walk has no steps")
+  steps.forEach((step, i) => {
+    const opens = step.action.kind === "open"
+    if (i === 0 && !opens) problems.push(`${step.label}: the first step opens`)
+    if (i > 0 && opens)
+      problems.push(`${step.label}: only the first step opens`)
+    if (step.holdMs <= 0) problems.push(`${step.label}: it is held no time`)
+    if (step.action.kind === "dwell" && step.action.ms <= 0) {
+      problems.push(`${step.label}: it dwells no time`)
+    }
+    if (step.action.kind === "visit" && !onStage(step.action.path)) {
+      problems.push(`${step.label}: it visits a path of the stage, from /`)
+    }
+  })
+  return problems
+}
+
+/** The stage `spec` names, open; `chrome` is asked for only by a stage that draws with its own browser. */
+function openStage(spec: StageSpec, chrome: () => string): Promise<Stage> {
+  switch (spec.kind) {
+    case "sandbox": {
+      return openSandboxStage(spec, chrome())
+    }
+    case "apk": {
+      return openApkStage(spec)
+    }
+    case "grafana": {
+      return openGrafanaStage(spec, chrome())
+    }
+    default: {
+      return assertNever(spec)
+    }
+  }
+}
+
+/** Where the centre of `target` is on the snip, or a refusal naming the step. */
+async function centreOf(
+  stage: Stage,
+  label: string,
+  target: string
+): Promise<{ x: number; y: number }> {
+  const box = await stage.page.locator(target).first().boundingBox()
+  if (!box) throw new Error(`${label}: ${target} is not on screen`)
+  const at = stage.place(box.x + box.width / 2, box.y + box.height / 2)
+  return { x: Math.round(at.x), y: Math.round(at.y) }
+}
+
+/** Does `action` on the stage's page; the tap it shows, if any. */
+async function act(
+  stage: Stage,
+  label: string,
+  action: Action
+): Promise<{ x: number; y: number } | null> {
+  const { page } = stage
+  switch (action.kind) {
+    case "open": {
+      return null
+    }
+    case "tap": {
+      const at = await centreOf(stage, label, action.target)
+      await page.locator(action.target).first().click()
+      if (action.reopen) await page.reload()
+      return at
+    }
+    case "type": {
+      const at = await centreOf(stage, label, action.target)
+      const field = page.locator(action.target).first()
+      await field.click()
+      await field.pressSequentially(action.text)
+      return at
+    }
+    case "dwell": {
+      await page.waitForTimeout(action.ms)
+      return null
+    }
+    case "visit": {
+      // A path of the stage's own origin (`stepProblems` refused any other),
+      // resolved against the stage, never the page, which may have moved.
+      const to = new URL(action.path, stage.origin)
+      if (to.origin !== new URL(stage.origin).origin) {
+        throw new Error(`${label}: ${action.path} leaves the stage`)
+      }
+      await page.goto(to.toString())
+      return null
+    }
+    default: {
+      return assertNever(action)
+    }
+  }
 }
 
 /**
- * Serves `root` at the sandbox's origin and refuses every other request; a
- * file the page asks for that the build lacks is said to `missing`, since a
- * lost stylesheet or script draws a screen that isn't the app's.
+ * What was on screen when a step failed, for reading the failure: the
+ * picture as `failed.png` and the page's words as `failed.txt`, beside the
+ * snips. Best effort: a stage too broken to answer leaves neither.
  */
-async function serve(
-  page: Page,
-  root: string,
-  missing: (path: string) => void
-): Promise<void> {
-  await page.route("**/*", async (route) => {
-    const url = new URL(route.request().url())
-    if (url.origin !== SANDBOX) {
-      await route.abort("blockedbyclient")
-      return
-    }
-    const file = normalize(join(root, decodeURIComponent(url.pathname)))
-    if (!file.startsWith(normalize(root))) {
-      await route.abort("accessdenied")
-      return
-    }
-    try {
-      await route.fulfill({
-        body: await readFile(file),
-        contentType: TYPES[extname(file)] ?? "application/octet-stream",
-      })
-    } catch {
-      if (url.pathname !== "/favicon.ico") missing(url.pathname)
-      await route.fulfill({ status: 404, body: "" })
-    }
-  })
+async function leftAt(stage: Stage, out: string, label: string): Promise<void> {
+  try {
+    await stage.shoot(join(out, "failed.png"), true)
+    const words = String(
+      await stage.page.evaluate("document.body ? document.body.innerText : ''")
+    )
+    await writeFile(join(out, "failed.txt"), `${label}\n\n${words}\n`)
+  } catch {
+    // Ignored: what was on screen is extra; the step's own error, which the
+    // walk throws next, is the failure.
+  }
 }
 
-/** The page settled: fonts loaded and two frames drawn since the last change. */
-async function settle(page: Page): Promise<void> {
-  await page.waitForLoadState("load")
-  // A string, run in the page: Node's types have no document.
-  await page.evaluate(
-    "document.fonts.ready.then(() => new Promise((done) =>" +
-      " requestAnimationFrame(() => requestAnimationFrame(done))))"
-  )
-}
-
-/** Replays `walk` with `chrome`, writing its snips and `walk.json` to `out`. */
+/** Replays `walk` on its stage, writing its snips and `walk.json` to `out`. */
 export async function runWalk(
   walk: Walk,
-  chrome: string,
+  chrome: () => string,
   out: string
 ): Promise<WalkFile> {
+  const refused = stepProblems(walk.steps)
+  if (refused.length > 0) throw new Error(refused.join("; "))
   await mkdir(join(out, "snips"), { recursive: true })
-  const browser = await chromium.launch({ executablePath: chrome })
+  const stage = await openStage(walk.stage, chrome)
   try {
-    const context = await browser.newContext({
-      viewport: walk.viewport,
-      deviceScaleFactor: SCALE,
-      colorScheme: "dark",
-      reducedMotion: "reduce",
-      locale: "en-US",
-      timezoneId: "UTC",
-    })
-    const page = await context.newPage()
-    // A script error means the screen is not the app's: the walk fails.
-    const errors: Array<string> = []
-    page.on("pageerror", (e) => errors.push(e.message))
-    await serve(page, walk.root, (path) => errors.push(`${path} is not built`))
-    await walk.sandbox(page)
-    await page.goto(`${SANDBOX}/${walk.page}`)
-    await settle(page)
+    // The first step's page: a failure opening it is that step's too.
+    const first = walk.steps[0]?.label ?? walk.app
+    try {
+      await stage.open(
+        walk.microphone === undefined ? [] : [microphoneScript(walk.microphone)]
+      )
+      await stage.settle()
+    } catch (e) {
+      await leftAt(stage, out, first)
+      const said = e instanceof Error ? e.message : String(e)
+      throw new Error(`${first}: ${said}`, { cause: e })
+    }
 
     const snips: Array<WalkFile["snips"][number]> = []
     const taps: Array<WalkFile["taps"][number]> = []
     let atMs = 0
     for (const [i, step] of walk.steps.entries()) {
-      if (step.tap && i === 0)
-        throw new Error("the first step opens; it taps nothing")
-      if (step.tap) {
-        const target = page.locator(step.tap)
-        const box = await target.boundingBox()
-        if (!box) throw new Error(`${step.label}: ${step.tap} is not on screen`)
-        taps.push({
-          label: step.label,
-          atMs: atMs - TAP_LEAD_MS,
-          x: Math.round(box.x + box.width / 2),
-          y: Math.round(box.y + box.height / 2),
-        })
-        await target.click()
-        if (step.reopen) await page.reload()
-        await settle(page)
+      try {
+        const tapped = await act(stage, step.label, step.action)
+        if (tapped) {
+          taps.push({ label: step.label, atMs: atMs - TAP_LEAD_MS, ...tapped })
+        }
+        if (step.until !== undefined) {
+          await stage.page
+            .locator(step.until)
+            .first()
+            .waitFor({ state: "visible", timeout: UNTIL_MS })
+        }
+        await stage.settle()
+        const problems = stage.problems()
+        if (problems.length > 0) {
+          throw new Error(
+            `${step.label}: the page failed: ${problems.join("; ")}`
+          )
+        }
+        const file = `snips/${String(i + 1).padStart(2, "0")}.png`
+        await stage.shoot(join(out, file), step.moving === true)
+        snips.push({ file, label: step.label, atMs })
+        atMs += step.holdMs
+      } catch (e) {
+        await leftAt(stage, out, step.label)
+        // Every failure names its step, whichever part of it failed.
+        const said = e instanceof Error ? e.message : String(e)
+        throw said.startsWith(`${step.label}: `)
+          ? e
+          : new Error(`${step.label}: ${said}`, { cause: e })
       }
-      if (errors.length > 0) {
-        throw new Error(`${step.label}: the page failed: ${errors.join("; ")}`)
-      }
-      const file = `snips/${String(i + 1).padStart(2, "0")}.png`
-      await page.screenshot({
-        path: join(out, file),
-        animations: "disabled",
-        caret: "hide",
-      })
-      snips.push({ file, label: step.label, atMs })
-      atMs += step.holdMs
     }
     const made: WalkFile = {
       schema: "some-ui.walk/1",
       app: walk.app,
-      version: walk.version,
-      viewport: { ...walk.viewport, scale: SCALE },
+      version: stage.version,
+      viewport: stage.viewport,
       snips,
       taps,
       lengthMs: atMs,
@@ -197,6 +338,6 @@ export async function runWalk(
     )
     return made
   } finally {
-    await browser.close()
+    await stage.close()
   }
 }

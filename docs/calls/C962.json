@@ -1,0 +1,15 @@
+{
+  "id": "C962",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/lifecycle.rs",
+    "server:scripts/check_manifests.py",
+    "server:docs/schema.md"
+  ],
+  "chose": "Each fresh review's findings were fixed in follow-up commits rather than by rewriting the pushed branch: 769c0b3 for the first round, cade668 for the merge-delta round (2026-11-22). The one finding that needs another repo (the ledger's proofs, and since #1100 the discard-sites row) was raised to the coordinator, not worked around.",
+  "options": ["follow-up commits (taken)", "rewrite the branch's history"],
+  "gray": "How to land review fixes on a pushed slow-lane branch.",
+  "undo": "Squash 769c0b3 and cade668 into the commits they fix.",
+  "refs": ["server#511", "server#489", "server#1090"]
+}

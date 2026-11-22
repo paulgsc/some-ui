@@ -1,8 +1,9 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline and the authorship mark, rendered twice through
- * `record:short`'s
- * path (the built app's `/burn-ins?record` page filling the renderer's
+ * captions, a headline, a status badge, a terminal card, a cheat-sheet card,
+ * a legend card, a rule card and a flow card (each card stamped from the cut
+ * list) and the authorship mark, rendered twice through `record:short`'s path
+ * (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
  * times. Its sources are made here by ffmpeg, so it needs nothing from Drive.
  *
@@ -64,11 +65,100 @@ const CUT_LIST = cutList(
     }),
     shot("S2", {
       picture: capture(1500),
-      durationMs: 1500,
+      // Long enough for its badge to spell itself out.
+      durationMs: 3300,
       idea: {
         origin: "source",
         from: { title: "The burn-ins README", ref: "packages/ui/burn-ins" },
       },
+      // CARDS1: its first appearance in the video, so it spells itself out.
+      burnIns: [
+        { kind: "status-badge", design: "badge-v1", params: { badge: "pr" } },
+      ],
+    }),
+    shot("S3", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "terminal",
+          design: "terminal-v1",
+          params: {
+            title: "The recorder draws a terminal too",
+            bar: "check",
+            lines: [
+              { prompt: "$", keyword: "record:short", badge: "main" },
+              { comment: "# the same bytes twice" },
+            ],
+          },
+        },
+      ],
+    }),
+    shot("S4", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "cheat-sheet",
+          design: "sheet-v1",
+          params: {
+            title: "The recorder draws a cheat sheet too",
+            rows: [
+              {
+                badge: "main",
+                task: "Record a short",
+                command: "pnpm record:short",
+                note: "the same bytes twice",
+              },
+            ],
+          },
+        },
+      ],
+    }),
+    // CARDS4: the legend and the rule, stamped as every card is.
+    shot("S5", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "legend",
+          design: "legend-v1",
+          params: { title: "Reading the badges" },
+        },
+      ],
+    }),
+    shot("S6", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "rule",
+          design: "rule-v1",
+          params: {
+            title: "How stale is this card?",
+            sources: ["make help", "the README"],
+            wins: "the README",
+          },
+        },
+      ],
+    }),
+    // CARDS5: a flow card, its steps stacked in the short.
+    shot("S7", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "flow",
+          design: "flow-v1",
+          params: {
+            title: "From a cut list to a video",
+            steps: [
+              { badge: "main", label: "Write the cut list" },
+              { label: "Record", command: "pnpm record:short" },
+            ],
+          },
+        },
+      ],
     }),
     card("outro"),
   ],
@@ -76,6 +166,8 @@ const CUT_LIST = cutList(
     title: "Recorder check",
     series: { id: "build-journal-short", version: 1 },
     look: "plain",
+    // CARDS4: every card's stamp, written once.
+    stamp: { sources: ["paulgsc/some-ui@5f3dd29"], date: "2026-11-14" },
     burnIns: [
       { kind: "captions", design: "gridiron", params: {} },
       { kind: "authorship", design: "cells-v1", params: {} },
@@ -93,7 +185,7 @@ test.describe("the burn-in recorder", () => {
     for (const dir of ["captures", "voice"]) await ports.mkdir(dir)
     const sources = [
       [
-        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=4"],
+        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=6"],
         ...["-c:v", "libx264", "-pix_fmt", "yuv420p", "captures/walk.mp4"],
       ],
       [
@@ -145,8 +237,10 @@ test.describe("the burn-in recorder", () => {
       }
       const first = await renderOnce(1)
       const second = await renderOnce(2)
-      // Captions, the mark and the headline, so the comparison is not of nothing.
-      expect(first.burnIns.size).toBe(3)
+      // Captions, the mark, the headline, the badge, the terminal, the
+      // cheat sheet, the legend, the rule and the flow, so the comparison is
+      // not of nothing.
+      expect(first.burnIns.size).toBe(9)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {

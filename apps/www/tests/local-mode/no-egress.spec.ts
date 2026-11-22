@@ -307,22 +307,78 @@ test.describe("the Pages build", () => {
     })
     const seen = watch(context)
 
-    for (const route of [
-      "",
-      "app",
-      "extensions",
-      "sessions",
-      "settings",
-      "settings/appearance",
-      "practice/settings",
-    ]) {
-      await page.goto(`${app().origin}${BASE}${route}`)
-      await page.waitForLoadState("networkidle")
-      await expect(page.locator("#app")).not.toBeEmpty()
+    const collect = async (): Promise<void> => {
       violations.push(
         ...((await page.evaluate(() => window.__policyViolations)) ?? [])
       )
     }
+    // Anything that runs: a script element that is not JSON-LD data.
+    const scripts = page.locator('script:not([type="application/ld+json"])')
+
+    // The landing at the root is static: it loads, runs nothing, and asks
+    // nothing of another origin either (`seen`, below).
+    await page.goto(`${app().origin}${BASE}`)
+    await expect(page.locator("h1")).toBeVisible()
+    await expect(scripts).toHaveCount(0)
+    // Built with none of its media (C1059): every slot draws its
+    // placeholder, and the build did not fail for want of one.
+    await expect(page.locator("article[data-slot] .media")).toHaveCount(0)
+    await expect(page.locator('article[data-slot="clip"] .ground')).toHaveCount(
+      3
+    )
+    await expect(
+      page.locator('article[data-slot="still"] .drawing')
+    ).toHaveCount(2)
+    // Nothing on a card is a link or a control (C1064, C1065).
+    await expect(
+      page.locator("article[data-slot] a, article[data-slot] button")
+    ).toHaveCount(0)
+    // A clip is the card's background, never a player (C1064): none has
+    // controls or speaks to a screen reader, and a reader who prefers less
+    // motion sees the placeholder instead.
+    await expect(
+      page.locator("video[controls], video:not([aria-hidden=true])")
+    ).toHaveCount(0)
+    expect(
+      await page.evaluate(() =>
+        [...document.styleSheets].some((sheet) =>
+          [...sheet.cssRules].some(
+            (rule) =>
+              rule instanceof CSSMediaRule &&
+              rule.conditionText.includes("prefers-reduced-motion: reduce") &&
+              [...rule.cssRules].some(
+                (inner) =>
+                  inner instanceof CSSStyleRule &&
+                  inner.selectorText === "video.media" &&
+                  inner.style.display === "none"
+              )
+          )
+        )
+      )
+    ).toBe(true)
+    await collect()
+
+    // The résumé is static too (C1055): every version's page is there whole,
+    // with no script.
+    for (const version of ["", "qa/"]) {
+      await page.goto(`${app().origin}${BASE}resume/${version}`)
+      await expect(page.locator("main h1, main h2").first()).toBeVisible()
+      await expect(scripts).toHaveCount(0)
+      await collect()
+    }
+
+    // The authorship record is the site's one script: it draws the record its
+    // link carries.
+    await page.goto(`${app().origin}${BASE}authorship?r=AB`)
+    await page.waitForLoadState("networkidle")
+    await expect(page.locator("#record")).not.toBeEmpty()
+    await collect()
+
+    // A page the public site doesn't have answers its static 404.html.
+    await page.goto(`${app().origin}${BASE}app`)
+    await expect(page.locator("h1")).toHaveText(/\S/)
+    await expect(scripts).toHaveCount(0)
+    await collect()
 
     expect(seen.filter((line) => !line.includes(app().origin))).toEqual([])
     expect(violations).toEqual([])

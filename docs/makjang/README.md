@@ -503,13 +503,10 @@ voice: the speech session owns the voice the person chose in Settings,
 because topik once overrode it on every line. So a line asks for a _part_
 instead (`@some-ui/speech`'s `lib/part`): the speaker's `gender`, when the
 cast gives one. The session reads it in a way that keeps the person's choice.
-The hosted service reads a part in the person's voice when that voice is the
-part's gender, and otherwise in the catalogue's Korean voice of that gender
-(Sun-Hi and In-Joon on `openai-edge-tts`). The phone's TTS, and the browser's,
-cannot say which of their voices is a woman's, so the person's voice reads
-both parts, each at its own pitch, and the two sound apart whatever that
-voice is. Narration, and a character with no gender, keep the chosen voice
-as it is.
+The phone's TTS, and the browser's, cannot say which of their voices is a
+woman's, so the person's voice reads both parts, each at its own pitch, and
+the two sound apart whatever that voice is. Narration, and a character with
+no gender, keep the chosen voice as it is.
 
 Speech is synthesized as each line plays, not rendered ahead on a server. A
 part is a choice the session makes per line over voices it already has, so a

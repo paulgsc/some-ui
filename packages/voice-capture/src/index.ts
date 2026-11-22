@@ -8,8 +8,16 @@ export type { StorageRoom } from "./lib/room"
 export type { TakeOutcome } from "./lib/take-outcomes"
 export { setTakeOutcomes } from "./lib/take-outcomes"
 export { claimedRoom, setStorageRoom, withRoom } from "./lib/room"
-export type { Playback, Player } from "./lib/player"
-export { audioPlayer } from "./lib/player"
+export type { PlayEffect, PlaySlice, PlayStep } from "./lib/home-play"
+export {
+  audioRead,
+  played,
+  playEnded,
+  QUIET_PLAY,
+  stopped,
+} from "./lib/home-play"
+export type { Playback, Player, WatchPage } from "./lib/player"
+export { audioPlayer, elementPlayer } from "./lib/player"
 export type {
   ObservedEnding,
   TakeBound,
@@ -163,8 +171,9 @@ export type {
   BundleState,
   CardView,
   HomeReach,
+  Paired,
 } from "./lib/bundle"
-export { bundleMachine, isPaired } from "./lib/bundle"
+export { bundleMachine, pairedOf } from "./lib/bundle"
 export type {
   BundleDrafts,
   BundleHome,
@@ -174,4 +183,15 @@ export type {
   BundleTakes,
 } from "./lib/bundle-runtime"
 export { bundleRuntime, NO_HOME } from "./lib/bundle-runtime"
+export type { HomeSent, SendsAtHome, SendsAtHomeSaid } from "./lib/bundle-store"
+export {
+  isPastDue,
+  keptDrafts,
+  keptRecords,
+  latestSend,
+  HOME_UNKNOWN,
+  sendsAtHome,
+  sendsAtHomeSaid,
+  weekSendKey,
+} from "./lib/bundle-store"
 export type { HeardAnswer } from "./lib/heard"

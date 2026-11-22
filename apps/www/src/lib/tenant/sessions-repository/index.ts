@@ -1,5 +1,5 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { openKept, salvageList, writeKept } from "@some-ui/core-utils"
+import { onJson, openKept, salvageList, writeKept } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 
 import type { SessionId } from "@/lib/tenant/session-id"
@@ -46,7 +46,7 @@ function isSessionRecord(value: unknown): value is SessionRecord {
   )
 }
 
-const readSessions = salvageList(isSessionRecord)
+const readSessions = onJson(salvageList(isSessionRecord))
 
 /** The sessions kept on this device, as `sessions-copy` reads them too. */
 export function keptSessions(storage: KeyedStorage): Array<SessionRecord> {
@@ -122,7 +122,7 @@ export class SessionNotFoundError extends Error {
 }
 
 /**
- * The `localStorage` backend: the Pages build's only store, and what the
+ * The `localStorage` backend: the viewer build's only store, and what the
  * repository tests run against via an in-memory adapter.
  */
 export class SessionsRepository implements SessionsStore {

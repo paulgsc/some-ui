@@ -1,0 +1,18 @@
+{
+  "id": "C563",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/jobs/interview/ladder.tsx",
+    "apps/www/src/lib/interview-week/words.ts"
+  ],
+  "chose": "The study page cites its sources (chips naming a pull request, issue, call, doc or invariant) on a question about the body of work alone, under the line that every claim names where it comes from and each source was checked at the week's commit. On an open question it shows no chips and says it is \"Built on the shape that works for this kind of question, fitted to you.\"",
+  "options": [
+    "chips on work questions, the line on open ones",
+    "chips wherever a claim has a source",
+    "no chips, the sources behind a tap"
+  ],
+  "gray": "How an open question's study page says what its answer rests on, when it rests on a shape rather than on the work.",
+  "undo": "Show Sources whenever a part has sources, and reword study.open.",
+  "refs": ["#3175", "#3178"]
+}

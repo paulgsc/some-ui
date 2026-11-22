@@ -194,12 +194,26 @@ export type BundleSpec<K extends BundleKind> = {
   /** The takes a record names. */
   readonly named: (record: K["record"]) => ReadonlyArray<string>
   /**
+   * What else a record carries beside its takes, each as one string, so a
+   * change to it alone counts as changed when sending again (a week's
+   * decisions at its forks, RR29); none when left out.
+   */
+  readonly carries?: (record: K["record"]) => ReadonlyArray<string>
+  /**
    * Whether a draft stays open after Send, to be sent again under its id
    * until it is `closed` (a week, RR22); false sends each draft once.
    */
   readonly resends: boolean
   /** Whether nothing more can be said, changed or sent in `draft` at `at`. */
   readonly closed: (draft: K["draft"], at: string) => boolean
+  /**
+   * Whether every take answering `answers` (`answersOf`'s line, of any
+   * draft) is kept: none is deleted on this phone, by Redo, Delete, Delete
+   * all or a later draft's clean-up, so each goes with the record its spec
+   * makes (Rust Rounds' opening, the owner's call C783: "Nothing you said is
+   * lost"). Absent, none is.
+   */
+  readonly keepsEvery?: (answers: string) => boolean
 }
 
 /** How far a person is through a bundle. */
@@ -242,9 +256,28 @@ type BundleConfirm<I extends string> =
  */
 export type HomeReach = "near" | "away" | "unpaired" | "unknown"
 
-/** Whether this phone is known to be paired with home (ST34). */
-export function isPaired(reach: HomeReach): boolean {
-  return reach === "near" || reach === "away"
+/**
+ * Whether this phone is paired with home (ST34), with `unknown` while it
+ * hasn't yet read whether it is: a screen says nothing of no pairing then
+ * (PO1, #3157).
+ */
+export type Paired = "paired" | "unpaired" | "unknown"
+
+/** Whether `reach` says this phone is paired with home. */
+export function pairedOf(reach: HomeReach): Paired {
+  switch (reach) {
+    case "near":
+    case "away": {
+      return "paired"
+    }
+    case "unpaired":
+    case "unknown": {
+      return reach
+    }
+    default: {
+      return assertNever(reach)
+    }
+  }
 }
 
 /** What the screen says once, after something happened. */
@@ -615,9 +648,13 @@ export function bundleMachine<K extends BundleKind>(
     const last = lastOf(state)
     if (last === null) return null
     const next = bundleRecord(state, state.at)
-    const had = new Set(spec.named(last))
-    const has = spec.named(next)
-    return has.length === had.size && has.every((take) => had.has(take))
+    const said = (record: K["record"]): ReadonlyArray<string> => [
+      ...spec.named(record),
+      ...(spec.carries?.(record) ?? []),
+    ]
+    const had = new Set(said(last))
+    const has = said(next)
+    return has.length === had.size && has.every((each) => had.has(each))
       ? "unchanged"
       : null
   }
@@ -657,7 +694,10 @@ export function bundleMachine<K extends BundleKind>(
   const deletable = (
     state: Pick<State, "recorded">,
     take: PatternTake
-  ): boolean => take.waits === true && !state.recorded.includes(take.id)
+  ): boolean =>
+    take.waits === true &&
+    !state.recorded.includes(take.id) &&
+    spec.keepsEvery?.(take.answers) !== true
 
   /** The takes of `item` a delete reaches (`deletable`). */
   const waitingOf = (

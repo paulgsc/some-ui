@@ -27,6 +27,15 @@ What follows from them:
   free personal hobby app. "For me" names the audience; exposure is a separate question.
   Keep every public channel and its upkeep (the APK's Play readiness in
   `apps/mobile/README.md`, say) even when only the owner uses the thing.
+- **YouTube is by hand, always** (owner, 2026-11-21, C1025). The owner uploads every video
+  and sets every thumbnail in YouTube Studio themselves. Home makes and keeps the files
+  (the video, its thumbnail, its description and chapters) for the owner to download.
+  Nothing here calls YouTube's API or asks for its OAuth, and no story should plan to.
+- **No editorial work for the owner** (owner, 2026-11-21, C1028). The owner doesn't edit
+  videos or design thumbnails. Every thumbnail comes from one deterministic, generic template
+  that code fills from the episode's own facts, and a change of style (a pencil look, glass,
+  depth) is a new version of that template, drawn by code, the same bytes for the same
+  inputs. A thumbnail never comes from a generator whose output can't be predicted.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
   Home is the owner's own store, as private as the phone, and sending to it is to be the
@@ -34,20 +43,26 @@ What follows from them:
   (`docs/learner-data-authority.md`, "The owner's deployment").
 - **A comes first, and B shows A as it is.** Legibility effort goes to what really drives
   the workflow, and every surface does what it appears to do.
-- **A way in for every reader.** Something anyone can take in (a short demo video), the
-  live screens for the curious, the source for the technical, each disclosed by
-  interaction rather than all at once. The extensions comb is the model
-  (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
+- **A way in for every reader.** Something anyone can take in (a short clip of the thing
+  working), the source for the technical, each disclosed by interaction rather than all at
+  once. The public Pages site is a curriculum vitae (owner, C1055): who the owner is, what
+  they do, the résumé and how to reach them, with each project shown by its clip playing
+  behind its words, and the code one link away at the top of the page (owner, C1065). It is
+  static pages with no app (#3401): a landing, the résumé, and
+  `/authorship`, the record every published video's end card links, whose one script draws
+  it. The extensions comb and the apps on sample data stay on `lan` and in the capture build
+  Snips photographs.
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
-  tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
-- **A viewer tries, and nothing is kept.** The Pages build is the viewer's (`VIEWER_BUILD`,
-  `apps/www/src/lib/data-mode`). There the page's `localStorage` and `sessionStorage` are
-  in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by
-  `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where
-  every store, the activity packages' included, works as usual and a reload starts over.
-  A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
-  them on the Pages build); a convenience, such as the sidebar's open/closed cookie, may.
+  tells the owner what a wing keeps, and tells a viewer it is sample data.
+- **A viewer tries, and nothing is kept.** The viewer's app runs in the capture build Snips
+  photographs (`VIEWER_BUILD`, `apps/www/src/lib/data-mode`); Pages carries no app under
+  C1055, and its pages keep nothing. In the capture build the page's `localStorage` and
+  `sessionStorage` are in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported
+  first by `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo,
+  where every store, the activity packages' included, works as usual and a reload starts
+  over. A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
+  them in a viewer build); a convenience, such as the sidebar's open/closed cookie, may.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
   notes), describe each thing by what it is and does, plus its honest limits. Skip foils
   and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.
@@ -70,13 +85,20 @@ What follows from them:
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
   call about those sites, which `docs/discard-sites.md` lists with each ruling so far (#2265).
   Deleting a record for good, as distinct from a cap or a prune, is the owner's own act and
-  happens in one place: My data in the phone's Settings (#2473). The tool can go, never the
+  goes through one path, My data's delete and its receipt (#2473, LA19): in the phone's
+  Settings, and on Takes › Needs your attention for a take home couldn't hear well (the
+  owner, #3070: "I should be able to delete them"). The tool can go, never the
   work, and every delete of a record home keeps leaves a receipt there, never deleted but
   with the account. Each kind has its own
   switch on home, and only Studio's recordings (takes and idea answers) are on (owner,
-  2026-11-04). "Let go" still sets a recording aside and keeps it.
+  2026-11-04), except that a take of any kind home couldn't hear may be deleted from
+  Needs your attention (owner, #3076) and from My data (owner, on paulgsc/server#919:
+  "yes, My data should offer the unheard delete too"). "Let go" still sets a recording
+  aside and keeps it.
 
-`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
+`/mission` (`apps/www/src/routes/mission.tsx`) says the same on `lan` and in the capture
+build; it left Pages with the prune (C1055), and the CV landing does not restate the
+mandates.
 
 ## Pre-commit verification (Claude Code Remote)
 
@@ -315,6 +337,10 @@ date is clipped. A workspace is a candidate when it is:
 "Own change" ignores tests, manifests and config, file deletions (cleanup is not work on the
 story), and sweeps across more than eight workspaces (version bumps, renames, rollouts).
 
+With `--usage <friction.json>` (what `motion walkthrough --home` keeps from home's weekly read) it also lists **usage candidates** (#3338): modules the
+build offers that nobody has opened in four weeks (`packages/engagement/src/lib/silence.ts`). A
+module whose opening isn't measured is never called silent.
+
 It is a report, never a gate: whether a story is dead is the owner's call, so put the
 candidates to them instead of deleting on the score alone. Known false positives come from
 what `package.json` cannot show. `packages/some-content` is consumed by file path (its
@@ -340,6 +366,145 @@ workspaces ban. Watch any test that derives a directory from `import.meta.url` t
 it now sits one level deeper and can pass having scanned nothing.
 
 Held by: `pnpm check:test-layout`
+
+## Reach before you build
+
+The owner (2026-11-19, #3291, close paraphrase): "My user story is a morphism … That creates a
+real risk of trying to invent the world. … Rather than building, sometimes you should look for
+existing tools, mostly open source or freemium, that let us do it without building anything."
+#2722 (HYPER) said the same for motion graphics.
+
+So before a story's design commits to machinery of its own, the session does a **reach**:
+which existing tools (open source and self-hostable first, then freemium) already deliver the
+user story, and whether each does it the owner's way. For each, it records:
+
+- where the data would live, in the two mandates' terms (home, the owner's devices, or a
+  third party);
+- what the owner would have to do (an account, a setup step on home);
+- how the work would reach an issue or a session;
+- its honest limits.
+
+It ends with a recommendation on a ladder of three rungs, taken from the top:
+
+1. **Use** a tool as is, wherever it already runs: open source first, then freemium.
+2. **Fold it in:** run or embed the tool on home, and write only the wiring.
+3. **Build** what no tool does.
+
+The owner (2026-11-19, on #3197): "The key is that it's in the PR, meaning part of the commit
+and part of the history, and that we're making a conscious decision."
+
+**Reach inward first** (owner, 2026-11-20, C820). The owner, close paraphrase: "I don't have the
+capacity, like an agent, to keep a full working model of the application, so I can inadvertently
+guide and prompt for duplication. Before descending to a new pipeline, it's likely there's already
+one that should be uplifted to generic, or already is generic and could support the new story,
+and we aren't aware of it." So before rung 1, the reach looks in our own code. Whenever a story
+would add a pipeline, a schema, a scene kind, a voice path or a render job, whether or not the
+outward reach is owed, the session names the existing one that already does the job or could be
+made generic to do it, records it beside the tools, and builds only the gap there. It is "Deleting
+is in scope"'s search for a module, made at the level of a pipeline. A request that reads like
+"make a new X" is the owner's story, not a choice of mechanism: whether X already exists is the
+session's to find out. The owner again: "My prompts tend to emphasise the granular over the
+abstract. If you eagerly build the granular, we get mini-me's, clones of the same thing: a drop
+zone for files, another for video, another that lifts a long text blob into a file. We just need
+to ask why the generic tool's compile-time schema didn't allow this shape, and refine that." So a
+granular variant is a new case of the generic node's schema, never a module of its own. #3317 is
+the worked example, the video essays' recon, which found per-kind
+copies of the voice, take, exchange and framing nodes.
+
+**Name the family, and push back** (owner, 2026-11-20, C830). The owner, close paraphrase: "You
+have editorial pushback. Whenever I prompt for something that descends on the granular, ask why
+we are not thinking at the abstract layer instead of building something overfit to one case. The
+PR history shows the story will change, and the change is usually a new granular case of the same
+family. So identify the family, or we pay to rewrite it, or silently duplicate it because we didn't
+notice the same mechanism." So when a request names one case, the session names the family it belongs to (the generic node, its schema,
+the cases it holds today) before designing, and builds the case as a member of that family. When
+the request as worded would overfit (a module, field or flag for one case where the family is the
+honest shape), the session says so to the owner in plain words, with the family it sees and what
+building one case costs the next one, and proceeds at the family's level unless the owner says
+otherwise (Claude's reading of the owner's words). Pushing back is part of the work: the owner's
+story stands; the session's job is the shape it lands in.
+
+The owner names the smell: "Ideally we always reach for a compile-time-known type state, schema
+or state machine, and call it out, with a defence, whenever we don't. Whenever we find ourselves
+implementing a pipeline that is clearly mapped to a dynamically defined runtime outcome or state,
+it's a smell." So the family is a type known at compile time (a discriminated union, a versioned
+schema, a state machine's states and events), and each case is a member of it that the compiler
+checks. A pipeline whose shape is decided at runtime instead (a branch on a kind typed as plain
+`string`, a handler map registered at runtime with no exhaustive key type, a per-case copy of a
+step) is the smell. A design that keeps one says so, in the PR or its call, with the defence: why no compile-time type can hold it.
+
+**Build only what is ours, and only on evidence** (owner, 2026-11-20, C787). The owner, close
+paraphrase: "We don't want to invent the world. We descend to a specific set of things, the
+ones we are very opinionated on and that are idiosyncratic to ourselves. We don't create a
+pipeline for the sake of a pipeline. For a generic user story, stress an outsourced solution,
+freemium or open source, guided by real feedback and telemetry, not gut feeling, and truly
+prove that we've exhausted it and still have a pain point." So:
+
+- **Name what is ours.** A story is generic when someone who doesn't know this repo could ask
+  for it in the same words ("denoise any video and lay music under it"). A generic story stops
+  at rung 1 or 2. Rung 3 is for what is peculiar to this story and nobody else's: the owner's
+  record and where it lives, the mandates, an opinion the owner holds. The reach names that
+  part in one sentence. When it can't, the verdict is not to build.
+- **Descend a rung only on evidence of a pain point.** To pass a rung, the reach links what
+  real use of it showed: the owner's words on an issue or PR, a session note, a failure or
+  measure from telemetry or the assurance ledger, or a tool's limit hit on real work. A
+  guess, a "could" or a "nicer" is not evidence. A rung's candidates are exhausted when each
+  was tried on real work or ruled out for a stated reason. The mandates are such a reason: a
+  third party may not hold the owner's personal data, so a freemium service is ruled out for
+  it untried, and the reach moves to what is self-hosted on home.
+- **No evidence yet means try the tool.** When no candidate on a rung has met real use, the
+  verdict is that rung's best candidate. The story then waits on that use, as an ask when the
+  owner must act (an account, an upload). The pain point it leaves, if any, is what a later
+  reach descends on.
+- **Build only the gap.** At rung 3, build the part that is ours and keep the tool for the
+  rest: a wrapper over it, not a replacement for it.
+
+**Spend last on hardware, behind a measured judgment** (owner, 2026-11-20, C789). The owner,
+close paraphrase: "Stay away from anything that results in us paying for anything until we are
+confident in our judgment. The key is my ability to make decisions about hardware in general,
+and about the software infrastructure around the hardware. While we are naive, we should not
+be spending any money, so those steps always come last, gated behind real enlightenment, which
+we have to find a way to measure." So in such a story, each step that costs money comes last,
+after a judgment gate the story defines and measures: the owner's predictions, made before
+seeing results, hold against real measurements (#3309). Claude's reading (#3310): the rule
+covers machines, GPUs, and the hosting and serving that run on them. Other spending, such as a
+store's registration fee or a tool's paid plan, is outside it, and a free tier is not spending.
+
+**When a reach is owed.** It is owed when the first design of a story would add one of these:
+
+- a new kind of record and the place that keeps it;
+- an editor, player, recorder or annotation layer;
+- a sync, sharing or import path;
+- a new deployable or service;
+- work the story needs before its first use can land in one PR.
+
+It is not owed for changes to a surface that already exists: words, layout, a field on a
+record already kept, a fix, a new screen over data already held. It is not owed either for a
+story whose point is the machinery itself, such as the owner wanting to learn by building it.
+The reach comes before the first PR of that machinery, not after.
+
+**Where it goes.** A reach ends in a call (below, "A gray-area call keeps who made it"), with
+each tool and building among its `options`. `chose` holds the verdict and its rung; for a
+descent, the part that is ours and the evidence it descends on, linked. A long comparison is
+linked too (a private page). The epic's body names the call under a
+"Reach" heading beside "Where we are". The session makes the call itself, `by: claude`, and
+acts on it. When the ladder reaches building on evidence, the owner (2026-11-19, on #3197):
+"if it comes down to build ourselves, we agree". When the verdict
+is to use or fold in a tool that needs the owner to act (an account, a setup step on home) or
+sends their data to a third party, it is also an ask, and that tool waits on their answer.
+
+## Policy limits move with the story
+
+The owner (2026-11-19, on #3197; C771): "Policy limits, like 'this type of video essay should
+only be of this length', should be policy, not environment variables. … You have full authority
+to nudge and update them to meet a moved user story." A limit that states a preference about
+content or its shape (a length, a count, a word bound) is kept in code as policy. When a story
+outgrows it, move it or retire it in the same change, and record the move as a call that
+`moves` the call before it, so the history stays.
+
+This does not cover a guard that protects home or the record: memory and disk caps, the
+owner's history ("Never lose the record", above), and the assurance ledger's promises.
+Loosening one of those still needs the owner, and moving one needs evidence, stated in the PR.
 
 ## Deleting is in scope
 
@@ -571,10 +736,13 @@ Stories mean the product is moving. A run of defects that relate to one another 
 are chasing a promise nobody has stated.
 
 **A gray-area call keeps who made it** (ST37, #2637). When an agent or the owner makes a
-call in a gray area, it is recorded in `docs/calls.json`: what was chosen, the options, why it
-was gray, how to undo it, the paths it governs, and whose authority it rests on (`by: claude`,
-`by: claude` with the day the owner `agreed`, or `by: owner`). The commit that makes it
-carries `Call: <ID>` (`check:commit-trailers` refuses an ID the record lacks at that commit),
+call in a gray area, it is recorded as `docs/calls/<ID>.json`, one file per call: what was
+chosen, the options, why it was gray, how to undo it, the paths it governs, and whose authority
+it rests on (`by: claude`, `by: claude` with the day the owner `agreed`, or `by: owner`). One
+file each, so two PRs that each add a call never conflict (#2976); `check:calls` refuses a file
+not named for its call's ID. The commit that makes it carries `Call: <ID>`
+(`check:commit-trailers` refuses an ID the record lacks at that commit, reading a commit from
+before #2976 in the single array file it held then),
 and the PR's "Calls I made" lists the IDs. Recording one never waits on
 the owner, and agents keep making calls. Until the owner writes their own definition, a gray
 area is a choice between options that no check, convention or earlier owner decision settles,
@@ -586,7 +754,7 @@ that the owner would notice on the screen or in how they work.
   didn't match theirs. The change is a new entry that `moves` the old one, and its PR says
   whose call it moves. Agreeing at the time doesn't change that. A defect stays what it is:
   code failing in a state its story covered.
-- **The record only grows.** An entry is never edited or removed, except that a Claude call
+- **The record only grows.** A call's file is never edited or removed, except that a Claude call
   gains the day the owner agreed to it, and the owner's own call the options and why it was
   gray, which are the owner's to give. The weekly call reads the calls that reached the
   record on `main` in its week, or were agreed to in it, not PR bodies.
@@ -724,10 +892,12 @@ never "sounds like good practice."
   `apps/mobile` (it generates the gitignored `capacitor-cordova-android-plugins/`, without
   which Gradle fails to configure) and `ANDROID_HOME=<dir> ./gradlew :app:lintRelease
 :app:assembleRelease`. Maven Central can answer 429 mid-download; that is rate limiting,
-  so retry. Separately, vitest and every www Playwright suite run the `lan` or `pages`
-  build profile, never `mobile`: `MOBILE_APP` and `hasAudience("apk")` are false there, so
-  an APK-only branch (the wing bar, the header's way out, the foyer) is rendered by no test
-  unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the
+  so retry. Separately, vitest and every www Playwright suite but one run the `lan`, `pages`
+  or `snips` build profile; the one is the ui-fit phone page (`build:fit-phone`), built under
+  `mobile`, which mounts chosen screens as fixtures (`tests/ui-fit/phone-page/fixtures.tsx`),
+  some of them `_apk` route components (the foyer, Practice Home), never the app's route tree.
+  So an APK-only branch outside those fixtures (the wing bar, the header's way out) is rendered
+  by no test unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the
   APK, each wing's launcher icon, and a monkey (`apps/mobile/launch/launch-test.sh`), but the
   monkey runs with `--pct-syskeys 0`: back is pressed exactly once, at a wing entered by its
   icon, so the rest of `MainActivity`'s back handling (the app has no `@capacitor/app`) is
@@ -794,7 +964,8 @@ handoff document (owner, 2026-10-25). It lives in two places, for two readers:
   `[EPIC][<TAG>] …`, labelled `epic`, whose sub-issues are its stories (`[<TAG>] <ID>: …`), each
   closed by the PR that lands it. The epic opens with a `**Search words:**` line (the plain
   words someone might use to ask for it, the paths it touches, the tag) and a "Where we are"
-  section (what landed, what is next, what waits on the owner). An issue says everything a cold
+  section (what landed, what is next, what waits on the owner). An epic whose story builds
+  machinery of its own also carries a "Reach" section (above, "Reach before you build"). An issue says everything a cold
   session needs: why, what is decided and by whom, the files, what done means. What a handoff
   used to carry goes there too: the gaps a PR disclosed and left, and what a session working on
   the story should know (a fixture's quirk, a check that misleads). Keep them current while you

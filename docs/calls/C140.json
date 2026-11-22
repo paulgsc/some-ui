@@ -1,0 +1,17 @@
+{
+  "id": "C140",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "server:crates/scenario_engine/testdata/replay-401873010.txt",
+    "server:crates/scenario_engine/src/rules.rs"
+  ],
+  "chose": "GWB3's done-when (the owner steps through a replayed game and agrees 7 times in 10) was judged by an agent's reading standing in for the owner's: 68 moments of NE at CHI, the wanted scenario on offer and first in 66. #2077 closed on it.",
+  "options": [
+    "the agent judges the replay, at the owner's word",
+    "wait for the owner to step through it"
+  ],
+  "gray": "The bar names the owner as the judge. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+  "undo": "Reopen #2077 and ask the owner to step through the replay file.",
+  "refs": ["#2077", "#2074"]
+}

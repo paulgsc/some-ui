@@ -48,7 +48,7 @@ import {
   reflectionsGoing,
   studioGoing,
 } from "./going"
-import { pairingOf, useHomeLink } from "./index"
+import { pairing, useHomeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
 import { lensToSend } from "./lens-record"
 import type { HomeLinkState } from "./model"
@@ -57,7 +57,7 @@ import { practiceRead, watchPracticeStores } from "./practice-reads"
 import { promptsToSend } from "./prompts"
 import { writtenToSend } from "./reflections"
 import type { Sent } from "./sent"
-import { heldCounts, logToSend, readSent, sessionsToSend } from "./sent"
+import { heldCounts, logToSend, sentUnder, sessionsToSend } from "./sent"
 import type { StudioReport } from "./studio-log"
 import { studioToSend } from "./studio-log"
 import { holdNotes } from "./voice-copy"
@@ -195,8 +195,7 @@ function studioWaiting(
 
 /** What this phone knows the paired home holds; nothing when unpaired. */
 function heldByHome(link: HomeLinkState): Sent | null {
-  const pairing = pairingOf(link)
-  return pairing === null ? null : readSent(localStorageOrNull(), pairing)
+  return sentUnder(localStorageOrNull(), pairing(link))
 }
 
 /** Of `sessions`, how many finished ones the paired home does not hold as they are. */

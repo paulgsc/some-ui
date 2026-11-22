@@ -57,7 +57,7 @@ import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
 import type { Storyboard } from "./storyboard"
-import sampleHome from "./templates/engagement-report/sample-weeks.json"
+import sampleHome from "./templates/engagement-report/sample-weeks.json" with { type: "json" }
 
 /** The newest version `reportFormat` gives, pinned as `v<n>.json` under `templates/`. */
 export const REPORT_VERSION = 1
@@ -151,9 +151,11 @@ const count = z.number().int().nonnegative()
 
 /**
  * Home's answer to `GET /app-events/weeks/:week` (paulgsc/server#819,
- * `crates/db/app_event/src/weeks.rs`' `Weekly`). Only what the report reads
- * is checked; `seen` (first and last-taken days) is never read, since the
- * public-safety rule keeps days out.
+ * `crates/db/app_event/src/weeks.rs`' `Weekly`). Only what is read is
+ * checked: the report reads `weeks`; a walkthrough reads `seen` and
+ * `friction` (`frictionOf`, `./friction`), which say only how many days and
+ * weeks, never which. A week kept before home read them has no `friction`
+ * and no `lastOpenedDay`.
  */
 export const HomeWeeksSchema = z.object({
   week: z.string(),
@@ -178,6 +180,57 @@ export const HomeWeeksSchema = z.object({
       ),
     })
   ),
+  seen: z
+    .array(
+      z.object({
+        pipeline: z.string(),
+        affordance: z.string(),
+        surface: z.string(),
+        firstDay: z.iso.date(),
+        /** The last day it was offered or taken before the week's end. */
+        lastOpenedDay: z.iso.date().nullable().optional(),
+      })
+    )
+    .optional(),
+  /** The walkthrough's friction measures over the 28 days ending with the week (paulgsc/server's `app_event::friction`). */
+  friction: z
+    .object({
+      from: z.string(),
+      to: z.string(),
+      /** Window days after home's first engagement event; 0 is no data. */
+      measuredDays: count,
+      opened: z.array(
+        z.object({
+          pipeline: z.string(),
+          affordance: z.string(),
+          surface: z.string(),
+          days: count,
+        })
+      ),
+      places: z.array(
+        z.object({
+          pipeline: z.string(),
+          affordance: z.string(),
+          surface: z.string(),
+          place: z.string(),
+          left: count,
+          movedOn: count,
+          medianMs: count.nullable(),
+          /** The lefts that said the screen they went to, per screen (#3367); absent from a read before it. */
+          nexts: z
+            .array(z.object({ next: z.string(), left: count }))
+            .optional(),
+        })
+      ),
+      /** The surfaces on which a `left` that said where it went was made by the window's start (#3367). */
+      nextsBefore: z.array(z.string()).optional(),
+      partial: z.boolean(),
+      debrief: z.object({
+        said: count,
+        median: z.number().min(1).max(5).nullable(),
+      }),
+    })
+    .optional(),
 })
 
 export type HomeWeeks = z.infer<typeof HomeWeeksSchema>

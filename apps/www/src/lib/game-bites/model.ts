@@ -10,10 +10,7 @@
  * record says since when (`homeSince`), and `./runtime` lets its audio go.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
-import type { KeptBite } from "@some-ui/game-week"
-
-/** A bite as this phone keeps it: once home holds it, since when. */
-export type PhoneBite = KeptBite & { readonly homeSince?: number }
+import type { KeptBite, StoredBite } from "@some-ui/game-week"
 
 export type GameBitesEvent =
   | { readonly kind: "kept"; readonly bite: KeptBite }
@@ -40,10 +37,10 @@ export function isReady(bite: KeptBite, now: number): boolean {
  * already kept changes nothing.
  */
 export function stepGameBites(
-  bites: ReadonlyArray<PhoneBite>,
+  bites: ReadonlyArray<StoredBite>,
   event: GameBitesEvent,
   now: number
-): ReadonlyArray<PhoneBite> | Refusal {
+): ReadonlyArray<StoredBite> | Refusal {
   if (event.kind === "kept") {
     return bites.some((b) => b.id === event.bite.id)
       ? bites
@@ -52,7 +49,7 @@ export function stepGameBites(
   if (event.kind === "home-holds") {
     // Only a bite on its way can be held by home, and the first answer's
     // time stays: a later one changes nothing.
-    const marked = (b: PhoneBite): boolean =>
+    const marked = (b: StoredBite): boolean =>
       b.homeSince === undefined && isReady(b, now) && event.ids.has(b.id)
     return bites.some(marked)
       ? bites.map((b) => (marked(b) ? { ...b, homeSince: now } : b))
@@ -93,7 +90,7 @@ function isFields(value: unknown): value is Record<string, string> {
   return isRecord(value) && Object.values(value).every(isString)
 }
 
-function isBite(value: unknown): value is PhoneBite {
+function isBite(value: unknown): value is StoredBite {
   return (
     isRecord(value) &&
     isString(value.id) &&
@@ -108,7 +105,7 @@ function isBite(value: unknown): value is PhoneBite {
 }
 
 /** The stored record, or null for one this build cannot read. */
-export function parseGameBites(raw: string): ReadonlyArray<PhoneBite> | null {
+export function parseGameBites(raw: string): ReadonlyArray<StoredBite> | null {
   let value: unknown
   try {
     value = JSON.parse(raw)

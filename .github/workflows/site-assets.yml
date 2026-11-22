@@ -1,0 +1,210 @@
+name: Site Assets
+# The public site's media that CI can render (PAGES #3401, C1059): each job
+# renders one of the landing's slot assets on sample data and uploads it as
+# `site-assets-<kind>-<sha>`, laid out by its key (`stills/page-filter.png`,
+# `clips/extensions.mp4`). pages.yml fetches the newest of each kind into
+# the build at its next deploy; a kind with none keeps its drawn placeholder.
+# Snips Capture uploads the APK clip the same way. Nothing here is committed
+# (C1029), and nothing here reads the owner's records: Page Filter is shot on
+# a page of ours, the promo walks Suspender Ledger's sample. The `home` job
+# fetches the two pictures home takes of its own dashboards (#3415, C1071,
+# C1073): the server card's clip and the cores card's still, counts, rates and
+# uptime only, from the Jobs mailbox, which home puts them in.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/some-filter/**"
+      - "packages/video-motion/**"
+      - "packages/video-render/**"
+      - ".github/workflows/site-assets.yml"
+  workflow_dispatch:
+  # Twice a month, so while these runs succeed the newest of each kind
+  # outlives no 30 days even when nothing it is made from changes. A month
+  # of failed runs, or GitHub pausing an idle repository's schedules, lets
+  # it lapse: the landing then draws placeholders, and pages.yml's summary
+  # lists what it found.
+  schedule:
+    - cron: "41 5 3,17 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-assets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  page-filter:
+    name: Page Filter's gap still
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - name: Build Page Filter for Chromium
+        run: |
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-extension/filter^...' --concurrency=100%
+          nix develop .#ci --command pnpm --filter @some-extension/filter build:chromium
+      # A light page of ours with one widget in a closed shadow root, as it
+      # is and under Page Filter (extensions/some-filter/tests/stills).
+      - name: Photograph the gap
+        run: |
+          nix develop .#ci-playwright --command pnpm --filter @some-extension/filter \
+            still:gap "$RUNNER_TEMP/site-assets/stills/page-filter.png"
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, which waits on an approval and can come weeks after this
+      # push. 30 days outlives that gap; its family keeps one
+      # (packages/eslint/src/retention.ts). Once it is gone the landing
+      # draws the gap's placeholder until a push or a dispatch renders it
+      # again.
+      - name: Upload the still
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-page-filter-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets
+          if-no-files-found: error
+          retention-days: 30
+
+  extensions:
+    name: The extensions clip
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      # Suspender Ledger 0.3.1's promo (HYPER3), as pr.yml proves it: its
+      # release and sample from paulgsc/testing at a pinned commit, the
+      # popup walked in its sandbox on that sample, the sound kit made here.
+      - name: Render Suspender Ledger's promo
+        run: |
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/video-motion^...' --concurrency=100%
+          data="$RUNNER_TEMP/promo-data"
+          mkdir -p "$data"
+          for file in release sample; do
+            curl -fsSL -o "$data/$file.json" \
+              "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
+          done
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand"
+          # The landing plays no sound (C1064): the picture alone, its sound
+          # track dropped, and refused if one is still there.
+          mkdir -p "$RUNNER_TEMP/site-assets/clips"
+          clip="$RUNNER_TEMP/site-assets/clips/extensions.mp4"
+          nix develop .#ci-playwright --command \
+            ffmpeg -loglevel error -i "$RUNNER_TEMP/promo/video.mp4" -an -c:v copy -movflags +faststart "$clip"
+          sound="$(nix develop .#ci-playwright --command ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$clip")"
+          if [ -n "$sound" ]; then echo "::error::$clip still has a sound track"; exit 1; fi
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, which waits on an approval and can come weeks after this
+      # push. 30 days outlives that gap; its family keeps one. Once it is
+      # gone the landing draws the clip's title card until a push or a
+      # dispatch renders it again.
+      - name: Upload the clip
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-extensions-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets
+          if-no-files-found: error
+          retention-days: 30
+
+  # Home's dashboards (#3415): home photographs file_host's dashboard and the
+  # CPU panel on its own Grafana each week and puts them in the mailbox's
+  # `site-assets` folder (C1071); this job reads the newest of each kind with
+  # the mailbox's read-only `pages` token. Until the owner sets the
+  # MAILBOX_URL variable and the MAILBOX_PAGES_TOKEN secret, it uploads
+  # nothing and says so, and both slots keep their drawings. No checkout:
+  # nothing of this repository runs here, and the token is the job's alone.
+  home:
+    name: Home's dashboard pictures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch the newest of each kind
+        id: fetch
+        env:
+          MAILBOX_URL: ${{ vars.MAILBOX_URL }}
+          MAILBOX_PAGES_TOKEN: ${{ secrets.MAILBOX_PAGES_TOKEN }}
+        run: |
+          # An output is written only for a kind fetched and checked; unset,
+          # its upload is skipped.
+          if [ -z "$MAILBOX_URL" ] || [ -z "$MAILBOX_PAGES_TOKEN" ]; then
+            echo "::notice::The mailbox's pages token is not set, so home's pictures are not fetched; their slots keep their drawings."
+            exit 0
+          fi
+          url="${MAILBOX_URL%/}"
+          # The token goes to curl on its standard input, never its arguments.
+          auth() { printf 'header = "Authorization: Bearer %s"\n' "$MAILBOX_PAGES_TOKEN"; }
+          # Each kind fails on its own, and a mailbox that does not answer
+          # fails none of this run's other jobs: pages.yml reads only a run
+          # that succeeded, so a failure here would hide every kind's media.
+          if ! auth | curl -fsS --max-time 60 -K - -o "$RUNNER_TEMP/items.json" \
+            "$url/v1/site-assets/items?limit=50" ||
+            ! jq -e '.items | type == "array"' "$RUNNER_TEMP/items.json" > /dev/null; then
+            echo "::warning::The mailbox did not list home's pictures; their slots keep what the last run fetched."
+            exit 0
+          fi
+          # A picture is held to 768 KiB (the mailbox's PICTURE_MAX_BYTES).
+          for kind in server:clips:mp4 cores:stills:png; do
+            name="${kind%%:*}"; rest="${kind#*:}"; dir="${rest%%:*}"; ext="${rest#*:}"
+            # The greatest name of a kind is its newest (`<kind>-<stamp>.<ext>`).
+            item=$(jq -r --arg kind "$name" --arg ext "$ext" \
+              '[.items[] | objects | .name | strings | select(test("^" + $kind + "-[0-9]{8}T[0-9]{9}Z\\." + $ext + "$"))] | sort | last // empty' \
+              "$RUNNER_TEMP/items.json")
+            if [ -z "$item" ]; then
+              echo "- $name: none in the mailbox; its slot keeps its drawing" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            out="$RUNNER_TEMP/site-assets-$name/$dir/$name.$ext"
+            mkdir -p "$(dirname "$out")"
+            # The bytes are the type their name says and within the cap, or
+            # this kind is not uploaded.
+            if ! {
+              auth | curl -fsS --max-time 120 --max-filesize 786432 -K - -o "$out" \
+                "$url/v1/site-assets/items/$item" &&
+                case $ext in
+                  png) [ "$(head -c 8 "$out" | od -An -tx1 | tr -d ' \n')" = 89504e470d0a1a0a ] ;;
+                  mp4) [ "$(dd if="$out" bs=1 skip=4 count=4 status=none)" = ftyp ] ;;
+                esac &&
+                [ "$(stat -c %s "$out")" -le 786432 ]
+            }; then
+              echo "::warning::$name: $item did not fetch or check out; its slot keeps what the last run fetched."
+              rm -f "$out"
+              continue
+            fi
+            echo "$name=true" >> "$GITHUB_OUTPUT"
+            echo "- $name: $item" >> "$GITHUB_STEP_SUMMARY"
+          done
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, which waits on an approval and can come weeks after this run.
+      # 30 days outlives that gap; its family keeps one
+      # (packages/eslint/src/retention.ts). Once it is gone the landing draws
+      # the clip's title card until a run fetches it again.
+      - name: Upload the server clip
+        if: steps.fetch.outputs.server == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-server-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets-server
+          if-no-files-found: error
+          retention-days: 30
+      # Retention: as the clip's, above. Once it is gone the landing draws the
+      # cores card's drawing until a run fetches it again.
+      - name: Upload the cores still
+        if: steps.fetch.outputs.cores == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-cores-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets-cores
+          if-no-files-found: error
+          retention-days: 30

@@ -126,6 +126,7 @@ const stores: ReadonlyArray<KeptStore> = [
               },
               addedAt: AT,
               openedAt: null,
+              archivedAt: null,
             },
           ])
         },

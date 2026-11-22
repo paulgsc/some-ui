@@ -1,0 +1,15 @@
+{
+  "id": "C123",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["testing:scripts/guard.py", ".claude/skills/steward/SKILL.md"],
+  "chose": "paulgsc/testing refuses all media and binaries, by extension and by first bytes. The six clips PNGs present before the guard stay, each held to its SHA-256 in guard.py's LEGACY_MEDIA, which nothing joins.",
+  "options": [
+    "refuse all media, the existing PNGs held to their bytes in one named list",
+    "hold media to a small budget in one place",
+    "refuse all media and delete the existing PNGs"
+  ],
+  "gray": "The owner said to reject media in general and fold it into the size guard. The record is append-only (CLAUDE.md, 'Never lose the record'), and clips/ already held six PNGs that Studio's Library reads. The owner later confirmed keeping the list.",
+  "undo": "Remove an entry from LEGACY_MEDIA, or add a media budget to guard.py's CAPS, in a guarded testing PR.",
+  "refs": ["testing#6"]
+}

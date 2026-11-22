@@ -1,7 +1,7 @@
 /**
  * A note's audio back from home (paulgsc/server `GET /voice-notes/:id/audio`),
  * one `GET` per play, through the link's `keep` (LA8); it sends nothing of
- * the phone's but the note's id, and keeps nothing it gets. Two callers:
+ * the phone's but the note's id, and keeps nothing it gets. Its callers:
  *
  * - a Rust Rounds note (RR6 #2237, the owner's D4: home gives a note's audio
  *   back to the phone, for refine cards and replay), asked for by the voice
@@ -9,7 +9,12 @@
  *   phone, because it left once home held it or because a refine card
  *   brings back a note this phone never held;
  * - a Studio take (ST32), asked for by Takes on home (`lib/take-library`)
- *   on each Play.
+ *   on each Play;
+ * - any recording My data lists whose audio isn't on this phone (MD8,
+ *   `lib/my-data`), on each Play, so the owner hears what they'd delete;
+ * - a take Needs your attention lists (HEARD3, `lib/take-reconcile`);
+ * - the take of an answer to Rust Rounds' opening that home plays (#3269),
+ *   handed in by the Rust Rounds route, on each Play.
  *
  * What home answers:
  *
@@ -25,7 +30,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs, sha256Hex } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { answered } from "./while-busy"
 
 const NoteAudio = z.object({
   id: z.string(),
@@ -74,13 +80,11 @@ async function checkedAudio(audio: HomeAudio): Promise<Blob | null> {
 
 /** Note `id`'s audio from home, asked once; never rejects. */
 export async function askAudio(id: string): Promise<Blob | null> {
-  if (!paired()) return null
-  try {
-    const outcome = await homeLink().keep((send) => send("GET", audioPath(id)))
-    if (outcome?.kind !== "done") return null
-    const audio = readAudio(outcome.value, id)
-    return audio === null ? null : await checkedAudio(audio)
-  } catch {
-    return null
-  }
+  const said = await answered(
+    () => homeLink().keep((send) => send("GET", audioPath(id))),
+    (answer) => ({ kind: "answered" as const, audio: readAudio(answer, id) })
+  )
+  if (said.kind !== "answered" || said.audio === null) return null
+  // Ignored: bytes this phone can't hash are no audio to play.
+  return checkedAudio(said.audio).catch(() => null)
 }

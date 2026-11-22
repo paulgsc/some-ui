@@ -14,9 +14,18 @@ import type {
 } from "@some-ui/game-week"
 import { describe, expect, it } from "vitest"
 
+import type { Away, AwayEvent } from "@/lib/home-link/away"
+import {
+  FIRST_HOLD_MS,
+  held as heldAway,
+  holdMs,
+  stepAway,
+} from "@/lib/home-link/away"
 import type { LivePorts, LiveWire } from "@/lib/home-link/live"
 import { liveFeed, OPEN_MS, PING_MS, QUIET_MS } from "@/lib/home-link/live"
 import type { LiveSocketEvents } from "@/lib/home-link/live-socket"
+import type { Pairing } from "@/lib/home-link/model"
+import { UNPAIRED } from "@/lib/home-link/model"
 
 /**
  * The messages as plain JSON of what each one reads as: the recorder's own
@@ -92,11 +101,13 @@ function offerText(
 type Harness = {
   ports: LivePorts
   sockets: Array<Socket>
-  state: { paired: boolean; pairingId: string | null }
+  state: { paired: boolean; pairingId: Pairing }
   advance: (ms: number) => Promise<void>
   hide: (hidden: boolean) => void
   relink: () => void
   setNow: (to: number) => void
+  /** A request of the link's finds no answer: a stretch away begins (AW1). */
+  silence: () => void
 }
 
 type Watched = {
@@ -111,7 +122,21 @@ function harness(paired = true): Harness {
   const sockets: Array<Socket> = []
   const linkListeners = new Set<() => void>()
   let visibility: ((hidden: boolean) => void) | null = null
-  const state: Harness["state"] = { paired, pairingId: paired ? "p1" : null }
+  const state: Harness["state"] = {
+    paired,
+    pairingId: paired ? { kind: "paired", id: "p1" } : UNPAIRED,
+  }
+  // The home link's hold away from home (AW1), as `./away` steps it.
+  let away: Away | null = null
+  const toLink = (event: AwayEvent): void => {
+    const next = stepAway(away, event)
+    if (next === away) return
+    away = next
+    if (event.type === "unanswered" && next?.heldUntil != null) {
+      ports.after(next.heldUntil - now, () => toLink({ type: "lapsed" }))
+    }
+    for (const listener of linkListeners) listener()
+  }
   const ports: LivePorts = {
     wire: WIRE,
     pairing: () =>
@@ -125,6 +150,8 @@ function harness(paired = true): Harness {
       return () => linkListeners.delete(listener)
     },
     pairingId: () => state.pairingId,
+    held: () => heldAway(away, now),
+    reached: () => toLink({ type: "answered" }),
     open: (url, token, on) => {
       const socket: Socket = { url, token, on, sent: [], closed: false }
       sockets.push(socket)
@@ -184,6 +211,7 @@ function harness(paired = true): Harness {
     setNow: (to): void => {
       now = to
     },
+    silence: (): void => toLink({ type: "unanswered", now }),
   }
 }
 
@@ -283,6 +311,31 @@ describe("liveFeed", () => {
     expect(h.sockets).toHaveLength(2)
   })
 
+  it("while the link holds the phone away from home, tries only as each hold ends, and an open socket ends the stretch (AW1)", async () => {
+    const h = harness()
+    const { last } = await watched(h)
+    h.silence()
+    await h.advance(OPEN_MS)
+    expect([last().link, h.sockets.length]).toEqual(["away", 1])
+    await h.advance(FIRST_HOLD_MS - OPEN_MS - 1)
+    expect(h.sockets).toHaveLength(1)
+    await h.advance(1)
+    expect(h.sockets).toHaveLength(2)
+    h.silence()
+    h.sockets[1].on.closed(1006)
+    await h.advance(holdMs(1) - 1)
+    expect(h.sockets).toHaveLength(2)
+    await h.advance(1)
+    expect(h.sockets).toHaveLength(3)
+    h.sockets[2].on.opened()
+    h.sockets[2].on.message(offerText(42))
+    expect(last().link).toBe("live")
+    // Home answered: the next drop tries again on the socket's own time.
+    h.sockets[2].on.closed(1006)
+    await h.advance(1_000)
+    expect(h.sockets).toHaveLength(4)
+  })
+
   it("stops trying when this build can't read home, or the phone isn't paired", async () => {
     const h = harness()
     const { last } = await watched(h)
@@ -294,7 +347,7 @@ describe("liveFeed", () => {
     const unpaired = await watched(u)
     expect([unpaired.last().link, u.sockets.length]).toEqual(["unpaired", 0])
     u.state.paired = true
-    u.state.pairingId = "p2"
+    u.state.pairingId = { kind: "paired", id: "p2" }
     u.relink()
     await Promise.resolve()
     await Promise.resolve()

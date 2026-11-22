@@ -1,0 +1,32 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "cheat-sheet",
+  "version": 3,
+  "title": "Cheat sheet",
+  "frame": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "theme": "dark",
+  "cast": "cast-v1",
+  "ground": "#111821",
+  "window": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  },
+  "defaultLook": "plain",
+  "sounds": {},
+  "soundGainDb": -8,
+  "designs": {
+    "status-badge": "badge-v1",
+    "terminal": "terminal-v1",
+    "cheat-sheet": "sheet-v1",
+    "legend": "legend-v1",
+    "rule": "rule-v1",
+    "flow": "flow-v1",
+    "captions": "broadcast"
+  }
+}

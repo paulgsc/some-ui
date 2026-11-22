@@ -53,10 +53,10 @@ on:
         description: "Optional last-known-good commit SHA to deploy while leaving main unchanged (empty: deploy main's head)"
         type: string
         required: false
+# Only `deploy` publishes, so only it holds `pages: write` and
+# `id-token: write` (#2116); the build and a pull request's preview read.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 # No workflow-level concurrency: a run waiting in `approve` would hold that
 # group, so a newer push would queue behind it and approving the waiting run
 # would deploy the older commit. Each job below takes its own group instead.
@@ -68,7 +68,7 @@ jobs:
     outputs:
       changed: ${{ steps.inputs.outputs.changed }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: inputs
@@ -108,8 +108,12 @@ jobs:
     concurrency:
       group: pages-build-${{ github.ref }}
       cancel-in-progress: false
+    # actions: read for the site's media below, and nothing broader.
+    permissions:
+      contents: read
+      actions: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # A re-run remains tied to that run's github.sha. A manual
           # rollback instead checks out the operator-selected known-good
@@ -125,7 +129,7 @@ jobs:
       # was actively harmful: editing any .rs file invalidated the *packages*
       # dist cache and forced a full JS rebuild for a change www cannot see.
       - name: Cache workspace build outputs
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
@@ -173,6 +177,74 @@ jobs:
             fi
           done
 
+      # The landing's media (PAGES #3401, C1059), unpacked where
+      # render-public-site.ts looks for them (apps/www/src/landing/output.ts,
+      # SITE_MEDIA_DIR). Only from this repository's own successful runs of
+      # the two producers on main (Site Assets on a push, a dispatch or its
+      # schedule; Snips Capture on a dispatch), never a pull request's or a
+      # fork's: their artifacts list beside main's, and a fork's branch can be
+      # named main. Of each kind, the newest such run's. Each archive is
+      # tested, refused whole if it holds a link, and unpacked apart, and
+      # only its regular files move in, so a broken download or a link to a
+      # file on this runner ships nothing.
+      # Best effort: a kind with none keeps its slot's drawn placeholder, the
+      # summary says which kinds were found, and the deploy goes on.
+      - name: Fetch the site's media
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          media=apps/www/node_modules/.cache/www/site-media
+          work="$RUNNER_TEMP/site-media"
+          mkdir -p "$media" "$work"
+          : > "$work/seen"
+          for producer in site-assets.yml:push,workflow_dispatch,schedule snips-capture.yml:workflow_dispatch; do
+            workflow="${producer%%:*}"
+            events="${producer#*:}"
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?branch=main&status=success&per_page=20" \
+              --jq ".workflow_runs[]
+                    | select(.head_repository.id == .repository.id)
+                    | select(.head_branch == \"main\")
+                    | select(.event as \$e | any(\"$events\" | split(\",\")[]; . == \$e))
+                    | .id" |
+            while read -r run; do
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" \
+                --jq '.artifacts[]
+                      | select(.name | startswith("site-assets-"))
+                      | select(.expired | not)
+                      | [(.name | sub("-[0-9a-f]{40}$"; "")), .id]
+                      | @tsv' |
+              while IFS="$(printf '\t')" read -r kind id; do
+                grep -qxF "$kind" "$work/seen" && continue
+                zip="$work/$id.zip"
+                out="$work/$id"
+                # An archive holding a link is refused whole: before it is
+                # unpacked when its listing shows one (unzip makes links, and
+                # one to a folder could write outside $out), and after, for a
+                # host whose listing hides it (VMS), when anything but files
+                # and folders came out. Each listing goes to a file, not a
+                # pipe, so one cut short cannot read as "no link".
+                if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$zip" &&
+                  unzip -tq "$zip" && zipinfo "$zip" > "$zip.list" &&
+                  ! grep -q '^l' "$zip.list" && unzip -q "$zip" -d "$out" &&
+                  find "$out" ! -type f ! -type d > "$zip.odd" && [ ! -s "$zip.odd" ]; then
+                  (cd "$out" && find . -type f) | while read -r file; do
+                    mkdir -p "$media/$(dirname "$file")"
+                    mv "$out/$file" "$media/$file"
+                  done
+                  echo "$kind" >> "$work/seen"
+                  echo "- $kind: run $run, artifact $id" >> "$GITHUB_STEP_SUMMARY"
+                else
+                  echo "- $kind: artifact $id did not unpack; its slot keeps its placeholder" >> "$GITHUB_STEP_SUMMARY"
+                fi
+              done
+            done
+          done
+          {
+            echo "Site media found (a slot with none draws its placeholder):"
+            (cd "$media" && find . -type f | sort)
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build www and its workspace dependencies
         run: nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
         env:
@@ -191,11 +263,15 @@ jobs:
           # Nobody reaches this site from the home network, so it leaves out
           # the LAN-only workspaces entirely - see apps/www/build.profiles.ts.
           SOME_UI_PROFILE: pages
-      - name: Add SPA fallback for client-side routing
-        # GitHub Pages has no server-side rewrite; a hard refresh or deep
-        # link on a client-side route 404s without this. Serving the same
-        # shell from 404.html lets the router take over from the URL.
-        run: cp apps/www/dist/index.html apps/www/dist/404.html
+      # The site is static pages (apps/www/vite.config.ts, `publicSite`;
+      # PAGES #3401): the landing at index.html, the résumé, the authorship
+      # record, and 404.html, which GitHub Pages serves for any other path.
+      - name: Check the build has the landing, the résumé and the 404 page
+        run: |
+          test -f apps/www/dist/index.html
+          test -f apps/www/dist/resume/index.html
+          test -f apps/www/dist/authorship/index.html
+          test -f apps/www/dist/404.html
       # Uploaded here, inside this job's concurrency group, so a run's
       # deploy queues as soon as its own build ends while the next approved
       # run's build is only starting: concurrency does not order jobs, so a
@@ -204,7 +280,7 @@ jobs:
       # action's own default; it is spelled out so the retention check need
       # not know that.
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: apps/www/dist
           retention-days: 1
@@ -230,17 +306,21 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
       # deploy-pages waits for the deployment to go live, so the freshly
       # published tree is readable immediately - no polling/retry needed.
       # Only scripts/check-resume-deploy.mjs is needed here (it has no
       # dependencies of its own), so this checks out just that file rather
       # than the whole repo.
       - name: Check out résumé deploy check
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.rollback_sha || github.sha }}
           sparse-checkout: apps/www/scripts/check-resume-deploy.mjs

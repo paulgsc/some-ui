@@ -278,6 +278,50 @@ const SpanSchema = z.strictObject({
   columnEnd: z.int().positive(),
 })
 
+/**
+ * One stretch rustc's JSON diagnostic points at (`file_name`, `line_start`,
+ * …, camelCased), as home records it (paulgsc/server's
+ * `rust_rounds_wire::Span`): columns in characters, the end exclusive. A
+ * suggestion's span carries the text it would put there.
+ */
+const DiagnosticSpanSchema = z.strictObject({
+  /** `main.rs` for the program's own, or a path in the toolchain's sources. */
+  file: z.string(),
+  lineStart: z.int().nonnegative(),
+  lineEnd: z.int().nonnegative(),
+  columnStart: z.int().nonnegative(),
+  columnEnd: z.int().nonnegative(),
+  isPrimary: z.boolean(),
+  label: z.string().nullable(),
+  suggestedReplacement: z.string().nullable(),
+})
+export type DiagnosticSpan = z.infer<typeof DiagnosticSpanSchema>
+
+/** A `note:` or `help:` under a diagnostic, in rustc's order. */
+const DiagnosticChildSchema = z.strictObject({
+  level: z.string(),
+  message: z.string(),
+  spans: z.array(DiagnosticSpanSchema),
+})
+export type DiagnosticChild = z.infer<typeof DiagnosticChildSchema>
+
+/**
+ * One diagnostic rustc gave under `--error-format=json`, in its order, as
+ * home records it (`rust_rounds_wire::Diagnostic`): its level (`error`,
+ * `warning`, `failure-note`, …), its code (an `E` code or a lint's name),
+ * message, spans and children, and `rendered`, the text rustc prints for it
+ * without the flag.
+ */
+const DiagnosticSchema = z.strictObject({
+  level: z.string(),
+  code: z.string().nullable(),
+  message: z.string(),
+  spans: z.array(DiagnosticSpanSchema),
+  children: z.array(DiagnosticChildSchema),
+  rendered: z.string().nullable(),
+})
+export type Diagnostic = z.infer<typeof DiagnosticSchema>
+
 /** The toolchain that recorded the run, like `1.97.0`. Messages change between versions. */
 const ToolchainSchema = TextSchema
 
@@ -286,7 +330,10 @@ const ToolchainSchema = TextSchema
  * authority on what rustc did. Text is exactly as printed.
  *
  * - `compile-error`: rustc refused it; `stderr` is every diagnostic it
- *   printed, `code` the first error's code, `span` its primary span.
+ *   printed, `code` the first error's code, `span` its primary span, and
+ *   `diagnostics` every diagnostic as rustc's JSON gave it, in order (RR23).
+ *   A run from a home older than RR23 has no `diagnostics`; the phone shows
+ *   it as printed.
  * - `prints`: it compiled, ran and exited 0; `stdout` is what it printed.
  * - `panics`: it compiled and panicked (exit 101); `stderr` holds the panic.
  * - `stopped`: it compiled and the sandbox ended it, or it exited some other
@@ -302,6 +349,7 @@ export const RustcRunSchema = z.discriminatedUnion("outcome", [
     code: ErrorCodeSchema,
     stderr: z.string(),
     span: SpanSchema.nullable(),
+    diagnostics: z.array(DiagnosticSchema).optional(),
   }),
   z.strictObject({
     outcome: z.literal("prints"),

@@ -1,0 +1,261 @@
+name: Snips Capture
+
+# Photographs every screen of the app on sample data (SNIPS1, epic #3114):
+# the APK on an emulator, paired with a stand-in home, and the viewer's web
+# build (the `snips` profile, apps/www/build.profiles.ts) at desktop and phone
+# sizes. The pictures go to one bundle, which home
+# picks up, checks and files by id (SNIPS2); essays name snips by those ids.
+# docs/snips.md is the bundle's contract.
+#
+# Dispatch only (owner, 2026-11-17): never on a pull request, not in pr.yml,
+# and CI Gate does not need it. Choose the branch in "Use workflow from";
+# that commit is the app captured.
+#
+# Deterministic: sample data only (the viewer build, and a clean install
+# whose one home is the stub on the runner), the page's clock frozen at
+# FROZEN_AT (apps/www/src/lib/snips), motion reduced, fixed sizes, and the
+# fonts the nix shell pins. The same commit gives the same snips, which is
+# what lets the bundle live one day: a lost one is a re-run away.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snips-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  web:
+    name: The web app
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+      # The viewer's build, made here only (the `snips` profile): pages.yml's
+      # environment, with every viewer route kept, so the routes an essay names
+      # still resolve now that the public site is pruned to a CV (C1055, #3401).
+      # The variables are pages.yml's own; keep the two in step by hand.
+      - name: Build the viewer's app
+        run: |
+          nix develop .#ci --command pnpm turbo build --filter='www^...' --concurrency=100%
+          nix develop .#ci --command env \
+            SOME_UI_PROFILE=snips VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
+            pnpm --filter www exec vite build --outDir dist-snips --emptyOutDir
+      - name: Photograph every route
+        run: |
+          nix develop .#ci-playwright --command env \
+            WWW_DIST_SNIPS=apps/www/dist-snips SNIPS_OUT="$GITHUB_WORKSPACE/snips-web" \
+            pnpm --filter www exec playwright test tests/snips/web.spec.ts --trace off
+      # Retention: read by this run's bundle job only. "Re-run failed jobs"
+      # more than a day later finds no half; dispatch the workflow again.
+      - name: Upload the web half
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snips-web-${{ github.run_id }}
+          path: snips-web
+          if-no-files-found: error
+          retention-days: 1
+
+  apk:
+    name: The APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+      - name: Build www for the device and sync it into Android
+        run: nix develop .#ci --command pnpm --filter @some-ui/mobile bundle
+        env:
+          NODE_ENV: production
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      # A key for this run only (build.gradle reads SOME_UI_KEYSTORE), as
+      # android-compat.yml makes one: an unsigned release APK does not
+      # install, and the phone's key stays behind mobile-release.
+      - name: Make a throwaway signing key
+        run: |
+          keystore="$RUNNER_TEMP/snips.keystore"
+          keytool -genkeypair -keystore "$keystore" -storetype PKCS12 \
+            -storepass snips-only -keypass snips-only -alias some-ui \
+            -keyalg RSA -keysize 2048 -validity 1 -dname "CN=snips-capture"
+          echo "SOME_UI_KEYSTORE=$keystore" >> "$GITHUB_ENV"
+      # The release build (R8, as the phone gets it), whose own navigation
+      # reaches most screens, and the debug build: the same JavaScript, in a
+      # WebView Playwright opens, for the screens taps do not reach
+      # (apps/www/tests/snips/apk.spec.ts). x86_64 added for the emulator.
+      - name: Build the release and debug APKs
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: snips-only
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.0.${{ github.run_number }}+snips.${{ github.sha }}
+          SOME_UI_EXTRA_ABI: x86_64
+        run: ./gradlew :app:assembleRelease :app:assembleDebug --no-daemon --stacktrace
+      # The hosted runner has /dev/kvm but not the permission to use it.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # API 34 at full speed: the pictures are of the app, not of a slow
+      # phone (that is android-compat.yml's). Not 36, where the debug build's
+      # WebView loads blank (COMPAT, #3104) and the debug pass would show
+      # nothing.
+      - name: Photograph every screen
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          emulator-boot-timeout: 900
+          # No DNS (192.0.2.1 is a documentation address that answers
+          # nothing): the stand-in home is reached by IP, and the live
+          # public data the app reads (GitHub's asks, the clips index)
+          # cannot load into a picture on either build.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -dns-server 192.0.2.1
+          script: nix develop .#ci --command bash apps/mobile/snips/capture-apk.sh apps/mobile/android/app/build/outputs/apk/release/app-release.apk apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/snips-apk" "$GITHUB_WORKSPACE/walks"
+      # Retention: read by this run's bundle job, and by a person reading a
+      # failed capture right after the run; a later look is a dispatch away.
+      - name: Upload the APK half
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snips-apk-${{ github.run_id }}
+          path: snips-apk
+          if-no-files-found: ignore
+          retention-days: 1
+      # Retention: the walks (WALK1, apps/mobile/walk), each app's snips and
+      # walk.json for `motion promo` and the walkthrough, and a failed walk's
+      # failed.png. Read by a person right after the run; a later look, or a
+      # render a day on, is a dispatch away, the walk being on sample data.
+      - name: Upload the walks
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: walks-${{ github.run_id }}
+          path: walks
+          if-no-files-found: ignore
+          retention-days: 1
+
+  bundle:
+    name: The bundle
+    needs: [web, apk]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: snips-*-${{ github.run_id }}
+          path: snips-bundle
+          merge-multiple: true
+      # What scripts/snips-bundle.ts imports from the workspace, built: a fresh
+      # checkout has no dist/, and tsx resolves a package through it (SN1;
+      # src/lib/snips/__tests__/bundle-job.test.ts holds this list to the
+      # script's imports). @some-ui/video-render, whose snip schema the
+      # script reads, has no build of its own (tsx reads its src): naming it
+      # builds what it imports.
+      - name: Build what the bundle script imports
+        run: nix develop .#ci --command pnpm turbo build --filter=@some-ui/core-utils --filter=@some-ui/video-render
+      - name: Join the halves, check every file, write the manifest and checksums
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          nix develop .#ci --command pnpm --filter www exec tsx scripts/snips-bundle.ts \
+            "$GITHUB_WORKSPACE/snips-bundle" "$GITHUB_SHA" "$RUN_URL"
+          rm -rf snips-bundle/logs
+          (cd snips-bundle && sha256sum -c SHA256SUMS --quiet)
+          {
+            echo "## Snips: \`${GITHUB_SHA::7}\`"
+            echo
+            jq -r '"\(.snips | length) snips of app \(.appVersion); \(.unreached | length) routes not shown."' snips-bundle/manifest.json
+            echo
+            echo "| Surface | Route | Why it was not shown |"
+            echo "| --- | --- | --- |"
+            jq -r '.unreached[] | "| \(.surface) | `\(.route)` | \(.why) |"' snips-bundle/manifest.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      # Retention: one day, the repo's default. Home picks the bundle up after
+      # the run (SNIPS2), so the newest one is kept for that day (keep 1 in
+      # packages/eslint/src/retention.ts) rather than swept at once. A bundle
+      # home missed is a re-run away: the workflow is deterministic, so the
+      # same commit gives the same snips and ids.
+      - name: Upload the bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snips-bundle-${{ github.sha }}
+          path: snips-bundle
+          if-no-files-found: error
+          retention-days: 1
+
+  apk-clip:
+    name: The APK clip for the public site
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: walks-${{ github.run_id }}
+          path: walks
+      # The Jobs walk this run made on the emulator, on its seeded sample
+      # (apps/www/tests/walk/jobs-week.json), rendered as its walkthrough
+      # with no voice: the landing plays it muted (PAGES #3401, C1059). A
+      # walk that failed (only a warning to the capture) leaves no walk.json:
+      # then there is no clip, and pages.yml keeps the newest earlier one.
+      - name: Render the Jobs walkthrough
+        id: clip
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/walks/jobs/walk.json" ]; then
+            echo "::notice::The Jobs walk failed in this run, so there is no APK clip."
+            echo "made=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/video-motion^...' --concurrency=100%
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion walkthrough \
+            "$GITHUB_WORKSPACE/apps/www/tests/walk/jobs-walkthrough.json" \
+            --walk "$GITHUB_WORKSPACE/walks/jobs" --out "$RUNNER_TEMP/walkthrough" \
+            --brand "$RUNNER_TEMP/brand"
+          # The landing plays no sound (C1064): the picture alone, its sound
+          # track dropped, and refused if one is still there.
+          mkdir -p "$RUNNER_TEMP/site-assets/clips"
+          clip="$RUNNER_TEMP/site-assets/clips/apk.mp4"
+          nix develop .#ci-playwright --command \
+            ffmpeg -loglevel error -i "$RUNNER_TEMP/walkthrough/video.mp4" -an -c:v copy -movflags +faststart "$clip"
+          sound="$(nix develop .#ci-playwright --command ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$clip")"
+          if [ -n "$sound" ]; then echo "::error::$clip still has a sound track"; exit 1; fi
+          echo "made=true" >> "$GITHUB_OUTPUT"
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, and this workflow runs only when dispatched, so the gap can be
+      # weeks. 30 days outlives a usual one; its family keeps one
+      # (packages/eslint/src/retention.ts). Once it is gone the landing draws
+      # the clip's title card until the next capture.
+      - name: Upload the clip
+        if: steps.clip.outputs.made == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-apk-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets
+          if-no-files-found: error
+          retention-days: 30

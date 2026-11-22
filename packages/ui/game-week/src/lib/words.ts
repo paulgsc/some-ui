@@ -5,14 +5,27 @@
  * every phrase these functions can make to that.
  */
 import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+import { scenarioOf, UNIT_WORDS } from "@some-ui/game-scenarios"
+import { ABOUT_WORDS } from "@some-ui/soundbites"
 import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 
 import type { FeedLink } from "./feed"
 import type { ModeId } from "./modes"
+import type { GameMoment } from "./moments"
 import type { OutboxView } from "./ports"
+import type { BiteUnit, Tier } from "./ranked"
 
 export const WORDS = {
   team: "SF",
+  /**
+   * The way to Studio's Takes, filtered to the game picked, or to every
+   * game when none is: what was said, found again.
+   */
+  yourTakes: (picked: boolean): string =>
+    picked ? "Your takes from this game" : "Your takes from game day",
+  teamsFollowed: "Teams home follows live",
+  teamsFollowedHow:
+    "Opens home's switches in your browser, on the home network, with your passkey.",
   pickGame: "Game",
   watching: "Watching",
   notWatching: "Not watching",
@@ -22,13 +35,26 @@ export const WORDS = {
   justHappened: "Just happened",
   sayItFirst: "Say it first",
   sayItFirstHint: "Talk now, say what it was about after.",
+  /** A bite said first that was never said to be about anything. */
+  saidFirst: "Said first",
+  /** Over the game's newest bites, under the recorder (GWB14). */
+  recentBites: "Said about this game",
   quietBar: "Stops when you go quiet",
   askTitle: "What was that about?",
   later: "Later: home works it out from what I said",
   undo: "Undo",
   settingsTitle: "How much to show",
   legendTitle: "Every scenario",
-  legendLede: "Tap one to talk about it.",
+  /** Whether home ranked it, or it is every scenario in the catalog's order. */
+  legendLede: (ranked: boolean): string =>
+    ranked
+      ? "Most likely first. Tap one to talk about it."
+      : "Tap one to talk about it.",
+  /** The unit chip while a bite is said: one tap moves it on. */
+  unitChange: "Tap for offense, defense, special teams or coaching",
+  /** The team switch beside it: the other team, as its code. */
+  aboutTeam: (team: string): string => `About ${team} instead`,
+  noUnit: "Which side of the ball",
   recordingLabel: "Saying it",
   sayingFirst: "Saying it first",
 } as const
@@ -164,9 +190,11 @@ export function outboxLine(view: OutboxView): string {
     const bites =
       view.waiting === 1 ? "1 bite waits" : `${view.waiting} bites wait`
     lines.push(
-      view.sending
-        ? `${bites} on this phone until home has ${view.waiting === 1 ? "it" : "them"}.`
-        : `${bites} on this phone. They go home once this phone is paired with home, in Settings.`
+      view.sending === null
+        ? `${bites} on this phone.`
+        : view.sending
+          ? `${bites} on this phone until home has ${view.waiting === 1 ? "it" : "them"}.`
+          : `${bites} on this phone. They go home once this phone is paired with home, in Settings.`
     )
   }
   if (view.refused > 0) {
@@ -183,4 +211,36 @@ export function outboxLine(view: OutboxView): string {
     )
   }
   return lines.join(" ")
+}
+
+/** The ranked list's headings, most plausible first (#3049). */
+export const TIER_TITLES: Readonly<Record<Tier, string>> = {
+  now: "Likely now",
+  always: "Any time",
+  rest: "Everything else",
+}
+
+/** Which unit a bite is about: "CHI defense", or "Coaching" for no one team. */
+export function unitLine(unit: BiteUnit): string {
+  const word = UNIT_WORDS[unit.unit]
+  return unit.side === null ? word : `${unit.side} ${word.toLowerCase()}`
+}
+
+/**
+ * A game's big moment no bite was said about, as Takes lists it among the
+ * game's bites (GWB14 D15): "No bite", then its quarter and clock as a
+ * matched bite's are said, the scenario's name, and the play as home words it.
+ */
+export const MISSED_WORDS = { noBite: "No bite" } as const
+
+/** What heads a moment with no bite: "Q3 4:12 · Turnover". */
+export function missedHead(moment: GameMoment): string {
+  const { period, clock } = moment
+  const when =
+    period === null
+      ? (clock ?? "")
+      : ABOUT_WORDS.atPlay(period, clock ?? undefined)
+  return [when, scenarioOf(moment.scenario).name]
+    .filter((part) => part !== "")
+    .join(" · ")
 }

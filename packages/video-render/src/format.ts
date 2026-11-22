@@ -30,11 +30,12 @@ import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { LOOKS } from "./plans"
 import { ms } from "./vocabulary"
+import { VoicesIdSchema } from "./voices"
 
 export const FORMAT_SCHEMA = "some-ui.show-format/1"
 
 /** One of the app's themes, by its id (`@some-ui/styles`). */
-const ThemeIdSchema = z.custom<SessionThemeId>(
+export const ThemeIdSchema = z.custom<SessionThemeId>(
   (id) => SESSION_THEME_IDS.some((theme) => theme === id),
   { message: "names no theme of the app's" }
 )
@@ -60,8 +61,11 @@ export const words = z.string().trim().min(1)
 /** A show's id, and its format's: a name the code gives it. */
 export const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 
+/** The most items a repeated scene shows. */
+export const REPEAT_MOST = 200
+
 /** The longest a repeated scene's id is, so `<id>-<n>` is still a cut's id. */
-export const REPEATED_ID_MAX = 40 - 1 - String(PRIMER_V2_CUTS).length
+export const REPEATED_ID_MAX = 40 - 1 - String(REPEAT_MOST).length
 
 /** The id of item `n` (from 1) of a repeated scene: "done-3". */
 export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
@@ -95,7 +99,21 @@ export function itemOfRepeated(scene: string, id: string): number | undefined {
  *   #2766): the theme the mark is drawn in on the brand intro and outro,
  *   chosen in Studio; absent, the template's. A version from before them
  *   has neither and is drawn in the page's own theme.
+ * - `parts` (#2918): an episode too long for one video is a series of
+ *   parts, each at most `mostMs` by its words, broken once one reaches
+ *   `aimMs`. Absent, it is one video.
  */
+/**
+ * The characters template A's speaking bubbles draw (PDA6, #2883; C822), by
+ * the cast's name: `cast-v1` is the mochi for the owner and tin birds for the
+ * synthetic voices (`@some-ui/styles`' `brand/cast`). A format's shape names
+ * one, and so does a series, for a page it draws with no format of its own
+ * (a cards essay's spoken card). Absent, the bubbles draw the flat icons.
+ */
+export const CastIdSchema = z.enum(["cast-v1"])
+
+export type CastId = z.infer<typeof CastIdSchema>
+
 export const ShapeSchema = z.strictObject({
   brand: z.strictObject({
     intro: z.boolean(),
@@ -114,6 +132,24 @@ export const ShapeSchema = z.strictObject({
   chapters: z.array(sceneId),
   subtitles: z.enum(["off", "line", "word"]),
   theme: ThemeIdSchema.optional(),
+  /** The cast its speaking bubbles draw (`CastIdSchema`); absent, the flat icons. */
+  cast: CastIdSchema.optional(),
+  /**
+   * The voice lanes its lines are said in (`VoicesIdSchema`, C840): each
+   * speaker's voice moves on at each chapter. Absent, each speaker keeps one
+   * voice for the whole video, as every version before them did. The
+   * weekly call ignores it: its voices are `fixed` (`CALL_VOICE_POLICY`).
+   */
+  voices: VoicesIdSchema.optional(),
+  parts: z
+    .strictObject({
+      mostMs: z.number().int().positive(),
+      aimMs: z.number().int().positive(),
+    })
+    .refine((parts) => parts.aimMs <= parts.mostMs, {
+      message: "a part's aim is longer than its most",
+    })
+    .optional(),
 })
 
 export type Shape = z.infer<typeof ShapeSchema>
@@ -160,7 +196,7 @@ const FormatSceneSchema = z.object({
    * scene shows once.
    */
   repeat: z
-    .object({ max: z.number().int().min(1).max(PRIMER_V2_CUTS) })
+    .object({ max: z.number().int().min(1).max(REPEAT_MOST) })
     .optional(),
 })
 

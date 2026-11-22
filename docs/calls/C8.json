@@ -1,0 +1,11 @@
+{
+  "id": "C8",
+  "made": "2026-11-06",
+  "by": "claude",
+  "paths": ["packages/ui/shared/src/components/patterns/take/index.ts"],
+  "chose": "An unplayable take is a warning tone with role alert, everywhere.",
+  "options": ["warning", "neutral"],
+  "gray": "Two wings disagreed.",
+  "undo": "Change the tone in TakeNotices, the shared take pattern.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

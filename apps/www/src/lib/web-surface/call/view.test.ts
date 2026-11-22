@@ -1,26 +1,41 @@
 import { PIPELINES } from "@some-ui/engagement"
+import { TALLOWBROOK_HELD, TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
 import {
   CALL_INDEX_SCHEMA,
+  CALL_STAGE_WORDS,
   CALL_VERSION,
   essayIntro,
+  fitsAllowance,
+  parseEssay,
+  parseHeardSpokenCard,
   reportPages,
   reportProblems,
   reportWeek,
   sampleCallWeek,
   sampleEssay,
+  sampleInterviewEssay,
   sampleReport,
+  sampleSpokenCard,
 } from "@some-ui/video-render"
 import type {
   CallIndex,
   CallWeek,
   EngagementReport,
   Essay,
+  InterviewEssay,
 } from "@some-ui/video-render"
+import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { essayAt, essayStageOf } from "./essay-view"
+import { Call, CastProvider } from "./essay-parts"
+import { EssaySceneFrame } from "./essay-stage"
+import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
+import { ESSAY_WORDS as EW } from "./essay-words"
+import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
+import { screenStageOf } from "./rust-screen-view"
 import { callAt, stageOf, weekFrom } from "./view"
+import { CALL_WORDS } from "./words"
 
 const week = (): CallWeek => {
   const parsed = sampleCallWeek()
@@ -46,6 +61,7 @@ describe("the call's stage", () => {
     expect(callAt(week(), "chapter-done").view).toEqual({
       section: "chapter",
       title: "What landed",
+      continued: false,
       items: week().done.length,
     })
     expect(callAt(week(), "brand-out").view).toEqual({ section: "brand-out" })
@@ -217,6 +233,126 @@ describe("the essay's stage", () => {
     expect(
       dive.section === "dive" && [dive.ticket.id, dive.n, dive.dive.title]
     ).toEqual(["QM-312", 2, "What `clear` and `push_str` do to the bytes"])
+    // The opening conversation (#3269), first after the brand: the one
+    // asking speaks each question, then the owner's take answers it.
+    const opened = {
+      ...essay(),
+      opening: {
+        exchanges: [
+          {
+            n: 2,
+            ask: "Why weekly?",
+            transcript: "To practise deciding.",
+            take: "note-open-2",
+          },
+        ],
+      },
+    }
+    expect(essayAt(opened, "ask-2")).toMatchObject({
+      speaker: "asker",
+      view: { section: "ask", n: 2, ask: "Why weekly?" },
+    })
+    expect(essayAt(opened, "opening-2")).toMatchObject({
+      speaker: "you",
+      view: {
+        section: "opening",
+        n: 2,
+        ask: "Why weekly?",
+        transcript: "To practise deciding.",
+      },
+    })
+  })
+
+  it("draws a point answered by a take of its own as its own answer scene (RR24)", () => {
+    const sample = essay()
+    const first = sample.tickets.at(0)
+    if (first === undefined) throw new Error("a ticket")
+    const rest = sample.tickets.slice(1)
+    const own = {
+      ...sample,
+      tickets: [
+        {
+          ...first,
+          points: first.points.map((point, i) =>
+            i === 1
+              ? {
+                  ...point,
+                  answer: {
+                    kind: "take" as const,
+                    transcript: "Point two, said alone.",
+                    mark: { mark: "covered" as const },
+                    solo: { level: 4, why: "One reason." },
+                  },
+                }
+              : point
+          ),
+        },
+        ...rest,
+      ],
+    }
+    const at = essayAt(own, "answer-2")
+    expect(at.speaker).toBe("you")
+    expect(
+      at.view.section === "answer" && [at.view.ticket.id, at.view.point]
+    ).toEqual(["QM-311", 1])
+    expect(essayAt(own, "answer-3").view).toMatchObject({
+      section: "answer",
+      ticket: { id: "QM-312" },
+    })
+  })
+
+  it("draws a fork scene with its ticket, point and fork (RR29)", () => {
+    const sample = essay()
+    const first = sample.tickets.at(0)
+    const point = first?.points.at(1)
+    if (first === undefined || point === undefined) throw new Error("shape")
+    const fork = {
+      options: [
+        {
+          id: "A",
+          recommended: true,
+          decision: "Clone it.",
+          model: { id: "own", name: "Own it" },
+          meets: [],
+          breaks: ["S1"],
+          because: "In a few words.",
+        },
+        {
+          id: "B",
+          recommended: false,
+          decision: "Borrow it.",
+          model: { id: "borrow", name: "Borrow it" },
+          meets: ["S1"],
+          breaks: [],
+          because: "In a few words.",
+        },
+      ],
+      best: { kind: "option" as const, option: "B" },
+      said: "B meets S1.",
+    }
+    const forked = {
+      ...sample,
+      template: { ...sample.template, version: 4 },
+      tickets: [
+        {
+          ...first,
+          stated: [{ id: "S1", says: "p99 under 2 ms" }],
+          points: first.points.map((each, i) =>
+            i === 1 ? { ...each, fork } : each
+          ),
+        },
+        ...sample.tickets.slice(1),
+      ],
+    }
+    const at = essayAt(forked, "fork-1")
+    expect(at.speaker).toBe("tutor")
+    expect(
+      at.view.section === "fork" && [
+        at.view.ticket.id,
+        at.view.point,
+        at.view.fork,
+      ]
+    ).toEqual(["QM-311", 1, fork])
   })
 
   it("numbers each ticket's chapter", () => {
@@ -231,6 +367,24 @@ describe("the essay's stage", () => {
     expect(essayAt(essay(), "nope").scene.id).toBe("intro")
     expect(essayAt(essay(), undefined).index).toBe(0)
   })
+  it("says under the chart each decay, then each fading, as the record names them (RR19)", () => {
+    const weeks = essayAt(essay(), "weeks").view
+    if (weeks.section !== "weeks") throw new Error("no chart")
+    expect(weeks.recheck).toBe(true)
+    expect(weeks.notes).toEqual([
+      {
+        kind: "decayed",
+        name: "Borrows into a reused buffer",
+        week: "2026-w46",
+        below: "2026-w41",
+      },
+      { kind: "faded", name: "Allocation on the hot path", since: "2026-w44" },
+      { kind: "faded", name: "Lifetime elision", since: "2026-w45" },
+    ])
+    expect(
+      weeks.rows.map((row) => row.cells.map((cell) => cell.kind))
+    ).toContainEqual(["level", "unmet", "faded", "faded", "faded", "level"])
+  })
 })
 
 describe("the essay the stage draws (RR16)", () => {
@@ -243,10 +397,11 @@ describe("the essay the stage draws (RR16)", () => {
     failed: more.failed ?? false,
   })
   const sample = sampleEssay()
+  const parse = parseEssay
 
   it("is the sample, voiced as one, with no week or with `sample`", () => {
     for (const week of [undefined, "sample"]) {
-      const state = essayStageOf({ week, read: read(undefined), sample })
+      const state = essayStageOf({ week, read: read(undefined), sample, parse })
       expect(
         state.kind === "show" && [state.essay.week.id, state.voicing]
       ).toEqual(["2026-w46", "sample"])
@@ -262,6 +417,7 @@ describe("the essay the stage draws (RR16)", () => {
       week: "2026-w46",
       read: read(essay()),
       sample,
+      parse,
     })
     expect(state.kind === "show" && state.voicing).toBe("owner")
     expect(
@@ -269,6 +425,7 @@ describe("the essay the stage draws (RR16)", () => {
         week: "2026-w46",
         read: read(undefined, { pending: true }),
         sample,
+        parse,
       })
     ).toEqual({ kind: "waiting" })
   })
@@ -279,13 +436,14 @@ describe("the essay the stage draws (RR16)", () => {
         week: "2026-w46",
         read: read(undefined, { failed: true }),
         sample,
+        parse,
       })
     ).toEqual({
       kind: "none",
       problems: ["No essay of 2026-w46 could be read"],
     })
     expect(
-      essayStageOf({ week: "2026-w47", read: read(essay()), sample })
+      essayStageOf({ week: "2026-w47", read: read(essay()), sample, parse })
     ).toEqual({
       kind: "none",
       problems: ["The essay read is 2026-w46's, not 2026-w47's"],
@@ -294,8 +452,81 @@ describe("the essay the stage draws (RR16)", () => {
       week: "2026-w46",
       read: read({ ...essay(), tickets: [] }),
       sample,
+      parse,
     })
     expect(broken.kind === "none" && broken.problems.length).toBeGreaterThan(0)
+  })
+})
+
+describe("a spoken card's stage (WALK7)", () => {
+  const read = (
+    data: unknown
+  ): { data: unknown; pending: boolean; failed: boolean } => ({
+    data,
+    pending: false,
+    failed: false,
+  })
+  const sample = sampleSpokenCard()
+  const of = (week: string | undefined, data: unknown): unknown =>
+    namedStageOf({
+      week,
+      read: read(data),
+      sample,
+      parse: parseHeardSpokenCard,
+      idOf: (heard) => heard.card,
+      words: { unread: EW.cardUnread, other: EW.otherCard },
+    })
+
+  it("is the sample with no card named, and the named card as read", () => {
+    if (!sample.ok) throw new Error("no sample")
+    expect(of(undefined, undefined)).toEqual({
+      kind: "show",
+      essay: sample.value,
+      voicing: "sample",
+    })
+    const card = { ...sample.value, card: "introduction" }
+    expect(of("introduction", card)).toEqual({
+      kind: "show",
+      essay: card,
+      voicing: "owner",
+    })
+  })
+
+  it("is never the sample in place of a card it read as another", () => {
+    if (!sample.ok) throw new Error("no sample")
+    expect(
+      namedStageOf({
+        week: "introduction",
+        read: { data: undefined, pending: false, failed: true },
+        sample,
+        parse: parseHeardSpokenCard,
+        idOf: (heard) => heard.card,
+        words: { unread: EW.cardUnread, other: EW.otherCard },
+      })
+    ).toEqual({
+      kind: "none",
+      problems: ["The spoken card introduction wasn't read"],
+    })
+    expect(of("introduction", sample.value)).toEqual({
+      kind: "none",
+      problems: ["The spoken card read is sample, not introduction"],
+    })
+  })
+})
+
+describe("an interview essay's stage (IW6)", () => {
+  const sample = sampleInterviewEssay()
+  const essay = (): InterviewEssay => {
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    return sample.value
+  }
+
+  it("draws a question's scenes from its question, and a read's from its card", () => {
+    const faults = interviewEssayAt(essay(), "faults-1").view
+    expect(faults.section === "faults" && faults.question.id).toBe("a-time-you")
+    const heard = interviewEssayAt(essay(), "heard-1").view
+    expect(heard.section === "heard" && heard.read.id).toBe("keep-it-first")
+    expect(interviewEssayAt(essay(), "reading-2").speaker).toBe("tutor")
   })
 })
 
@@ -430,5 +661,173 @@ describe("the registry's report", () => {
     )
     expect(reportProblems(report)).toEqual([])
     expect(reportPages(report).length).toBeGreaterThan(0)
+  })
+})
+
+describe("the stage's own words, as the call's model sets them (CF1)", () => {
+  it("marks no wider than the model's widest mark", () => {
+    const marks = [
+      CALL_WORDS.recommended,
+      CALL_WORDS.chose,
+      CALL_WORDS.change.story,
+      CALL_WORDS.change.defect,
+    ]
+    for (const mark of marks)
+      expect(fitsAllowance(mark, CALL_STAGE_WORDS.mark, "caps"), mark).toBe(
+        true
+      )
+  })
+
+  it("labels what an option unblocks no wider than the model does", () => {
+    expect(
+      fitsAllowance(
+        `${CALL_WORDS.unblocks}:`,
+        CALL_STAGE_WORDS.unblocks,
+        "prose"
+      )
+    ).toBe(true)
+  })
+})
+
+/** The week as home serves it (`GET /rust-weeks/<id>`). */
+const served = {
+  id: TALLOWBROOK_WEEK_FILE.id,
+  sha256: "a".repeat(64),
+  week: TALLOWBROOK_WEEK_FILE,
+  tickets: [],
+}
+
+const WEEK = TALLOWBROOK_WEEK_FILE.id
+
+type Read = { data: unknown; pending: boolean; failed: boolean }
+
+const read = (
+  data: unknown,
+  over: Partial<{ pending: boolean; failed: boolean }> = {}
+): Read => ({
+  data,
+  pending: false,
+  failed: false,
+  ...over,
+})
+
+const first = TALLOWBROOK_WEEK_FILE.tickets[0]?.id
+const second = TALLOWBROOK_WEEK_FILE.tickets[1]?.id
+
+describe("the Rust Rounds screen stage (RR31)", () => {
+  it("draws the ticket asked for, from the week home handed over", () => {
+    const state = screenStageOf({
+      week: WEEK,
+      ticket: second,
+      viewer: false,
+      read: read(served),
+    })
+    expect(state.kind === "screen" && state.ticket.id).toBe(second)
+    expect(state.kind === "screen" && state.sample).toBe(false)
+  })
+
+  it("draws the sample for a viewer, or with no week, whatever was read", () => {
+    for (const [week, viewer] of [
+      [undefined, false],
+      ["sample", false],
+      [WEEK, true],
+    ] as const) {
+      const state = screenStageOf({
+        week,
+        ticket: undefined,
+        viewer,
+        read: read(undefined, { failed: true }),
+      })
+      expect(state.kind === "screen" && state.ticket.id).toBe(first)
+      expect(state.kind === "screen" && state.sample).toBe(true)
+      expect(state.kind === "screen" && state.held).toBe(TALLOWBROOK_HELD)
+    }
+  })
+
+  it("waits for the read, and refuses one that failed or holds another week", () => {
+    const at = (
+      r: Read,
+      week: string = WEEK
+    ): ReturnType<typeof screenStageOf> =>
+      screenStageOf({ week, ticket: undefined, viewer: false, read: r })
+    expect(at(read(undefined, { pending: true })).kind).toBe("waiting")
+    expect(at(read(undefined, { failed: true }))).toMatchObject({
+      kind: "none",
+    })
+    expect(at(read(served), "2026-w01")).toMatchObject({
+      kind: "none",
+      problems: [`the file holds the week of ${WEEK}, not 2026-w01`],
+    })
+  })
+
+  it("refuses a ticket the week doesn't have", () => {
+    expect(
+      screenStageOf({
+        week: WEEK,
+        ticket: "ZZ-1",
+        viewer: false,
+        read: read(served),
+      })
+    ).toMatchObject({ kind: "none" })
+  })
+})
+
+// Template A's bubbles (PDA6, #2883; C822): with the template's cast each
+// voice is its character, every gradient named for its own drawing; with
+// none, a version from before the cast, the flat icons stay.
+describe("template A's bubbles", () => {
+  const drawn = (
+    cast: "cast-v1" | undefined,
+    other: "tutor" | "asker"
+  ): string =>
+    // The components are called as functions: no hook runs above the
+    // provider, so the tree is the same as the elements would make.
+    renderToStaticMarkup(
+      CastProvider({
+        cast,
+        children: Call({
+          speaker: "you",
+          tag: "The question",
+          other,
+          children: "Why?",
+        }),
+      })
+    )
+  const characters = (html: string): Array<string | undefined> =>
+    [...html.matchAll(/data-character="([a-z-]+)"/g)].map((m) => m[1])
+
+  it.each([
+    ["tutor", ["tin-owlet", "mochi"]],
+    ["asker", ["tin-sparrow", "mochi"]],
+  ] as const)("draw the cast with the %s", (other, cast) => {
+    const html = drawn("cast-v1", other)
+    expect(characters(html)).toEqual(cast)
+    const ids = [...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1])
+    expect(ids.length).toBeGreaterThan(0)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it("draw the flat icons when the template names no cast", () => {
+    const html = drawn(undefined, "tutor")
+    expect(characters(html)).toEqual([])
+    expect(html.match(/viewBox="0 0 48 48"/g)).toHaveLength(2)
+  })
+
+  it("draw the cast in a Rust essay's scene from its template's version, and the flat icons before it", () => {
+    const parsed = sampleEssay()
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    const scene = (version: number): string =>
+      renderToStaticMarkup(
+        EssaySceneFrame({
+          essay: {
+            ...parsed.value,
+            template: { ...parsed.value.template, version },
+          },
+          scene: "question-1",
+          record: true,
+        })
+      )
+    expect(characters(scene(6))).toEqual(["tin-owlet", "mochi"])
+    expect(characters(scene(5))).toEqual([])
   })
 })

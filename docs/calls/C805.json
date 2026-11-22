@@ -1,0 +1,21 @@
+{
+  "id": "C805",
+  "made": "2026-11-20",
+  "by": "claude",
+  "agreed": "2026-11-20",
+  "paths": [
+    "apps/www/src/lib/studio-spoken",
+    "apps/www/src/components/studio/spoken.tsx",
+    "apps/www/src/routes/_dashboard/_apk/journal/spoken"
+  ],
+  "chose": "Reach for reading any spoken card on a teleprompter and giving each take to an essay: rung 2, fold it in. Studio's own teleprompter band (built for the interview week and Rust Rounds' opening) reads any pasted spoken card, and each take is an ordinary Studio take on home. What is ours: a take lands on home with the card and part it reads, as part of the owner's voice record, so an essay cites it by take ID (WALK7) and plays it as said. Evidence: the owner's words of 2026-11-20 (\"the teleprompter should be its own standalone module and UI affordance in Studio, so that given any script, I can just read it and then assign it to a video essay\"), renamed by the owner the same day to a spoken card with a category, and WALK7's need for takes by ID on home.",
+  "options": [
+    "fold in Studio's own band over any pasted script, each take a Studio take on home",
+    "use an offline phone teleprompter app (PromptSmart, Teleprompter Premium and the like): takes stay in the phone's gallery with no take ID, script or part, and no essay can name them",
+    "use a cloud teleprompter (BIGVU and the like): ruled out untried, since the owner's voice is personal and a third party may not hold it",
+    "record inside the editor (Descript, CapCut): outside home's record, so WALK7 can't cite it, and no band that waits for the reader"
+  ],
+  "gray": "No check or earlier decision says whether a read card belongs in Studio or in a tool of its own; the owner sees it on the phone and in how takes reach an essay. The design was shown in the prototype the owner approved on 2026-11-20 (https://claude.ai/artifact/R4t2EfwmGu2dGWpDk2Fxyr), then renamed from Scripts to Spoken.",
+  "undo": "Remove Studio's Spoken (apps/www/src/lib/studio-spoken, components/studio/spoken.tsx, the journal/spoken routes and the Spoken tile); takes already on home stay as Studio takes with no scene.",
+  "refs": ["#3312", "#3282", "#3311"]
+}

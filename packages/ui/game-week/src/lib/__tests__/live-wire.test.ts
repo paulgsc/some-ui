@@ -24,12 +24,14 @@ describe("what home sends", () => {
           label: "NE at CHI",
           want: "",
           kickoff: "2026-10-23T00:15:00Z",
+          teams: { home: "CHI", away: "NE" },
         },
         {
           id: "401873023",
           label: "SEA at SF",
           want: "SF win",
           kickoff: "2026-10-26T20:25:00Z",
+          teams: { home: "SF", away: "SEA" },
         },
       ],
       offer: {
@@ -41,11 +43,20 @@ describe("what home sends", () => {
           { scenario: "in.third-long", context: "3rd and 8, down 6", rank: 1 },
           { scenario: "in.play-call", context: "NE on 3rd and 8", rank: 2 },
         ],
+        // Read entry by entry in ranked.test.ts.
+        ranked: expect.any(Array),
         justHappened: [
           {
             scenario: "in.sack",
             context: "NE sacked on 2nd and 5",
             at: "2026-10-23T01:52:20Z",
+            unit: { unit: "offense", side: "NE" },
+          },
+          {
+            scenario: "in.big-play",
+            context: "CHI 45-yard interception return, touchdown",
+            at: "2026-10-23T01:51:02Z",
+            unit: { unit: "defense", side: "CHI" },
           },
         ],
       },

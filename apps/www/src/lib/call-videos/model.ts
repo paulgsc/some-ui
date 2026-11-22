@@ -9,6 +9,9 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
+import type { Feed } from "@/lib/feeds"
+import type { Asked } from "@/lib/home-link/while-busy"
+
 export { FEEDS, isFeed, type Feed } from "@/lib/feeds"
 
 const LinkSchema = z.object({
@@ -30,6 +33,40 @@ const EpisodeSchema = z.object({
   restBytes: z.number().int().nonnegative().nullable(),
   link: LinkSchema.nullable(),
   receipts: z.array(ReceiptSchema),
+  /**
+   * What the episode is called, where its feed names it: a cards essay's
+   * title, at most 200 characters. `null` for the other feeds and for an
+   * essay with none, and absent from a home that came before it.
+   */
+  title: z.string().nullish(),
+  /**
+   * What it is a part of (paulgsc/some-ui#2918): the call's week by its first
+   * day, so a week's parts are shown together; every other feed's episode is
+   * its own. Absent from a home that came before parts.
+   */
+  week: z.string().min(1).optional(),
+  /** Which part, from 1, of how many (`of`): 1 of 1 for an episode of one. */
+  part: z.number().int().positive().optional(),
+  of: z.number().int().positive().optional(),
+  /**
+   * The day home knows for it (`YYYY-MM-DD`; paulgsc/server#906, C416): the
+   * call's week's first day, on every part; the Monday of an essay's ISO
+   * week; a cards essay's own day; the day home took a Playoff Delta fill.
+   * `null` when home can't read one, and absent from a home before it. The
+   * episodes page groups by it, and ignores one that isn't a day rather than
+   * failing the whole list.
+   */
+  date: z.string().nullish(),
+  /**
+   * How long its video runs, in milliseconds, read from the video itself:
+   * `null` once the video is let go, or where home can't read it (#906).
+   */
+  durationMs: z.number().int().nonnegative().nullish(),
+  /**
+   * How long its whole week runs, every part summed, while home holds every
+   * part's video, else `null`; its own length for an episode of one (#906).
+   */
+  weekDurationMs: z.number().int().nonnegative().nullish(),
 })
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })
@@ -59,6 +96,34 @@ export type PartRead =
   /** Home no longer has the video (let go since the list was read). */
   | { readonly kind: "gone" }
   | { readonly kind: "unreadable" }
+
+/**
+ * A part of a video, or why none came: home didn't answer (`away`), or this
+ * phone stayed busy with home, so it wasn't asked (`busy`, #3155).
+ */
+export type PartAsked =
+  | PartRead
+  | { readonly kind: "away" }
+  | { readonly kind: "busy" }
+
+/** What a part ask of the link came to, as a video's runtime takes it. */
+export function partOf(asked: Asked): PartAsked {
+  switch (asked.kind) {
+    case "answered": {
+      return readPart(asked.answer)
+    }
+    case "busy": {
+      return asked
+    }
+    case "unpaired":
+    case "unreachable": {
+      return { kind: "away" }
+    }
+    default: {
+      return assertNever(asked)
+    }
+  }
+}
 
 export function readPart(answer: HomeAnswer): PartRead {
   if (answer.status === 404) return { kind: "gone" }
@@ -92,12 +157,15 @@ export type LinkSaved =
   | { readonly kind: "saved"; readonly url: string }
   /** Home read no `YouTube` video in it. */
   | { readonly kind: "notAVideo" }
+  /** Home took no cards essay's link: a home from before one took a link. */
+  | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
 const KeptSchema = z.object({ url: z.string().min(1) })
 
-export function readLinkSaved(answer: HomeAnswer): LinkSaved {
+export function readLinkSaved(feed: Feed, answer: HomeAnswer): LinkSaved {
   if (answer.status === 422) return { kind: "notAVideo" }
+  if (answer.status === 404 && feed === "cards-essay") return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreadable" }
   const kept = readAs(KeptSchema, answer.body)
   return kept === null
@@ -139,6 +207,8 @@ export type ListState =
   | { readonly kind: "read"; readonly episodes: ReadonlyArray<Episode> }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so the list wasn't asked (#3155). */
+  | { readonly kind: "busy" }
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
@@ -164,6 +234,8 @@ export type Fetch =
 export type FetchFailure =
   /** Home didn't answer. */
   | "away"
+  /** This phone stayed busy with home, so a part wasn't asked (#3155). */
+  | "busy"
   /** Home no longer has the video. */
   | "gone"
   /** The phone couldn't keep it (full, or the files refused). */
@@ -173,6 +245,7 @@ export type FetchFailure =
 export type LinkSave =
   | { readonly kind: "saving" }
   | { readonly kind: "notAVideo" }
+  | { readonly kind: "older" }
   | { readonly kind: "away" }
 
 /** What the screen says once, over itself (a `Notice`). */
@@ -264,8 +337,8 @@ export function step(state: VideosState, event: VideosEvent): VideosState {
         links: {
           ...state.links,
           [key]:
-            saved.kind === "notAVideo"
-              ? { kind: "notAVideo" }
+            saved.kind === "notAVideo" || saved.kind === "older"
+              ? { kind: saved.kind }
               : { kind: "away" },
         },
       }

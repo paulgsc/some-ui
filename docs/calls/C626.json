@@ -1,0 +1,14 @@
+{
+  "id": "C626",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/components/jobs/interview/week.tsx"],
+  "chose": "The interview's first page ships with two kinds (Questions, Read aloud), How a week goes, and a way to this week's takes in Studio's one Takes (TAKES20, on main with server#988); it leaves out Past weeks and decision drills until each has something real behind it: Past weeks waits for IW17, the drills for IW13.",
+  "options": [
+    "leave each row out until it opens something real",
+    "draw each row now, opening a placeholder"
+  ],
+  "gray": "The agreed prototype draws all of them; which to hold back, and for how long, no check settles.",
+  "undo": "Add the rows to Fresh and UnderWay in week.tsx; drop TakesLink from UnderWay and HowPage.",
+  "refs": ["#3224", "#3225", "#3219", "#3181"]
+}

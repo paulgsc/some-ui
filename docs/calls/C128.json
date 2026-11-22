@@ -1,0 +1,14 @@
+{
+  "id": "C128",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/clips/pass.rs"],
+  "chose": "A walk whose snips or labels don't match the clip index has its render output removed, so the worker draws it again an hour later.",
+  "options": [
+    "remove its render output, so the worker draws it again an hour later",
+    "keep the rejected output and wait for a person to clear it"
+  ],
+  "gray": "The owner decided that home makes a walk's frames, not what happens to a walk that fails its check. The worker skips any walk whose walk.json exists, so a kept rejection never recovers, and a redraw costs one short walk an hour while it stays wrong.",
+  "undo": "In clips/pass.rs take_walk, stop removing the walk's folder on mismatch.",
+  "refs": ["server#801"]
+}

@@ -32,6 +32,15 @@ export function pairingAddress(input: string): HomeAddress | AddressProblem {
   return { base: homeApiBase(`${url.origin}${url.pathname}`), host: url.host }
 }
 
+/**
+ * A stored base as the address to type again (SIGNIN3's Pair again): its
+ * scheme, host and any path a proxy serves home under, without the API's
+ * own path, which `pairingAddress` adds back.
+ */
+export function addressOf(base: string): string {
+  return base.replace(/\/api\/v1\/?$/, "")
+}
+
 /** The host of a stored base, for every line that says where data goes. */
 export function hostOf(base: string): string {
   return new URL(base).host

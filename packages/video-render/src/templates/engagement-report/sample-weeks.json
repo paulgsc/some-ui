@@ -239,5 +239,109 @@
       "affordances": []
     }
   ],
-  "seen": []
+  "seen": [
+    {
+      "pipeline": "aph",
+      "affordance": "history",
+      "surface": "apk",
+      "firstDay": "2026-08-03",
+      "lastTakenDay": "2026-09-30",
+      "lastOpenedDay": "2026-09-30"
+    },
+    {
+      "pipeline": "jobs",
+      "affordance": "interview-week",
+      "surface": "apk",
+      "firstDay": "2026-10-05",
+      "lastTakenDay": "2026-11-14",
+      "lastOpenedDay": "2026-11-14"
+    },
+    {
+      "pipeline": "jobs",
+      "affordance": "today",
+      "surface": "apk",
+      "firstDay": "2026-10-05",
+      "lastTakenDay": "2026-11-15",
+      "lastOpenedDay": "2026-11-15"
+    },
+    {
+      "pipeline": "jobs",
+      "affordance": "todays-pick",
+      "surface": "apk",
+      "firstDay": "2026-10-05",
+      "lastTakenDay": "2026-11-15",
+      "lastOpenedDay": "2026-11-15"
+    }
+  ],
+  "friction": {
+    "from": "2026-10-19T07:00:00.000Z",
+    "to": "2026-11-16T08:00:00.000Z",
+    "measuredDays": 28,
+    "opened": [
+      {
+        "pipeline": "jobs",
+        "affordance": "today",
+        "surface": "apk",
+        "days": 19
+      },
+      {
+        "pipeline": "jobs",
+        "affordance": "todays-pick",
+        "surface": "apk",
+        "days": 17
+      }
+    ],
+    "places": [
+      {
+        "pipeline": "jobs",
+        "affordance": "interview-week",
+        "surface": "apk",
+        "place": "say",
+        "left": 9,
+        "movedOn": 5,
+        "medianMs": 184000
+      },
+      {
+        "pipeline": "jobs",
+        "affordance": "todays-pick",
+        "surface": "apk",
+        "place": "apply",
+        "left": 7,
+        "movedOn": 3,
+        "medianMs": 95000
+      },
+      {
+        "pipeline": "jobs",
+        "affordance": "todays-pick",
+        "surface": "apk",
+        "place": "ending",
+        "left": 11,
+        "movedOn": 0,
+        "medianMs": 30000,
+        "nexts": [
+          { "next": "apply", "left": 1 },
+          { "next": "today.today", "left": 5 }
+        ]
+      },
+      {
+        "pipeline": "jobs",
+        "affordance": "todays-pick",
+        "surface": "apk",
+        "place": "read",
+        "left": 20,
+        "movedOn": 9,
+        "medianMs": 41000,
+        "nexts": [
+          { "next": "decide", "left": 9 },
+          { "next": "today.today", "left": 5 }
+        ]
+      }
+    ],
+    "nextsBefore": ["apk"],
+    "partial": false,
+    "debrief": {
+      "said": 3,
+      "median": null
+    }
+  }
 }

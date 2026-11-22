@@ -33,14 +33,16 @@ import {
   spokenTakeOf,
   step,
 } from "@/lib/episode-feedback"
+import { waitingFeeds } from "@/lib/episode-feedback/home"
 import type { HomeNotesOutcome } from "@/lib/episode-feedback/home-query"
 import {
   episodeNotesMoved,
   homeNotesQuery,
   notesAnswered,
 } from "@/lib/episode-feedback/home-query"
-import type { NotedFeed } from "@/lib/feeds"
+import type { Feed } from "@/lib/feeds"
 import { libraryTakes } from "@/lib/library-takes"
+import { phoneWasBusy } from "@/lib/phone-busy"
 import { FEED_FACTS } from "@/lib/studio-index"
 
 const WORDS = FEEDBACK_WORDS
@@ -135,7 +137,7 @@ export const EpisodeNote = ({
   episode,
   video,
 }: {
-  feed: NotedFeed
+  feed: Feed
   episode: string
   video: RefObject<HTMLVideoElement | null>
 }): JSX.Element => {
@@ -224,16 +226,25 @@ export const EpisodeNote = ({
 }
 
 /** Where one note is, as home's list or the phone's last word from home says. */
-type Place = (id: string) => string
+type Place = (note: Note) => string
 
-/** What the page says of home, above the notes, when it can't list them. */
+/**
+ * What the page says of home, above the notes, when it can't list them all:
+ * of a home that keeps some feeds' notes, the feeds of `notes` it doesn't yet.
+ */
 function homeLine(
   read: HomeNotesOutcome | undefined,
-  failed: boolean
+  failed: unknown,
+  notes: ReadonlyArray<Note>
 ): string | null {
-  if (failed) return WORDS.home.away
-  if (read === undefined || read.kind === "read") return null
-  return WORDS.home[read.kind]
+  if (failed !== null)
+    return phoneWasBusy(failed) ? WORDS.home.busy : WORDS.home.away
+  if (read === undefined) return null
+  if (read.kind !== "read") return WORDS.home[read.kind]
+  const waiting = waitingFeeds(read.notYet, notes)
+  return waiting.length === 0
+    ? null
+    : WORDS.home.notYet(waiting.map((feed) => FEED_FACTS[feed].name))
 }
 
 /**
@@ -250,17 +261,23 @@ export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
   const home = useQuery(homeNotesQuery)
   if (notes.length === 0)
     return <p className="text-muted-foreground text-sm">{none}</p>
-  const { held, refused } = notesAnswered()
+  const answered = notesAnswered()
   const storedAt =
     home.data?.kind === "read" ? home.data.storedAt : new Map<string, string>()
   const today = dayOf(new Date())
-  const place: Place = (id) => {
+  const place: Place = ({ id, feed }) => {
     const at = storedAt.get(id)
     if (at !== undefined) return WORDS.onHome(at, today)
-    if (held.has(id)) return WORDS.onHomeSent
-    return refused.has(id) ? WORDS.notTaken : WORDS.onPhone
+    // Not known yet: never said as only on this phone (PO1).
+    if (answered === null) return WORDS.notKnown
+    if (answered.held.has(id)) return WORDS.onHomeSent
+    if (answered.refused.has(id)) return WORDS.notTaken
+    const waits =
+      home.data?.kind === "older" ||
+      (home.data?.kind === "read" && home.data.notYet.has(feed))
+    return waits ? WORDS.waits : WORDS.onPhone
   }
-  const line = homeLine(home.data, home.isError)
+  const line = homeLine(home.data, home.error, notes)
   return (
     <>
       <p className="text-muted-foreground text-sm">{WORDS.kept}</p>
@@ -300,7 +317,7 @@ const FeedbackList = ({
         {note.take !== undefined && (
           <span className="text-muted-foreground text-sm">{WORDS.spoken}</span>
         )}
-        <span className="text-muted-foreground text-xs">{place(note.id)}</span>
+        <span className="text-muted-foreground text-xs">{place(note)}</span>
       </li>
     ))}
   </ul>

@@ -7,8 +7,9 @@
  * The bite is a take of the take pattern (`@some-ui/voice-capture`): while
  * it records, the pattern's button (tap to stop, the time against the cap),
  * beside the screen's own level meter and quiet bar; once kept, the bite's
- * row (its length, where it is kept, Play), with Undo in the row's extra
- * slot while the bite's hold lasts.
+ * row (its length, where it is kept, Play) under the recorder, among the
+ * game's newest few (GWB14), with Undo over the screen while the bite's hold
+ * lasts.
  *
  * This component only renders and forwards taps. What happens and in what
  * order is `lib/machine.ts`; the microphone, the store and home's feed are
@@ -17,21 +18,29 @@
  * the modes open in the shared sheet over this screen: which is open is the
  * screen's own, and nothing outside it depends on it.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Said } from "@game-week/lib/bite"
-import type { Game, JustHappened, OfferCard } from "@game-week/lib/feed"
+import type {
+  Game,
+  GameTeams,
+  JustHappened,
+  OfferCard,
+} from "@game-week/lib/feed"
 import type { Activity, GameWeekState, OfferView } from "@game-week/lib/machine"
 import {
   biteView,
   currentGame,
   isWatching,
   offerView,
+  rankedNow,
 } from "@game-week/lib/machine"
 import type { ModeId } from "@game-week/lib/modes"
 import { MODE_RULES, MODES } from "@game-week/lib/modes"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { quietFill } from "@game-week/lib/quiet"
+import type { RankedEntry } from "@game-week/lib/ranked"
+import { otherSide, TIERS } from "@game-week/lib/ranked"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { createGameWeek } from "@game-week/lib/runtime"
 import {
@@ -41,18 +50,17 @@ import {
   noGamesLine,
   noOfferLine,
   outboxLine,
+  TIER_TITLES,
+  unitLine,
   WORDS,
 } from "@game-week/lib/words"
 import { cn } from "@some-ui/core-utils"
 import type { ScenarioId } from "@some-ui/game-scenarios"
-import {
-  PHASE_TITLES,
-  PHASES,
-  scenarioOf,
-  SCENARIOS,
-} from "@some-ui/game-scenarios"
+import { scenarioOf } from "@some-ui/game-scenarios"
 import {
   Button,
+  CardLink,
+  CardLinkBody,
   Notice,
   Sheet,
   SheetContent,
@@ -63,7 +71,7 @@ import {
 } from "@some-ui/shared"
 import type { TakeButtonView } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY, TAKE_WORDS } from "@some-ui/voice-capture"
-import { Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
+import { ArrowLeftRight, Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
 
 import { ScenarioIcon } from "./scenario-icon"
 
@@ -72,6 +80,19 @@ export type GameWeekProps = {
   ports: GameWeekPorts
   /** What of the kept bites is still only on this phone. */
   outbox: OutboxPort
+  /**
+   * The app's way to what was said here, in Studio's Takes, for
+   * the game picked (its id and name) or every game (null), with its words;
+   * none without.
+   */
+  takesLink?:
+    | ((
+        game: { readonly id: string; readonly label: string } | null,
+        words: string
+      ) => ReactNode)
+    | undefined
+  /** The app's way to choose which teams home follows live (#3329), with its words; none without. */
+  teamsLink?: ((words: string) => ReactNode) | undefined
 }
 
 type Panel = "none" | "legend" | "modes"
@@ -146,32 +167,27 @@ const Card = ({
   large: boolean
   onSay: () => void
 }): JSX.Element => (
-  <button
-    type="button"
-    onClick={onSay}
-    className={cn(
-      "bg-card border-border/50 flex w-full items-center gap-3 rounded-2xl border text-left shadow-sm active:scale-[0.98]",
-      large ? "p-4" : "p-3"
-    )}
-  >
-    <ScenarioIcon
-      id={card.scenario}
-      className={cn("text-brand", large ? "size-10" : "size-6")}
-    />
-    <span className="min-w-0">
-      <span
-        className={cn(
-          "block font-bold uppercase tracking-wide",
-          large ? "text-lg" : "text-sm"
-        )}
-      >
-        {scenarioOf(card.scenario).name}
-      </span>
-      <span className="text-muted-foreground block truncate text-xs">
-        {card.context}
-      </span>
-    </span>
-  </button>
+  <CardLink asChild className={large ? "p-4" : undefined}>
+    <button type="button" onClick={onSay}>
+      <ScenarioIcon
+        id={card.scenario}
+        className={cn("text-brand", large ? "size-10" : "size-6")}
+      />
+      <CardLinkBody className="gap-0">
+        <span
+          className={cn(
+            "block font-bold uppercase tracking-wide",
+            large ? "text-lg" : "text-sm"
+          )}
+        >
+          {scenarioOf(card.scenario).name}
+        </span>
+        <span className="text-muted-foreground block w-full truncate text-xs">
+          {card.context}
+        </span>
+      </CardLinkBody>
+    </button>
+  </CardLink>
 )
 
 const JustHappenedRow = ({
@@ -211,10 +227,12 @@ const offered = (card: OfferCard): Said => ({
   context: card.context,
 })
 
+// The play's own unit where home named one, the list's otherwise.
 const happened = (each: JustHappened): Said => ({
   how: "just-happened",
   scenario: each.scenario,
   context: each.context,
+  ...(each.unit === undefined ? {} : { unit: each.unit }),
 })
 
 const everyScenario = (scenario: ScenarioId): Said => ({
@@ -282,12 +300,21 @@ const Recording = ({
   button,
   now,
   onDone,
+  onUnit,
+  teams,
+  onSide,
 }: {
   activity: Extract<Activity, { kind: "taking" }>
   /** The take pattern's button for the bite: Done, the time against the cap. */
   button: TakeButtonView
   now: number
   onDone: () => void
+  /** One tap moves the bite to the next unit (#3049). */
+  onUnit: () => void
+  /** The game's two teams, when home named them. */
+  teams: GameTeams | null
+  /** One tap makes it about the other team. */
+  onSide: () => void
 }): JSX.Element => {
   const level = button.kind === "recording" ? button.level : 0
   const fill =
@@ -295,6 +322,11 @@ const Recording = ({
       ? quietFill(activity.quiet, now, MODE_RULES[activity.moment.mode].quietMs)
       : 0
   const { said } = activity
+  const unit = said.how === "said-first" ? null : (said.unit ?? null)
+  const unitWords = unit === null ? WORDS.noUnit : unitLine(unit)
+  // The team a tap on the switch makes it about.
+  const other =
+    unit === null || teams === null ? null : otherSide(unit, teams).side
   return (
     <section
       aria-label={
@@ -317,6 +349,32 @@ const Recording = ({
           ? WORDS.sayingFirst
           : scenarioOf(said.scenario).name}
       </p>
+      {said.how !== "said-first" && (
+        // Each control keeps its width and place as taps change what it
+        // says, so the next tap lands where the last one did (HS1).
+        <div className="grid grid-cols-[11rem_6rem] items-center gap-2">
+          <Button
+            variant="outline"
+            className="min-h-12 w-full rounded-full"
+            onClick={onUnit}
+            aria-label={`${unitWords}. ${WORDS.unitChange}`}
+          >
+            {unitWords}
+          </Button>
+          {other === null ? (
+            <span aria-hidden className="min-h-12" />
+          ) : (
+            <Button
+              variant="ghost"
+              className="min-h-12 w-full rounded-full"
+              onClick={onSide}
+              aria-label={WORDS.aboutTeam(other)}
+            >
+              <ArrowLeftRight className="size-4" aria-hidden /> {other}
+            </Button>
+          )}
+        </div>
+      )}
       <div
         role="meter"
         aria-label="Level"
@@ -352,14 +410,12 @@ const Asking = ({
   canUndo,
   onAnswer,
   onUndo,
-  onLegend,
 }: {
   view: OfferView | null
   now: number
   canUndo: boolean
   onAnswer: (said: Said | null) => void
   onUndo: () => void
-  onLegend: () => void
 }): JSX.Element => (
   <section aria-labelledby="asking" className="space-y-4">
     <h2 id="asking" className="text-xl font-bold uppercase tracking-wide">
@@ -373,58 +429,72 @@ const Asking = ({
     >
       {WORDS.later}
     </Button>
-    <div className="flex justify-between">
-      <Button variant="ghost" size="sm" onClick={onLegend}>
-        <List className="size-4" aria-hidden /> {WORDS.everyScenario}
-      </Button>
-      {canUndo && (
+    {canUndo && (
+      <div className="flex justify-end">
         <Button variant="ghost" size="sm" onClick={onUndo}>
           {WORDS.undo}
         </Button>
-      )}
-    </div>
+      </div>
+    )}
   </section>
 )
 
-const Legend = ({
+/** The ranked list (#3049, `lib/ranked`), by tier, each row with its default unit. */
+const Ranked = ({
+  list,
   onPick,
 }: {
+  list: ReadonlyArray<RankedEntry>
   onPick: (scenario: ScenarioId) => void
 }): JSX.Element => (
   <div className="space-y-4">
-    <p className="text-muted-foreground text-sm">{WORDS.legendLede}</p>
-    {PHASES.map((phase) => (
-      <section
-        key={phase}
-        aria-label={PHASE_TITLES[phase]}
-        className="space-y-1"
-      >
-        <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
-          {PHASE_TITLES[phase]}
-        </h3>
-        <ul>
-          {SCENARIOS.filter((s) => s.phase === phase).map((scenario) => (
-            <li key={scenario.id}>
-              <button
-                type="button"
-                onClick={() => onPick(scenario.id)}
-                className="hover:bg-accent flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left"
-              >
-                <ScenarioIcon id={scenario.id} className="text-brand" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">
-                    {scenario.name}
-                  </span>
-                  <span className="text-muted-foreground block text-xs">
-                    {scenario.covers}
-                  </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
+    <p className="text-muted-foreground text-sm">
+      {WORDS.legendLede(list.some((entry) => entry.tier !== "rest"))}
+    </p>
+    {TIERS.map((tier) => {
+      const entries = list.filter((entry) => entry.tier === tier)
+      if (entries.length === 0) return null
+      return (
+        <section
+          key={tier}
+          aria-label={TIER_TITLES[tier]}
+          className="space-y-1"
+        >
+          <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
+            {TIER_TITLES[tier]}
+          </h3>
+          <ul>
+            {entries.map((entry) => {
+              const scenario = scenarioOf(entry.scenario)
+              return (
+                <li key={entry.scenario}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(entry.scenario)}
+                    className="hover:bg-accent flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left"
+                  >
+                    <ScenarioIcon id={entry.scenario} className="text-brand" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">
+                        {scenario.name}
+                      </span>
+                      <span className="text-muted-foreground block text-xs">
+                        {scenario.covers}
+                      </span>
+                    </span>
+                    {entry.unit !== null && (
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {unitLine(entry.unit)}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )
+    })}
   </div>
 )
 
@@ -467,7 +537,12 @@ const Modes = ({
   </div>
 )
 
-export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
+export const GameWeek = ({
+  ports,
+  outbox,
+  takesLink,
+  teamsLink,
+}: GameWeekProps): JSX.Element => {
   // The runtime owns the microphone, the store and home's feed for this
   // mount, so it is made once, from the ports it arrived with.
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount (see above) */
@@ -499,26 +574,19 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
   const undoOffered = state.undo !== null && !asking
   const blocked = activity.kind === "idle" ? state.blocked : null
   // The bite as the take pattern's parts show it: its button while it
-  // records, and the newest bite kept as a row.
+  // records, and the game's newest bites kept, as rows (GWB14).
   const bite = biteView(state)
-  const { row } = bite
+  const { recent } = bite
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-8">
+    // The page ends clear of the bubble that floats over its foot.
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-24">
       <header className="space-y-3">
         <div className="flex items-center gap-3">
           <SfBadge />
           <h1 className="min-w-0 flex-1 truncate text-2xl font-black tracking-tight uppercase">
             {game?.label ?? WORDS.team}
           </h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setPanel("legend")}
-            aria-label={WORDS.everyScenario}
-          >
-            <List className="size-5" aria-hidden />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -550,6 +618,9 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
           button={bite.button}
           now={now}
           onDone={() => dispatch({ type: "done" })}
+          onUnit={() => dispatch({ type: "pickUnit" })}
+          teams={game?.teams ?? null}
+          onSide={() => dispatch({ type: "switchSide" })}
         />
       ) : asking ? (
         <Asking
@@ -558,7 +629,6 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
           canUndo={state.undo?.id === activity.bite.id}
           onAnswer={(said) => dispatch({ type: "answer", said })}
           onUndo={() => dispatch({ type: "undo" })}
-          onLegend={() => setPanel("legend")}
         />
       ) : game === null ? (
         <p className="text-muted-foreground text-sm">
@@ -609,15 +679,26 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         </Notice>
       )}
 
-      {row !== null && !asking && (
-        <ul>
-          <TakeRow
-            row={row}
-            onPlay={() => dispatch({ type: "play", id: row.take.id })}
-          >
-            {bite.unplayable ? TAKE_WORDS.unplayable : undefined}
-          </TakeRow>
-        </ul>
+      {recent.length > 0 && !asking && (
+        <section className="space-y-1">
+          <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+            {WORDS.recentBites}
+          </h2>
+          <ul>
+            {recent.map(({ row, about, unplayable }) => (
+              <TakeRow
+                key={row.take.id}
+                row={row}
+                onPlay={() => dispatch({ type: "play", id: row.take.id })}
+              >
+                {about !== "" && <span className="block">{about}</span>}
+                {unplayable && (
+                  <span className="block">{TAKE_WORDS.unplayable}</span>
+                )}
+              </TakeRow>
+            ))}
+          </ul>
+        </section>
       )}
 
       {blocked !== null && (
@@ -628,6 +709,39 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
 
       {outboxWords !== "" && (
         <p className="text-muted-foreground text-xs">{outboxWords}</p>
+      )}
+
+      {takesLink?.(
+        game === null ? null : { id: game.id, label: game.label },
+        WORDS.yourTakes(game !== null)
+      )}
+
+      {teamsLink !== undefined && (
+        <div className="flex flex-col gap-1">
+          {teamsLink(WORDS.teamsFollowed)}
+          <p className="text-muted-foreground text-xs">
+            {WORDS.teamsFollowedHow}
+          </p>
+        </div>
+      )}
+
+      {/*
+        The ranked list, within reach whenever a pick names a bite (#3049): a
+        bubble over the screen, above the wing's tab bar (4.5rem tall, at
+        max(0.75rem, the safe area) from the bottom). Hidden while a bite is
+        said, when a pick would name nothing.
+      */}
+      {activity.kind !== "taking" && (
+        <button
+          type="button"
+          onClick={() => setPanel("legend")}
+          aria-label={WORDS.everyScenario}
+          aria-haspopup="dialog"
+          aria-expanded={panel === "legend"}
+          className="bg-background text-foreground focus-visible:ring-ring fixed right-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] z-20 flex size-14 items-center justify-center rounded-full border shadow-lg focus-visible:ring-2 focus-visible:outline-none active:scale-95"
+        >
+          <List className="size-6" aria-hidden />
+        </button>
       )}
 
       <Sheet
@@ -657,7 +771,11 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
                 onPick={(mode) => dispatch({ type: "pickMode", mode })}
               />
             ) : (
-              <Legend onPick={pickFromLegend} />
+              <Ranked
+                // Asking about a bite said first: the list as it stopped.
+                list={asking ? activity.ranked : rankedNow(state)}
+                onPick={pickFromLegend}
+              />
             )}
           </div>
         </SheetContent>

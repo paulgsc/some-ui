@@ -1,0 +1,18 @@
+{
+  "id": "C42",
+  "made": "2026-11-09",
+  "by": "claude",
+  "agreed": "2026-11-09",
+  "paths": [
+    "apps/www/src/lib/home-link/voice-copy.ts",
+    "apps/www/src/lib/voice-home/home.ts"
+  ],
+  "chose": "Before Studio's store is handed in, a note home refuses as deleted for good is held back unsent for that launch; the first run after Studio is handed in sends it once more and lets it go on the answer.",
+  "options": [
+    "hold it back until Studio is handed in, then send once more",
+    "settle the voice record now and let Studio's take go when Studio opens"
+  ],
+  "gray": "Settling now saves one PUT but lets the take's row say it is on home while it is not; waiting costs that PUT.",
+  "undo": "Pass letGoDeleted unconditionally in sendVoice and drop DeletedPort's deferred set.",
+  "refs": ["server#760", "#2758"]
+}

@@ -10,6 +10,9 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
+import type { Feed } from "@/lib/feeds"
+import { FEEDS } from "@/lib/feeds"
+
 const NotesSchema = z.object({
   notes: z.array(
     z.object({
@@ -38,3 +41,15 @@ export function readFeedNotes(answer: HomeAnswer): FeedNotesRead {
         storedAt: new Map(read.notes.map((note) => [note.id, note.storedAt])),
       }
 }
+
+/**
+ * The feeds whose notes wait on the phone because home keeps none on them
+ * yet (`notYet`), among those `notes` are on, in `FEEDS`' order (#3035).
+ */
+export const waitingFeeds = (
+  notYet: ReadonlySet<Feed>,
+  notes: ReadonlyArray<{ readonly feed: Feed }>
+): ReadonlyArray<Feed> =>
+  FEEDS.filter(
+    (feed) => notYet.has(feed) && notes.some((note) => note.feed === feed)
+  )

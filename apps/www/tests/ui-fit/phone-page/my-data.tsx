@@ -6,13 +6,8 @@
  * nothing else), since its rows are route links.
  */
 import type { JSX } from "react"
-import { useState } from "react"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router"
+import { MemoryRouted } from "@/test-support/memory-routed"
+import { createRootRoute } from "@tanstack/react-router"
 
 import type { HomeReading, PhoneNote } from "@/lib/my-data/model"
 import { kindOf, KINDS, overviewOf } from "@/lib/my-data/model"
@@ -23,6 +18,9 @@ import {
 
 const NOW = new Date("2026-11-02T12:00:00Z")
 const MB = 1024 * 1024
+
+/** A week's middle take whose recording went: heard ones, one set aside too. */
+const went = (i: number): boolean => i % 12 === 4 || i % 12 === 0
 
 /** Home holding every kind, the biggest with over a thousand megabytes. */
 const HOME: HomeReading = {
@@ -44,6 +42,10 @@ const HOME: HomeReading = {
     })),
     notes: Array.from({ length: 50 }, (_, i) => ({
       id: `home-${i}`,
+      // Every twelfth (from the fourth) a week's middle take whose recording
+      // went when its week closed (IW14), as home sends one: heard, with no
+      // Play and no Delete; every twelfth from the first also set aside, for
+      // the longest line a row says.
       recordedAt: new Date(
         Date.UTC(2026, 9, 30, 23, 59) - i * 3_600_000
       ).toISOString(),
@@ -52,7 +54,17 @@ const HOME: HomeReading = {
       setAsideAt: i % 3 === 0 ? "2026-10-31T00:00:00.000Z" : null,
       // As home will mark takes once they're switched on (MD3): every row
       // that offers Delete… is drawn beside those that don't.
-      deletable: i % 2 === 0,
+      deletable: i % 2 === 0 && !went(i),
+      // Each way a row says what it is (MD8): long words, none heard, not
+      // heard yet, and one whose audio home keeps to itself.
+      durationMs: i % 4 === 2 ? null : 30_000 + i * 61_000,
+      heard:
+        i % 4 === 0
+          ? "So what I keep coming back to is that the second scene doesn't earn the turn, and the whole middle sags because of it"
+          : null,
+      heardCut: i % 8 === 0,
+      playsBack: i % 4 !== 3 && !went(i),
+      recordingLetGoAt: went(i) ? "2026-10-31T00:00:00.000Z" : null,
     })),
   },
 }
@@ -62,20 +74,20 @@ const PHONE: ReadonlyArray<PhoneNote> = Array.from({ length: 6 }, (_, i) => ({
   of: "studio",
   at: new Date(Date.UTC(2026, 10, 1, 21, 12) - i * 60_000).toISOString(),
   bytes: 999_999,
-  held: false,
-  going: i % 2 === 0,
+  place: i % 2 === 0 ? ("going" as const) : ("phone" as const),
 }))
 
-const routed = (Screen: () => JSX.Element): (() => JSX.Element) => {
-  const Routed = (): JSX.Element => {
-    const [router] = useState(() =>
-      createRouter({
-        routeTree: createRootRoute({ component: Screen }),
-        history: createMemoryHistory({ initialEntries: ["/settings/data"] }),
-      })
-    )
-    return <RouterProvider router={router} />
-  }
+/** `Screen` under a router of its own, opened at `path`. */
+export const routed = (
+  Screen: () => JSX.Element,
+  path = "/settings/data"
+): (() => JSX.Element) => {
+  const Routed = (): JSX.Element => (
+    <MemoryRouted
+      initialTree={() => createRootRoute({ component: Screen })}
+      initialPath={path}
+    />
+  )
   return Routed
 }
 
@@ -92,6 +104,7 @@ export const MY_DATA_FIXTURES = {
     <MyDataKind
       view={kindOf("studio", "studio", HOME, PHONE, NOW)}
       playing="phone-0"
+      unread={[]}
       onPlay={noop}
       onStop={noop}
       onDelete={noop}

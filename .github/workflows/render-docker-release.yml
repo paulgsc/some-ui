@@ -1,6 +1,8 @@
 name: Render Docker Release
 # Publishes home's render worker, `pgathondu/render` (infra/render/Dockerfile),
-# from main once the image to be pushed has proved its bytes.
+# from main once the image to be pushed has proved its bytes. The paths are
+# _detect-changes.yml's `render` too, on which pr.yml's render-stage job
+# builds the image's stage: keep the two in step.
 on:
   push:
     branches: [main]
@@ -10,6 +12,9 @@ on:
       - "extensions/**"
       - "infra/render/**"
       - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
       - ".github/workflows/render-docker-release.yml"
   # A publish of main as it is, whatever changed (a failed push, say).
   workflow_dispatch:
@@ -25,16 +30,16 @@ concurrency:
   queue: max
 jobs:
   # ── Detect whether the render graph changed ─────────────────────────────
-  # The graph is what the image builds (infra/render/Dockerfile's turbo
-  # filters; keep the two in step), plus www itself and the closures of what
-  # the stage's bundle carries (fetch-kit, content-registry).
+  # The graph is what the image builds (infra/render/build.sh's turbo
+  # filters, read from it: the stage's own imports and the recorders'
+  # packages), plus www itself.
   detect:
     name: Detect render changes
     runs-on: ubuntu-latest
     outputs:
       publish: ${{ steps.detect.outputs.publish }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: ./.github/actions/node-ci-setup
@@ -54,15 +59,15 @@ jobs:
           fi
           if git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- infra/render .github/workflows/render-docker-release.yml; then
             range="[${BASE_SHA}...${HEAD_SHA}]"
+            # Each build filter, `<pkg>...` or `<pkg>^...`, as `<pkg>...<range>`.
+            built=$(nix develop .#ci --command sh infra/render/build.sh --filters)
+            mapfile -t filters < <(
+              printf '%s\n' "$built" | sed -e 's/\^\.\.\.$/.../' -e "s/\$/${range}/"
+            )
             task_count=$(
               bash .github/actions/www-detect/graph-changed.sh \
                 --filter="www${range}" \
-                --filter="@some-ui/playoff-delta...${range}" \
-                --filter="@some-ui/honeycomb...${range}" \
-                --filter="@some-ui/video-render...${range}" \
-                --filter="@some-ui/video-motion...${range}" \
-                --filter="@some-ui/fetch-kit...${range}" \
-                --filter="@some-ui/content-registry...${range}"
+                "${filters[@]}"
             )
           else
             task_count=1
@@ -81,7 +86,7 @@ jobs:
     if: needs.detect.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build
         run: |
           docker build \
@@ -89,6 +94,26 @@ jobs:
             --build-arg SOME_UI_COMMIT="$GITHUB_SHA" \
             --tag render:proof \
             .
+      # The labels R3's release check reads (paulgsc/server#790), in the form
+      # its scripts/check_release.py parses, so a malformed one is refused
+      # here rather than by the release. Only labels: it runs before the proof.
+      - name: Check the release labels
+        run: |
+          set -euo pipefail
+          pair='[a-z0-9][a-z0-9-]*=([0-9]+|[0-9a-f]{40})'
+          for key in io.paulgsc.provides io.paulgsc.requires; do
+            value=$(docker inspect --format "{{ index .Config.Labels \"$key\" }}" render:proof)
+            echo "$key=$value"
+            if [ -n "$value" ] && ! [[ "$value" =~ ^$pair(,$pair)*$ ]]; then
+              echo "::error::$key is malformed: $value"
+              exit 1
+            fi
+          done
+          # $value is io.paulgsc.requires, the loop's last key.
+          if ! [[ ",$value," =~ ,render-folders=[0-9]+, ]]; then
+            echo "::error::io.paulgsc.requires names no render-folders epoch"
+            exit 1
+          fi
       # The same bytes twice, from nothing but the image: the sample
       # composition, then the weekly call's preview, recorded from the stage
       # the image carries and rendered with no voices. The music bed is the
@@ -116,7 +141,7 @@ jobs:
           done
           sha256sum "$work"/preview-*/preview.mp4 | tee -a "$GITHUB_STEP_SUMMARY"
           cmp "$work/preview-1/preview.mp4" "$work/preview-2/preview.mp4"
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -128,3 +153,9 @@ jobs:
           docker push "$DOCKERHUB_IMAGE:latest"
           digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$DOCKERHUB_IMAGE:$GITHUB_SHA")
           echo "Pushed \`$digest\` from $GITHUB_SHA (home pins this digest)." | tee -a "$GITHUB_STEP_SUMMARY"
+      # U1: asks home's release to look at what was just pushed.
+      - name: Ask server's release to look
+        uses: ./.github/actions/release-lock-dispatch
+        with:
+          token: ${{ secrets.SERVER_ROUTES_DISPATCH_TOKEN }}
+          reason: "pgathondu/render:${{ github.sha }} published by some-ui"

@@ -138,3 +138,17 @@ Each of the following is a **blocking** finding:
    that moves work across an ownership boundary (a new plugin, a new service) without its
    segment, or a `live` signal or check whose `ref` no longer does what its `says` or `name`
    claims.
+
+## New machinery comes after a reach
+
+A story that builds machinery of its own (the list under "When a reach is owed" in
+`CLAUDE.md`) is owed a reach first: which existing tools already deliver the story, and why the
+change builds anyway (`CLAUDE.md`, "Reach before you build"). When a PR starts such machinery
+and neither the PR nor its epic names a reach call (`docs/calls/`) or says why none was owed, raise it as a
+**non-blocking** finding that names the machinery. Whether a reach was owed is a judgment, so
+the finding asks the question and does not hold the merge. Changes to a surface that already
+exists never draw this finding.
+
+When the reach call chose to build (rung 3) and names no part that is the owner's own, or links
+no evidence of a pain point that use of the rungs above left, raise that too, non-blocking:
+"generic story, built without evidence" (`CLAUDE.md`, "Reach before you build").

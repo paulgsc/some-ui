@@ -42,10 +42,16 @@ jobs:
           echo "::error::Then complete the pre-sign checklist in extensions/docs/amo-compliance.md §11."
           exit 1
 
+      # `inputs.extension` is free text, so it reaches the shell only as
+      # $EXTENSION, never expanded into the script (#2116). `%q` keeps a
+      # newline in it from starting a workflow command line in the log.
       - name: Confirm target extension
+        env:
+          EXTENSION: ${{ inputs.extension }}
+          COMPLIANCE_CONFIRMED: ${{ inputs.compliance_confirmed }}
         run: |
-          echo "Signing extension: ${{ inputs.extension }}"
-          echo "Compliance confirmed: ${{ inputs.compliance_confirmed }}"
+          printf 'Signing extension: %q\n' "$EXTENSION"
+          echo "Compliance confirmed: $COMPLIANCE_CONFIRMED"
 
   build-matrix:
     name: Build Sign Matrix
@@ -54,18 +60,36 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The input must name one of the extensions _extension-detect.yml
+      # discovers: a directory under extensions/ with a package.json and a
+      # manifest*.json source. Anything else (a path, a shell word, a
+      # workspace that ships no manifest) fails here, before a build, and is
+      # never echoed back.
       - name: Resolve extension metadata
         id: matrix
+        env:
+          EXTENSION: ${{ inputs.extension }}
         run: |
-          ext="${{ inputs.extension }}"
-          ext_path="extensions/${ext}"
+          known=()
+          for dir in extensions/*/; do
+            [ -f "${dir}package.json" ] || continue
+            manifest=$(find "$dir" -maxdepth 3 -iname 'manifest*.json' \
+              -not -path '*/node_modules/*' -not -path '*/dist/*' | head -1)
+            [ -n "$manifest" ] || continue
+            known+=("$(basename "$dir")")
+          done
 
-          if [ ! -d "$ext_path" ]; then
-            echo "::error::Extension directory '${ext_path}' does not exist."
+          ext=""
+          for name in "${known[@]}"; do
+            if [ "$name" = "$EXTENSION" ]; then ext="$name"; fi
+          done
+          if [ -z "$ext" ]; then
+            echo "::error::The extension input names no extension. Choose one of: ${known[*]}"
             exit 1
           fi
+          ext_path="extensions/${ext}"
 
           pkg_name=$(jq -r '.name' "${ext_path}/package.json" 2>/dev/null)
           if [ -z "$pkg_name" ] || [ "$pkg_name" = "null" ]; then
@@ -87,7 +111,7 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
@@ -105,7 +129,7 @@ jobs:
           NODE_ENV: production
 
       - name: Upload workspace dist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: workspace-dist
           path: packages/*/dist

@@ -1,0 +1,17 @@
+{
+  "id": "C308",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/ui/burn-ins/src/lib/mono.ts",
+    "packages/ui/burn-ins/src/lib/terminal.ts"
+  ],
+  "chose": "A terminal card refuses, naming it, a character its monospace (JetBrains Mono's latin files) can't draw, such as →, so a line is written with -> instead.",
+  "options": [
+    "Refuse the character by name",
+    "Let the browser draw it in another font"
+  ],
+  "gray": "The prototype's lines used → (\"Grafana → UPGRADES\"); another font would draw it at a width the card can't measure, so a line could overflow the window unseen.",
+  "undo": "Add the arrows' subset of the font to www's burn-ins pages and their characters to MONO_CHARS in burn-ins' mono.ts.",
+  "refs": ["#2467"]
+}

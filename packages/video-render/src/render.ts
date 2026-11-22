@@ -7,6 +7,7 @@
  */
 
 import { authorshipParams } from "./authorship"
+import { withBadgesSeen } from "./badges"
 import { isAuthorship, isCaptions, isComposition } from "./cut-list"
 import type {
   BurnIn,
@@ -40,6 +41,7 @@ import type { ResolvedShot } from "./resolve"
 import { reviewOf } from "./review"
 import { withSeries } from "./series"
 import type { Series } from "./series"
+import { withStamp } from "./stamp"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
 import type { CheckedFile, MusicMode } from "./vocabulary"
@@ -445,6 +447,12 @@ async function checkInputs(
   for (const s of shots) {
     const shot = s.shot
     const p = shot.picture
+    // C866: drawn only once home has handed it (`resolveScreens`).
+    if (p.kind === "screen") {
+      problems.push(
+        `${shot.id}: it shows a screen of the app home has not handed yet`
+      )
+    }
     if (p.kind === "capture" || p.kind === "still") {
       const f = await read(p.source)
       if (!f) problems.push(`${shot.id}: ${p.source} is missing`)
@@ -547,10 +555,19 @@ function burnInRequests(
           },
         ]
   )
+  const badged = withStamp(
+    cutList,
+    withBadgesSeen(
+      cutList.shots,
+      cutList.shots.map(
+        (_, i) => (framesUntilNext(placement, i) * 1000) / series.frame.fps
+      )
+    )
+  )
   const perShot = cutList.shots.flatMap((s, i) => {
     const at = placement.shots[i]
     if (!at) throw new Error(`${s.id} was not placed`)
-    return s.burnIns.map((b, k) => ({
+    return (badged[i] ?? []).map((b, k) => ({
       ...b,
       design: design(b, series),
       startFrame: at.startFrame,

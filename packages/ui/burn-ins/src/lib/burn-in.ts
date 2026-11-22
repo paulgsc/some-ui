@@ -27,6 +27,24 @@ import {
   type AuthorshipDrawing,
   type AuthorshipFrame,
 } from "./authorship"
+import {
+  badgeBoxes,
+  drawStatusBadge,
+  STATUS_BADGE_DESIGNS,
+  statusBadgeAt,
+  StatusBadgeParamsSchema,
+  type StatusBadgeDrawing,
+  type StatusBadgeFrame,
+} from "./badge"
+import {
+  BARS_DESIGNS,
+  barsAt,
+  barsBoxes,
+  BarsParamsSchema,
+  drawBars,
+  type BarsDrawing,
+  type BarsFrame,
+} from "./bars"
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
 import {
   isThemeId,
@@ -37,6 +55,24 @@ import {
   type ThemeId,
 } from "./captions/theme"
 import { captionsFor, runtimeOf, type Caption } from "./captions/timing"
+import {
+  CHEAT_SHEET_DESIGNS,
+  cheatSheetAt,
+  cheatSheetBoxes,
+  CheatSheetParamsSchema,
+  drawCheatSheet,
+  type CheatSheetDrawing,
+  type CheatSheetFrame,
+} from "./cheat-sheet"
+import {
+  drawFlow,
+  FLOW_DESIGNS,
+  flowAt,
+  flowBoxes,
+  FlowParamsSchema,
+  type FlowDrawing,
+  type FlowFrame,
+} from "./flow"
 import {
   drawGameCard,
   GAME_CARD_DESIGNS,
@@ -61,12 +97,39 @@ import {
   textBoxes,
   type TextFrame,
 } from "./journal"
+import {
+  drawLegend,
+  LEGEND_DESIGNS,
+  legendAt,
+  legendBoxes,
+  LegendParamsSchema,
+  type LegendDrawing,
+  type LegendFrame,
+} from "./legend"
 import { isOneOf, type Parsed } from "./parsed"
 import {
   drawPreviewMark,
   PREVIEW_MARK_DESIGNS,
   PreviewMarkParamsSchema,
 } from "./preview-mark"
+import {
+  drawRule,
+  RULE_DESIGNS,
+  ruleAt,
+  ruleBoxes,
+  RuleParamsSchema,
+  type RuleDrawing,
+  type RuleFrame,
+} from "./rule"
+import {
+  drawTerminal,
+  TERMINAL_DESIGNS,
+  terminalAt,
+  terminalBoxes,
+  TerminalParamsSchema,
+  type TerminalDrawing,
+  type TerminalFrame,
+} from "./terminal"
 
 export const KINDS = [
   "captions",
@@ -75,6 +138,13 @@ export const KINDS = [
   "authorship",
   "game-card",
   "preview-mark",
+  "status-badge",
+  "terminal",
+  "cheat-sheet",
+  "legend",
+  "rule",
+  "flow",
+  "bars",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -88,6 +158,13 @@ export const DESIGNS = {
   authorship: AUTHORSHIP_DESIGNS,
   "game-card": GAME_CARD_DESIGNS,
   "preview-mark": PREVIEW_MARK_DESIGNS,
+  "status-badge": STATUS_BADGE_DESIGNS,
+  terminal: TERMINAL_DESIGNS,
+  "cheat-sheet": CHEAT_SHEET_DESIGNS,
+  legend: LEGEND_DESIGNS,
+  rule: RULE_DESIGNS,
+  flow: FLOW_DESIGNS,
+  bars: BARS_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -102,6 +179,15 @@ export const REGIONS_OF = {
   "game-card": ["body"],
   // Under the safe area, where only what is never uploaded sits.
   "preview-mark": ["foot"],
+  // At the body's top left, over the scene's picture or a bare card.
+  "status-badge": ["body"],
+  // A card over a bare scene: its title in the header, its window in the body.
+  terminal: ["header", "body"],
+  "cheat-sheet": ["header", "body"],
+  legend: ["header", "body"],
+  rule: ["header", "body"],
+  flow: ["header", "body"],
+  bars: ["header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -156,6 +242,41 @@ export type Prepared =
       readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
       readonly frame: TextFrame
     }
+  | {
+      readonly kind: "status-badge"
+      readonly design: (typeof STATUS_BADGE_DESIGNS)[number]
+      readonly drawing: StatusBadgeDrawing
+    }
+  | {
+      readonly kind: "terminal"
+      readonly design: (typeof TERMINAL_DESIGNS)[number]
+      readonly drawing: TerminalDrawing
+    }
+  | {
+      readonly kind: "cheat-sheet"
+      readonly design: (typeof CHEAT_SHEET_DESIGNS)[number]
+      readonly drawing: CheatSheetDrawing
+    }
+  | {
+      readonly kind: "legend"
+      readonly design: (typeof LEGEND_DESIGNS)[number]
+      readonly drawing: LegendDrawing
+    }
+  | {
+      readonly kind: "rule"
+      readonly design: (typeof RULE_DESIGNS)[number]
+      readonly drawing: RuleDrawing
+    }
+  | {
+      readonly kind: "flow"
+      readonly design: (typeof FLOW_DESIGNS)[number]
+      readonly drawing: FlowDrawing
+    }
+  | {
+      readonly kind: "bars"
+      readonly design: (typeof BARS_DESIGNS)[number]
+      readonly drawing: BarsDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -185,6 +306,41 @@ export type BurnInFrame =
       readonly kind: "preview-mark"
       readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
       readonly frame: TextFrame
+    }
+  | {
+      readonly kind: "status-badge"
+      readonly design: (typeof STATUS_BADGE_DESIGNS)[number]
+      readonly frame: StatusBadgeFrame
+    }
+  | {
+      readonly kind: "terminal"
+      readonly design: (typeof TERMINAL_DESIGNS)[number]
+      readonly frame: TerminalFrame
+    }
+  | {
+      readonly kind: "cheat-sheet"
+      readonly design: (typeof CHEAT_SHEET_DESIGNS)[number]
+      readonly frame: CheatSheetFrame
+    }
+  | {
+      readonly kind: "legend"
+      readonly design: (typeof LEGEND_DESIGNS)[number]
+      readonly frame: LegendFrame
+    }
+  | {
+      readonly kind: "rule"
+      readonly design: (typeof RULE_DESIGNS)[number]
+      readonly frame: RuleFrame
+    }
+  | {
+      readonly kind: "flow"
+      readonly design: (typeof FLOW_DESIGNS)[number]
+      readonly frame: FlowFrame
+    }
+  | {
+      readonly kind: "bars"
+      readonly design: (typeof BARS_DESIGNS)[number]
+      readonly frame: BarsFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -320,6 +476,97 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "status-badge": {
+      const c = checked(
+        name,
+        STATUS_BADGE_DESIGNS,
+        b,
+        StatusBadgeParamsSchema,
+        drawStatusBadge,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "terminal": {
+      const c = checked(
+        name,
+        TERMINAL_DESIGNS,
+        b,
+        TerminalParamsSchema,
+        drawTerminal,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "cheat-sheet": {
+      const c = checked(
+        name,
+        CHEAT_SHEET_DESIGNS,
+        b,
+        CheatSheetParamsSchema,
+        drawCheatSheet,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "legend": {
+      const c = checked(
+        name,
+        LEGEND_DESIGNS,
+        b,
+        LegendParamsSchema,
+        drawLegend,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "rule": {
+      const c = checked(name, RULE_DESIGNS, b, RuleParamsSchema, drawRule, g)
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "flow": {
+      const c = checked(name, FLOW_DESIGNS, b, FlowParamsSchema, drawFlow, g)
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "bars": {
+      const c = checked(name, BARS_DESIGNS, b, BarsParamsSchema, drawBars, g)
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -350,6 +597,39 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
         frame: authorshipAt(p.drawing, t),
       }
     }
+    case "status-badge": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: statusBadgeAt(p.drawing, t),
+      }
+    }
+    case "terminal": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: terminalAt(p.drawing, t),
+      }
+    }
+    case "cheat-sheet": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: cheatSheetAt(p.drawing, t),
+      }
+    }
+    case "legend": {
+      return { kind: p.kind, design: p.design, frame: legendAt(p.drawing, t) }
+    }
+    case "rule": {
+      return { kind: p.kind, design: p.design, frame: ruleAt(p.drawing, t) }
+    }
+    case "flow": {
+      return { kind: p.kind, design: p.design, frame: flowAt(p.drawing, t) }
+    }
+    case "bars": {
+      return { kind: p.kind, design: p.design, frame: barsAt(p.drawing, t) }
+    }
     default: {
       return assertNever(p)
     }
@@ -377,6 +657,27 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "game-card": {
       return gameCardBoxes(f.frame)
+    }
+    case "status-badge": {
+      return f.frame.marks.flatMap(badgeBoxes)
+    }
+    case "terminal": {
+      return terminalBoxes(f.frame)
+    }
+    case "cheat-sheet": {
+      return cheatSheetBoxes(f.frame)
+    }
+    case "legend": {
+      return legendBoxes(f.frame)
+    }
+    case "rule": {
+      return ruleBoxes(f.frame)
+    }
+    case "flow": {
+      return flowBoxes(f.frame)
+    }
+    case "bars": {
+      return barsBoxes(f.frame)
     }
     default: {
       return assertNever(f)

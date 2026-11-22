@@ -1,5 +1,5 @@
 /**
- * What Studio's index and its eight pages say (SFEED1, #2731): every word in
+ * What Studio's index and its pages say (SFEED1, #2731): every word in
  * one pure table, in the person's terms, held by its test to no machinery
  * and to ST34's names: Studio is never "Journal", a take never "a
  * recording" or "a bite", and no place is a bare "Your video". A feed's own
@@ -45,6 +45,10 @@ export const KIND_WORDS = {
     name: "Intuitions",
     line: "What you fed in: each feed's question and every idea",
   },
+  spoken: {
+    name: "Spoken",
+    line: "Spoken cards you read aloud, part by part, and every take",
+  },
   takes: {
     name: "Takes",
     line: "Everything you've said, kept on home and this phone",
@@ -72,11 +76,29 @@ export const FEED_FACTS = {
     intuition: "Where the repositories stand, so I can guide what comes next.",
     cadence: "Every Friday",
   },
+  "cards-essay": {
+    name: "Cards essays",
+    intuition:
+      "How does this work, as the repositories that hold it stand today, with every claim checked?",
+    cadence: "When you ask for one",
+  },
+  "interview-essay": {
+    name: "The interview essay",
+    intuition:
+      "How I came across in this week's interview, and what a stronger answer covers, so I can hear it and answer better next time.",
+    cadence: "Every week, once the interview week's deadline has passed",
+  },
   "playoff-delta": {
     name: "Playoff Delta",
     intuition:
       "How did this week's results move my team's paths to the playoffs?",
     cadence: "Every Tuesday in season",
+  },
+  report: {
+    name: "The engagement report",
+    intuition:
+      "What each app put in front of me this week and what I took, against last week, a quarter ago and a year ago.",
+    cadence: "Every week, once the week has ended",
   },
   "rust-essay": {
     name: "The Rust Rounds essay",
@@ -154,13 +176,61 @@ export const FEED_KEPT = {
     },
     drive: NOTHING_IN_DRIVE,
   },
+  "interview-essay": {
+    home: {
+      what: "Every essay Claude wrote for an interview week, the takes you sent that it plays, and each essay's video and what it was made from.",
+      letGo:
+        "Nothing on this phone lets an interview essay go yet. Home keeps each one, its video included.",
+    },
+    phone: {
+      what: "A copy of each essay you watched.",
+      letGo: "A watched copy is the phone's to clear.",
+    },
+    testing: {
+      what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
+      letGo: "Nothing to let go.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  report: {
+    home: {
+      what: "Every week's counts of what each app offered and what you took, read from what this phone sent home, and each report's video and what it was made from.",
+      letGo:
+        "Once a report's YouTube link is saved, Settings › My data lets its video go, then what it was made from, and home keeps a note of each. The week's counts stay.",
+    },
+    phone: ON_THE_PHONE,
+    testing: {
+      what: "Nothing. A report is made on home from your own records.",
+      letGo: "Nothing to let go.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "cards-essay": {
+    home: {
+      what: "Every essay as home first read it, each essay's video and what it was made from, and its YouTube link once you save it.",
+      letGo:
+        "Nothing lets an essay go yet. Home keeps each one, its video included.",
+    },
+    phone: {
+      what: "A copy of each essay you watched.",
+      letGo: "A watched copy is the phone's to clear.",
+    },
+    testing: {
+      what: "Every essay's cards, in the public paulgsc/testing.",
+      letGo:
+        "Never. The same subject checked on a later day is a new essay, so an old one is never rewritten.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
 } as const satisfies Record<Feed, Record<Place, Kept>>
 
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
-  deleting: "Deleting any of it happens in one place:",
+  deleting: "Deleting any of it happens in",
   myData: "Settings › My data",
+  deletingAlso:
+    ", or on a take home couldn't hear well, under Takes. Each delete leaves a receipt.",
   /** The way back from a kind's page to the index. */
   back: "Back to Studio",
   /** The way back from an item's page to its kind's. */
@@ -233,6 +303,8 @@ export const STUDIO_INDEX_WORDS = {
       "This screen is on the change's page. Only what it showed is kept here.",
     homeAway:
       "Home didn't answer, so this screen isn't here. Try again in a moment.",
+    phoneBusy:
+      "This phone was busy with home just then, so this screen isn't here. Try again in a moment.",
     unreadable: "Home sent this screen, but it couldn't be shown.",
     onlyLabels:
       "This phone isn't paired with home, where the screens are kept, so only what each one shows is listed.",
@@ -240,7 +312,8 @@ export const STUDIO_INDEX_WORDS = {
   },
 
   episodes: {
-    intro: "Every video your feeds made, by feed, the newest first.",
+    intro:
+      "Every video your feeds made, by week, the newest first. Choose a genre to see only its videos.",
     making: "Videos you're making",
     makingLine:
       "Made in sittings from your takes: record, watch, shape, finish.",
@@ -261,6 +334,8 @@ export const STUDIO_INDEX_WORDS = {
     templates: "Made with",
     episodes: "Its episodes",
     kept: "Where it's kept",
+    /** A feed whose episodes no template of Studio's makes (a cards essay's). */
+    noTemplates: "Its own cards, which Templates doesn't list.",
     places: {
       home: "On home",
       phone: "On this phone",
@@ -291,6 +366,9 @@ export const STUDIO_INDEX_WORDS = {
     /** Under What Studio keeps (soundbites' `records.open`) on its tile. */
     keptLine:
       "Every take, with what home holds of it, and where to let one go.",
+    /** The tile to the conveyor page (CONVEYOR2), in the Android app. */
+    conveyor: "Sort your takes",
+    conveyorLine: "Move each take along, from In the oven to Ready for pickup.",
   },
 
   templates: {

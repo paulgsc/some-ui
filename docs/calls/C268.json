@@ -1,0 +1,19 @@
+{
+  "id": "C268",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/decay/index.ts",
+    "packages/video-render/src/essay.ts",
+    "packages/ui/rust-rounds/src/lib/monday/topics.ts"
+  ],
+  "chose": "A concept comes back on the Leitner system (Leitner, 1972): five boxes rechecked after 1, 2, 4, 8 and 16 weeks. An answer at relational or above that didn't come back lower moves it up a box. Anything else, a silence included, sends it to box 1. Decay is an answer below the level it stood at, the highest shown since it last decayed, so a concept that settles lower climbs again. Only a concept last shown known may have faded; one below relational is just due. The due list runs decayed, then faded, then last left unanswered, then not yet known, the longest overdue first, and leaves out a concept asked by a week whose essay isn't written yet when this run writes it, or when that week ended in the last two weeks.",
+  "options": [
+    "the Leitner system, relational as the pass",
+    "SM-2's ease factors over the five SOLO levels",
+    "a fixed recheck every N weeks"
+  ],
+  "gray": "#2695 recommends Leitner but leaves open what passes a box on SOLO, what silence does, whether below-relational answers can fade, and the order of the due list; box 1 every week means anything not yet known comes back each week while topics have room.",
+  "undo": "Change LEITNER in packages/video-render/src/essay.ts and standingAt/dueAt in the decay module.",
+  "refs": ["#2695"]
+}

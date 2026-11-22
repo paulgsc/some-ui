@@ -2,8 +2,8 @@
  * What `pnpm check:assurance` holds of the registry
  * (docs/operational-assurance.md, "The registry: every process family"), as
  * a pure function over the parsed ledger: every name a process, a check or
- * a watch uses exists and every ledger family is carried by a process or said
- * to span them all (errors), and a process nothing shows working is reported
+ * a watch uses exists and every ledger family is carried by a process, said
+ * to span them all, or wholly retired (errors), and a process nothing shows working is reported
  * (warnings: a gap to see, not a reason to fail).
  */
 import type { CheckStatus, Ledger, Process } from "./ledger.ts"
@@ -138,8 +138,19 @@ export function findProcessViolations(
       )
     spanning.add(entry.family)
   }
+  // A family whose every promise has retired is history: nothing runs it, so
+  // no process serves it.
+  const retired = new Set(
+    ledger.families
+      .filter(
+        (f) =>
+          f.objectives.length > 0 &&
+          f.objectives.every((o) => o.retired !== undefined)
+      )
+      .map((f) => f.id)
+  )
   for (const family of families) {
-    if (!served.has(family) && !spanning.has(family))
+    if (!served.has(family) && !spanning.has(family) && !retired.has(family))
       flag(
         family,
         "no process in the registry serves this family, and it is not crosscutting: add its process, with its segments, signals and checks"

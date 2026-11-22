@@ -21,6 +21,13 @@
  * ceremony, which signs nobody in and adds no passkey: `file_host` refuses
  * that body (422) before it reads its passkey configuration. The phone has
  * no passkeys and answers every ceremony `503 feature_not_configured`.
+ *
+ * The account's paired phones (`/auth/phones`, SIGNIN7, calls C493–C498):
+ * the list is what `apps/www/src/lib/auth/phones` reads, checked against
+ * the server's `PhoneView`. Renaming and signing out are pinned only on an
+ * id that names no phone, which changes nothing: a run never renames or
+ * signs out a real phone. All three answer a browser's passkey session
+ * only, and refuse a phone's token.
  */
 
 import { z } from "zod"
@@ -92,6 +99,31 @@ const AddPasskeyStartedSchema = RegistrationStartedSchema.extend({
     }),
   }),
 })
+
+/** One paired phone as its owner sees it (server `PhoneView`). */
+const PhoneViewSchema = z.object({
+  /** base64url of 16 random bytes (C496). */
+  phoneId: base64url,
+  /** The UTC day it paired; null for a phone paired before home kept it (C494). */
+  pairedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+  /** The owner's name for it, trimmed, at most 40 characters, or null (C498). */
+  label: z
+    .string()
+    .refine((name) => name.trim() !== "" && [...name].length <= 40)
+    .nullable(),
+  /** ms since the epoch: when its session last started or slid (C493). */
+  renewedAt: z.number().int(),
+  /** ms since the epoch. */
+  expiresAt: z.number().int(),
+})
+
+const PhonesViewSchema = z.object({ phones: z.array(PhoneViewSchema) })
+
+/** No phone of anyone's: 16 zero bytes, base64url. */
+const NO_PHONE = "AAAAAAAAAAAAAAAAAAAAAA"
 
 const SessionViewSchema = z.object({
   /** ms since the epoch. */
@@ -219,5 +251,61 @@ export const contracts = [
     // Not probed signed in: it would end the session every later contract in
     // the run is signed in with.
     expect: { status: 401 },
+  }),
+
+  defineContract({
+    id: "auth.phones_signed_out",
+    module: "auth",
+    method: "GET",
+    path: "/auth/phones",
+    summary: "the account's phones are per person: without a session, a 401",
+    expect: { status: 401 },
+  }),
+
+  defineContract({
+    id: "auth.phones",
+    module: "auth",
+    method: "GET",
+    path: "/auth/phones",
+    summary:
+      "the account's paired phones, by id, the day each paired, its name and when its session last renewed",
+    session: true,
+    expect: { status: 200, schema: PhonesViewSchema },
+  }),
+
+  defineContract({
+    id: "auth.phones_refuse_a_phone",
+    module: "auth",
+    method: "GET",
+    path: "/auth/phones",
+    summary: "a phone's own token may not list the account's phones: a 403",
+    paired: true,
+    expect: { status: 403 },
+  }),
+
+  defineContract({
+    id: "auth.rename_phone_unknown",
+    module: "auth",
+    method: "PATCH",
+    path: "/auth/phones/:id",
+    summary: "naming an id that is none of this account's phones is a 404",
+    session: true,
+    // Changes nothing: no phone has this id.
+    mutates: true,
+    request: { path: { id: NO_PHONE }, body: { label: null } },
+    expect: { status: 404 },
+  }),
+
+  defineContract({
+    id: "auth.sign_out_phone_unknown",
+    module: "auth",
+    method: "DELETE",
+    path: "/auth/phones/:id",
+    summary: "signing out an id that is none of this account's phones is a 404",
+    session: true,
+    // Ends nothing: no phone has this id.
+    mutates: true,
+    request: { path: { id: NO_PHONE } },
+    expect: { status: 404 },
   }),
 ]

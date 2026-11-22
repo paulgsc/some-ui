@@ -1,0 +1,11 @@
+{
+  "id": "C11",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/game_feed/pass.rs"],
+  "chose": "The bounded read (CW3) is a new Fetch::get_at_most that the call weeks and Playoff Delta fills read through; the game feed still reads whole, uncapped.",
+  "options": ["cap only the 1 MiB readers", "cap the game feed too"],
+  "gray": "The game feed keeps every response raw, so capping it means deciding what a refused one keeps, which GA3 (server#534) owns.",
+  "undo": "Read the game feed through get_at_most with a cap in game_feed/pass.rs.",
+  "refs": ["server#684", "server#731", "server#534"]
+}

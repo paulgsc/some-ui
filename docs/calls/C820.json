@@ -1,0 +1,9 @@
+{
+  "id": "C820",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": ["CLAUDE.md", ".claude/skills/coordinate/SKILL.md"],
+  "chose": "Reach inward first: the owner can't hold a full model of the application and so may prompt for duplication. Before a story adds a pipeline, schema, scene kind, voice path or render job, the session names the existing one that does the job or could be uplifted to generic to do it, and builds only the gap there. Deciding whether the thing already exists is the session's job, not the owner's. A granular variant (the owner's example: drop zones for files, for video, for a long text blob lifted into a file) is a new case in the generic node's compile-time schema, never a clone of the module.",
+  "undo": "Remove the 'Reach inward first' paragraph from CLAUDE.md's 'Reach before you build' and the matching bullet from the coordinate skill's 'At spawn time'.",
+  "refs": ["#3317", "#3311"]
+}

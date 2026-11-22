@@ -3,8 +3,7 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "@some-ui/core-utils": "workspace:*",
-    "@some-ui/fetch-kit": "workspace:*"
+    "@some-ui/core-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
@@ -21,11 +20,6 @@
       "types": "./dist/@some-ui/speech.d.ts",
       "import": "./dist/@some-ui/speech.es.js",
       "default": "./dist/@some-ui/speech.es.js"
-    },
-    "./http": {
-      "types": "./dist/@some-ui/speech/http.d.ts",
-      "import": "./dist/@some-ui/speech/http.es.js",
-      "default": "./dist/@some-ui/speech/http.es.js"
     },
     "./web-speech": {
       "types": "./dist/@some-ui/speech/web-speech.d.ts",

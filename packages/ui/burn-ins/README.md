@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`, `flow`, `bars`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -39,6 +39,31 @@ it is; each module's header does the same for its part:
   (SFEED12, #2757), design `plate-v1`, in the frame's foot: under the band
   captions are drawn in, where a stage draws nothing. Only a preview's cut
   carries it (`@some-ui/video-render`'s `previewOf`), never an episode's.
+- `src/lib/badge.ts`: the status badge (CARDS1, #2466), design `badge-v1`:
+  five states of a claim on screen, each a glyph drawn from paths, which spells out its
+  definition at its first appearance in a video. The first card kinds (epic
+  CARDS, #2465) draw it beside their lines.
+- `src/lib/cards.ts`: what the cards share: a kicker and title in the
+  header, items that appear one at a time, each with its badge, the
+  values rule, which refuses text that gives a name a value, and the stamp
+  (CARDS4, #2469), `as of <repo>@<commit> · <date>` at the foot of every
+  card's body, which the cut list writes once for every card.
+- `src/lib/terminal.ts`: the terminal card (CARDS2, #2467), design
+  `terminal-v1`: a window of lines in the cards' monospace
+  (`src/lib/mono.ts`).
+- `src/lib/cheat-sheet.ts`: the cheat-sheet card (CARDS3, #2468), design
+  `sheet-v1`: a row per task with its badge, command and note; the task
+  above the command where the two don't fit side by side.
+- `src/lib/legend.ts`, `src/lib/rule.ts`: the legend card (`legend-v1`),
+  the five badges beside what they mean, and the rule card (`rule-v1`),
+  how far to trust a card as it ages, as three lines of algebra whose ∩
+  and ⇒, which the monospace lacks, are drawn as shapes (CARDS4, #2469).
+- `src/lib/flow.ts`: the flow card (CARDS5, #2470), design `flow-v1`: two
+  to five steps joined by drawn arrows, side by side in the 16:9 video and
+  stacked in the short.
+- `src/lib/bars.ts`: the chart card, design `bars-v1`: one to eight rows,
+  each a bar stacked from up to four parts in the dataviz palette's fixed
+  order, with a legend and an axis, a row at a time (#3387).
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 
@@ -56,7 +81,8 @@ pnpm --filter www record:short <video folder> --series <series folder>
 ```
 
 The font is Barlow Condensed (SIL Open Font License 1.1), free to embed in
-video, which the host page loads in the weights 600 and 800.
+video, which the host page loads in the weights 600 and 800, and the cards'
+monospace is JetBrains Mono (the same licence) in weight 500.
 
 ## Word timings
 

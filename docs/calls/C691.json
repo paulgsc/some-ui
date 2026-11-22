@@ -1,0 +1,19 @@
+{
+  "id": "C691",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts"
+  ],
+  "chose": "Each speak-to point is a fork the owner decides; the decision is per fork, matching RR24's per-point takes. `/2` replaces `speakTo` with `forks`; a `/1` week's points read as forks with no options.",
+  "options": [
+    "a fork per point",
+    "one committee per ticket",
+    "forks beside the points"
+  ],
+  "gray": "The owner's later words put the fork at the point; the first prototype had one committee per ticket.",
+  "undo": "Put one `forks` list on the ticket beside `speakTo`.",
+  "refs": ["#3257"]
+}

@@ -10,12 +10,56 @@ const PICK_STEPS: ReadonlyArray<Choice> = [
   { id: "ending", name: "Ending" },
 ]
 
+/**
+ * A pick's steps as a flow: leaving its ending for another screen
+ * is finishing it; leaving read, résumé or apply is leaving it part-way.
+ * Decide is neither: passing on a pick ends it there, and the record, not
+ * the event, says which happened.
+ */
+const PICK_FLOW = {
+  finishedAt: ["ending"],
+  partWayAt: ["read", "resume", "apply"],
+} as const
+
+/**
+ * The interview week's pages, each a place (WALK5's friction, C861): its way
+ * in, the questions, a question and its rungs, the reads, how a week goes,
+ * and past weeks (`apps/www/src/lib/interview-week/places.ts` maps a route
+ * to one).
+ */
+const INTERVIEW_PLACES: ReadonlyArray<Choice> = [
+  { id: "way-in", name: "The week" },
+  { id: "questions", name: "Questions" },
+  { id: "question", name: "A question" },
+  { id: "study", name: "Read the answer" },
+  { id: "aloud", name: "Read it aloud" },
+  { id: "say", name: "Say it" },
+  { id: "reads", name: "Scripts" },
+  { id: "read", name: "A script" },
+  { id: "how", name: "How a week goes" },
+  { id: "past", name: "Past weeks" },
+]
+
 const jobs: Pipeline = {
   id: "jobs",
   name: "Jobs",
   wing: "jobs",
   domain: "jobs",
+  opened: { kind: "root", affordance: "today" },
   affordances: [
+    // Today itself, on screen: the wing's root, so a day it is opened counts
+    // though it lists no pick (silence, #3338; C861).
+    {
+      id: "today",
+      surface: "apk",
+      name: "Today",
+      routes: ["/jobs"],
+      offer: null,
+      emits: ["taken", "left"],
+      // Opening Today is not doing anything in Jobs (#3338): opened, not touched.
+      touches: false,
+      places: [{ id: "today", name: "Today" }],
+    },
     // Today: the one pick it opens on.
     {
       id: "todays-pick",
@@ -26,6 +70,7 @@ const jobs: Pipeline = {
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
       places: PICK_STEPS,
+      flow: PICK_FLOW,
     },
     // Every other pick of the digest, and earlier days' still open, behind a tap.
     {
@@ -37,6 +82,7 @@ const jobs: Pipeline = {
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
       places: PICK_STEPS,
+      flow: PICK_FLOW,
     },
     // Scout: a posting I found myself, for the run's second opinion.
     {
@@ -55,8 +101,32 @@ const jobs: Pipeline = {
       name: "How each went",
       routes: ["/jobs/record"],
       offer: null,
-      emits: ["taken"],
+      emits: ["taken", "left"],
       touches: true,
+      places: [{ id: "record", name: "How each went" }],
+    },
+    // Interview: the week's mock interview and reads, said aloud (IW5), with
+    // its way in: the questions and how a week goes (IW15).
+    {
+      id: "interview-week",
+      surface: "apk",
+      name: "The interview week",
+      routes: [
+        "/jobs/interview",
+        "/jobs/interview/questions",
+        "/jobs/interview/how",
+        "/jobs/interview/past",
+        "/jobs/interview/q/$question",
+        "/jobs/interview/q/$question/study",
+        "/jobs/interview/q/$question/aloud",
+        "/jobs/interview/q/$question/say",
+        "/jobs/interview/reads",
+        "/jobs/interview/reads/$card",
+      ],
+      offer: null,
+      emits: ["taken", "left"],
+      touches: true,
+      places: INTERVIEW_PLACES,
     },
     // The desktop: one morning's run, what it picked and why.
     {

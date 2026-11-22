@@ -1,0 +1,17 @@
+{
+  "id": "C288",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/voice-home/model.ts",
+    "apps/www/src/lib/voice-home/runtime.ts"
+  ],
+  "chose": "A voice-home record an earlier build wrote names no pairing: what it says home holds is taken as the word of the first pairing the phone is seen under after the update, so takes home holds keep saying \"On home\"; if the phone is first seen unpaired, it is kept as no pairing's word and read as held by none.",
+  "options": [
+    "Take it as the first pairing's word",
+    "Read it as held by no home, sending again whatever is still on the phone"
+  ],
+  "gray": "Reading it as no home's word would put every take whose audio already left under \"Kept on this phone\" for good, and name them as unsendable in Settings; taking it risks the old home's word only on a phone re-paired before the update, as before.",
+  "undo": "In repaired (voice-home/model.ts), stash a record with no pairing under UNKNOWN_PAIRING on any pairing, not only when first seen unpaired.",
+  "refs": ["#2437"]
+}

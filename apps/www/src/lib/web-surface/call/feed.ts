@@ -52,6 +52,22 @@ function besideStage(folder: string): DataSource<string, unknown> {
 export const essaySource = besideStage("rust-essays")
 
 /**
+ * An interview essay, by its week (IW6, #2937), read as the Rust essay is:
+ * the recorder answers it from `record:essay --essay-file`.
+ */
+export const interviewEssaySource = besideStage("interview-essays")
+
+/** A Rust Rounds week with its runs (`GET /rust-weeks/<id>`), answered by `record:essay --week-file`. */
+export const rustScreenSource = besideStage("rust-screens")
+
+/**
+ * A spoken card of a cards essay, as home heard its takes (WALK7; parsed by
+ * `parseHeardSpokenCard`, through `namedStageOf`), by the card's id: the recorder answers it from the
+ * cut list and the transcripts home hands `record:cards --takes`.
+ */
+export const spokenCardSource = besideStage("spoken-cards")
+
+/**
  * An engagement report, by its ISO week (ENG12; `reportStageOf` parses it):
  * the recorder answers it with the report it writes from
  * `record:report --report-file`.

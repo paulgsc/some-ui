@@ -30,8 +30,9 @@ import { ideaKeeping, ideaMoved } from "@/lib/idea-keeping"
 
 import type { KeyedSend } from "./keyed-send"
 import { sendKeyed, untakenTold } from "./keyed-send"
+import type { Pairing } from "./model"
 import type { Sent } from "./sent"
-import { fingerprintOf, readSent, rememberSent } from "./sent"
+import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
 
 /** How home answered for one idea, as `sent.ideas` remembers it. */
 type Answered = "held" | "refused"
@@ -145,15 +146,15 @@ export function phoneIdeas(
  */
 export function ideasWaiting(
   storage: KeyedStorage | null,
-  pairing: string | null
+  pairing: Pairing
 ): {
   readonly waiting: number
   readonly held: number
   readonly refused: number
 } {
   const ideas = ideaKeeping()?.forHome() ?? []
-  if (pairing === null) return { waiting: ideas.length, held: 0, refused: 0 }
-  const sent = readSent(storage, pairing)
+  const sent = sentUnder(storage, pairing)
+  if (sent === null) return { waiting: ideas.length, held: 0, refused: 0 }
   return {
     waiting: ideasToSend(ideas, sent).length,
     held: countAnswered(ideas, sent, "held"),

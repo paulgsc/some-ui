@@ -143,7 +143,7 @@ export type ReportStageState =
  * What the stage draws from its read: with a week named, that week's report
  * as read, or why it can't, never the sample in its place, so a recording of
  * a week fails instead of drawing another; with none, or `sample`, the
- * template's sample. A viewer (the Pages build) is shown the sample whatever
+ * template's sample. A viewer (the viewer build) is shown the sample whatever
  * week is named, since the stage there has no owner's report to read.
  */
 export function reportStageOf(input: {

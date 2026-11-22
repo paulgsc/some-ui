@@ -3,18 +3,14 @@
  *
  * The part a line is read in, when a page voices more than one speaker: a
  * drama's women and men, say. An applet asks for a part, never a voice, and
- * the session keeps what the person chose in Settings:
+ * the session keeps what the person chose in Settings.
  *
- * - **A hosted backend** reads a part in a catalogue voice of that gender
- *   for the line's language. When the person's chosen voice is that gender,
- *   it is the one that reads it; the other part gets the catalogue's voice
- *   of the other gender (`hostedVoiceFor`).
- * - **A device backend** (the phone's TTS, the browser's synthesizer) cannot
- *   say which of its voices is a woman's or a man's: neither Android's
- *   `Voice` nor `SpeechSynthesisVoice` reports it. So the person's voice
- *   reads both parts, each at its own pitch (`DEVICE_PART_PITCH`). Whatever
- *   the device voice's own gender, the two parts then sound apart, which is
- *   what a listener needs in order to follow who is speaking.
+ * A device's synthesizer (the phone's TTS, the browser's) cannot say
+ * which of its voices is a woman's or a man's: neither Android's `Voice` nor
+ * `SpeechSynthesisVoice` reports it. So the person's voice reads both parts,
+ * each at its own pitch (`DEVICE_PART_PITCH`). Whatever the device voice's
+ * own gender, the two parts then sound apart, which is what a listener needs
+ * in order to follow who is speaking.
  *
  * A line with no part (a narrator, a lesson's single voice) is read in the
  * chosen voice, at its own pitch.

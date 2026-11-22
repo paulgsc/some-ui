@@ -1,0 +1,20 @@
+{
+  "id": "C371",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "apps/www/tests/record/cards.ts",
+    "packages/video-render/src/cards-essay.ts",
+    "packages/video-render/src/cut-list.ts",
+    "packages/video-render/src/sample/series/cheat-sheet/v2.json"
+  ],
+  "chose": "A spoken cards essay is the same cut list (some-ui.cut-list/2) with one optional field on a shot, `spoken`: the intro (`said`), a scene (`chapter` and `narration`) or the close (`said`). The cheat-sheet series' version 2, which adds the captions design, is what makes an essay spoken: in it every scene must say something, the first is the intro and only the last may be the close. Version 1 stays silent and refuses `spoken`. The intro and close are scenes with a card picture of their own, so they show something while they are said. `durationMs` is still written but the take sets each scene's length. A scene's chapter line and its narration are two takes, the host's and the narrator's, joined into the scene's one take with half a second between, so the card is drawn once under both. Each chapter line, without its \"Chapter one.\" lead, titles a chapter in the upload's description, and the close is titled \"What to do next\".",
+  "options": [
+    "an optional `spoken` field on a shot, gated by cheat-sheet v2, its two lines joined into one take",
+    "a new cut-list schema, some-ui.cut-list/3, with a separate list of lines",
+    "the chapter line as its own scene over the same card, which draws the card twice"
+  ],
+  "gray": "The owner set what is said (C370); the coordinator asked for the smallest schema change and left its shape to the session. Whether the intro and close are scenes, whether durationMs stays written, and whether a chapter line is heard as its own beat are the owner's to notice when writing or watching an essay.",
+  "undo": "Have cardsScenes give a scene one line, its chapter and narration in one voice; to drop the shape, pin cheat-sheet v3 without the captions design and drop the `spoken` checks from parseCardsEssay. The field is optional, so no essay breaks.",
+  "refs": ["#3021", "#2980"]
+}

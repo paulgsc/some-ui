@@ -1,0 +1,15 @@
+{
+  "id": "C80",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:scripts/deploy.py", "server:README.md"],
+  "chose": "rust-runner and orchestrator stay manual pulls; make home-deploy pulls, health-gates and rolls back file_host alone.",
+  "options": [
+    "file_host only",
+    "also pull rust-runner and orchestrator, restarting them without a health gate",
+    "also pull them, with healthchecks added to both first"
+  ],
+  "gray": "The owner's ask named file_host (\"home (file_host) run migrations on start… pulls latest image\") and nothing on the others. Neither service has a healthcheck to judge a rollback by, and PR 2's contract epoch is file_host's contract only. No check or earlier decision covers the other two.",
+  "undo": "Add their images to scripts/deploy.py's pull step, beside IMAGE (the deploy() function), and to README \"Deploying to home\".",
+  "refs": ["server#776", "server#564", "#2833"]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "C1073",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/video-motion/src/walk/stage-grafana.ts",
+    "packages/video-motion/src/walk/home-dashboards.ts",
+    "packages/video-motion/src/walk/run.ts",
+    "packages/video-motion/walks/home-server.json",
+    ".github/workflows/site-assets.yml",
+    "packages/eslint/src/retention.ts",
+    "server:infra/render/render-calls.sh"
+  ],
+  "chose": "Home's dashboard pictures are walks, the family the APK and Suspender Ledger clips already belong to (C860): a third stage, `grafana`, opens home's own Grafana with a Viewer token read from GRAFANA_TOKEN, fetches every request itself (another origin refused, no redirect followed, service workers and sockets blocked, the browser started without the token), and a `visit` step goes to the next panel of the stage's own origin. Two walks: `home-server`, six panels of file_host's dashboard (AVAILABILITY 943, UP FOR 945, SERVICES 946, RATE LIMITED 922, Refusals/sec by Reason 926, Limiter tokens and clients 927), whose walkthrough (`walks/home-server.json`, silent: no takes or speaker) is the server clip; and `home-cores`, the WHO DUNNIT CPU panel (32), whose one screen is the cores still. Framing is fixed: each panel alone (`/d-solo/`) at 1000 by 640, dark, in UTC, over the sample's window, the 7 days ending at a UTC midnight that has passed, which home names; the walk names file_host's version, which home writes in the sample. A screen is taken once a panel's query has answered after the page's last navigation. Two runs over an ended window gave the same bytes on Grafana 13.0.2 for every panel but UP FOR, whose value was the same and whose stat text Grafana sized a little differently: the pictures are deterministic in data and framing, not always to the byte. The walkthrough is re-encoded silent (H.264, CRF 26, one thread, bit-exact flags) to fit the mailbox's 768 KiB picture cap: the walkthrough over a local Grafana came to 1.75 MB with sound and 756 KB so encoded, and to 180 KB at half size, which is the fallback. Site Assets' `home` job fetches the newest of each kind with the pages token and uploads `site-assets-server-<sha>` and `site-assets-cores-<sha>`, kept 30 days, one each.",
+  "options": [
+    "a third walk stage and two walks, the clip through `motion walkthrough` (taken)",
+    "Grafana Image Renderer (`/render/d-solo/…`), open source and self-hostable: one more Chromium container on home, against home-compute invariant 1, and stills only, with no clip; the walk already owns a Chromium in the render worker and the clip pipeline",
+    "a recorder of its own in @some-ui/video-render that screenshots panels and joins them with ffmpeg: a second clip pipeline beside the walkthrough",
+    "the whole dashboard in kiosk mode, scrolled: brings in panels the owner did not name for the public site",
+    "the panels redrawn from Prometheus's numbers by our own template: not the dashboard the owner asked to show"
+  ],
+  "gray": "The owner named the panels (#3401) and allowed them public (#3415), but not how they are framed, which time window, how long the clip runs, or what pipeline makes it. A second pipeline would duplicate the walkthrough's, and the framing decides what a viewer reads.",
+  "undo": "Remove `home-server` and `home-cores` from the motion's WALKS, the grafana stage and the visit step if nothing else uses them, `walks/home-server.json`, and Site Assets' `home` job and its two retention families; both slots draw their placeholders.",
+  "refs": ["#3415", "#3401"]
+}

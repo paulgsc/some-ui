@@ -56,7 +56,8 @@ const isTake = (value: unknown): value is Take =>
   STANDINGS.includes(Reflect.get(value, "standing")) &&
   ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt")) &&
   ["undefined", "true"].includes(String(Reflect.get(value, "waits"))) &&
-  ["undefined", "true"].includes(String(Reflect.get(value, "onHome")))
+  ["undefined", "true"].includes(String(Reflect.get(value, "onHome"))) &&
+  ["undefined", "number"].includes(typeof Reflect.get(value, "deletedAt"))
 
 /** Whether a take is in its item's view: neither recorded again nor set aside. */
 export const inView = (take: Take): boolean => take.standing === undefined
@@ -115,9 +116,9 @@ type DeskShelf = {
   readonly letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
   /**
    * Lets the audio of each sent take `deleted` names go from this phone,
-   * on any desk: home deleted those notes for good from My data (#2579), so
-   * nothing is to be heard of them again. The take stays listed and is
-   * marked `onHome` first (LG1). A take still waiting for its item is a
+   * on any desk: home deleted those notes for good (#2579), so nothing is
+   * to be heard of them again. The take stays listed and is marked `onHome`
+   * and `deletedAt` first (LG1). A take still waiting for its item is a
    * draft and is never named by a receipt. Resolves false when the phone
    * could not store the mark, so the audio stayed.
    */
@@ -189,22 +190,31 @@ type Runtime = {
 /** A desk's list: the pattern's, and the mark that a take's audio left. */
 type DeskList = PatternTakesPorts["takes"] & {
   /**
-   * Marks these takes as heard from home (`onHome`), once each. Says whether
-   * the device stored it.
+   * Marks these takes as heard from home (`onHome`), once each, and with
+   * `deletedAt` as deleted by home then, once each. Says whether the device
+   * stored it.
    */
-  readonly markOnHome: (ids: ReadonlyArray<string>) => boolean
+  readonly markOnHome: (
+    ids: ReadonlyArray<string>,
+    deletedAt?: number
+  ) => boolean
 }
 
 /** The desk's list in `localStorage` under `key`, at most `max` takes long. */
 export function deskList(key: string, max: number): DeskList {
   const list = boundedList(key, max, isTake)
   return {
-    markOnHome: (ids): boolean =>
-      list.update((take) =>
-        ids.includes(take.id) && take.onHome !== true
-          ? { ...take, onHome: true }
-          : take
-      ),
+    markOnHome: (ids, deletedAt): boolean =>
+      list.update((take) => {
+        if (!ids.includes(take.id)) return take
+        const deleted =
+          deletedAt !== undefined && take.deletedAt === undefined
+            ? { deletedAt }
+            : {}
+        return take.onHome === true && !("deletedAt" in deleted)
+          ? take
+          : { ...take, onHome: true, ...deleted }
+      }),
     read: list.read,
     add: (take, supersedes): boolean =>
       list.put(
@@ -297,12 +307,6 @@ function desk<R extends Runtime>(
     return runtime
   }
 
-  /**
-   * Lets the audio of each sent take `holds` names go, keeping the take
-   * listed and marked `onHome` first (LG1): `letGo`'s, once home holds them,
-   * and `letGoDeleted`'s, once home deleted them. False when the phone
-   * could not store the mark, so nothing went.
-   */
   /** Sets aside take `id` where `which` lists it, its mark owed first. */
   const setAsideWhere = (
     id: string,
@@ -319,7 +323,17 @@ function desk<R extends Runtime>(
     return stored
   }
 
-  const release = async (holds: ReadonlySet<string>): Promise<boolean> => {
+  /**
+   * Lets the audio of each sent take `holds` names go, keeping the take
+   * listed and marked `onHome` first (LG1), and `deletedAt` with it when
+   * given: `letGo`'s, once home holds them, and `letGoDeleted`'s, once home
+   * deleted them. False when the phone could not store the mark, so
+   * nothing went.
+   */
+  const release = async (
+    holds: ReadonlySet<string>,
+    deletedAt?: number
+  ): Promise<boolean> => {
     const named = takes
       .read()
       .filter((take) => take.waits !== true && holds.has(take.id))
@@ -327,17 +341,27 @@ function desk<R extends Runtime>(
     if (named.length === 0) return true
     const audio = shelf.shelf()
     const stored = await audio.ids()
+    const unmarkedOf = (take: Take): boolean =>
+      take.onHome !== true ||
+      (deletedAt !== undefined && take.deletedAt === undefined)
     // Marked earlier too, while its audio is still here: a removal that
     // failed after the mark is done on this pass.
     const going = named.filter(
-      (take) => take.onHome !== true || stored.includes(take.id)
+      (take) => unmarkedOf(take) || stored.includes(take.id)
     )
     if (going.length === 0) return true
     // LG1: the mark first, so audio is never gone from a take that still
     // reads as this phone's alone; a mark not stored lets nothing go.
-    const unmarked = going.filter(({ onHome }) => onHome !== true)
-    if (unmarked.length > 0 && !takes.markOnHome(unmarked.map(({ id }) => id)))
+    const unmarked = going.filter(unmarkedOf)
+    if (
+      unmarked.length > 0 &&
+      !takes.markOnHome(
+        unmarked.map(({ id }) => id),
+        deletedAt
+      )
+    )
       return false
+    runtime?.recount()
     const left = going.map(({ id }) => id).filter((id) => stored.includes(id))
     if (left.length > 0) await audio.remove(left)
     return true
@@ -399,7 +423,7 @@ function desk<R extends Runtime>(
       // A mark not stored is tried again on the next pass.
       await release(holds)
     },
-    letGoDeleted: release,
+    letGoDeleted: (deleted) => release(deleted, Date.now()),
     audioFrom: (next): void => {
       back = next
     },

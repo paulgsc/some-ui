@@ -7,14 +7,15 @@ import {
   STUDIO_INDEX_WORDS,
   STUDIO_KINDS,
 } from "@/lib/studio-index"
-import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { CardRoute } from "@/components/card-route"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 import { RendersLine } from "@/components/studio/renders"
 
 const WORDS = STUDIO_INDEX_WORDS
 
 /**
  * The Studio wing's Home (lib/wings), Studio's index (SFEED1, #2731; #2670's
- * decision 1): the eight kinds of thing Studio keeps, each a tile the size
+ * decision 1): the kinds of thing Studio keeps, each a tile the size
  * of the others, A to Z so the order ranks nothing, each opening its own
  * list. Deleting any of it stays in Settings › My data. One live line above
  * the tiles, and not one of them, says what home is making (SFEED13).
@@ -25,12 +26,12 @@ const StudioIndex = (): JSX.Element => (
     <ul className="grid grid-cols-2 gap-2">
       {STUDIO_KINDS.map((kind) => (
         <li key={kind}>
-          <Link to={kindPath(kind)} className={TILE}>
+          <CardRoute to={kindPath(kind)} className="h-full">
             <TileBody
               title={KIND_WORDS[kind].name}
               line={KIND_WORDS[kind].line}
             />
-          </Link>
+          </CardRoute>
         </li>
       ))}
     </ul>
@@ -39,6 +40,7 @@ const StudioIndex = (): JSX.Element => (
       <Link to="/settings/data" className="underline underline-offset-4">
         {WORDS.myData}
       </Link>
+      {WORDS.deletingAlso}
     </p>
   </StudioPage>
 )

@@ -1,0 +1,154 @@
+/**
+ * The owner's rules for what the interview week's screen says (IW5): no score,
+ * grade, verdict or "you said", nothing that calls a take good or bad, and no
+ * status code or internal name. A card's target length and the 3-minute cap
+ * are shown, as #2936 asks, and the reading band shows a take's time against
+ * its aim, as the agreed prototype does (C615).
+ */
+import { describe, expect, it } from "vitest"
+
+import { INTERVIEW_WORDS } from "@/lib/interview-week/words"
+
+import { WEEK } from "./fixture"
+
+/** Every string the table can produce, with sample arguments. */
+function everyWord(value: unknown): Array<string> {
+  if (typeof value === "string") return [value]
+  if (typeof value === "function") {
+    const samples =
+      value.length === 2
+        ? [
+            ["Backend engineer", "Tidewell"],
+            [2, "2026-11-17T10:00:00.000Z"],
+            [1, 6],
+          ]
+        : [
+            [1],
+            [3],
+            [90],
+            [WEEK],
+            ["2026-11-17T10:00:00.000Z"],
+            [{ kind: "pull", repo: "some-ui", number: 3170 }],
+            [{ kind: "doc", path: "docs/calls/C266.json" }],
+          ]
+    const said = samples.flatMap((sample) => {
+      try {
+        const word: unknown = Reflect.apply(value, undefined, sample)
+        return typeof word === "string" ? [word] : []
+      } catch {
+        return []
+      }
+    })
+    if (said.length === 0) throw new Error(`no sample says ${value.name}`)
+    return said
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.values(value).flatMap(everyWord)
+  }
+  return []
+}
+
+const SHOWN = everyWord(INTERVIEW_WORDS)
+
+// The study page names model answers good or poor (`../words.ts`).
+const { study: _study, ...rest } = INTERVIEW_WORDS
+const ABOUT_TAKES = everyWord(rest)
+
+const BANNED: ReadonlyArray<[string, RegExp]> = [
+  [
+    "a score or verdict",
+    /\b(score|points?|correct|incorrect|wrong|verdict|grade|rating|pass(ed)? the|fail(ed)?\b)/i,
+  ],
+  ["a level or streak", /\b(level|streak|xp)\b/i],
+  ["a miss counted", /\b(skipped|missed|you haven't)\b/i],
+  [
+    "the machinery",
+    /\b(\d{3} |request|status|sync|grant|draft|bundle|ref|of=|sha|undefined|null)\b/i,
+  ],
+]
+
+describe("the interview week's words (IW5)", () => {
+  it.each(BANNED)("never say %s", (_, pattern) => {
+    expect(SHOWN.filter((word) => pattern.test(word))).toEqual([])
+  })
+
+  it("never judge a take", () => {
+    expect(
+      ABOUT_TAKES.filter((word) =>
+        /\b(you said|good answer|bad answer|poor answer|well done|great)\b/i.test(
+          word
+        )
+      )
+    ).toEqual([])
+  })
+
+  it("show a target length as a person reads one", () => {
+    expect(INTERVIEW_WORDS.aim(90)).toBe("Aim for about 1 min 30 s")
+    expect(INTERVIEW_WORDS.aim(120)).toBe("Aim for about 2 min")
+    expect(INTERVIEW_WORDS.cap).toBe("A take stops at 3 min.")
+  })
+
+  // IWC1: what counts for the week is the send home has by the deadline.
+  // Home's record answers a question only from the send standing at the
+  // deadline, judged on arrival; a first take home holds unsent is kept but
+  // answers nothing (paulgsc/server interview_weeks.rs `week_record`,
+  // `put_sent`). Every sentence the table can say that says what counts names
+  // the send and home; none says a take counts by being on home, or by being
+  // sent before the deadline without reaching it.
+  it("say that the send home has is what counts (IWC1)", () => {
+    const sentences = SHOWN.flatMap((word) => word.split(/(?<=[.!?])\s+/))
+    const counting = sentences.filter(
+      (sentence) =>
+        /\bcounts?\b/i.test(sentence) &&
+        !/\b(can't|doesn't|don't|won't) count\b/i.test(sentence)
+    )
+    expect(counting.length).toBeGreaterThan(0)
+    expect(
+      counting.filter(
+        (sentence) =>
+          !/\bsen[dt]\b/i.test(sentence) || !/\bhome\b/i.test(sentence)
+      )
+    ).toEqual([])
+    expect(
+      sentences.filter((sentence) =>
+        /\b(what home (has|had|holds)|home (has|had) \d|sent by)\b/i.test(
+          sentence
+        )
+      )
+    ).toEqual([])
+  })
+
+  it("say what counts in these words (IWC1)", () => {
+    expect(INTERVIEW_WORDS.review.kept).toBe(
+      "Your first take of each question goes home on its own and is kept for good, but counts only if you send it. The rest stay on this phone until you send the week."
+    )
+    expect(INTERVIEW_WORDS.openUntil(WEEK)).toBe(
+      "The send home has by Sunday 23:59 is what counts, and is kept for good. Until then you can say any card, say one again and send the week again."
+    )
+    expect(INTERVIEW_WORDS.closed.line(WEEK)).toBe(
+      "It closed Sunday 23:59. The send home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here."
+    )
+  })
+
+  // The study's readers (#3228) stumbled on names that collide.
+  it("keep each name apart from the ones beside it (IW18)", () => {
+    const words = (name: string): Array<string> =>
+      name.toLowerCase().match(/[a-z]+/g) ?? []
+    const rungs = Object.values(INTERVIEW_WORDS.step).flatMap(({ name }) =>
+      words(name)
+    )
+    // The kind shares no word with the ladder's rungs, nor the phone's Read aloud.
+    for (const word of words(INTERVIEW_WORDS.reads)) {
+      expect(rungs).not.toContain(word)
+      expect(["read", "aloud"]).not.toContain(word)
+    }
+    // Delete names the same takes its confirm does: those still on this phone.
+    expect(INTERVIEW_WORDS.review.deleteAll).toMatch(/\bthis phone$/)
+    expect(INTERVIEW_WORDS.confirm.allTitle).toMatch(/\bon this phone\?$/)
+    expect(INTERVIEW_WORDS.review.deleteAll).not.toMatch(/\ball\b/i)
+  })
+
+  it("say the brief's week on the owner's clock", () => {
+    expect(INTERVIEW_WORDS.heading(WEEK)).toBe("Week 47 · due Sunday 23:59")
+  })
+})

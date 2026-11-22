@@ -1,0 +1,11 @@
+{
+  "id": "C70",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:.github/workflows/gate-verdict.yml"],
+  "chose": "gate-verdict.yml also runs on `check_run: completed`, only when the check run's app is not github-actions, so CodeQL's check run decides the gate too. Closing review of server#767 (d9f6e3a) found the trigger dead: GitHub does not run a check_run workflow for a check suite whose head SHA is associated with GitHub Actions, which every pull request head here is. Removed before merge; C71 replaces it.",
+  "options": ["workflow_run only", "workflow_run and check_run"],
+  "gray": "It is not verified whether GitHub sends check_run for Actions' own check runs; if it does, each adds a skipped run that uses no runner.",
+  "undo": "Nothing to undo: the trigger was removed before server#767 merged.",
+  "refs": ["server#762", "server#767", "#2833"]
+}

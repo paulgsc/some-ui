@@ -14,14 +14,18 @@ import { contracts as activityContracts } from "../contracts/activities.contract
 import { contracts as adminSettingContracts } from "../contracts/admin-settings.contract"
 import { contracts as aphContracts } from "../contracts/aph.contract"
 import { contracts as authContracts } from "../contracts/auth.contract"
+import { contracts as cardsEssayContracts } from "../contracts/cards-essays.contract"
 import { contracts as clipContracts } from "../contracts/clips.contract"
 import { contracts as compatContracts } from "../contracts/compat.contract"
 import { contracts as curriculumOperatorContracts } from "../contracts/curriculum-operator.contract"
 import { contracts as curriculumContracts } from "../contracts/curriculum.contract"
 import { contracts as episodeNoteContracts } from "../contracts/episode-notes.contract"
+import { contracts as feedVideoContracts } from "../contracts/feed-videos.contract"
 import { contracts as gameWeekLiveContracts } from "../contracts/game-week-live.contract"
+import { contracts as gameContracts } from "../contracts/games.contract"
 import { contracts as healthContracts } from "../contracts/health.contract"
 import { contracts as ideaContracts } from "../contracts/ideas.contract"
+import { contracts as interviewWeekContracts } from "../contracts/interview-weeks.contract"
 import { contracts as jobsContracts } from "../contracts/jobs.contract"
 import { contracts as koreanContracts } from "../contracts/korean.contract"
 import { contracts as leetypeFileContracts } from "../contracts/leetype-files.contract"
@@ -31,6 +35,7 @@ import { contracts as renderContracts } from "../contracts/renders.contract"
 import { contracts as routineContracts } from "../contracts/routine.contract"
 import { contracts as rustKeptContracts } from "../contracts/rust-kept.contract"
 import { contracts as rustRoundContracts } from "../contracts/rust-rounds.contract"
+import { contracts as rustWorkSpanContracts } from "../contracts/rust-work-spans.contract"
 import { contracts as sessionContracts } from "../contracts/sessions.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
 import { contracts as studioVideoContracts } from "../contracts/studio-videos.contract"
@@ -45,14 +50,18 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...adminSettingContracts,
   ...aphContracts,
   ...authContracts,
+  ...cardsEssayContracts,
   ...clipContracts,
   ...compatContracts,
   ...curriculumContracts,
   ...curriculumOperatorContracts,
   ...episodeNoteContracts,
+  ...feedVideoContracts,
+  ...gameContracts,
   ...gameWeekLiveContracts,
   ...healthContracts,
   ...ideaContracts,
+  ...interviewWeekContracts,
   ...jobsContracts,
   ...koreanContracts,
   ...leetypeFileContracts,
@@ -61,6 +70,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...renderContracts,
   ...routineContracts,
   ...rustKeptContracts,
+  ...rustWorkSpanContracts,
   ...rustRoundContracts,
   ...sessionContracts,
   ...shelfContracts,

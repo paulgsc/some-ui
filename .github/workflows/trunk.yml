@@ -28,7 +28,7 @@ jobs:
     name: Node CI (full workspace)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
@@ -90,7 +90,7 @@ jobs:
     if: always()
     permissions: {}
     steps:
-      - uses: re-actors/alls-green@v1.3.0
+      - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}
 # ── Optional: notify on failure ─────────────────────────────────────
@@ -99,7 +99,7 @@ jobs:
 #
 # - name: Notify on failure
 #   if: failure()
-#   uses: slackapi/slack-github-action@v1
+#   uses: slackapi/slack-github-action@fcfb566f8b0aab22203f066d80ca1d7e4b5d05b3 # v1.27.1
 #   with:
 #     payload: |
 #       {

@@ -11,19 +11,25 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept } from "@/lib/home-link/kept-runtime"
+import type { Pairing } from "@/lib/home-link/model"
 import type { HomePullPorts } from "@/lib/home-link/pull"
 import { homeRefresher } from "@/lib/home-link/pull"
+import { CHECK_MS } from "@/lib/pull-refresh/model"
 
 const link = vi.hoisted(() => ({
   /** Whether a run holds the link, which turns any other away (`keep`). */
   held: false,
+  /** The link's clock, epoch ms. */
+  now: 0,
 }))
 vi.mock("@/lib/home-link/index", () => ({
-  paired: (): boolean => true,
+  pairing: (): Pairing => ({ kind: "paired", id: "p" }),
+  LINK_CLOCK: { now: (): number => link.now },
 }))
 
 afterEach(() => {
   link.held = false
+  link.now = 0
 })
 
 type Lane = Kept & { runs: number }
@@ -35,7 +41,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
     ...createKept({
       exchange: () => ends(),
       keep: async (run) => {
-        if (link.held) return null
+        if (link.held) return { kind: "refused", why: "busy" }
         link.held = true
         counted.runs += 1
         try {
@@ -44,7 +50,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
           link.held = false
         }
       },
-      paired: () => true,
+      pairing: (): Pairing => ({ kind: "paired", id: "p" }),
       homeBusy: () => false,
       now: () => 7,
     }),
@@ -64,6 +70,7 @@ const pullOver = (
     watched: () => new Set(lanes),
     doc: { visibilityState: "visible" },
     free: () => Promise.resolve(),
+    lookAgain: () => undefined,
     ...over,
   }).checkAgain()
 
@@ -127,25 +134,6 @@ describe("a pull's ask of home", () => {
     expect(lanes[0]?.runs).toBe(0)
   })
 
-  it("tells a screen its lane's end in the pull under way, one run a lane between them (PULL2)", async () => {
-    const [shown, other] = [lane(silent), lane(synced)]
-    const home = homeRefresher({
-      watched: () => new Set([other, shown]),
-      doc: { visibilityState: "visible" },
-      free: () => Promise.resolve(),
-    })
-    const heard = home.ended(shown)
-    const all = home.checkAgain()
-    expect(await heard).toEqual({ kind: "unreachable", at: 7 })
-    await expect(all).rejects.toThrow()
-    expect([other.runs, shown.runs]).toEqual([1, 1])
-    // That pull is over: the next one asks again, and a lane not watched
-    // hears nothing.
-    expect(await home.ended(other)).toEqual({ kind: "synced", at: 7 })
-    expect(other.runs).toBe(2)
-    expect(await home.ended(lane(synced))).toBeNull()
-  })
-
   it("asks only the lanes still watched when their turn comes", async () => {
     const lanes = new Set<Lane>()
     const gone = lane(synced)
@@ -158,7 +146,47 @@ describe("a pull's ask of home", () => {
     await homeRefresher({
       watched: () => lanes,
       doc: { visibilityState: "visible" },
+      lookAgain: () => undefined,
     }).checkAgain()
     expect([first.runs, gone.runs]).toEqual([1, 0])
+  })
+
+  it("lets the link's hold away from home go before it asks (AW1)", async () => {
+    const order: Array<string> = []
+    const one = lane(() => {
+      order.push("ran")
+      return synced()
+    })
+    await pullOver([one], { lookAgain: () => order.push("look again") })
+    expect(order).toEqual(["look again", "ran"])
+  })
+
+  it("no longer holds the pulls after it once out longer than a pull may take: the next asks afresh (HERD2)", async () => {
+    // A lane whose first run never ends (a request that never settles).
+    let first = true
+    const hung = lane(() => {
+      if (!first) return synced()
+      first = false
+      return new Promise<HomeExchanged>(() => undefined)
+    })
+    let asked = 0
+    const refresher = homeRefresher({
+      watched: () => new Set([hung]),
+      doc: { visibilityState: "visible" },
+      free: () => Promise.resolve(),
+      lookAgain: () => {
+        asked += 1
+      },
+    })
+    void refresher.checkAgain()
+    await Promise.resolve()
+    // Within a pull's time, the next pull joins the one out.
+    link.now = CHECK_MS - 1
+    void refresher.checkAgain()
+    expect(asked).toBe(1)
+    // Past it, the next is a pull of its own.
+    link.now = CHECK_MS
+    void refresher.checkAgain()
+    expect(asked).toBe(2)
   })
 })

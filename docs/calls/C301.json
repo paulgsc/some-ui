@@ -1,0 +1,18 @@
+{
+  "id": "C301",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/mailbox/pass.rs",
+    "server:crates/db/voice/src/conveyor.rs",
+    "server:crates/db/mailbox/src/lib.rs"
+  ],
+  "chose": "A pickup's bytes live in the existing mailbox_outgoing, keyed by name, as every other file home hands the mailbox.",
+  "options": [
+    "(a) a new pickup table",
+    "(b) the existing mailbox_outgoing, keyed by name"
+  ],
+  "gray": "mailbox_outgoing is already append-only, holds one body per name, and is handed until answered, which is exactly \"keep the first bytes\", and it adds no new store to the ledger; a table of its own would make pickups easier to query apart.",
+  "undo": "Add a pickup table and backfill it from mailbox_outgoing where folder = 'pickup'.",
+  "refs": ["#2872", "#2875", "server#851"]
+}

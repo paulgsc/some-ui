@@ -1,0 +1,19 @@
+{
+  "id": "C240",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/take-conveyor/model.ts",
+    "apps/www/src/lib/take-conveyor/runtime.ts",
+    "apps/www/src/lib/home-link/take-stations.ts"
+  ],
+  "chose": "A take is In the oven until someone moves it: nothing is written when it is recorded, and home reads a take with no moves as In the oven. Each move is the phone's own record (kept until home answers, never removed), sent last on the voice lane, naming where it was made from and the take's newest move number it saw (moves are ordered by number, never by a clock); a move home answers stale (the take had moved on) or off the conveyor is dropped, with the later moves made along its chain, and said on the take's row, not made again from where the take is now.",
+  "options": [
+    "no row at recording; In the oven is what no move means",
+    "home writes an In the oven row as each take arrives",
+    "the phone sends an In the oven move with each take"
+  ],
+  "gray": "The owner asked that capture stay one tap and that every change be kept with when it happened. A row at recording would put the first station in the history too, but it adds a write to every take, including the takes of the years before the conveyor existed.",
+  "undo": "Have home write a first row as each Studio take arrives, and read stationAt as that row's time.",
+  "refs": ["#2873", "#2872"]
+}

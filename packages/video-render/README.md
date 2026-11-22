@@ -59,7 +59,7 @@ Each module's header says why it is the way it is.
   essay; `essayScenes` gives the scenes in order, a group per ticket. www's
   `/essay` stage draws it in template A, the call's two bubbles.
   `essayCutList` lays a recording on a timeline (RR16, #2691): the tutor in
-  `ESSAY_VOICES`' voice, each answer the owner's own take, played whole and
+  the voice its version gives each chapter (`essaySceneVoices`, C840), each answer the owner's own take, played whole and
   named as theirs, not the speaker's; www's `record:essay` records it.
 - `src/clip.ts`: clips (SFEED7), what a user-facing change built, kept in
   `paulgsc/testing`'s `clips/` and listed for Studio's Library. A walked side
@@ -97,6 +97,16 @@ Each module's header says why it is the way it is.
   video carries the mark as a video-wide `authorship` burn-in with no
   params, between a bare card first and last; the renderer writes its
   params from the scenes.
+- `src/badges.ts`: which status badges (CARDS1, #2466) the video showed
+  before each scene, written into each scene's burn-in that shows one, so a
+  badge spells itself out at its first appearance in the video only.
+- `src/stamp.ts`: the cut list's `stamp` (CARDS4, #2469), the commits its
+  cards were checked against and the day, given to every card, so no card
+  carries its own.
+- `src/cards-essay.ts`: a cards essay (CARDS7, #2979), a cut list of cards
+  alone that home renders as it renders the call: its key, its index in
+  `paulgsc/testing`'s `cards/`, and `render cards-check`. A session writes
+  the cut list (`CARDS-ROUTINE.md`), and code and home do the rest.
 - `src/timeline-v1.ts`: the build-journal skill's `timeline.json` shorts as
   cut list v2.
 - `src/cli.ts`: the command, and its usage:
@@ -132,6 +142,16 @@ A scene's picture may be a HyperFrames composition (HYPER2, #2725): `{ kind:
 name, its inputs, and the files in the video's folder it reads. The renderer draws it
 through the `compositions` port, just before the scene's segment, and lays the scene's
 captions over it; `@some-ui/video-motion`'s `motion video` fills the port.
+
+`src/zoom.ts`'s `zoomPicture` makes one from a `some-ui.screens/1` record (`src/screen.ts`):
+`screen-zoom` on one screen, zoomed to the regions named, in order (RR31, #3288). The Rust
+essay's question scenes use it once `record:essay --week-file` has photographed the week's
+cards: the ticket's question, each speak-to point, the program and rustc's first two
+diagnostics (`essayZoomRefs`, C797). Without the cards the essay renders as before. A cards
+essay places one through a screen of the app (`src/snip.ts`, SNIPS4; C818), zoomed or whole.
+`src/sample/videos/phone-card` is one, on a mock Rust Rounds card handed as `snips/`; like
+any essay with a screen it is drawn only by `record:cards --snips`, never by `render` on its
+folder alone.
 
 ## Captions, a scene at a time
 

@@ -18,16 +18,21 @@ import { shareUris } from "@/lib/share-files"
 
 import { DIR, videoFiles } from "./files"
 import type { ChaptersRead, Feed, ListState } from "./model"
-import { readChapters, readEpisodes, readLinkSaved, readPart } from "./model"
+import {
+  FEEDS,
+  partOf,
+  readChapters,
+  readEpisodes,
+  readLinkSaved,
+} from "./model"
 import { PART_BYTES } from "./parts"
 import type { FeedVideos } from "./runtime"
 import { createFeedVideos } from "./runtime"
 import { FEED_WORDS } from "./words"
 
 export type { Feed } from "./model"
-export { FEEDS } from "./model"
 export type { FeedVideos } from "./runtime"
-export { FEED_WORDS, VIDEOS_WORDS } from "./words"
+export { episodeName, FEED_WORDS, VIDEOS_WORDS } from "./words"
 
 /** A feed's runtime and its drag down, made together. */
 type Made = { readonly videos: FeedVideos; readonly refresher: Refresher }
@@ -38,7 +43,7 @@ function create(feed: Feed): Made {
   const videos = createFeedVideos({
     async list(): Promise<ListState> {
       const asked = await askWhileBusy(() => askEpisodes(feed))
-      if (asked.kind === "unpaired") return asked
+      if (asked.kind === "unpaired" || asked.kind === "busy") return asked
       if (asked.kind === "unreachable") return { kind: "away" }
       return readEpisodes(asked.answer)
     },
@@ -46,9 +51,7 @@ function create(feed: Feed): Made {
       const asked = await askWhileBusy(() =>
         askVideoPart(feed, key, start, end)
       )
-      return asked.kind === "answered"
-        ? readPart(asked.answer)
-        : { kind: "away" }
+      return partOf(asked)
     },
     files: videoFiles(feed),
     async share(uri, key) {
@@ -59,7 +62,7 @@ function create(feed: Feed): Made {
     async saveLink(key, link) {
       const asked = await sendLink(feed, key, link)
       return asked.kind === "answered"
-        ? readLinkSaved(asked.answer)
+        ? readLinkSaved(feed, asked.answer)
         : { kind: "away" }
     },
     partBytes: PART_BYTES,
@@ -71,7 +74,11 @@ function create(feed: Feed): Made {
     async checkAgain(): Promise<void> {
       await videos.open()
       const { list } = videos.getSnapshot()
-      if (list.kind === "away" || list.kind === "unreadable") {
+      if (
+        list.kind === "away" ||
+        list.kind === "busy" ||
+        list.kind === "unreadable"
+      ) {
         throw new Error("home didn't answer")
       }
     },
@@ -112,3 +119,44 @@ export async function episodeChapters(
     ? readChapters(asked.answer)
     : { kind: "none" }
 }
+
+/** Every feed's list, as one snapshot (`lib/episodes-feed`'s `FeedLists`). */
+export type EveryFeedList = Readonly<Record<Feed, ListState>>
+
+let lastLists: EveryFeedList | null = null
+
+/**
+ * Every feed's list at once, for Studio's Episodes (EPISODES2): the same
+ * snapshot while no feed's list has moved, so a screen re-renders only when
+ * one does.
+ */
+function everyList(): EveryFeedList {
+  const list = (feed: Feed): ListState => feedVideos(feed).getSnapshot().list
+  const now: EveryFeedList = {
+    call: list("call"),
+    "cards-essay": list("cards-essay"),
+    "interview-essay": list("interview-essay"),
+    "playoff-delta": list("playoff-delta"),
+    report: list("report"),
+    "rust-essay": list("rust-essay"),
+  }
+  if (
+    lastLists !== null &&
+    FEEDS.every((feed) => lastLists?.[feed] === now[feed])
+  ) {
+    return lastLists
+  }
+  lastLists = now
+  return now
+}
+
+/** Every feed's videos, read and watched together. */
+export const everyFeed = {
+  subscribe(listener: () => void): () => void {
+    const stops = FEEDS.map((feed) => feedVideos(feed).subscribe(listener))
+    return () => {
+      for (const stop of stops) stop()
+    }
+  },
+  getSnapshot: everyList,
+} as const

@@ -27,6 +27,8 @@ import {
   triesAgain,
   UNREADABLE,
 } from "./live-model"
+import type { Pairing } from "./model"
+import { READING, samePairing } from "./model"
 
 /** How often the phone checks the clocks, which also keeps the socket warm. */
 export const PING_MS = 15_000
@@ -69,7 +71,12 @@ export type LiveState = {
   /** Tries since home last answered, for the wait before the next. */
   readonly attempt: number
   /** The pairing the current opening was made under. */
-  readonly pairedAs: string | null
+  readonly pairedAs: Pairing
+  /**
+   * The home link holds what the phone starts on its own, away from home
+   * (AW1, `./away`): no socket is asked for until the hold ends.
+   */
+  readonly held: boolean
 }
 
 export type LiveTimer = "quiet" | "ping" | "retry"
@@ -78,12 +85,14 @@ export type LiveEvent =
   | { readonly kind: "watch" }
   | { readonly kind: "unwatch" }
   | { readonly kind: "visibility"; readonly hidden: boolean }
-  | { readonly kind: "relinked"; readonly pairingId: string | null }
+  | { readonly kind: "relinked"; readonly pairingId: Pairing }
+  /** The home link's hold away from home began or ended (AW1). */
+  | { readonly kind: "home"; readonly held: boolean }
   | { readonly kind: "choose"; readonly choice: FeedChoice }
   | {
       readonly kind: "pairing-read"
       readonly at: number
-      readonly pairingId: string | null
+      readonly pairingId: Pairing
     }
   | {
       readonly kind: "paired"
@@ -127,6 +136,8 @@ export type LiveEffect =
     }
   | { readonly kind: "disarm" }
   | { readonly kind: "keep-week"; readonly games: ReadonlyArray<Game> }
+  /** Tell the home link home answered (AW1): a socket opened. */
+  | { readonly kind: "reached" }
 
 export type LiveStep = {
   readonly state: LiveState
@@ -148,7 +159,8 @@ export function initialLive(games: ReadonlyArray<Game>): LiveState {
     watched: false,
     hidden: false,
     attempt: 0,
-    pairedAs: null,
+    pairedAs: READING,
+    held: false,
   }
 }
 
@@ -187,10 +199,14 @@ function end(state: LiveState, next: FeedLink): LiveStep {
   )
 }
 
-/** Opens a socket, if the recorder watches in front and none is open. */
+/**
+ * Opens a socket, if the recorder watches in front, none is open and the
+ * home link does not hold the phone away (AW1).
+ */
 function connect(previous: LiveStep): LiveStep {
   const { state } = previous
-  if (state.phase !== "idle" || state.hidden || !state.watched) return previous
+  if (state.phase !== "idle" || state.hidden || !state.watched || state.held)
+    return previous
   const at = state.opening + 1
   return done({ ...state, phase: "pairing", opening: at }, [
     ...previous.effects,
@@ -206,7 +222,13 @@ function hello(state: LiveState): LiveStep {
   ])
 }
 
-/** The socket is gone with `code`: say where that leaves the phone. */
+/**
+ * The socket is gone with `code`: say where that leaves the phone. While the
+ * home link holds the phone away from home (AW1), the next try waits for the
+ * hold to end (`home`) rather than `retryDelayMs`. A socket that never
+ * opened starts no stretch itself: a refused handshake looks the same as
+ * silence, and home may still answer every request.
+ */
 function closed(state: LiveState, code: number): LiveStep {
   // Home could not have sent the `lastSeq` this phone told it (the phone
   // kept one across a home whose clock or counter moved): forget it and say
@@ -216,7 +238,8 @@ function closed(state: LiveState, code: number): LiveStep {
   }
   const next = linkAfterClose(code)
   const ended = end(state, next)
-  if (!triesAgain(next) || state.hidden || !state.watched) return ended
+  if (!triesAgain(next) || state.hidden || !state.watched || state.held)
+    return ended
   return done({ ...ended.state, attempt: state.attempt + 1 }, [
     ...ended.effects,
     {
@@ -303,8 +326,14 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
         ? end({ ...state, hidden: true }, "asking")
         : connect(done({ ...state, hidden: false }))
     }
+    case "home": {
+      if (event.held === state.held) return done(state)
+      return event.held
+        ? done({ ...state, held: true })
+        : connect(done({ ...state, held: false }))
+    }
     case "relinked": {
-      if (event.pairingId === state.pairedAs) return done(state)
+      if (samePairing(event.pairingId, state.pairedAs)) return done(state)
       return connect(end({ ...state, attempt: 0, lastSeq: null }, "asking"))
     }
     case "choose": {
@@ -332,6 +361,7 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
       const said = hello({ ...state, phase: "open" })
       return done(said.state, [
         { kind: "arm", timer: "quiet", ms: QUIET_MS, at: event.at },
+        { kind: "reached" },
         ...said.effects,
         { kind: "ping" },
         { kind: "arm", timer: "ping", ms: PING_MS, at: event.at },

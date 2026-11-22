@@ -5,8 +5,8 @@ import { defineProfiles } from "@some-ui/vite-config/audience"
 import type { Plugin } from "vite"
 
 /**
- * The deployables this app builds into, selected by `SOME_UI_PROFILE`. A
- * profile lists the audiences whose `packages/ui/*` workspaces it bundles;
+ * The builds this app makes, selected by `SOME_UI_PROFILE`: three deployables
+ * and one capture-only build (`snips`). A profile lists the audiences whose `packages/ui/*` workspaces it bundles;
  * the rest are stubbed (they still typecheck and route, but ship no code).
  * About bundle size, not access.
  *
@@ -14,6 +14,12 @@ import type { Plugin } from "vite"
  *   served on the home network. Carries everything but `apk`.
  * - **`pages`** - the GitHub Pages build (.github/workflows/pages.yml):
  *   `public` plus `web`.
+ * - **`snips`** - the build Snips Capture photographs
+ *   (.github/workflows/snips-capture.yml, `docs/snips.md`): the viewer's
+ *   build kept whole, every route the public site no longer serves (it is a
+ *   CV, C1055, #3401) included, so every route an essay names by its snip
+ *   still resolves. Built only by that capture and never deployed, so
+ *   check-bundle-paths.ts does not check it (`CAPTURE_PROFILE`, build.paths.ts).
  * - **`mobile`** - the Android app (apps/mobile's `build:web`): `public` plus
  *   `apk` (workspaces that need the phone, e.g. the soundbite recorder), and
  *   sessions only (`src/lib/app-surface`). Run `vite dev` with
@@ -29,9 +35,20 @@ import type { Plugin } from "vite"
  */
 export const MOBILE_PROFILE = "mobile"
 
+/** The capture-only profile Snips Capture builds (see `profiles`, above). */
+export const CAPTURE_PROFILE = "snips"
+
+/**
+ * The profiles whose build is the viewer's: sample data, nothing kept
+ * (`VIEWER_BUILD`, src/lib/data-mode). vite.config.ts gives each the same
+ * connect policy (LA5), so a snip shows what the public site does.
+ */
+export const VIEWER_PROFILES: ReadonlyArray<string> = ["pages", CAPTURE_PROFILE]
+
 export const profiles = defineProfiles({
   lan: { audiences: ["public", "lan", "web"] },
   pages: { audiences: ["public", "web"] },
+  [CAPTURE_PROFILE]: { audiences: ["public", "web"] },
   [MOBILE_PROFILE]: { audiences: ["public", "apk"] },
 })
 

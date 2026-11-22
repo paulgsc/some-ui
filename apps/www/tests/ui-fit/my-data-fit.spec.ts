@@ -16,14 +16,9 @@
  *   pnpm --filter www test:e2e tests/ui-fit/my-data-fit.spec.ts
  */
 
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 
-import {
-  describeViolation,
-  findViolations,
-  PHONE_VIEWPORTS,
-  servePhonePage,
-} from "./harness"
+import { expectFitsPhone, PHONE_VIEWPORTS, servePhonePage } from "./harness"
 import type { MyDataId } from "./phone-page/my-data"
 
 const PAGE = servePhonePage()
@@ -33,24 +28,6 @@ const FIXTURES: ReadonlyArray<MyDataId> = [
   "my-data-unpaired",
   "my-data-kind",
 ]
-
-/** No violation, and nothing wider than the phone. */
-async function expectFits(page: Page, where: string): Promise<void> {
-  const { mounted, violations } = await findViolations(page)
-  expect(mounted).toBe(true)
-  expect(
-    violations.map((violation) => describeViolation(where, violation))
-  ).toEqual([])
-  const wide = await page.evaluate(() => {
-    const body = document.querySelector<HTMLElement>(
-      "[data-scroll-intent=page]"
-    )!
-    return { scroll: body.scrollWidth, room: body.clientWidth }
-  })
-  expect(wide.scroll, `${where} is wider than the phone`).toBeLessThanOrEqual(
-    wide.room + 1
-  )
-}
 
 test.describe("My data fits the phone", () => {
   PAGE.skipUnbuilt()
@@ -67,12 +44,12 @@ test.describe("My data fits the phone", () => {
         await page.goto(PAGE.url(fixture), { waitUntil: "load" })
         await expect(page.locator("[data-fit-slot] li").first()).toBeVisible()
         expect(errors, errors.join("\n")).toEqual([])
-        await expectFits(page, fixture)
+        await expectFitsPhone(page, fixture)
 
         if (fixture === "my-data") {
           await page.getByRole("button", { name: "Show as a table" }).click()
           await expect(page.getByRole("table")).toHaveCount(3)
-          await expectFits(page, `${fixture} with its tables`)
+          await expectFitsPhone(page, `${fixture} with its tables`)
         }
       })
     }

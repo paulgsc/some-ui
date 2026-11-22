@@ -1,0 +1,15 @@
+{
+  "id": "C101",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["packages/ui/rust-rounds/src/lib/monday/finish.ts"],
+  "chose": "Until the decay record (RR19) derives it, the Monday routine's finish step draws the essay's chart: a row for each concept the week's tickets named, a column for each week the mailbox holds an essay for (at most 12, this one last), and each cell the highest SOLO level of that week's answered tickets naming the concept, silent when every ticket naming it went unanswered, unmet when none named it.",
+  "options": [
+    "draw the chart from the mailbox's weeks and essays by that rule",
+    "draw only this week's column",
+    "leave the chart to RR19 and hold every essay until then"
+  ],
+  "gray": "The essay's format requires a chart, #2231 gives deriving it to RR19, which isn't built, and C45's sample chart was drawn by hand; nothing said what an essay written before RR19 shows.",
+  "undo": "Replace chartOf in finish.ts with RR19's derivation once it lands.",
+  "refs": ["#2693", "#2695", "#2231"]
+}

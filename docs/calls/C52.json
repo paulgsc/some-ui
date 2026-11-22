@@ -1,0 +1,14 @@
+{
+  "id": "C52",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:crates/db/rust_round/src/sent.rs"],
+  "chose": "Re-sent weeks go in a revisions table, rust_week_resend (rev from 2), beside an untouched rust_week_sent, with additive revision and sends fields.",
+  "options": [
+    "rebuild rust_week_sent with a revision column",
+    "a new side table for revisions"
+  ],
+  "gray": "The brief allowed a new table and a ledger entry but refused a reshape, and a side table fit append-only #2474.",
+  "undo": "Nothing to undo: C53 replaced it the same day, after the owner's draft and final decision, and it never merged.",
+  "refs": ["server#770", "#2832", "#2833"]
+}

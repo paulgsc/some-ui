@@ -11,7 +11,9 @@
  * Hand-written against paulgsc/server's RR14 handlers, as RR14-home settled
  * them and paulgsc/server#770 (RR22) changed them: `RecordSchema` is the
  * week's record, its `sent` the draft standing before the deadline
- * (`draft: true`) or the final after it, and `LogListSchema` the list
+ * (`draft: true`) or the final after it, each ticket's `decisions` the
+ * decision at each of its forks that send carried (RR29, from contract
+ * epoch 24, paulgsc/server's RR29 change), and `LogListSchema` the list
  * of sittings by id, revision and the SHA-256 of the latest revision as sent.
  *
  * **Who may call.** A paired phone only (`subject::Paired`): no session is
@@ -32,7 +34,7 @@
 
 import { z } from "zod"
 
-import { defineContract } from "../src/contract"
+import { defineContract, pairedPhoneOnly } from "../src/contract"
 
 /** A week no routine writes, in the id's own form. */
 const ABSENT_WEEK = "1999-w01"
@@ -47,7 +49,13 @@ const When = z.iso.datetime({ offset: true })
 const NoteId = z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/)
 const Ticket = z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/)
 
-/** A week's answers as the phone keeps them (`WeekSent`), which it sends exactly. */
+/**
+ * A week's answers as the phone keeps them (`WeekSent`), which it sends
+ * exactly; from contract epoch 24 with the decision at each fork (RR29,
+ * `verdicts`, each named `<week>:<ticket>:<n>:verdict`), and from epoch 25
+ * the week's opening takes (#3269, C736), ref `<week>:opening:<n>`, which
+ * the phone's `WeekSent` gains with its opening pages.
+ */
 const SENT = {
   week: ABSENT_WEEK,
   at: "1999-01-05T12:00:00.000Z",
@@ -55,7 +63,29 @@ const SENT = {
     { ticket: "QM-1", take: "take-1", recordedAt: "1999-01-05T11:59:00.000Z" },
   ],
   passed: [],
+  verdicts: [
+    {
+      ref: `${ABSENT_WEEK}:QM-1:1:verdict`,
+      decision: { kind: "option", option: "B" },
+    },
+  ],
+  opening: [
+    {
+      n: 1,
+      take: "take-opening-1",
+      recordedAt: "1999-01-05T11:58:00.000Z",
+      version: 1,
+      ms: 24_000,
+    },
+  ],
 }
+
+/** A fork's decision as home keeps it (RR29): an option, the owner's own, or left alone. */
+const Decision = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("option"), option: z.string().regex(/^[A-F]$/) }),
+  z.object({ kind: z.literal("own") }),
+  z.object({ kind: z.literal("recommended-by-default") }),
+])
 
 const PASTE_AT = "1999-01-05T12:00:00.000Z"
 
@@ -86,8 +116,35 @@ const RecordSchema = z.object({
       take: NoteId.nullable(),
       recordedAt: When.nullable(),
       opens: z.number().int().nonnegative(),
+      /**
+       * The decision at each fork sent, by fork from 1 (RR29): a home
+       * before contract epoch 24 has none to say.
+       */
+      decisions: z
+        .array(
+          z.object({ fork: z.number().int().positive(), decision: Decision })
+        )
+        .optional(),
     })
   ),
+  /**
+   * The opening's answers the week's essay plays (#3269, C736): for each
+   * question n, the newest kept take of its answer under the week's opening
+   * version, from this week or an earlier one, with how long it runs when
+   * the phone said (epoch 25). A home from before it says none.
+   */
+  opening: z
+    .array(
+      z.object({
+        n: z.int().min(1).max(3),
+        take: NoteId,
+        recordedAt: When,
+        week: z.string(),
+        version: z.int().positive(),
+        ms: z.int().nonnegative().optional(),
+      })
+    )
+    .optional(),
   unanswered: z.array(Ticket),
   pastes: z.array(
     z.object({
@@ -111,40 +168,6 @@ const LogListSchema = z.object({
   ),
 })
 
-/** The three answers every route gives a caller that isn't a paired phone, and nothing is kept. */
-function strangers(
-  id: string,
-  method: "GET" | "PUT",
-  path: string,
-  what: string,
-  request: { path?: Record<string, string>; body?: unknown }
-): Array<ReturnType<typeof defineContract>> {
-  const mutates = method === "PUT"
-  return [
-    defineContract({
-      id: `${id}_signed_out`,
-      module: "rust_rounds",
-      method,
-      path,
-      summary: `${what} is a paired phone's: without a session it is a 401`,
-      ...(mutates ? { mutates } : {}),
-      request,
-      expect: { status: 401 },
-    }),
-    defineContract({
-      id: `${id}_browser`,
-      module: "rust_rounds",
-      session: true,
-      method,
-      path,
-      summary: `${what} is a paired phone's: a browser's cookie session is a 403`,
-      ...(mutates ? { mutates } : {}),
-      request,
-      expect: { status: 403 },
-    }),
-  ]
-}
-
 export const contracts = [
   defineContract({
     id: "rust-weeks.sent_absent",
@@ -158,7 +181,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK }, body: SENT },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-weeks.sent",
     "PUT",
     "/rust-weeks/:id/sent",
@@ -181,7 +205,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK, at: PASTE_AT }, body: PASTE },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-weeks.paste",
     "PUT",
     "/rust-weeks/:id/pastes/:at",
@@ -210,7 +235,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK } },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-weeks.record",
     "GET",
     "/rust-weeks/:id/record",
@@ -230,7 +256,8 @@ export const contracts = [
       "this subject's sittings of the card-era log home keeps: each by id, when it started, its latest revision, the SHA-256 of that revision as sent and when it was written",
     expect: { status: 200, schema: LogListSchema },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-round-log.list",
     "GET",
     "/rust-round-log/sessions",
@@ -260,7 +287,8 @@ export const contracts = [
     request: { path: { id: ABSENT_SITTING }, body: MISPLACED_SITTING },
     expect: { status: 422 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-round-log.put",
     "PUT",
     "/rust-round-log/sessions/:id",

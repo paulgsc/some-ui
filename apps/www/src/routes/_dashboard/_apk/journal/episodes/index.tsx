@@ -1,40 +1,55 @@
 import type { JSX } from "react"
 import { STUDIO_WORDS } from "@some-ui/soundbites"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
-import {
-  FEED_FACTS,
-  FEEDS_A_TO_Z,
-  KIND_WORDS,
-  STUDIO_INDEX_WORDS,
-} from "@/lib/studio-index"
+import type { Feed } from "@/lib/feeds"
+import { isFeed } from "@/lib/feeds"
+import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { CardRoute } from "@/components/card-route"
 import { FeedEpisodes } from "@/components/studio/feed-episodes"
-import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.episodes
 
+type EpisodesSearch = { genre?: Feed }
+
+/** The genre a link filters to, where it names a feed; else every one. */
+function validateEpisodesSearch(
+  search: Record<string, unknown>
+): EpisodesSearch {
+  const { genre } = search
+  return isFeed(genre) ? { genre } : {}
+}
+
 /**
- * Studio's Episodes (SFEED1, #2731): every feed's episodes as home holds
- * them (ST38, FEED4), the feeds A to Z and each one's newest first, each
- * opening its own page; and the videos being made in sittings.
+ * Studio's Episodes (SFEED1, #2731; EPISODES2, #3067): every feed's episodes
+ * as home holds them (ST38, FEED4), mixed and by week, the newest first,
+ * under a chip per genre that filters them (in the link, so the phone's back from
+ * an episode keeps it); the videos being made in sittings lead All.
  */
-const Episodes = (): JSX.Element => (
-  <StudioPage
-    heading={KIND_WORDS.episodes.name}
-    intro={WORDS.intro}
-    back="index"
-  >
-    {FEEDS_A_TO_Z.map((feed) => (
-      <Part key={feed} label={FEED_FACTS[feed].name}>
-        <FeedEpisodes feed={feed} pairWords={STUDIO_WORDS.pair.pair} />
-      </Part>
-    ))}
-    <Link to="/journal/episodes/making" className={TILE}>
-      <TileBody title={WORDS.making} line={WORDS.makingLine} />
-    </Link>
-  </StudioPage>
-)
+const Episodes = (): JSX.Element => {
+  const { genre } = Route.useSearch()
+  return (
+    <StudioPage
+      heading={KIND_WORDS.episodes.name}
+      intro={WORDS.intro}
+      back="index"
+    >
+      <FeedEpisodes
+        chip={genre ?? "all"}
+        chips
+        pairWords={STUDIO_WORDS.pair.pair}
+        top={
+          <CardRoute to="/journal/episodes/making">
+            <TileBody title={WORDS.making} line={WORDS.makingLine} />
+          </CardRoute>
+        }
+      />
+    </StudioPage>
+  )
+}
 
 export const Route = createFileRoute("/_dashboard/_apk/journal/episodes/")({
+  validateSearch: validateEpisodesSearch,
   component: Episodes,
 })

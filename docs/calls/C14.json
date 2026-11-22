@@ -1,0 +1,17 @@
+{
+  "id": "C14",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/call-facts.ts",
+    "packages/video-render/CALL-ROUTINE.md"
+  ],
+  "chose": "The weekly call voices the calls that reached docs/calls.json on main in its week, or were agreed to in it, read from the record's history.",
+  "options": [
+    "the week's new calls",
+    "every call the owner hasn't agreed to yet"
+  ],
+  "gray": "#2637 left open whether the call voices only calls the owner hasn't heard; a new call is one they haven't.",
+  "undo": "Change which entries callsEntered hands the routine (call-facts.ts).",
+  "refs": ["#2637"]
+}

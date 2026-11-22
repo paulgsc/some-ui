@@ -1,0 +1,12 @@
+{
+  "id": "C5",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": ["apps/www/src/components/device-home-glyph.tsx"],
+  "chose": "The header's sharing-lane word became a fixed-size icon; only trouble states raise a notice.",
+  "options": ["shorter words", "the gear after the mark", "an icon"],
+  "gray": "The widest word wrapped at 360px, and nothing said which to give up.",
+  "undo": "Put the word back in device-home-glyph.tsx.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

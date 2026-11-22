@@ -25,13 +25,37 @@
  *   doesn't hold them (`notYetHome`); once one reaches home (`reachedHome`),
  *   the newest are read again, as soon as nothing plays, so it shows in
  *   home's list. A search shown is left as it is.
+ * - **Any take can be asked to be heard again** where home says it will
+ *   (`lib/hear-again`, #3339): a take home heard may have been heard wrong.
  * - **One sound at a time.** When the phone starts recording or playing one
  *   of its own takes (`phone`), what plays from home stops. Home's Play
  *   waits only while the phone records; while it plays, Play stops it
  *   (`readAudio`) and plays home's.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { PatternTake } from "@some-ui/voice-capture"
+import type { PatternTake, PlayEffect, PlaySlice } from "@some-ui/voice-capture"
+import {
+  audioRead,
+  played,
+  playEnded,
+  QUIET_PLAY,
+  stopped,
+} from "@some-ui/voice-capture"
+import type {
+  HearAgain,
+  HearAgainAnswer,
+  HearAgainEffect,
+  HearAgainSlice,
+} from "@soundbites/lib/hear-again/model"
+import {
+  askedToHearAgain,
+  hearAgainAnswered,
+  hearAgainDismissed,
+  hearAgainRead,
+  QUIET_HEAR_AGAIN,
+} from "@soundbites/lib/hear-again/model"
+
+import type { TakeOf } from "./kinds"
 
 /** What home heard in a take: empty `text` when it heard no words. */
 type LibraryHeard = {
@@ -41,9 +65,20 @@ type LibraryHeard = {
   readonly heardAt: string
 }
 
-/** One take as home keeps it. */
+/**
+ * One take as home keeps it, of whatever kind (#3219): what it is
+ * (`of`, when, how long, what home heard, where it's kept), what it is about
+ * (`ref` and `fields`, read by its kind's port, `./kinds`), and how it stands.
+ */
 export type LibraryTake = {
   readonly id: string
+  /**
+   * Its kind, as home calls it; `unknown` for one this phone doesn't know.
+   * Absent from a home before TAKES20, which lists Studio's alone.
+   */
+  readonly of?: TakeOf | "unknown" | undefined
+  /** What a kind keeps beside its ref (a game bite's moment); absent for none. */
+  readonly fields?: Readonly<Record<string, string>> | undefined
   /** What the take is for, as the phone named it when it went home. */
   readonly ref: string
   readonly recordedAt: string
@@ -51,8 +86,34 @@ export type LibraryTake = {
   readonly size: number
   /** When the owner set it aside; null while nothing has. */
   readonly setAsideAt: string | null
+  /**
+   * How home keeps it: kept, set aside, its recording let go (the
+   * record stays), or deleted for good with a receipt. Absent from a home
+   * before TAKES20: kept, or set aside by `setAsideAt`.
+   */
+  readonly status?:
+    | "kept"
+    | "set-aside"
+    | "recording-let-go"
+    | "deleted"
+    | undefined
   /** Null until home has heard it. */
   readonly heard: LibraryHeard | null
+  /**
+   * Where it is on Studio's conveyor (CONVEYOR1), as home names the station:
+   * null for a take on no conveyor (an idea's answer), absent from a home
+   * before it. What it means is the build's (`LibraryStations`).
+   */
+  readonly station?: string | null | undefined
+  /** When it was moved there; null for a take never moved. */
+  readonly stationAt?: string | null | undefined
+  /** Its newest move number on the conveyor: 0 for none, null on none. */
+  readonly stationSeq?: number | null | undefined
+  /**
+   * Whether home hears it again on the owner's ask (#3339); null or absent
+   * when it won't, as from a home before it.
+   */
+  readonly hearAgain?: HearAgain | null | undefined
 }
 
 /** How home picked the takes it lists. */
@@ -66,6 +127,13 @@ export type LibraryPage = {
   /** With a search, how many matched (can be more than listed); else null. */
   readonly matched: number | null
   readonly by: LibraryBy
+  /**
+   * Whether home listed every kind of take, or Studio's alone,
+   * as a home before it does: then what waits on a newer home is said.
+   */
+  readonly covers?: "every" | "studio" | undefined
+  /** Where the next page starts, as home marks it (a cursor the phone passes back as it came); null or absent on the last. */
+  readonly next?: string | null | undefined
 }
 
 /** How a read of home went. */
@@ -75,22 +143,39 @@ export type LibraryRead =
   | { readonly kind: "unpaired" }
   /** Home didn't answer. */
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was asked. */
+  | { readonly kind: "busy" }
   /** Home answered, but keeps no library of takes yet. */
   | { readonly kind: "older" }
   /** Home answered with something this phone can't read. */
   | { readonly kind: "unreadable" }
 
+/**
+ * What a read asks home for besides a search: the kinds (none
+ * named: every kind), the one topic picked, as home keys it, and the order.
+ * Home filters and orders what it keeps, so a filter or order sees every
+ * take, not only those read so far.
+ */
+export type LibraryQuery = {
+  readonly kinds: ReadonlyArray<TakeOf> | null
+  readonly about: string | null
+  readonly sort: "newest" | "oldest"
+}
+
+export const EVERY_KIND: LibraryQuery = {
+  kinds: null,
+  about: null,
+  sort: "newest",
+}
+
+const sameQuery = (a: LibraryQuery, b: LibraryQuery): boolean =>
+  a.about === b.about &&
+  a.sort === b.sort &&
+  (a.kinds ?? []).join() === (b.kinds ?? []).join() &&
+  (a.kinds === null) === (b.kinds === null)
+
 /** The most characters a search may hold, as home takes one. */
 export const SEARCH_MAX = 200
-
-/** What a take is for, by the ref the phone sent it home with. */
-export type TakeFor = "scene" | "idea" | "other"
-
-export function takeFor(ref: string): TakeFor {
-  if (ref.startsWith("idea:")) return "idea"
-  // A video's scene: `<project>:<shot>:<take>`.
-  return ref.split(":").length === 3 ? "scene" : "other"
-}
 
 /** The phone's own takes with no scene, and whether it has room for another. */
 export type LibraryPhoneSnapshot = {
@@ -131,41 +216,56 @@ export function reachedHome(
 
 type PhoneSound = "quiet" | "playing" | "recording"
 
-/** What plays: nothing, a take whose audio is on its way, or a take playing. */
-type LibraryPlayback =
-  | { readonly kind: "quiet" }
-  | { readonly kind: "loading"; readonly id: string }
-  | { readonly kind: "playing"; readonly id: string }
-
-export type LibraryState = {
-  /** The words in the search box, as typed. */
-  readonly draft: string
-  /** The search the list shows; null for the newest. */
-  readonly asked: string | null
-  readonly read: { readonly kind: "reading" } | LibraryRead
-  /** The latest read asked for; an answer to an earlier one is stale. */
-  readonly seq: number
-  readonly playback: LibraryPlayback
-  /** The latest play asked for; audio for an earlier one is stale. */
-  readonly plays: number
-  /** The take whose audio home couldn't give back, the last time it was asked. */
-  readonly unplayable: string | null
-  /** The search typed was longer than home takes, so nothing was asked. */
-  readonly tooLong: boolean
-  /** A take recorded here reached home since the newest were read. */
-  readonly behind: boolean
-  /** What the phone's own takes do: nothing, play one, or record one. */
-  readonly phone: PhoneSound
-}
+export type LibraryState = PlaySlice &
+  HearAgainSlice & {
+    /** The words in the search box, as typed. */
+    readonly draft: string
+    /** The search the list shows; null for the newest. */
+    readonly asked: string | null
+    /** What else the list was asked for. */
+    readonly query: LibraryQuery
+    readonly read: { readonly kind: "reading" } | LibraryRead
+    /** The latest read asked for; an answer to an earlier one is stale. */
+    readonly seq: number
+    /** The search typed was longer than home takes, so nothing was asked. */
+    readonly tooLong: boolean
+    /** A take recorded here reached home since the newest were read. */
+    readonly behind: boolean
+    /** What the phone's own takes do: nothing, play one, or record one. */
+    readonly phone: PhoneSound
+    /**
+     * The next page: being read; unanswered (home out of reach or
+     * busy: ask again); or refused because the list changed on home since
+     * (only a fresh read helps); null otherwise. The takes shown stay.
+     */
+    readonly older: "reading" | "away" | "changed" | null
+    /** More than the first page is shown: a take reaching home waits for a fresh read. */
+    readonly paged: boolean
+    /**
+     * A read for another kind, topic or order is on its way, the takes shown
+     * kept meanwhile: their next page is not asked for, being of the old list.
+     */
+    readonly refreshing: boolean
+  }
 
 export type LibraryIntent =
   | { readonly type: "typed"; readonly text: string }
   | { readonly type: "search" }
   | { readonly type: "newest" }
   | { readonly type: "readAgain" }
+  /** Show the next page, after the takes shown. */
+  | { readonly type: "older" }
+  /** Ask home for other kinds, another topic or the other order. */
+  | { readonly type: "query"; readonly query: LibraryQuery }
   | { readonly type: "play"; readonly id: string }
+  /** What plays stops: its row is about to leave the screen (a chip, TAKES3). */
+  | { readonly type: "stop" }
   /** The person closed "home can't give that take back". */
   | { readonly type: "noticeDismissed" }
+  /** Ask home to hear the take again (#3339). */
+  | { readonly type: "hearAgain"; readonly id: string }
+  /** The person closed what the screen said of the last ask. */
+  | { readonly type: "hearAgainDismissed" }
 
 export type LibraryEvent =
   | LibraryIntent
@@ -187,6 +287,11 @@ export type LibraryEvent =
   | { readonly type: "arrived" }
   /** The phone started or stopped recording or playing one of its own. */
   | { readonly type: "phone"; readonly sound: PhoneSound }
+  | {
+      readonly type: "hearAgainAnswered"
+      readonly seq: number
+      readonly answer: HearAgainAnswer
+    }
 
 export type LibraryEffect =
   /** Ask home for the takes: the newest when `q` is null. */
@@ -194,14 +299,12 @@ export type LibraryEffect =
       readonly type: "readTakes"
       readonly seq: number
       readonly q: string | null
+      /** Where to read on from, as home marked it; null for the first page. */
+      readonly after: string | null
+      readonly query: LibraryQuery
     }
-  | { readonly type: "readAudio"; readonly play: number; readonly id: string }
-  | {
-      readonly type: "startPlayback"
-      readonly play: number
-      readonly audio: Blob
-    }
-  | { readonly type: "stopPlayback" }
+  | PlayEffect
+  | HearAgainEffect
 
 export type LibraryStep = {
   readonly state: LibraryState
@@ -211,14 +314,17 @@ export type LibraryStep = {
 export const INITIAL_LIBRARY: LibraryState = {
   draft: "",
   asked: null,
+  query: EVERY_KIND,
   read: { kind: "reading" },
   seq: 0,
-  playback: { kind: "quiet" },
-  plays: 0,
-  unplayable: null,
+  ...QUIET_PLAY,
+  ...QUIET_HEAR_AGAIN,
   tooLong: false,
   behind: false,
   phone: "quiet",
+  older: null,
+  paged: false,
+  refreshing: false,
 }
 
 const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
@@ -227,7 +333,12 @@ const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
  * Reads the takes for `asked` under a new number. What plays stops first:
  * its Stop is on its row, which the new list replaces.
  */
-function readFor(state: LibraryState, asked: string | null): LibraryStep {
+function readFor(
+  state: LibraryState,
+  asked: string | null,
+  /** The takes shown stay until the answer lands (a filter's read, TAKES20). */
+  keep = false
+): LibraryStep {
   const stop = stopped(state)
   const seq = stop.state.seq + 1
   return {
@@ -235,25 +346,28 @@ function readFor(state: LibraryState, asked: string | null): LibraryStep {
       ...stop.state,
       asked,
       seq,
-      read: { kind: "reading" },
+      read:
+        keep && stop.state.read.kind === "read"
+          ? stop.state.read
+          : { kind: "reading" },
       tooLong: false,
       behind: false,
+      older: null,
+      paged: false,
+      refreshing: keep && stop.state.read.kind === "read",
     },
-    effects: [...stop.effects, { type: "readTakes", seq, q: asked }],
+    effects: [
+      ...stop.effects,
+      {
+        type: "readTakes",
+        seq,
+        q: asked,
+        after: null,
+        query: stop.state.query,
+      },
+    ],
   }
 }
-
-/** Stops what plays, under a new number, so its late answers are for nobody. */
-function stopped(state: LibraryState): LibraryStep {
-  if (state.playback.kind === "quiet") return same(state)
-  return {
-    state: { ...state, playback: { kind: "quiet" }, plays: state.plays + 1 },
-    effects: [{ type: "stopPlayback" }],
-  }
-}
-
-const playbackId = (playback: LibraryPlayback): string | null =>
-  playback.kind === "quiet" ? null : playback.id
 
 /**
  * The next state and effects for `event`; then, once nothing plays and the
@@ -268,6 +382,7 @@ export function stepLibrary(
   const due =
     after.behind &&
     after.asked === null &&
+    !after.paged &&
     after.playback.kind === "quiet" &&
     event.type !== "left"
   if (!due) return next
@@ -298,55 +413,94 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
     case "newest": {
       return readFor({ ...state, draft: "" }, null)
     }
-    case "takesRead": {
-      if (event.seq !== state.seq) return same(state)
-      return same({ ...state, read: event.read })
+    case "query": {
+      if (sameQuery(event.query, state.query)) return same(state)
+      return readFor({ ...state, query: event.query }, state.asked, true)
     }
-    case "play": {
-      const again = playbackId(state.playback) === event.id
-      const stop = stopped(state)
-      if (again || state.phone === "recording") return stop
-      const play = stop.state.plays + 1
-      return {
-        state: {
-          ...stop.state,
-          plays: play,
-          playback: { kind: "loading", id: event.id },
-          unplayable: null,
-        },
-        effects: [...stop.effects, { type: "readAudio", play, id: event.id }],
-      }
-    }
-    case "audioRead": {
-      const { playback } = state
-      if (event.play !== state.plays || playback.kind !== "loading") {
+    case "older": {
+      const { read } = state
+      const next = read.kind === "read" ? (read.page.next ?? null) : null
+      if (next === null || state.older === "reading" || state.refreshing) {
         return same(state)
       }
-      if (event.audio === null) {
-        return same({
-          ...state,
-          playback: { kind: "quiet" },
-          unplayable: playback.id,
-        })
-      }
+      const seq = state.seq + 1
       return {
-        state: { ...state, playback: { kind: "playing", id: playback.id } },
+        state: { ...state, seq, older: "reading" },
         effects: [
-          { type: "startPlayback", play: event.play, audio: event.audio },
+          {
+            type: "readTakes",
+            seq,
+            q: state.asked,
+            after: next,
+            query: state.query,
+          },
         ],
       }
+    }
+    case "takesRead": {
+      if (event.seq !== state.seq) return same(state)
+      if (state.older !== "reading") {
+        return same(
+          hearAgainRead({ ...state, read: event.read, refreshing: false })
+        )
+      }
+      // A page of older takes joins those shown; one unanswered leaves them.
+      const { read } = state
+      if (read.kind !== "read" || event.read.kind !== "read") {
+        const changed =
+          event.read.kind === "unreadable" || event.read.kind === "older"
+        return same({ ...state, older: changed ? "changed" : "away" })
+      }
+      const shown = new Set(read.page.takes.map(({ id }) => id))
+      return same({
+        ...state,
+        older: null,
+        paged: true,
+        read: {
+          kind: "read",
+          page: {
+            ...event.read.page,
+            takes: [
+              ...read.page.takes,
+              ...event.read.page.takes.filter(({ id }) => !shown.has(id)),
+            ],
+          },
+        },
+      })
+    }
+    case "play": {
+      if (state.phone === "recording") return stopped(state)
+      return played(state, event.id)
+    }
+    case "audioRead": {
+      return audioRead(state, event.play, event.audio)
+    }
+    case "stop": {
+      return stopped(state)
     }
     case "noticeDismissed": {
       return same({ ...state, unplayable: null })
     }
     case "playEnded": {
-      if (event.play !== state.plays) return same(state)
-      return same({ ...state, playback: { kind: "quiet" } })
+      return playEnded(state, event.play)
     }
     case "arrived": {
       // A search shown stays; going back to the newest reads them anyway.
       if (state.asked !== null || state.behind) return same(state)
       return same({ ...state, behind: true })
+    }
+    case "hearAgain": {
+      const take =
+        state.read.kind === "read"
+          ? state.read.page.takes.find(({ id }) => id === event.id)
+          : undefined
+      return take === undefined ? same(state) : askedToHearAgain(state, take)
+    }
+    case "hearAgainAnswered": {
+      return same(hearAgainAnswered(state, event.seq, event.answer))
+    }
+    case "hearAgainDismissed": {
+      return same(hearAgainDismissed(state))
     }
     case "phone": {
       if (event.sound === state.phone) return same(state)

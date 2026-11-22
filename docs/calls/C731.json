@@ -1,0 +1,18 @@
+{
+  "id": "C731",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/ROUTINE.md",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts"
+  ],
+  "chose": "The change that makes the Monday routine write /2 weeks is held unmerged until home runs paulgsc/server#1001 (it queues a /2 week's starters) and an APK with the deliberation screens (RR25 PR D2) is installed. The hold is the merge itself, not a flag in finish: on main, ROUTINE.md only says to write /2 once both are true.",
+  "options": [
+    "hold the merge until home and the APK are ready",
+    "merge now and gate /2 behind a flag finish reads",
+    "merge now, accepting weeks the phone can't fully show"
+  ],
+  "gray": "Written before the screens exist, a /2 week's options are invisible on the phone, so the essay would place a fork left alone as 'went with the recommended' among options never seen; no check settles when the routine's format may move ahead of the phone.",
+  "undo": "Revert the PR's merge; the routine writes /1 weeks again.",
+  "refs": ["#3249", "#3257", "server#1001"]
+}

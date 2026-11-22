@@ -26,6 +26,7 @@
  * engagement.test.ts`'s, since only www has the route tree.
  */
 import type { EventKind, Surface } from "@engagement/lib/events"
+import { ELSEWHERE } from "@engagement/lib/events"
 
 /** The wings of `apps/www/src/lib/wings` that hold a pipeline. */
 export type WingId = "practice" | "self" | "studio" | "jobs" | "operate"
@@ -67,11 +68,30 @@ export type Affordance = {
   readonly touches: boolean
   /** Where a `left` can say it stopped. */
   readonly places?: ReadonlyArray<Choice>
+  /**
+   * For an affordance that is a flow, what leaving one of its places for
+   * another screen means: it ended there (`finishedAt`), or was left
+   * part-way (`partWayAt`). A place in neither says neither.
+   */
+  readonly flow?: {
+    readonly finishedAt: ReadonlyArray<string>
+    readonly partWayAt: ReadonlyArray<string>
+  }
   /** What a `said` can answer. */
   readonly answers?: ReadonlyArray<Choice>
   /** No longer offered; kept so the events that name it still read. */
   readonly retired?: true
 }
+
+/**
+ * How a read knows a module was opened on a day (silence, #3338; C861): by
+ * an affordance its root sends an event for on every show (`offered` or
+ * `taken`), or not at all. A module whose root sends nothing reads "not
+ * measured", never "silent", so no live module is called a graveyard.
+ */
+export type Opened =
+  | { readonly kind: "root"; readonly affordance: string }
+  | { readonly kind: "not-measured"; readonly why: string }
 
 export type Pipeline = {
   /** Stable for good: lowercase words joined by hyphens. */
@@ -79,6 +99,8 @@ export type Pipeline = {
   readonly name: string
   readonly wing: WingId
   readonly domain: DomainId
+  /** How its opening is known (`Opened`). */
+  readonly opened: Opened
   readonly affordances: ReadonlyArray<Affordance>
 }
 
@@ -86,6 +108,35 @@ export type Pipeline = {
 export type Unmeasured = { readonly route: string; readonly why: string }
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+/** Every way `pipeline.opened` fails to say truly how its opening is known. */
+function openedProblems(pipeline: Pipeline): ReadonlyArray<string> {
+  const { opened } = pipeline
+  switch (opened.kind) {
+    case "root": {
+      const root = pipeline.affordances.find(
+        (a) => a.id === opened.affordance && a.retired !== true
+      )
+      if (root === undefined) {
+        return [
+          `${pipeline.id}: opened at ${opened.affordance}, which it doesn't offer`,
+        ]
+      }
+      return root.emits.includes("offered") || root.emits.includes("taken")
+        ? []
+        : [`${pipeline.id}: its root ${root.id} sends nothing when shown`]
+    }
+    case "not-measured": {
+      return opened.why.trim() === ""
+        ? [`${pipeline.id}: says why its opening is not measured`]
+        : []
+    }
+    default: {
+      const none: never = opened
+      throw new Error(`no such opening: ${JSON.stringify(none)}`)
+    }
+  }
+}
 
 /**
  * Every way the registry breaks its own shape, as `pipeline/affordance`
@@ -98,7 +149,10 @@ const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
  *   only with `offered`;
  * - `left` is emitted exactly when there are places, and only with `taken`;
  * - `said` is emitted exactly when there are answers;
- * - every pipeline has an affordance that is not retired.
+ * - a flow names only its own places, each once, and none is `elsewhere`;
+ * - every pipeline has an affordance that is not retired;
+ * - a pipeline opened at its root names one of its own affordances, not
+ *   retired, that sends `offered` or `taken`; one not measured says why.
  */
 export function findRegistryProblems(
   pipelines: ReadonlyArray<Pipeline>,
@@ -114,6 +168,7 @@ export function findRegistryProblems(
     pipelineIds.add(pipeline.id)
     if (pipeline.affordances.every((a) => a.retired === true))
       problems.push(`${at}: offers nothing that is not retired`)
+    problems.push(...openedProblems(pipeline))
 
     const keys = new Set<string>()
     for (const a of pipeline.affordances) {
@@ -170,6 +225,19 @@ function affordanceProblems(here: string, a: Affordance): Array<string> {
         problems.push(`${here}: ${what} ${choice.id} twice`)
       ids.add(choice.id)
     }
+  }
+  if (places.some((p) => p.id === ELSEWHERE))
+    problems.push(
+      `${here}: no place is ${ELSEWHERE}, which a left's next keeps`
+    )
+  if (a.flow !== undefined) {
+    const named = [...a.flow.finishedAt, ...a.flow.partWayAt]
+    if (named.length === 0) problems.push(`${here}: a flow names a place`)
+    if (new Set(named).size !== named.length)
+      problems.push(`${here}: a flow names a place once`)
+    for (const id of named)
+      if (!places.some((p) => p.id === id))
+        problems.push(`${here}: flow place ${id} is not one of its places`)
   }
   if (a.name.trim() === "") problems.push(`${here}: has no name`)
   return problems

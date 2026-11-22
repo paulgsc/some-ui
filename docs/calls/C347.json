@@ -1,0 +1,20 @@
+{
+  "id": "C347",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:scripts/release_lock.py",
+    "server:.github/workflows/release-lock.yml",
+    "server:docs/release.md"
+  ],
+  "chose": "Third-party refreshes share home's one release pull request. A refresh is due when no third-party entry moved on main in 30 days, read from main's history and checked daily by git alone. It is proposed only when no app move is pending, so each release is app moves or third-party moves, never both, and serials never collide. An app move replaces an unmerged third-party release; the refresh stays due and is proposed again once the app release is on main.",
+  "options": [
+    "One release PR; a third-party refresh when due and no app move is pending",
+    "A second, concurrent third-party PR on its own branch, opened by a monthly run",
+    "One PR carrying app and third-party moves together"
+  ],
+  "gray": "The second PR was built first and an independent review rejected it. Both PRs formed on one main took serial N+1 and merged without a git conflict, so two different sets could ship as one serial. A monthly refresh carried by its trigger was lost when the single pending slot cancelled it, against RL2's order-free runs. One PR carrying both breaks server#796's 'a third-party move is its own release'. The cost of the choice: a third-party move waits behind any pending app release, which is fine for a monthly cadence. Raised to the coordinator session as drift before patching, which agreed on 2026-11-14 (server#860). This moves C120 (claude, 2026-11-11), which gave third-party refreshes their own monthly release PR.",
+  "undo": "Give the third-party refresh its own branch again in release-lock.yml, and in release_lock.py derive its serial from the open app release's so the two can't collide; drop --third-party-due and the daily schedule for a monthly one.",
+  "refs": ["server#796", "server#860", "server#787"],
+  "moves": "C120"
+}

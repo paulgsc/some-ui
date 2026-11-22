@@ -1,13 +1,13 @@
 {
   "name": "www",
   "private": true,
-  "version": "0.1.68",
+  "version": "0.1.73",
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-resume.mjs && vite",
     "start": "node scripts/sync-resume.mjs && vite --port 5173",
     "content:link": "node scripts/link-content-assets.js",
-    "build": "node scripts/sync-resume.mjs && vite build && tsc",
+    "build": "node scripts/sync-resume.mjs && tsx render-public-site.ts && vite build && tsc",
     "build:fit": "WWW_FIT_HARNESS=1 vite build --outDir out/ui-fit --emptyOutDir",
     "build:stage": "WWW_STAGE=1 vite build --outDir out/stage --emptyOutDir",
     "build:fit-phone": "SOME_UI_PROFILE=mobile WWW_FIT_HARNESS=1 WWW_FIT_PAGE=phone vite build --outDir out/ui-fit-phone --emptyOutDir",
@@ -27,7 +27,9 @@
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
     "record:call": "tsx tests/record/call.ts",
+    "record:cards": "tsx tests/record/cards.ts",
     "record:essay": "tsx tests/record/essay.ts",
+    "record:pages": "tsx tests/record/pages.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
     "record:preview": "tsx tests/record/preview.ts",
     "record:report": "tsx tests/record/report.ts",
@@ -45,6 +47,7 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/barlow-condensed": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
     "@radix-ui/react-accordion": "catalog:",
     "@some-ui/activity-catalog": "workspace:*",
     "@some-ui/aph": "workspace:*",
@@ -58,6 +61,7 @@
     "@some-ui/game-week": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/interview-week": "workspace:*",
     "@some-ui/job-desk": "workspace:*",
     "@some-ui/leetype": "workspace:*",
     "@some-ui/lesson-crm": "workspace:*",
@@ -95,6 +99,7 @@
     "@some-ui/contract-harness": "workspace:*",
     "@some-ui/video-motion": "workspace:*",
     "@vitejs/plugin-react": "^6.3.0",
-    "vite": "^8.3.7"
+    "typescript": "catalog:",
+    "vite": "^8.3.8"
   }
 }

@@ -1,0 +1,30 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "A phone screen, zoomed to its parts",
+  "series": {
+    "id": "vertical",
+    "version": 1
+  },
+  "look": "plain",
+  "voice": "ad-lib",
+  "shots": [
+    {
+      "id": "zoom",
+      "picture": {
+        "kind": "composition",
+        "ref": "screen-zoom",
+        "variables": {
+          "picture": "screens/QM-311.png",
+          "width": 412,
+          "height": 915,
+          "scale": 2,
+          "stops": "[{\"x\":26,\"y\":51,\"width\":360,\"height\":110},{\"x\":12,\"y\":298,\"width\":388,\"height\":332},{\"x\":26,\"y\":451,\"width\":360,\"height\":165}]",
+          "foot": 0
+        },
+        "files": ["screens/QM-311.png"]
+      },
+      "durationMs": 9000,
+      "voiceInMs": 0
+    }
+  ]
+}

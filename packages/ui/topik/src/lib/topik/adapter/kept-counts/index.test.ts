@@ -16,7 +16,7 @@ const DAY = 24 * 60 * 60 * 1000
 describe("topikKeptCounts", () => {
   it("counts nothing kept against each bound", () => {
     expect(topikKeptCounts(memoryStorage(), () => 0)).toEqual({
-      wordSets: { kept: 0, limit: ADDED_SET_LIMIT },
+      wordSets: { kept: 0, limit: ADDED_SET_LIMIT, archived: 0 },
       practiceDays: { kept: 0, limit: RECORD_DAYS },
       lensRecord: { kept: 0, limit: LENS_RECORD_MAX },
       lastDrama: { ageMs: null, keptMs: LAST_DRAMA_TTL_MS },
@@ -39,7 +39,35 @@ describe("topikKeptCounts", () => {
       tries: [],
     })
 
+    readAloud.saveSets(
+      ["a", "b", "c"].map((id) => ({
+        deck: {
+          id,
+          title: id,
+          words: [{ id: "juda", lemma: "주다", gloss: "give" }],
+          lines: [
+            {
+              id: "give",
+              level: 1 as const,
+              korean: "주세요.",
+              english: "Give.",
+              words: [{ wordId: "juda", surface: "주세요", stemEnd: 1 }],
+            },
+          ],
+        },
+        addedAt: "x",
+        openedAt: null,
+        archivedAt: null,
+      }))
+    )
+    readAloud.archive("b", "y")
+
     const counts = topikKeptCounts(storage, () => 13 * DAY)
+    expect(counts.wordSets).toEqual({
+      kept: 2,
+      limit: ADDED_SET_LIMIT,
+      archived: 1,
+    })
     expect(counts.practiceDays.kept).toBe(2)
     expect(counts.lastDrama.ageMs).toBe(3 * DAY)
   })

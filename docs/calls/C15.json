@@ -1,0 +1,14 @@
+{
+  "id": "C15",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["CLAUDE.md"],
+  "chose": "Until the owner writes their own, a gray area is a choice between options that no check, convention or earlier owner decision settles, that the owner would notice on the screen or in how they work.",
+  "options": [
+    "the working definition from #2637",
+    "no definition until the owner's"
+  ],
+  "gray": "The owner said they'd want to work out the definition themselves.",
+  "undo": "Replace the definition in CLAUDE.md, \"Two kinds of pull request\".",
+  "refs": ["#2637"]
+}

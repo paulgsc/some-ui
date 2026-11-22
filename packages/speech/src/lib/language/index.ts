@@ -5,7 +5,7 @@
  *
  * A platform names a language with a tag (`ko-KR`, `ko_KR`, `kor`, `en-US`)
  * whose shape is the platform's, not ours, and whose set is open: any
- * string a browser, a phone or a hosted service chooses to send. Nothing in
+ * string a browser or a phone chooses to send. Nothing in
  * this package or its applets branches on such a string. An applet says a
  * line in a `SpokenLanguage`; an adapter turns that into its platform's tag
  * on the way out (`LANGUAGE_TAG`) and turns a platform's tag back into one

@@ -10,6 +10,8 @@
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
+import { whenSaid } from "@/lib/journey"
 import { OFFLINE_SET_WORDS } from "@/lib/session-reflection/policy"
 import type { How, Where } from "@/lib/sharing-marks"
 import type { Unsendable } from "@/lib/voice-home/model"
@@ -121,13 +123,20 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   jobs: {
     markLabel: "Where the Jobs record is kept",
     title: "Jobs and home",
-    rows: [{ kind: "jobs", label: "The record", one: "event", many: "events" }],
-    waits: waits("event"),
+    rows: [
+      { kind: "jobs", label: "The record", one: "event", many: "events" },
+      {
+        kind: "interviewWeeks",
+        label: "Interview weeks you sent",
+        one: "week",
+      },
+    ],
+    waits: waits("item"),
     phoneOnly: `The Jobs record is only on this phone. ${PAIR}`,
     partly:
       "Some of the Jobs record is on home. New events stay on this phone until it is paired again.",
     footnote:
-      "This phone keeps its whole record. Its voice notes go to home too, and its decisions and scouts go to the morning run through home.",
+      "This phone keeps its whole record. Its voice notes go to home too, and its decisions and scouts go to the morning run through home. Each interview week you send goes to home, which keeps the takes and which questions and reads you answered; what home has at the week's deadline is kept for good. Home's interview weeks come to this phone.",
     clash: null,
     unread: null,
   },
@@ -138,7 +147,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       {
         kind: "voice",
         label:
-          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game, scene and Rust Rounds notes, Studio takes",
+          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game, scene and Rust Rounds notes, interview takes, Studio takes",
         one: "voice note",
       },
       { kind: "ideas", label: "Studio ideas, each sent whole", one: "idea" },
@@ -299,7 +308,7 @@ export const CLEAR = {
         return `Couldn't reach ${host}. Are you on the home network? Nothing left this phone.`
       }
       case "forgotten": {
-        return `${host} no longer knows this phone: unpair, then pair again. Nothing left this phone.`
+        return `${host} no longer knows this phone: pair again from Settings, Home. Nothing left this phone.`
       }
       case "busy": {
         return "Home is busy right now. Try again in a minute; nothing left this phone."
@@ -372,7 +381,7 @@ export const LET_GO = {
         return `Couldn't reach ${host}. Are you on the home network? It stays on this phone.`
       }
       case "forgotten": {
-        return `${host} no longer knows this phone: unpair, then pair again. It stays on this phone.`
+        return `${host} no longer knows this phone: pair again from Settings, Home. It stays on this phone.`
       }
       case "busy": {
         return `${host} is busy just now. Try again in a minute; ${stays}.`
@@ -412,6 +421,26 @@ export type LaneFacts = LaneCounts & {
   run: KeptState
   /** Whether home works with this version of the app (`./serves-model`). */
   serves: Serves | null
+  /** Away from home since `since` (AW1, `./away`), read at `now`; null at home. */
+  away: { readonly since: number; readonly now: number } | null
+  /** Why the last request couldn't reach home, if the phone can name it (NA1). */
+  blocked: HomeBlockedReason | null
+}
+
+/**
+ * Why the phone couldn't reach home, though home may be right there (NA1,
+ * #3099): never "away", since the phone may well be at home. A name only
+ * says what the phone knows: its lookup found no address. It never guesses
+ * why (#3411: the router answered the name, other apps on the phone found
+ * it, and this phone's lookups still failed).
+ */
+export const BLOCKED_LINE: Readonly<Record<HomeBlockedReason, string>> = {
+  name: "This phone couldn't look up home's name on this network, though home may be fine. It tries again on its own.",
+  trust: "This phone doesn't trust home's certificate.",
+  door: "Home's address answers, but home itself isn't answering just now. It may be restarting, as it does to update. This phone tries again on its own.",
+  // NA2 (#3411): Android says it keeps this app off the network; the
+  // phone's own settings for the app decide that, so they are named.
+  held: "This phone isn't letting this app go online just now. The phone's settings for this app (mobile data, Wi-Fi, battery) decide that.",
 }
 
 export type LaneView = {
@@ -544,6 +573,28 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
     )
   }
   if (last?.kind === "unreachable") {
+    // Stopped by a name or a certificate the phone can name (NA1): said as
+    // itself, never as away, though the link holds it as one.
+    if (facts.blocked !== null) {
+      return show(
+        "kept",
+        "blocked",
+        "Can't reach",
+        `${BLOCKED_LINE[facts.blocked]}${later}`
+      )
+    }
+    if (facts.away !== null) {
+      const since = whenSaid(
+        new Date(facts.away.since).toISOString(),
+        new Date(facts.away.now)
+      )
+      return show(
+        "kept",
+        "no-answer",
+        "Away",
+        `Away from home since ${since}.${later}`
+      )
+    }
     return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
   }
   if (last?.kind === "failed") {

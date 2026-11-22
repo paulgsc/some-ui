@@ -5,8 +5,9 @@ import type { ComponentRegistry } from "@some-ui/types"
 import { hasAudience } from "@/lib/build-profile"
 
 import type { BurnInsPreviewProps } from "./burn-ins/preview"
-import type { EssayStageProps } from "./call/essay-stage"
+import type { EssaySceneFrameProps, EssayStageProps } from "./call/essay-stage"
 import type { ReportStageProps } from "./call/report-stage"
+import type { RustScreenStageProps } from "./call/rust-screen-stage"
 import type { CallStageProps } from "./call/stage"
 import type { LiveStageProps } from "./playoff-delta/stage"
 
@@ -26,7 +27,10 @@ import type { LiveStageProps } from "./playoff-delta/stage"
  * Android app's bundle drops the `import()` before chunking rather than
  * writing a chunk nothing loads (AUDIENCES.md, "Paths"); `hasAudience` keeps
  * a profile without "web" (a `mobile` dev server without the flag) from
- * reaching the stubs.
+ * reaching the stubs. The public site (`VITE_PAGES_SITE`; C1055, #3401) is a
+ * CV of static pages whose one script draws `AuthorshipRecord`
+ * (src/landing/authorship.tsx), so every other export also reads that flag
+ * inline and is inert there.
  */
 
 /** The panels only the web surface binds, beside the shared registry's. */
@@ -34,7 +38,9 @@ export const WEB_PANEL_KEYS = ["hangul"] as const
 export type WebPanelKey = (typeof WEB_PANEL_KEYS)[number]
 
 export const WEB_PANELS: Partial<ComponentRegistry<WebPanelKey>> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? {
         hangul: lazyWithPreload(() => import("./hangul/panel"), "HangulPanel"),
       }
@@ -47,7 +53,9 @@ const Nothing = (): null => null
  * build has no web surface.
  */
 export const ExtensionsComb: ComponentType<{ mark?: ReactNode }> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(() => import("@some-ui/honeycomb"), "ExtensionsComb")
         .Component
     : Nothing
@@ -58,7 +66,9 @@ export const ExtensionsComb: ComponentType<{ mark?: ReactNode }> =
  * where the build has no web surface.
  */
 export const PlayoffDeltaStage: ComponentType<LiveStageProps> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(
         () => import("./playoff-delta/stage"),
         "PlayoffDeltaLiveStage"
@@ -71,7 +81,9 @@ export const PlayoffDeltaStage: ComponentType<LiveStageProps> =
  * the build has no web surface.
  */
 export const BurnInsPreview: ComponentType<BurnInsPreviewProps> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(() => import("./burn-ins/preview"), "BurnInsPreviewPage")
         .Component
     : Nothing
@@ -94,7 +106,9 @@ export const AuthorshipRecord: ComponentType<{ code?: string }> =
  * nothing where the build has no web surface.
  */
 export const BurnInRecord: ComponentType =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(() => import("./burn-ins/record"), "BurnInRecordPage")
         .Component
     : Nothing
@@ -104,7 +118,9 @@ export const BurnInRecord: ComponentType =
  * nothing where the build has no web surface.
  */
 export const CallStage: ComponentType<CallStageProps> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(() => import("./call/stage"), "CallStagePage").Component
     : Nothing
 
@@ -113,9 +129,36 @@ export const CallStage: ComponentType<CallStageProps> =
  * video, RR15); nothing where the build has no web surface.
  */
 export const EssayStage: ComponentType<EssayStageProps> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(() => import("./call/essay-stage"), "EssayStagePage")
         .Component
+    : Nothing
+
+/**
+ * One scene of a Rust Rounds essay in the stage's frame, for an essay given
+ * whole (EF1's ui-fit page); nothing where the build has no web surface.
+ */
+export const EssaySceneFrame: ComponentType<EssaySceneFrameProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
+    ? lazyWithPreload<"EssaySceneFrame", EssaySceneFrameProps>(
+        () => import("./call/essay-stage"),
+        "EssaySceneFrame"
+      ).Component
+    : Nothing
+
+/** `./call/rust-screen-stage`; nothing where the build has no web surface. */
+export const RustScreenStage: ComponentType<RustScreenStageProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
+    ? lazyWithPreload(
+        () => import("./call/rust-screen-stage"),
+        "RustScreenStagePage"
+      ).Component
     : Nothing
 
 /**
@@ -123,7 +166,9 @@ export const EssayStage: ComponentType<EssayStageProps> =
  * report's video, ENG12); nothing where the build has no web surface.
  */
 export const ReportStage: ComponentType<ReportStageProps> =
-  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" &&
+  import.meta.env.VITE_PAGES_SITE !== "true" &&
+  hasAudience("web")
     ? lazyWithPreload(() => import("./call/report-stage"), "ReportStagePage")
         .Component
     : Nothing

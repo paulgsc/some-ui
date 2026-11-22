@@ -9,6 +9,8 @@
 import type { Digest } from "@some-ui/job-desk"
 import { describe, expect, it } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
+import { READING, UNPAIRED } from "@/lib/home-link/model"
 import type { Outgoing, OutgoingFile } from "@/lib/jobs/files"
 import { decisionsFile, isFile, scoutsFile } from "@/lib/jobs/files"
 import type { JourneyContext } from "@/lib/jobs/journey"
@@ -66,12 +68,14 @@ function fileOf(state: JobsState, kind: ShareKind = "decisions"): OutgoingFile {
   return file
 }
 
-function context(state: JobsState, kept = true): JourneyContext {
-  return { state, kept, outgoing: (kind) => outgoing(state, kind) }
+const PAIRED: Pairing = { kind: "paired", id: "p1" }
+
+function context(state: JobsState, pairing: Pairing = PAIRED): JourneyContext {
+  return { state, pairing, outgoing: (kind) => outgoing(state, kind) }
 }
 
-const idOf = (state: JobsState, kept = true): JourneyId | null =>
-  kindJourney(context(state, kept), "decisions")?.id ?? null
+const idOf = (state: JobsState, pairing: Pairing = PAIRED): JourneyId | null =>
+  kindJourney(context(state, pairing), "decisions")?.id ?? null
 
 /** Shared by the sheet at `at`, as the runtime recorded it before HF2; and its id. */
 function share(
@@ -154,9 +158,14 @@ describe("JB2: a file waiting to leave the phone", () => {
 
   it("waits on the phone while it isn't paired with home", () => {
     const state = record(opened, taken())
-    expect(kindJourney(context(state, false), "decisions")).toMatchObject({
+    expect(kindJourney(context(state, UNPAIRED), "decisions")).toMatchObject({
       id: "unpaired",
     })
+  })
+
+  it("says nothing of a file waiting while the pairing is still being read", () => {
+    const state = record(opened, taken())
+    expect(kindJourney(context(state, READING), "decisions")).toBeNull()
   })
 
   it("is on the phone like any other when a voice note rides along", () => {
@@ -489,7 +498,7 @@ describe("JB2: the runtime", () => {
     const { state } = again.getSnapshot()
     expect(
       kindJourney(
-        { state, kept: true, outgoing: again.keeping.outgoing },
+        { state, pairing: PAIRED, outgoing: again.keeping.outgoing },
         "decisions"
       )
     ).toMatchObject({ id: "with-home", since: at.toISOString() })

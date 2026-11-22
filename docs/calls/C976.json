@@ -1,0 +1,16 @@
+{
+  "id": "C976",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": [
+    "server:migrations/20261122004001_judge_takes_that_ran_out.up.sql",
+    "server:crates/db/voice/src/lib.rs"
+  ],
+  "chose": "Judge, once, every take of every kind whose model used up its attempts on failures before HEARD1 deployed, over the family of take kinds with no list of kinds: its last failed attempt (numbered at least 3) gets the `failed` verdict under heard-1 that `judge` would have given it, reason from its outcome, dated at the attempt's heard_at, appended by a migration. The owner, close paraphrase: \"we never descend to the granular; we implement solutions that target the family.\" Each is listed under Needs your attention like any take home couldn't hear, and a Rust Rounds or interview take is filed, so its week stops waiting. The migration reads no kind; its test walks voice_repo::Of::ALL, which `kinds!` makes from the same list as the enum, so a kind missing from it can't compile. Endings kept before HEARD1 stay unjudged: their measures were never kept.",
+  "options": [
+    "every kind, over the family of take kinds (taken)",
+    "Rust Rounds and interview takes only"
+  ],
+  "undo": "Append a `kept` attention act for each backfilled verdict to take them off the list; the verdict rows stay (append-only).",
+  "refs": ["server#913", "#3070"]
+}

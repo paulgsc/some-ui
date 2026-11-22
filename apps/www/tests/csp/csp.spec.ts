@@ -5,8 +5,8 @@
  * leetype via @some-ui/leetype).
  *
  * These tests don't boot nginx/Docker: they read the literal header string
- * from apps/www/nginx.security-headers.conf (the file both the Dockerfile
- * and nginx.https.conf `include`, so there is exactly one copy - see that
+ * from apps/www/nginx.security-headers.conf (the file the Dockerfile copies
+ * and nginx.https.conf `include`s, so there is exactly one copy - see that
  * file's header comment) and replay it via page.route fulfilment, which
  * Chromium enforces identically to a real server response.
  *

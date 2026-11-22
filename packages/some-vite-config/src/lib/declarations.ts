@@ -474,7 +474,7 @@ function writeTypesEntry(
   declaration: string
 ): void {
   // `outputName` may be scoped ("@some-ui/topik") or a subpath
-  // ("@some-ui/speech/http"), which nests the entry.
+  // ("@some-ui/speech/native"), which nests the entry.
   const typesEntry = join(outDir, `${entry.outputName}.d.ts`)
   mkdirSync(dirname(typesEntry), { recursive: true })
   writeFileSync(

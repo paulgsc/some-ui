@@ -1,0 +1,18 @@
+{
+  "id": "C984",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/claims.ts",
+    "some-ui:packages/video-render/src/cli.ts"
+  ],
+  "chose": "A line is stale when, at a later commit, its source's file is gone or what it cited (its quote, else its lines' text) is no longer anywhere in the file, whitespace aside: a cited passage that only moved is not stale. A source that can't be read at either commit is reported as not followed and fails the command, never counted fresh.",
+  "options": [
+    "cited text still in the file, anywhere (this)",
+    "cited lines unchanged at the same line numbers",
+    "the file unchanged since the stamp"
+  ],
+  "gray": "How sensitive the re-check is sets how often the owner is told an essay is stale; too eager and every unrelated edit flags it, too lax and a changed fact passes.",
+  "undo": "Change the comparison in staleClaims (claims.ts); nothing stores its verdicts.",
+  "refs": ["#3036"]
+}

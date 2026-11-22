@@ -1,0 +1,23 @@
+{
+  "id": "C1059",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    ".github/workflows/site-assets.yml",
+    ".github/workflows/snips-capture.yml",
+    ".github/workflows/pages.yml",
+    "packages/eslint/src/retention.ts",
+    "apps/www/render-public-site.ts",
+    "apps/www/src/landing",
+    "extensions/some-filter/tests/stills"
+  ],
+  "chose": "The public site's media reach its build as workflow artifacts, one family a kind (`site-assets-<kind>-<sha>`, laid out by the slot's key): Site Assets renders Page Filter's gap still and Suspender Ledger's promo on main, Snips Capture renders the APK's Jobs walkthrough when dispatched, each keeps one for 30 days, and pages.yml fetches the newest of each at its deploy with actions: read alone. A kind with none, expired or failing to download leaves its slot's drawn placeholder; the deploy never fails for want of one. Every asset is made on sample data: Page Filter on a page of ours, the promo on Suspender Ledger's sample in paulgsc/testing, the walk on its seeded sample (apps/www/tests/walk/jobs-week.json). Nothing from the owner's records reaches a public asset. Home's server clip and cores still are not made here: they would send home's screens to GitHub, which is the owner's to allow. The run's coordinator agreed to this option on 2026-11-22.",
+  "options": [
+    "a `site-assets-<kind>` artifact family per producer, fetched by pages.yml at its deploy",
+    "media pinned by commit in paulgsc/testing, fetched by pages.yml",
+    "every asset rendered inside pages.yml itself"
+  ],
+  "gray": "Story 5 of #3401 left open where pages.yml gets the media it cannot render: the APK walk needs the emulator, the server's panels live on home, and Page Filter needs its own build and a browser. The owner's rule (C1029, #3401) forbids committed media and R2, and the choice decides how fresh the landing's media are and what a deploy depends on.",
+  "undo": "Delete site-assets.yml, Snips Capture's apk-clip job, the site-assets families in retention.ts and retention.yml's Site Assets trigger, and pages.yml's fetch step; every slot then draws its placeholder.",
+  "refs": ["#3401"]
+}

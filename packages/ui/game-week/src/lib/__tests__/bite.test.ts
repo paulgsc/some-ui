@@ -1,11 +1,15 @@
 import type { BiteMoment, Said } from "@game-week/lib/bite"
 import {
+  biteAbout,
   biteFields,
+  halfName,
   line,
   MAX_LINE_CHARS,
   pickedAfter,
+  scenarioName,
+  unitName,
 } from "@game-week/lib/bite"
-import { CATALOG_VERSION } from "@some-ui/game-scenarios"
+import { CATALOG_VERSION, SCENARIOS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
 const MOMENT: BiteMoment = {
@@ -116,5 +120,51 @@ describe("biteFields (GW4)", () => {
     expect([...(fields.strip ?? "")]).toHaveLength(MAX_LINE_CHARS)
     expect(fields.context).toBe(line(long))
     expect(fields.strip).not.toMatch(/\n/)
+  })
+})
+
+describe("a bite's scenario by name", () => {
+  it("names each scenario of the catalog, and none it lacks", () => {
+    for (const scenario of SCENARIOS) {
+      expect(scenarioName(scenario.id)).toBe(scenario.name)
+    }
+    expect(scenarioName("not-a-scenario")).toBeNull()
+  })
+})
+
+describe("a bite's unit and half by name, for Takes (#3049)", () => {
+  it("names what this catalog knows, and nothing else", () => {
+    expect(unitName("defense", "CHI")).toBe("CHI defense")
+    expect(unitName("coaching", null)).toBe("Coaching")
+    expect(unitName("goalposts", null)).toBeNull()
+    expect(halfName("second")).toBe("2nd half")
+    expect(halfName("overtime")).toBe("Overtime")
+    expect(halfName("third")).toBeNull()
+  })
+})
+
+describe("what a bite on this phone was about, under the recorder (GWB14)", () => {
+  it("says the clock it was said at, its scenario and its unit", () => {
+    const fields = biteFields(
+      {
+        how: "offered",
+        scenario: "in.third-long",
+        context: "",
+        unit: { unit: "defense", side: "SEA" },
+      },
+      MOMENT,
+      0
+    )
+    expect(biteAbout(fields)).toBe("Q3 8:42 · Third and long · SEA defense")
+  })
+
+  it("says a bite said first was, and leaves out what it doesn't know", () => {
+    const fields = biteFields(
+      { how: "said-first" },
+      { ...MOMENT, strip: "" },
+      0
+    )
+    expect(biteAbout(fields)).toBe("Said first")
+    expect(biteAbout({ how: "offered", scenario: "not-a-scenario" })).toBe("")
   })
 })

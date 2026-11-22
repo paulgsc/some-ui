@@ -135,7 +135,9 @@ describe("clearHeld", () => {
       expect(await clearHeld(() => undefined, NOW, p)).toEqual(end)
       expect(p.gone).toEqual([])
     }
-    const turnedAway = ports(empty, { run: () => Promise.resolve(null) })
+    const turnedAway = ports(empty, {
+      run: () => Promise.resolve({ kind: "refused", why: "busy" } as const),
+    })
     expect(await clearHeld(() => undefined, NOW, turnedAway)).toEqual({
       kind: "busy",
     })

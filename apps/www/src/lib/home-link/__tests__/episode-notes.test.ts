@@ -19,6 +19,11 @@ import {
   phoneEpisodeNotes,
   sendEpisodeNotes,
 } from "@/lib/home-link/episode-notes"
+import type { Pairing } from "@/lib/home-link/model"
+import { READING, UNPAIRED } from "@/lib/home-link/model"
+
+/** A pairing by its id (#3152's union). */
+const pairedAs = (id: string): Pairing => ({ kind: "paired", id })
 
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
@@ -87,7 +92,7 @@ describe("notes on episodes going home (SFEED6)", () => {
     sent.length = 0
     await sendEpisodeNotes(port, home({}, sent))
     expect(sent).toEqual([])
-    const counts = episodeNotesWaiting(storage, "p1")
+    const counts = episodeNotesWaiting(storage, pairedAs("p1"))
     expect([counts.waiting, [...counts.held]]).toEqual([0, ["a", "b/1"]])
   })
 
@@ -99,7 +104,7 @@ describe("notes on episodes going home (SFEED6)", () => {
       phoneEpisodeNotes(storage, "p1"),
       home({ a: { status: 200, body: { change: "added", note: other } } }, [])
     )
-    expect(episodeNotesWaiting(storage, "p1").waiting).toBe(1)
+    expect(episodeNotesWaiting(storage, pairedAs("p1")).waiting).toBe(1)
   })
 
   it("keeps a note home refused, offers it no more, and says so to the native log", async () => {
@@ -110,7 +115,9 @@ describe("notes on episodes going home (SFEED6)", () => {
     await sendEpisodeNotes(port, home({ a: { status: 409 } }, sent))
     await sendEpisodeNotes(port, home({}, sent))
     expect(sent).toHaveLength(1)
-    expect([...episodeNotesWaiting(storage, "p1").refused]).toEqual(["a"])
+    expect([...episodeNotesWaiting(storage, pairedAs("p1")).refused]).toEqual([
+      "a",
+    ])
     expect(episodeFeedback.getSnapshot().map((n) => n.id)).toEqual(["a"])
     expect(reportFailure).toHaveBeenCalledTimes(1)
   })
@@ -128,7 +135,32 @@ describe("notes on episodes going home (SFEED6)", () => {
     expect(
       await sendEpisodeNotes(port, home({ a: { status: 401 } }, []))
     ).toEqual({ kind: "forgotten" })
-    expect(episodeNotesWaiting(storage, "p1").waiting).toBe(2)
+    expect(episodeNotesWaiting(storage, pairedAs("p1")).waiting).toBe(2)
+  })
+
+  it("sends a later feed's notes after an earlier feed's wait, and stops every feed's on a home that forgot this phone", async () => {
+    episodeFeedback.keep(note("e", "playoff-delta"))
+    episodeFeedback.keep(note("d", "cards-essay"))
+    const storage = memoryStorage()
+    const port = phoneEpisodeNotes(storage, "p1")
+    const forgot: Array<[string, string, unknown]> = []
+    expect(
+      await sendEpisodeNotes(port, home({ d: { status: 401 } }, forgot))
+    ).toEqual({ kind: "forgotten" })
+    expect(forgot.map(([, path]) => path)).toEqual([
+      "/feeds/cards-essay/notes/d",
+    ])
+    const sent: Array<[string, string, unknown]> = []
+    expect(
+      await sendEpisodeNotes(port, home({ d: { status: 404 } }, sent))
+    ).toEqual({ kind: "synced" })
+    expect(sent.map(([, path]) => path)).toEqual([
+      "/feeds/cards-essay/notes/d",
+      "/feeds/playoff-delta/notes/e",
+    ])
+    expect(episodeNotesWaiting(storage, pairedAs("p1")).held).toEqual(
+      new Set(["e"])
+    )
   })
 
   it("sends a spoken note's take, and counts it held only when home carries that take back", async () => {
@@ -147,9 +179,11 @@ describe("notes on episodes going home (SFEED6)", () => {
     expect(sent).toEqual([
       ["PUT", "/feeds/call/notes/s", JSON.stringify(spoken)],
     ])
-    expect(episodeNotesWaiting(storage, "p1").waiting).toBe(1)
+    expect(episodeNotesWaiting(storage, pairedAs("p1")).waiting).toBe(1)
     await sendEpisodeNotes(port, home({}, sent))
-    expect([...episodeNotesWaiting(storage, "p1").held]).toEqual(["s"])
+    expect([...episodeNotesWaiting(storage, pairedAs("p1")).held]).toEqual([
+      "s",
+    ])
   })
 
   it("waits, neither held nor refused, while home names the note's take as not held, and goes once it is", async () => {
@@ -162,21 +196,25 @@ describe("notes on episodes going home (SFEED6)", () => {
       body: { error: { details: { notes: ["take-7"] } } },
     }
     await sendEpisodeNotes(port, home({ s: lacking }, sent))
-    const waiting = episodeNotesWaiting(storage, "p1")
+    const waiting = episodeNotesWaiting(storage, pairedAs("p1"))
     expect([waiting.waiting, waiting.held.size, waiting.refused.size]).toEqual([
       1, 0, 0,
     ])
     expect(reportFailure).not.toHaveBeenCalled()
     await sendEpisodeNotes(port, home({}, sent))
     expect(sent).toHaveLength(2)
-    expect([...episodeNotesWaiting(storage, "p1").held]).toEqual(["s"])
+    expect([...episodeNotesWaiting(storage, pairedAs("p1")).held]).toEqual([
+      "s",
+    ])
   })
 
   it("starts from nothing under another pairing", async () => {
     episodeFeedback.keep(note("a"))
     const storage = memoryStorage()
     await sendEpisodeNotes(phoneEpisodeNotes(storage, "p1"), home({}, []))
-    expect(episodeNotesWaiting(storage, "p2").waiting).toBe(1)
-    expect(episodeNotesWaiting(storage, null).waiting).toBe(1)
+    expect(episodeNotesWaiting(storage, pairedAs("p2")).waiting).toBe(1)
+    expect(episodeNotesWaiting(storage, UNPAIRED).waiting).toBe(1)
+    // While the record is read, nothing is known held either (#3152).
+    expect(episodeNotesWaiting(storage, READING).waiting).toBe(1)
   })
 })

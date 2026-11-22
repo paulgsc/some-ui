@@ -1,0 +1,21 @@
+{
+  "id": "C270",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "packages/video-render/src/templates/rust-essay/v2.json",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+    "apps/www/src/lib/web-surface/call/essay-stage.tsx"
+  ],
+  "chose": "The chart comes from the decay record. Its rows are this week's concepts in ticket order, then the others met in the weeks shown, the most recently checked first, at most 6 (ESSAY_CHART_ROWS, what the recorded frame holds beside the notes and role line). Version 2 of the essay's template adds two cells, 'faded' and a decayed level naming the earlier week it fell below. The stage writes a sentence under the chart for each decay and fading, at most three, and cites Leitner. The routine pins version 2 only when the chart draws one of those cells, so an essay without them still renders on a stage built before.",
+  "options": [
+    "version 2 only when needed",
+    "always version 2",
+    "no new cells: the stage presumes fading from the cells it shows"
+  ],
+  "gray": "Home's render image is built from some-ui by hand, so an essay at a newer version waits until the owner rebuilds it; drawing fading from the shown weeks alone would disagree with the due list once the history outgrows the chart's twelve weeks.",
+  "undo": "Write template.version ESSAY_VERSION in finish.ts's buildEssay, or drop the two cells and ESSAY_VERSION back to 1.",
+  "refs": ["#2695", "#2690"],
+  "moves": "C101"
+}

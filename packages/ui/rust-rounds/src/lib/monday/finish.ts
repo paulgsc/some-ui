@@ -3,54 +3,71 @@
  * and the model's values become the files the routine puts, each checked by
  * the app's own parser before it can leave: an essay (`some-ui.rust-essay/1`,
  * `parseEssay`) for each week the bundle owes one, and next week
- * (`some-ui.rust-week/1`, `readWeek`), every program run with a real rustc
- * and matching its `expect`.
+ * (`some-ui.rust-week/2`, `readWeek`; C730), every program and every
+ * academy starter run with a real rustc and matching its `expect`.
  *
  * What code writes, never the model:
  *
  * - every restated field (the week, its company, story, SLA, tickets,
- *   speak-to points, programs, the owner's transcripts and the silences'
+ *   forks, options, programs, the owner's transcripts and the silences'
  *   counts), and next week's id, dates, references, rubric and family;
- * - **the chart** (C101): until the decay record (RR19) derives it, each row
- *   is a concept the week's tickets named, and each cell, per week the
- *   mailbox holds an essay for, the highest SOLO level of that week's answered
- *   tickets naming it, `silent` when every one naming it went unanswered, and
- *   `unmet` when none named it;
- * - **the role line** (C102): RR19 derives it (#2694), so until then it says it
- *   isn't worked out yet, on the ladder the sample cites;
- * - a seed ticket's source, as a sentence at the end of its spec (#2685).
+ * - **the chart and the role line**, both the decay record's (RR19, #2695,
+ *   `@rust-rounds/lib/decay`), read over every week the mailbox holds an
+ *   essay for and this one; the essay pins its template's voices version,
+ *   which draws everything the versions before it do (C841);
+ * - a seed ticket's source, as a sentence at the end of its spec (#2685);
+ * - **the opening**, the standing set copied as it stands
+ *   (`@rust-rounds/lib/opening`, C737): a week whose opening isn't the set
+ *   is refused.
  *
  * What it holds beyond the parsers: each deep dive said in 2 to 5 minutes
- * (C103), every topic and seed covered by a ticket, and each topic's concept
- * named as the area table names it.
+ * (C103), every best, beside and deep dive scene within the essay's frame
+ * (EF1, `essayFit`), every topic and seed covered by a ticket, and each
+ * topic's concept named as the area table names it.
  */
-import type { RustcRun } from "@rust-rounds/lib/formats"
+import type { Judged } from "@rust-rounds/lib/decay"
+import { chartOf, recordOf, roleAt } from "@rust-rounds/lib/decay"
+import type { Expect, RustcRun } from "@rust-rounds/lib/formats"
 import { expectMatches } from "@rust-rounds/lib/formats"
-import { ReferenceSchema, WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
-import type { Reference, Week } from "@rust-rounds/lib/formats/week"
+import {
+  ReferenceSchema,
+  WEEK_SCHEMA,
+  WeekV2Schema,
+} from "@rust-rounds/lib/formats/week"
+import type { Reference, Week, WeekV2 } from "@rust-rounds/lib/formats/week"
 import type {
   Bundle,
   EndedTicket,
   EndedWeek,
   History,
 } from "@rust-rounds/lib/monday/bundle"
+import { judgedOf, judgedWeek } from "@rust-rounds/lib/monday/bundle"
 import { AREAS } from "@rust-rounds/lib/monday/topics"
 import type {
   EssayTicketValues,
   EssayValues,
+  ForkValues,
+  PointValues,
   Values,
 } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
-import { describeWeekProblem, readWeek } from "@rust-rounds/lib/week-check"
-import { assertNever, pacificDay } from "@some-ui/core-utils"
-import type { Essay, EssayCell } from "@some-ui/video-render"
+import { openingOfWeek, STANDING_OPENING } from "@rust-rounds/lib/opening"
 import {
-  ESSAY_CONCEPTS_MOST,
+  describeWeekProblem,
+  oversizeWeek,
+  readWeek,
+} from "@rust-rounds/lib/week-check"
+import { assertNever, pacificDay } from "@some-ui/core-utils"
+import type { Essay, EssayFork, EssayPointAnswer } from "@some-ui/video-render"
+import {
+  ESSAY_CHART_ROWS,
   ESSAY_ID,
   ESSAY_SCHEMA,
-  ESSAY_VERSION,
+  ESSAY_VOICES_VERSION,
   ESSAY_WEEKS_MOST,
+  essayFit,
   parseEssay,
+  pointsFit,
 } from "@some-ui/video-render"
 
 /**
@@ -62,17 +79,41 @@ const WORDS_A_MINUTE = 150
 export const DIVE_WORDS_LEAST = 2 * WORDS_A_MINUTE
 export const DIVE_WORDS_MOST = 5 * WORDS_A_MINUTE
 
-/** The role line until RR19 derives it (C102). */
-export const ROLE_NOT_YET: Essay["weeks"]["role"] = {
-  ladder: "The Dreyfus model of skill acquisition",
-  source: "Dreyfus & Dreyfus, 1980",
-  fits: "Not worked out yet",
-  next: "Worked out across several weeks of answers",
-  gap: "The rule that derives it from the SOLO history comes with the decay record.",
-}
-
 /** Who writes the weeks the routine puts. */
 const ROUTINE_BY = "claude-routine"
+
+/**
+ * Every program of a week's tickets that rustc runs, by the key `finish`
+ * reads its run by: a ticket's program by its id, and exercise n (from 1)
+ * of its academy's starter by `TB-101/academy/n`, as home records them.
+ */
+export function programsOf(
+  tickets: ReadonlyArray<{
+    readonly id: string
+    readonly program: string
+    readonly expect: Expect
+    readonly academy: ReadonlyArray<{
+      readonly title: string
+      readonly starter: string
+      readonly expect: Expect
+    }>
+  }>
+): Array<{ key: string; what: string; program: string; expect: Expect }> {
+  return tickets.flatMap((ticket) => [
+    {
+      key: ticket.id,
+      what: `${ticket.id}'s program`,
+      program: ticket.program,
+      expect: ticket.expect,
+    },
+    ...ticket.academy.map((exercise, i) => ({
+      key: `${ticket.id}/academy/${i + 1}`,
+      what: `${ticket.id}'s exercise ${i + 1} ("${exercise.title}")`,
+      program: exercise.starter,
+      expect: exercise.expect,
+    })),
+  ])
+}
 
 /** A file to put in the mailbox's `brief` folder. */
 type BriefFile = { readonly name: string; readonly body: unknown }
@@ -89,90 +130,233 @@ export function seedLine(at: string): string {
   return `It comes from an error you pasted on ${pacificDay(new Date(at))}.`
 }
 
-/** A week's tickets with each one's SOLO level, or null for a silence. */
-type Levelled = ReadonlyArray<{
-  readonly concepts: ReadonlyArray<{ readonly id: string }>
-  readonly level: number | null
-}>
-
-function cellOf(tickets: Levelled, concept: string): EssayCell {
-  const naming = tickets.filter((t) => t.concepts.some((c) => c.id === concept))
-  if (naming.length === 0) return "unmet"
-  const levels = naming.flatMap((t) => (t.level === null ? [] : [t.level]))
-  return levels.length === 0 ? "silent" : Math.max(...levels)
+/**
+ * Each point of `ticket` answered by a take of its own (RR24), by its place
+ * from 1, from what home heard (the bundle) and the model's reading of it:
+ * a take takes a mark and a SOLO level, a take with nothing said a guess, and
+ * one home couldn't make out nothing.
+ */
+function pointAnswers(
+  ticket: EndedTicket,
+  values: ReadonlyArray<PointValues>,
+  problems: Array<string>
+): Map<number, EssayPointAnswer> {
+  const answers = new Map<number, EssayPointAnswer>()
+  for (const read of values)
+    if (!ticket.points.some((p) => p.point === read.point))
+      problems.push(
+        `${ticket.id}: point ${read.point} wasn't answered by a take of its own, so leave it out of points`
+      )
+  for (const { point, answer } of ticket.points) {
+    const at = `${ticket.id} point ${point}`
+    const read = values.filter((v) => v.point === point)
+    const [only] = read
+    if (read.length > 1) {
+      problems.push(`${at}: read ${read.length} times; read it once`)
+      continue
+    }
+    switch (answer.kind) {
+      case "take": {
+        if (only === undefined || "guess" in only)
+          problems.push(
+            `${at}: answered by its own take, so it takes a mark and a SOLO level, not ${only === undefined ? "nothing" : "a guess"}`
+          )
+        else
+          answers.set(point, {
+            kind: "take",
+            transcript: answer.transcript,
+            mark: {
+              mark: only.mark,
+              ...(only.note === undefined ? {} : { note: only.note }),
+            },
+            solo: only.solo,
+          })
+        break
+      }
+      case "silence": {
+        if (only !== undefined && "guess" in only)
+          answers.set(point, {
+            kind: "silence",
+            opened: answer.opened,
+            guess: only.guess,
+          })
+        else
+          problems.push(
+            `${at}: its own take said nothing, so it takes a guess at why, not ${only === undefined ? "nothing" : "a mark"}`
+          )
+        break
+      }
+      case "unheard": {
+        if (only === undefined)
+          answers.set(point, {
+            kind: "silence",
+            opened: answer.opened,
+            unheard: true,
+          })
+        else
+          problems.push(
+            `${at}: home couldn't make out its own take, so leave it out of points`
+          )
+        break
+      }
+      default: {
+        assertNever(answer)
+      }
+    }
+  }
+  return answers
 }
 
-/** C101: the chart from the weeks the mailbox holds an essay for, ending on this one. */
-function chartOf(
-  ended: EndedWeek,
-  levels: Levelled,
-  history: History
-): Pick<Essay["weeks"], "weeks" | "concepts"> {
-  const past = history.weeks
-    .filter((week) => week.id < ended.week)
-    .flatMap((week) => {
-      const essay = history.essays.find((e) => e.week.id === week.id)
-      if (essay === undefined) return []
-      const tickets: Levelled = week.tickets.map((ticket) => {
-        const answer = essay.tickets.find((t) => t.id === ticket.id)?.answer
-        return {
-          concepts: ticket.concepts,
-          level: answer?.kind === "take" ? answer.solo.level : null,
-        }
-      })
-      return [{ id: week.id, tickets }]
+/**
+ * Each fork of `ticket` that lists options (`/2`, RR29), by its place from
+ * 1, built from the week's options and the after-deadline best fit the
+ * model wrote of it (`values`): one best fit per such fork, each listed
+ * option set against the stated constraints once. Whether an id is stated
+ * and a hidden best's advantage is stated, `parseEssay` holds
+ * (`forkProblems`).
+ */
+function forksOf(
+  ticket: EndedTicket,
+  values: ReadonlyArray<ForkValues>,
+  problems: Array<string>
+): Map<number, EssayFork> {
+  const forks = new Map<number, EssayFork>()
+  for (const read of values)
+    if ((ticket.forks[read.fork - 1]?.options.length ?? 0) === 0)
+      problems.push(
+        `${ticket.id}: fork ${read.fork} lists no options, so leave it out of forks`
+      )
+  for (const [i, { options }] of ticket.forks.entries()) {
+    if (options.length === 0) continue
+    const at = `${ticket.id} fork ${i + 1}`
+    const read = values.filter((v) => v.fork === i + 1)
+    const [only] = read
+    if (only === undefined || read.length > 1) {
+      problems.push(
+        only === undefined
+          ? `${at}: it lists options, so it takes a best fit: the best decision and each option's trade`
+          : `${at}: its best fit is written ${read.length} times; write it once`
+      )
+      continue
+    }
+    const traded = only.options.map((option) => option.id)
+    for (const id of traded)
+      if (!options.some((option) => option.id === id))
+        problems.push(`${at}: ${id} isn't one of its options`)
+    const built = options.flatMap((option) => {
+      const trade = only.options.filter((each) => each.id === option.id)
+      const [one] = trade
+      if (one === undefined || trade.length > 1) {
+        problems.push(
+          `${at}: ${option.id} is set against the stated constraints ${trade.length} times; once`
+        )
+        return []
+      }
+      return [
+        {
+          id: option.id,
+          recommended: option.recommended,
+          decision: option.decision,
+          model: option.model,
+          meets: one.meets,
+          breaks: one.breaks,
+          ...(one.because === undefined ? {} : { because: one.because }),
+          ...(one.refused === undefined ? {} : { refused: one.refused }),
+        },
+      ]
     })
-  const shown = [...past, { id: ended.week, tickets: levels }].slice(
-    -ESSAY_WEEKS_MOST
-  )
-  const rows = new Map<string, string>()
-  for (const ticket of ended.tickets)
-    for (const concept of ticket.concepts)
-      if (!rows.has(concept.id)) rows.set(concept.id, concept.name)
-  return {
-    weeks: shown.map((week) => week.id),
-    concepts: [...rows].slice(0, ESSAY_CONCEPTS_MOST).map(([id, name]) => ({
-      name,
-      cells: shown.map((week) => cellOf(week.tickets, id)),
-    })),
+    if (built.length !== options.length) continue
+    forks.set(i + 1, {
+      options: built,
+      best:
+        "option" in only.best
+          ? { kind: "option", option: only.best.option }
+          : { kind: "hidden", ...only.best.hidden },
+      said: only.said,
+    })
   }
+  return forks
 }
 
 function essayTicket(
   ticket: EndedTicket,
+  sla: EndedWeek["sla"],
   values: EssayTicketValues,
   problems: Array<string>
 ): Essay["tickets"][number] | null {
   const at = `${ticket.id}`
-  if (values.bests.length !== ticket.speakTo.length) {
+  if (values.bests.length !== ticket.forks.length) {
     problems.push(
-      `${at}: ${values.bests.length} best fits for ${ticket.speakTo.length} speak-to points`
+      `${at}: ${values.bests.length} best fits for ${ticket.forks.length} speak-to points`
     )
   }
   const reading = values.answer
   let answer: Essay["tickets"][number]["answer"] | null = null
-  if (ticket.answer.kind === "take") {
-    if ("guess" in reading) {
-      problems.push(
-        `${at}: answered, so it takes marks and a SOLO level, not a guess`
-      )
-    } else {
-      answer = {
-        kind: "take",
-        transcript: ticket.answer.transcript,
-        ...reading,
+  switch (ticket.answer.kind) {
+    case "take": {
+      if (reading === undefined || "guess" in reading) {
+        problems.push(
+          `${at}: answered, so it takes marks and a SOLO level, not ${reading === undefined ? "nothing" : "a guess"}`
+        )
+      } else {
+        answer = {
+          kind: "take",
+          transcript: ticket.answer.transcript,
+          ...reading,
+        }
       }
+      break
     }
-  } else if ("guess" in reading) {
-    answer = {
-      kind: "silence",
-      opened: ticket.answer.opened,
-      guess: reading.guess,
+    case "silence": {
+      if (reading !== undefined && "guess" in reading) {
+        answer = {
+          kind: "silence",
+          opened: ticket.answer.opened,
+          guess: reading.guess,
+        }
+      } else {
+        problems.push(
+          `${at}: left unanswered, so it takes a guess at why, not ${reading === undefined ? "nothing" : "marks"}`
+        )
+      }
+      break
     }
-  } else {
-    problems.push(
-      `${at}: left unanswered, so it takes a guess at why, not marks`
-    )
+    case "unheard": {
+      if (reading === undefined) {
+        answer = {
+          kind: "silence",
+          opened: ticket.answer.opened,
+          unheard: true,
+        }
+      } else {
+        problems.push(
+          `${at}: home couldn't make out the take, so leave answer out`
+        )
+      }
+      break
+    }
+    case "by-points": {
+      const every = ticket.points.length === ticket.forks.length
+      if (every && reading === undefined) {
+        answer = { kind: "silence", opened: ticket.answer.opened }
+      } else if (!every && reading !== undefined && "guess" in reading) {
+        answer = {
+          kind: "silence",
+          opened: ticket.answer.opened,
+          guess: reading.guess,
+        }
+      } else {
+        problems.push(
+          every
+            ? `${at}: every point was answered by a take of its own, so leave answer out`
+            : `${at}: some points were left unanswered, so it takes a guess at why, not ${reading === undefined ? "nothing" : "marks"}`
+        )
+      }
+      break
+    }
+    default: {
+      assertNever(ticket.answer)
+    }
   }
   values.dives.forEach((dive, k) => {
     const n = wordCount(dive.said)
@@ -182,17 +366,39 @@ function essayTicket(
       )
     }
   })
+  const own = pointAnswers(ticket, values.points ?? [], problems)
+  const forks = forksOf(ticket, values.forks ?? [], problems)
   if (answer === null) return null
   return {
     id: ticket.id,
     title: ticket.title,
     spec: ticket.spec,
-    figures: ticket.figures,
+    figures: ticket.figures.map((figure) => figure.text),
     program: ticket.program,
-    points: ticket.speakTo.map((to, i) => ({
-      to,
-      best: values.bests[i] ?? "",
-    })),
+    points: ticket.forks.map(({ question: to }, i) => {
+      const answered = own.get(i + 1)
+      const fork = forks.get(i + 1)
+      return {
+        to,
+        best: values.bests[i] ?? "",
+        ...(answered === undefined ? {} : { answer: answered }),
+        ...(fork === undefined ? {} : { fork }),
+      }
+    }),
+    ...(forks.size === 0
+      ? {}
+      : {
+          stated: [
+            ...sla.map((row) => ({
+              id: row.id,
+              says: `${row.what}: ${row.target}`,
+            })),
+            ...ticket.figures.map((figure) => ({
+              id: figure.id,
+              says: figure.text,
+            })),
+          ],
+        }),
     answer,
     question: { said: values.question },
     best: { said: values.best },
@@ -219,7 +425,7 @@ function buildEssay(
       problems.push(`${ended.week}: ${ticket.id} has no values`)
       return []
     }
-    const built = essayTicket(ticket, held, problems)
+    const built = essayTicket(ticket, ended.sla, held, problems)
     return built === null ? [] : [built]
   })
   if (following === undefined) {
@@ -228,36 +434,49 @@ function buildEssay(
     )
   }
   if (problems.length > before || following === undefined) return null
-  const levels: Levelled = ended.tickets.map((ticket) => {
-    const answer = tickets.find((t) => t.id === ticket.id)?.answer
-    return {
-      concepts: ticket.concepts,
-      level: answer?.kind === "take" ? answer.solo.level : null,
-    }
-  })
+  const judged: Array<Judged> = [
+    ...judgedOf(history).filter((j) => j.week < ended.week),
+    judgedWeek(ended.week, ended.tickets, tickets),
+  ]
+  const record = recordOf(judged)
+  const chart = chartOf(
+    record,
+    judged.map((j) => j.week),
+    ended.tickets.flatMap((t) => t.concepts),
+    { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
+  )
+  // Every essay takes the voices' version, which draws everything the
+  // versions before it do (C841).
+  const version = ESSAY_VOICES_VERSION
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
   ]
   const essay = {
     schema: ESSAY_SCHEMA,
-    template: { id: ESSAY_ID, version: ESSAY_VERSION },
+    template: { id: ESSAY_ID, version },
     week: { id: ended.week, from: ended.from, to: ended.to },
     company: ended.company,
     story: ended.story,
-    sla: ended.sla,
+    sla: ended.sla.map(({ what, target }) => ({ what, target })),
     references: ended.references,
+    ...(ended.opening === undefined ? {} : { opening: ended.opening }),
     open: { said: values.open },
     tickets,
     weeks: {
       said: values.weeks,
-      ...chartOf(ended, levels, history),
-      role: ROLE_NOT_YET,
+      ...chart,
+      role: roleAt(record, chart.weeks),
     },
     next: { said: values.next, week: following.id, topics },
   }
   const parsed = parseEssay(essay)
-  if (!parsed.ok) {
-    problems.push(...parsed.problems.map((p) => `${ended.week} essay: ${p}`))
+  const unfit = parsed.ok ? essayFit(parsed.value).problems : []
+  if (!parsed.ok || unfit.length > 0) {
+    problems.push(
+      ...(parsed.ok ? unfit : parsed.problems).map(
+        (p) => `${ended.week} essay: ${p}`
+      )
+    )
     return null
   }
   return parsed.value
@@ -268,7 +487,7 @@ function buildWeek(
   values: Values,
   runs: Readonly<Record<string, RustcRun>>,
   problems: Array<string>
-): Week | null {
+): { file: WeekV2; held: Week } | null {
   const next = bundle.next
   if (next === null) {
     if (values.week !== null)
@@ -334,6 +553,7 @@ function buildWeek(
     role: given.role,
     audience: given.audience,
     story: given.story,
+    opening: openingOfWeek(),
     sla: given.sla,
     tickets: given.tickets.map(({ seed, ...ticket }) =>
       seed === undefined
@@ -350,21 +570,45 @@ function buildWeek(
     )
     return null
   }
-  for (const ticket of read.week.tickets) {
-    const run = runs[ticket.id]
-    if (run === undefined) {
-      problems.push(`week: ${ticket.id}'s program hasn't been run with rustc`)
-    } else if (run.outcome === "stopped") {
-      problems.push(
-        `week: ${ticket.id}'s program was stopped (${run.why}); a program finishes at once`
-      )
-    } else if (!expectMatches(ticket.expect, run)) {
-      problems.push(
-        `week: ${ticket.id} expects ${JSON.stringify(ticket.expect)}, and rustc ${run.toolchain} gave ${describeRun(run)}`
-      )
-    }
+  for (const { key, what, expect } of programsOf(read.week.tickets))
+    checkRun(what, expect, runs[key], problems)
+  // Its essay restates each fork's question as written, so the week holds
+  // the room it takes there.
+  for (const ticket of read.week.tickets)
+    for (const unfit of pointsFit(
+      ticket.id,
+      ticket.forks.map((fork) => fork.question)
+    ))
+      problems.push(`week: ${unfit}`)
+  const file = WeekV2Schema.parse(week)
+  // The standing set reaches the week whole, or the week isn't put (C737).
+  if (JSON.stringify(file.opening) !== JSON.stringify(STANDING_OPENING))
+    problems.push(
+      `week: its opening isn't the standing set (version ${STANDING_OPENING.version}) as it stands; the routine never writes the opening`
+    )
+  const oversize = oversizeWeek(file)
+  if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
+  return problems.length > before ? null : { file, held: read.week }
+}
+
+/** Whether rustc did with `what` what its `expect` says, as home records it. */
+function checkRun(
+  what: string,
+  expect: Expect,
+  run: RustcRun | undefined,
+  problems: Array<string>
+): void {
+  if (run === undefined) {
+    problems.push(`week: ${what} hasn't been run with rustc`)
+  } else if (run.outcome === "stopped") {
+    problems.push(
+      `week: ${what} was stopped (${run.why}); a program finishes at once`
+    )
+  } else if (!expectMatches(expect, run)) {
+    problems.push(
+      `week: ${what} expects ${JSON.stringify(expect)}, and rustc ${run.toolchain} gave ${describeRun(run)}`
+    )
   }
-  return problems.length > before ? null : read.week
 }
 
 function describeRun(run: RustcRun): string {
@@ -397,7 +641,10 @@ export function finish({
   readonly bundle: Bundle
   readonly history: History
   readonly values: unknown
-  /** Each of next week's tickets' programs, run with rustc, by ticket id. */
+  /**
+   * Each of next week's programs and academy starters, run with rustc, by
+   * `programsOf`'s keys.
+   */
   readonly runs: Readonly<Record<string, RustcRun>>
 }): Finished {
   const parsed = ValuesSchema.safeParse(input)
@@ -411,7 +658,8 @@ export function finish({
   }
   const values = parsed.data
   const problems: Array<string> = []
-  const week = buildWeek(bundle, values, runs, problems)
+  const built = buildWeek(bundle, values, runs, problems)
+  const week = built?.held ?? null
 
   const owed = new Set(bundle.essays.map((e) => e.week))
   for (const given of values.essays)
@@ -448,7 +696,7 @@ export function finish({
       })),
       ...(week === null
         ? []
-        : [{ name: `rust-week-${week.id}.json`, body: week }]),
+        : [{ name: `rust-week-${week.id}.json`, body: built?.file }]),
     ],
   }
 }

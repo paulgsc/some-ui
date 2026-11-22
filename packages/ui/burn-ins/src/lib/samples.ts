@@ -67,6 +67,12 @@ const CARD = {
 /** The sample card without its note, which the 16:9 video's shorter body has no room for. */
 export const CARD_WITHOUT_NOTE = { ...CARD, note: "" }
 
+/** What the sample cards are stamped with: the commit CARDS1 landed in. */
+const SAMPLE_STAMP = {
+  sources: ["paulgsc/some-ui@5f3dd29"],
+  date: "2026-11-14",
+}
+
 /** One sample for each kind but a game card, which has one per template. */
 export const SAMPLES: Readonly<
   Record<Exclude<Kind, "game-card">, BurnInData["params"]>
@@ -106,6 +112,99 @@ export const SAMPLES: Readonly<
     endMs: STILL_SAMPLE_MS,
   },
   "preview-mark": {},
+  // An open PR, shown first in its video, so it spells itself out.
+  "status-badge": { badge: "pr" },
+  terminal: {
+    kicker: "TERMINAL · THE SCRATCHPAD",
+    title: "What the binding runs",
+    stamp: SAMPLE_STAMP,
+    bar: "scratchpad",
+    lines: [
+      { comment: "# a sample: the commands are made up", badge: "next" },
+      {
+        prompt: "$",
+        keyword: "scratch run foo.rs",
+        comment: "  # compile, lint, run",
+        badge: "main",
+      },
+      {
+        prompt: "$",
+        keyword: "scratch watch foo.rs",
+        comment: "  # on every save",
+        badge: "pr",
+      },
+      { prompt: "$", text: "export API_KEY=<from the vault>", badge: "you" },
+      { comment: "# std only: no crates", badge: "gap" },
+    ],
+  },
+  "cheat-sheet": {
+    kicker: "CHEAT SHEET · A SAMPLE",
+    title: "When you want it now",
+    stamp: SAMPLE_STAMP,
+    rows: [
+      {
+        badge: "you",
+        task: "Upgrade now",
+        command: "sudo upgrade --now",
+        note: "The same path the nightly run takes.",
+      },
+      { badge: "main", task: "Watch it", command: "journalctl -fu upgrade" },
+      { badge: "pr", task: "Read the verdict", command: "cat report.md" },
+      {
+        badge: "gap",
+        task: "Reload after a change",
+        command: "reload --config <file>",
+        note: "The made-up binding reads the old path.",
+      },
+    ],
+  },
+  flow: {
+    kicker: "FLOW · A SAMPLE",
+    title: "Merging one PR is the whole upgrade",
+    stamp: SAMPLE_STAMP,
+    steps: [
+      {
+        badge: "pr",
+        label: "Monday morning",
+        command: "nix flake update",
+        note: "CI opens one lockfile PR with the diff.",
+      },
+      {
+        badge: "you",
+        label: "Review and merge",
+        note: "The only step by hand.",
+      },
+      {
+        badge: "main",
+        label: "Nightly",
+        note: "The box pulls main and switches.",
+      },
+    ],
+  },
+  legend: {
+    kicker: "LEGEND · A SAMPLE",
+    title: "Reading the badges",
+    stamp: SAMPLE_STAMP,
+  },
+  bars: {
+    kicker: "CHART · A SAMPLE",
+    title: "Where a week's runner-minutes went",
+    stamp: SAMPLE_STAMP,
+    series: ["could fail", "couldn't fail"],
+    unit: "min",
+    rows: [
+      { label: "Unit tests", values: [180, 4], note: "4 of 184" },
+      { label: "Rust audits", values: [12, 140], note: "140 of 152" },
+      { label: "End to end", values: [210, 30], note: "30 of 240" },
+    ],
+  },
+  rule: {
+    kicker: "RULE · A SAMPLE",
+    title: "How stale is this card?",
+    stamp: SAMPLE_STAMP,
+    sources: ["make help", "the README"],
+    wins: "the README",
+  },
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

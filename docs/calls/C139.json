@@ -1,0 +1,20 @@
+{
+  "id": "C139",
+  "made": "2026-11-12",
+  "by": "claude",
+  "agreed": "2026-11-12",
+  "paths": [
+    "apps/www/src/lib/renders/conveyor.ts",
+    "apps/www/src/components/studio/renders.tsx",
+    "packages/ui/shared/src/components/ui/station-strip/index.tsx"
+  ],
+  "chose": "Every render on Studio › Renders moves along one conveyor of pizza-named stations, like the takes conveyor's (#2876): In line, Waiting for an oven, In the oven (recording scene k of n), Boxing, Ready for pickup, with Set on the counter (paused) and Burnt (couldn't finish) as side tracks, drawn by one display-only StationStrip in packages/ui/shared that the takes conveyor can reuse.",
+  "options": [
+    "pizza names, matching the takes conveyor",
+    "plain names (waiting, making, putting it together, ready)",
+    "no conveyor: the Now block's line and bar as before"
+  ],
+  "gray": "The owner asked whether the conveyor pattern should carry renders' status, and named pizza for takes (#2876), not for renders; two conveyors could share the names or keep their own.",
+  "undo": "Change CONVEYOR_WORDS in apps/www/src/lib/renders/conveyor.ts to plain names, or drop the StationStrip and row tags from renders.tsx.",
+  "refs": ["#2899", "#2872", "#2876"]
+}

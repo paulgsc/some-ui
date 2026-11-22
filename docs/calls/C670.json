@@ -1,0 +1,16 @@
+{
+  "id": "C670",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "A ticket is a flow of three fixed steps, Read, Academy and Voice, tracked per ticket. Only the steps are fixed: the points, tickets and exercises each step holds come from the week in any number.",
+  "options": [
+    "three fixed steps per ticket",
+    "a free sequence of screens per ticket",
+    "no steps: one screen per ticket"
+  ],
+  "gray": "The owner said the flow (read, academy, voice) and left the UI to the prototype; whether the steps are fixed or vary with the week is a layout choice no check settles.",
+  "undo": "Make the step row read the week's own list of steps; the flow's state keys by step.",
+  "refs": ["#3249"]
+}

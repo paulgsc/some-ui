@@ -32,12 +32,60 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   series' pin.
 
 - `walk <app> --sample <file> --out <folder>` replays an app's scripted walk (SFEED7a,
-  #2736) in a sandbox holding only the sample: the app's own built pages, served from
-  `http://sandbox.invalid` with every other request refused, driven step by step. It
-  writes each step's screen as a snip and `walk.json`: each snip's time and each tap's
-  place and time, on the walk's own timeline. Suspender Ledger's popup is the first
-  (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four reads from the
-  sample.
+  #2736; WALK1, #3282) on a stage holding only the sample, driven step by step. It writes
+  each step's screen as a snip and `walk.json`: each snip's time and each tap's place and
+  time, on the walk's own timeline. A step is one of a closed set of actions (open, tap,
+  type, dwell), and a walk names its stage (C860, `src/walk/run.ts`):
+
+  - **sandbox** (`src/walk/stage-sandbox.ts`): the app's own built pages, served from
+    `http://sandbox.invalid` with every other request refused. Suspender Ledger's popup
+    walks here (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four
+    reads from the sample.
+  - **apk** (`src/walk/stage-apk.ts`): the debug APK on a booted emulator, its WebView
+    driven by Playwright, each snip the whole screen. Jobs walks here
+    (`src/walk/jobs.ts`), against the stand-in home answering its story sample
+    (`apps/www/tests/walk/jobs-week.json`), run by `apps/mobile/walk/walk-apk.sh` inside
+    Snips Capture's emulator.
+  - **grafana** (`src/walk/stage-grafana.ts`, C1073): home's own Grafana, each panel opened
+    alone (`/d-solo/`) at one size, dark, in UTC, over the week home's sample names (ending at
+    a UTC midnight that has passed), with a Viewer token read from `GRAFANA_TOKEN`. Every
+    request is fetched by the stage: another origin is refused, a redirect fails the walk
+    (it would carry the token), and service workers and sockets are blocked. Home's
+    render worker walks `home-server` (six panels of file_host's dashboard) and `home-cores`
+    (the CPU panel) here (`src/walk/home-dashboards.ts`, #3415); the server clip is
+    `home-server`'s walkthrough, from `walks/home-server.json`. A step may `visit` another
+    page of the stage's own origin.
+
+  A walk can also be given a microphone (`src/walk/microphone.ts`, WALK3): the page's
+  audio `getUserMedia` answers a canned clip, so the app's own recorder records it.
+
+  `promo-feature` draws a walk's screens at their own pixels, made smaller only where
+  they would not fit above the caption: a popup's walk at full size, an APK walk's whole
+  9:16 screen at 1320 px tall, about seven tenths of the frame's width, its caption just
+  below it (the owner, 2026-11-21: the phone at three-quarter size, the caption below).
+
+- `walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder> | --speaker <url>] [--brand <folder>] [--prove]`
+  makes an app's walkthrough (WALK4, #3282): the promo with chapters. The words
+  (`some-ui.walkthrough/1`, `src/walkthrough.ts`) give a caption per screen and the stops,
+  each from a screen of the walk; the cut list is the promo's opening, then per stop a
+  chapter card (`walk-chapter`) and that stop's screens in `promo-feature`, then the
+  promo's close. It takes a walk already made, since an APK walk needs the emulator:
+  Snips Capture's `walks-<run>` artifact holds `jobs/`. Jobs' words are
+  `apps/www/tests/walk/jobs-walkthrough.json`.
+
+  Voiced (WALK5, #3337; the owner's call C945). It writes `lines.json`, every line home's
+  Kokoro says: each stop says its own `narration` from the words (part promo, part mission:
+  what the screen can't show), never its captions, and the chapter cards stay silent. With
+  `--home` (home's weekly read, `GET /app-events/weeks/:week`; mapped onto the registry by
+  `frictionOf` and kept as `friction.json`), each stop then says what real use shows of it,
+  its card shows the same, and the last stop names the modules nobody opens, with a card
+  before the close (#3338). With `--takes` (the folder the lines were said into: `<file>.wav`
+  and `<file>.json`, `{ms, words, said}`; a take whose `said` is another line is refused), each stop's lines are laid back to back a breath apart
+  into `<shot>.wav`, and its screens are stretched by one factor until they hold them (C1000).
+  With `--speaker <url>` instead (home's Kokoro, as `http://kokoro:8880`), it says `lines.json`
+  itself into `<out>/takes`, each take kept in that folder's step cache, as the recorders do
+  (`@some-ui/video-render/node`'s `sayLines`).
+
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks
@@ -50,7 +98,21 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   leaves and a ding as the close's mark comes in. So it needs `--brand`, whose `sounds/` holds
   the kit `render sounds --out <brand>/sounds` writes (`@some-ui/video-render`'s `cues.ts`).
 
-CI runs `prove`, `video` and `promo` on every change here (`pr.yml`, "HyperFrames renders the
+## A screen, zoomed to its parts
+
+`screen-zoom` (RR31, #3288; calls C795, C796) shows one photographed screen whole, eases in
+to each region it is given in turn, a ring on it, and back out. The screen and its regions
+come from a `some-ui.screens/1` record (`@some-ui/video-render`'s `screen.ts`): the Rust
+essay's capture photographs the phone's own ticket cards from the owner's week, and any
+other capture may photograph a screen whose parts carry `data-region`. `zoomPicture` in
+`@some-ui/video-render` turns a record and a list of region names into the composition
+picture any cut list can place, with the picture in its files. It fits any frame and keeps
+`foot` of the frame's height clear for captions.
+
+`sample/zoom` is one: a mock Rust Rounds card on sample data (not the app's own drawing),
+zoomed to its question, its code and rustc's error, in the vertical series.
+
+CI runs `prove`, `video` (on `sample/video` and `sample/zoom`) and `promo` on every change here (`pr.yml`, "HyperFrames renders the
 same bytes twice"). They need `ffmpeg` on `PATH` and Playwright's Chromium **headless shell**:
 found under `PLAYWRIGHT_BROWSERS_PATH` or Playwright's cache, or named with `--chrome`
 (`src/browser.ts`). The full Chrome is refused (see "The pins, and why").

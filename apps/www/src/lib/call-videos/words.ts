@@ -4,12 +4,13 @@
  * every feed's screen says is `VIDEOS_WORDS`; what differs by feed (its name,
  * what an episode is called, how one is labelled) is `FEED_WORDS`.
  */
-import { addDays } from "@some-ui/core-utils"
+import { addDays, isoWeeksIn } from "@some-ui/core-utils"
 import { WEEK_ID, weekNumber } from "@some-ui/rust-rounds/entry"
 
+import { essayName, isEssayKey } from "@/lib/cards-essay-key"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 
-import type { Feed, FetchFailure } from "./model"
+import type { Episode, Feed, FetchFailure } from "./model"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
 export function share(done: number, total: number): number {
@@ -36,13 +37,26 @@ function playoffDeltaWeek(key: string): string | null {
 }
 
 /**
- * A week of Rust Rounds by its year and number (its key is `<year>-w<NN>`),
- * or `null`.
+ * An ISO week by its year and number, or `null`, in each feed's own
+ * spelling: a week of Rust Rounds or of the interview essay is
+ * `<year>-w<NN>`, of the engagement report `<year>-W<NN>`, as home keys it.
  */
-function rustWeek(key: string): string | null {
-  return WEEK_ID.test(key)
-    ? `${key.slice(0, 4)}, week ${String(weekNumber(key))}`
-    : null
+function isoWeek(key: string, letter: "w" | "W"): string | null {
+  if (key.charAt(5) !== letter) return null
+  const week = key.toLowerCase()
+  if (!WEEK_ID.test(week)) return null
+  const year = week.slice(0, 4)
+  const n = weekNumber(week)
+  // A week 53 in a year of 52 names no week, as `keyDay` reads it.
+  return n <= isoWeeksIn(Number(year)) ? `${year}, week ${String(n)}` : null
+}
+
+/**
+ * A cards essay by its subject and the day it was checked (its key is
+ * `<slug>-<YYYY-MM-DD>`; C356), or `null`.
+ */
+function cardsEssay(key: string): string | null {
+  return isEssayKey(key) ? essayName(key) : null
 }
 
 type FeedWords = {
@@ -124,22 +138,112 @@ export const FEED_WORDS = {
       "Home doesn't keep the Rust Rounds essays yet. Update home, then try again.",
     none: "Home hasn't made an essay yet. Each comes after its week has closed.",
     gone: "This essay isn't among home's essays. Home lists each once its week has closed and Claude has written it.",
-    week: rustWeek,
-    label: (key: string): string => rustWeek(key) ?? "This essay",
+    week: (key: string) => isoWeek(key, "w"),
+    label: (key: string): string => isoWeek(key, "w") ?? "This essay",
     waiting: "Home is still making this week's essay.",
     linkSaved: "Saved. Home keeps the link with the week.",
     letGo: "You let home's copy go. The essay lives on YouTube.",
     shareTitle: (key: string): string => {
-      const week = rustWeek(key)
+      const week = isoWeek(key, "w")
       return week === null ? "Rust Rounds" : `Rust Rounds, ${week}`
     },
     what: "the Rust Rounds essays",
   },
+  "interview-essay": {
+    heading: FEED_FACTS["interview-essay"].name,
+    intro:
+      "Home makes each week's essay once the interview week's deadline has passed. Watch it here, share it to YouTube, then save its link.",
+    voice:
+      "Its video holds your voice: every take you sent that week plays in it, whole.",
+    unpaired: "Pair this phone with home to see the interview essays.",
+    older:
+      "Home doesn't keep the interview essays yet. Update home, then try again.",
+    none: "Home hasn't made an interview essay yet. Each comes once its week's deadline has passed.",
+    gone: "This essay isn't among home's interview essays.",
+    week: (key: string) => isoWeek(key, "w"),
+    label: (key: string): string => isoWeek(key, "w") ?? "This essay",
+    waiting: "Home is still making this week's essay.",
+    linkSaved: "Saved. Home keeps the link with the week.",
+    letGo: "You let home's copy go. The essay lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const week = isoWeek(key, "w")
+      return week === null
+        ? "The interview essay"
+        : `The interview essay, ${week}`
+    },
+    what: "the interview essays",
+  },
+  report: {
+    heading: FEED_FACTS.report.name,
+    intro:
+      "Home makes each week's report from what you used, once the week has ended. Watch it here, share it to YouTube, then save its link, and home's copy can be let go from My data.",
+    voice: null,
+    unpaired: "Pair this phone with home to see your engagement reports.",
+    older:
+      "Home doesn't keep the engagement reports yet. Update home, then try again.",
+    none: "Home hasn't made a report yet. Each comes after its week has ended.",
+    gone: "This report isn't among home's reports. Home makes each once its week has ended, and only for a week this phone sent home what you used.",
+    week: (key: string) => isoWeek(key, "W"),
+    label: (key: string): string => isoWeek(key, "W") ?? "This report",
+    waiting: "Home is still making this report.",
+    linkSaved: "Saved. Home keeps the link with the week.",
+    letGo: "You let home's copy go. The report lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const week = isoWeek(key, "W")
+      return week === null
+        ? "The engagement report"
+        : `The engagement report, ${week}`
+    },
+    what: "your engagement reports",
+  },
+  "cards-essay": {
+    heading: FEED_FACTS["cards-essay"].name,
+    intro:
+      "Home makes each cards essay's video once the essay reaches it. Watch it here, share it to YouTube, then save its link. Home keeps every one until a recording it plays is deleted or let go: then its video goes from home, and home won't list or make it again.",
+    voice: null,
+    unpaired: "Pair this phone with home to see the cards essays.",
+    older:
+      "Home doesn't list the cards essays here yet. Update home, then try again. Studio › Renders plays them meanwhile.",
+    none: "Home hasn't made a cards essay yet.",
+    gone: "This essay isn't among home's cards essays. Home stops listing an essay once a recording it plays is deleted or let go.",
+    week: cardsEssay,
+    label: (key: string): string => cardsEssay(key) ?? "This essay",
+    waiting: "Home is still making this essay's video.",
+    linkSaved: "Saved. Home keeps the link with the essay.",
+    // Never said yet: no cards essay is let go (#2999).
+    letGo: "You let home's copy go. The essay lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const name = cardsEssay(key)
+      return name === null ? "A cards essay" : `A cards essay: ${name}`
+    },
+    what: "the cards essays",
+  },
 } as const satisfies Record<Feed, FeedWords>
+
+/** A part of a series, after what it is a part of: "part 2 of 3". */
+const partOf = (part: number, of: number): string =>
+  `part ${String(part)} of ${String(of)}`
+
+/**
+ * An episode as its lists and page name it: the title home gives it, where
+ * its feed has one (a cards essay's), else its feed's `label` of what it is
+ * a part of, with which part once its week is a series (the call's, #2918).
+ */
+export function episodeName(
+  feed: Feed,
+  episode: Pick<Episode, "key" | "title" | "week" | "part" | "of">
+): string {
+  const title = episode.title?.trim() ?? ""
+  if (title !== "") return title
+  const label = FEED_WORDS[feed].label(episode.week ?? episode.key)
+  const { part = 1, of = 1 } = episode
+  return of > 1 ? `${label}, ${partOf(part, of)}` : label
+}
 
 export const VIDEOS_WORDS = {
   reading: "Reading what home has…",
   away: "Home didn't answer. Try again in a moment.",
+  busy: "This phone was busy with home just then. Try again in a moment.",
   unreadable: "Home's answer couldn't be read. Try again.",
   tryAgain: "Try again",
   watch: "Watch",
@@ -147,6 +251,7 @@ export const VIDEOS_WORDS = {
     `Bringing it to the phone, ${String(share(done, total))}%`,
   failed: {
     away: "Home stopped answering. Watch again to start over.",
+    busy: "This phone was busy with home, so the video stopped coming. Watch again in a moment.",
     gone: "Home no longer has this video.",
     phone:
       "The phone couldn't keep the video. Free some space and watch again.",
@@ -159,6 +264,7 @@ export const VIDEOS_WORDS = {
   saving: "Saving…",
   notAVideo: "That isn't a link to a YouTube video.",
   linkAway: "Home didn't answer, so the link isn't saved. Try again.",
+  linkOlder: "Home didn't keep the link. Update home, then try again.",
   onYouTube: "Watch on YouTube",
   /** Its chapters, for the upload's YouTube description (SFEED4). */
   chapters: "Its chapters",

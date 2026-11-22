@@ -1,0 +1,18 @@
+{
+  "id": "C782",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/flow/index.ts",
+    "packages/ui/rust-rounds/src/lib/week-play/points.ts"
+  ],
+  "chose": "The opening's questions join the week's one line of steps and its bundle as items named opening:<n>, a step kind \"opening\" whose `ticket` field holds that item, rather than widening FlowStep to a union. A ticket's id is capitals, digits and a dash, so it never reads as one; the marks the phone already keeps take the new step with one more enum value and no new store; and the take's ref, <week>:opening:<n>, is the line the bundle already makes from week and item, which home reads from epoch 25.",
+  "options": [
+    "opening:<n> as the step's and item's key, step kind \"opening\"",
+    "FlowStep as a union of a ticket's step and an opening's question",
+    "a separate pager before the flow, outside its line"
+  ],
+  "gray": "The handover on #3269 leaned to a union as clearer; the reserved key keeps one store and one line. Either shows the owner the same pages.",
+  "undo": "Make FlowStep a union { kind: \"ticket\" … } | { kind: \"opening\", n }, keep reading marks stored with ticket opening:<n>, and give weekItems' opening items their own type.",
+  "refs": ["#3269", "#2231", "#3197"]
+}

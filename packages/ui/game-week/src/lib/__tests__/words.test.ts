@@ -9,14 +9,19 @@ import {
   gameLabel,
   keptLine,
   MINUTE_LINE,
+  MISSED_WORDS,
+  missedHead,
   MODE_WORDS,
   noGamesLine,
   noOfferLine,
   NOTICES,
   outboxLine,
+  TIER_TITLES,
+  unitLine,
   wantLine,
   WORDS,
 } from "@game-week/lib/words"
+import { UNITS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
 const MACHINERY =
@@ -60,8 +65,14 @@ function everyPhrase(): Array<string> {
       )
     )
   )
+  const { yourTakes, aboutTeam, legendLede, ...fixed } = WORDS
   return [
-    ...Object.values(WORDS),
+    ...Object.values(fixed),
+    legendLede(true),
+    legendLede(false),
+    yourTakes(true),
+    yourTakes(false),
+    aboutTeam("CHI"),
     ...Object.values(NOTICES),
     ...MODES.flatMap((mode) => [
       MODE_WORDS[mode].name,
@@ -75,6 +86,11 @@ function everyPhrase(): Array<string> {
     ...LINKS.flatMap((link) => [noOfferLine(link), noGamesLine(link)]),
     gameLabel("SF", "SEA"),
     wantLine("SF"),
+    ...Object.values(TIER_TITLES),
+    ...UNITS.flatMap((unit) => [
+      unitLine({ unit, side: "CHI" }),
+      unitLine({ unit, side: null }),
+    ]),
     ...views,
   ]
 }
@@ -95,6 +111,10 @@ describe("the recorder's words", () => {
     )
     expect(outboxLine({ ...none, waiting: 2, sending: false })).toMatch(
       /paired with home/
+    )
+    // Not known yet whether this phone sends: nothing said of pairing.
+    expect(outboxLine({ ...none, waiting: 2, sending: null })).toBe(
+      "2 bites wait on this phone."
     )
     expect(outboxLine({ ...none, notKept: 2, waiting: 1 })).toBe(
       "2 bites couldn't be kept on this phone yet. The app keeps trying while it's open. 1 bite waits on this phone until home has it."
@@ -129,5 +149,31 @@ describe("the recorder's words", () => {
   it("counts time the way the screen shows it", () => {
     expect(ago(40_000)).toBe("40 s ago")
     expect(ago(150_000)).toBe("2 min ago")
+  })
+})
+
+describe("a big moment with no bite (GWB14 D15)", () => {
+  const moment = {
+    scenario: "in.turnover" as const,
+    context: "CHI intercepted at the NE 40",
+    at: "2026-10-23T01:10:00Z",
+    playId: "1",
+    period: 3,
+    clock: "4:12",
+  }
+
+  it("heads it with its quarter and clock, as a matched bite's, then its scenario", () => {
+    expect(MISSED_WORDS.noBite).toBe("No bite")
+    expect(missedHead(moment)).toMatch(/^Q3 4:12 · \S/)
+    expect(missedHead({ ...moment, period: 5 })).toMatch(/^OT 4:12 · /)
+    expect(missedHead({ ...moment, period: null, clock: null })).not.toMatch(
+      /^ · /
+    )
+    expect(missedHead({ ...moment, period: null })).toMatch(/^4:12 · /)
+  })
+
+  it("says no machinery", () => {
+    expect(MISSED_WORDS.noBite).not.toMatch(MACHINERY)
+    expect(missedHead(moment)).not.toMatch(MACHINERY)
   })
 })

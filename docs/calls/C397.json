@@ -1,0 +1,15 @@
+{
+  "id": "C397",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/interview-week/cue.ts"],
+  "chose": "A teleprompter read's cue counts down 3 seconds on the card, under the script, then the take starts with the script still on screen. A tap on the take button again, a swipe or a dot, or the screen hidden calls the cue off, and nothing records. Started from the look over (Say it, Redo), the read's card comes on screen first and the cue counts there.",
+  "options": [
+    "(a) 3 seconds, called off by anything else done",
+    "(b) 5 seconds",
+    "(c) no countdown: the take starts at once and the cue is a beep"
+  ],
+  "gray": "#2936 asks for \"a short countdown\" before a read and names no length or what interrupts it. How long a person wants to settle before reading aloud is a preference the owner would notice each time.",
+  "undo": "Change CUE_SECONDS in cue.ts; to let a swipe pass while it counts, drop the cancel in the runtime's dispatch for that intent.",
+  "refs": ["#2936"]
+}

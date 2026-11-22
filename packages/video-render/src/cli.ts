@@ -24,6 +24,30 @@
  * its index, every week it lists against the call's schema, and no week
  * file it forgets; it prints every reason it can't be published.
  *
+ *   pnpm --filter @some-ui/video-render render call-parts <week file>
+ *
+ * prints, as JSON, the videos a week of the call is (`callParts`, #2918):
+ * how many, and each part's scenes and length by its words, so home renders
+ * one job a part (`record:call --part <k>`). It refuses a week that can't
+ * make a call, as call-check does.
+ *
+ *   pnpm --filter @some-ui/video-render render cards-check <cards folder> [--repo <owner/repo>=<clone> …]
+ *
+ * checks paulgsc/testing's `cards/` folder before it is published
+ * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
+ * cards essay in a version of its series this checkout holds, and no essay
+ * file it forgets. What only drawing finds is `record:cards`' to refuse.
+ * With a clone of each repository the essays cite, it also holds every
+ * line's sources to its stamp's commit (#3036, `claims.ts`), and notes a
+ * scene whose narration names none; the newest essay's sources must all be
+ * read, so a clone it needs and isn't given refuses it.
+ *
+ *   pnpm --filter @some-ui/video-render render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <owner/repo>=<commit> …]
+ *
+ * lists the essay's lines whose source has moved since its stamp, at each
+ * clone's `HEAD` or the commit `--at` names for it (`staleClaims`, #3036),
+ * and exits 1 when one has, or couldn't be followed.
+ *
  *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
  *
  * checks paulgsc/testing's `clips/` folder before it is pushed
@@ -49,29 +73,46 @@
  * writes the sound kit's six cues (`cues.ts`, HYPER4) into the folder, home's
  * `${STORAGE}/brand/sounds`, refusing all of them if one's pin doesn't name it.
  *
- *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json> [feedback.json]
+ *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json> [feedback.json] [pickups.json picked.json]
  *
  * prints the Studio takes and the notes on episodes left to file as pending
  * issues (`pending.ts`): from the mailbox's transcripts (a list of their
  * bodies), the issues already filed (a list of their bodies, or of issues
- * each with its `body`) and, when given, the mailbox's `feedback` folder (a
- * list of its bodies).
+ * each with its `body` and its `repo` and `number`, or its `html_url`) and, when given, the mailbox's
+ * `feedback` folder (a list of its bodies), its `pickup` folder (a list of
+ * its bodies) and the names in its `picked` folder (a list of names).
  *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
-import { execFile } from "node:child_process"
+import { execFile, execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import { access, mkdir, readdir, writeFile } from "node:fs/promises"
-import { dirname, join, relative } from "node:path"
+import { basename, dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
+import { callsAtCommit } from "@some-ui/eslint-kit/calls"
+import type { Call } from "@some-ui/eslint-kit/calls"
 import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
-import { callFolderProblems } from "./call"
-import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
+import { callFolderProblems, callParts, parseCallWeek } from "./call"
+import {
+  callsEntered,
+  changeOf,
+  trailersOf,
+  whereWeAreOf,
+  whyOf,
+} from "./call-facts"
 import type { CallFacts } from "./call-facts"
+import {
+  CARDS_SERIES,
+  cardsFolderProblems,
+  cardsFolderSources,
+  parseCardsEssay,
+} from "./cards-essay"
+import type { ReadFile } from "./claims"
+import { citedRepos, SOURCE_REPO, sourceName, staleClaims } from "./claims"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
@@ -87,11 +128,17 @@ import {
   renderFolder,
   runCommand,
 } from "./node"
-import { toFile } from "./pending"
+import { FiledSchema, toFile } from "./pending"
 import { WORK_REPOS } from "./refs"
+import type { Series } from "./series"
+import { versionOfFile } from "./series"
 import { sessionFolderProblems } from "./session-note"
+import { estimatedMs } from "./stills"
 import { fromTimelineV1 } from "./timeline-v1"
 import { SOUNDS } from "./vocabulary"
+
+/** The series this checkout holds, as home's image does. */
+const SAMPLE_SERIES = join(import.meta.dirname, "sample/series")
 
 /** The JSON files directly in `dir`, by name. */
 async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
@@ -110,9 +157,11 @@ async function main(): Promise<void> {
       "without-burn-ins": { type: "boolean", default: false },
       from: { type: "string" },
       to: { type: "string" },
+      repo: { type: "string", multiple: true, default: [] },
+      at: { type: "string", multiple: true, default: [] },
     },
   })
-  const [first, second, third, fourth] = positionals
+  const [first, second, third, fourth, fifth, sixth] = positionals
   if (first === "music-bed") {
     if (!values.out.endsWith(".wav"))
       fail(["usage: render music-bed --out <file>.wav"])
@@ -165,17 +214,19 @@ async function main(): Promise<void> {
     return
   }
   if (first === "pending") {
-    if (!second || !third)
+    if (!second || !third || (fifth !== undefined) !== (sixth !== undefined))
       fail([
-        "usage: render pending <transcripts.json> <filed.json> [feedback.json]",
+        "usage: render pending <transcripts.json> <filed.json> [feedback.json] [pickups.json picked.json]",
       ])
     const transcripts = await readAs(z.array(z.unknown()), here(second))
-    const filed = await readAs(FiledSchema, here(third))
+    const filed = await readAs(FiledListSchema, here(third))
     const feedback = fourth
       ? await readAs(z.array(z.unknown()), here(fourth))
       : []
+    const pickups = fifth ? await readAs(z.array(z.unknown()), here(fifth)) : []
+    const picked = sixth ? await readAs(z.array(z.string()), here(sixth)) : []
     process.stdout.write(
-      `${JSON.stringify(toFile(transcripts, filed, feedback), null, 1)}\n`
+      `${JSON.stringify(toFile(transcripts, filed, feedback, Date.now(), pickups, picked), null, 1)}\n`
     )
     return
   }
@@ -197,6 +248,119 @@ async function main(): Promise<void> {
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
     )
+    return
+  }
+  if (first === "call-parts") {
+    if (!second) fail(["usage: render call-parts <week file>"])
+    const week = parseCallWeek(await readJson(here(second)))
+    if (!week.ok) fail([`${second} can't make a call:`, ...week.problems])
+    const parts = callParts(week.value)
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          week: week.value.week,
+          parts: parts.map((part) => ({
+            part: part.n,
+            of: part.of,
+            scenes: part.scenes.length,
+            estimatedMs: estimatedMs(part.scenes),
+          })),
+        },
+        null,
+        1
+      )}\n`
+    )
+    return
+  }
+  if (first === "cards-check") {
+    if (!second)
+      fail([
+        "usage: render cards-check <cards folder> [--repo <owner/repo>=<clone> …]",
+      ])
+    const files = await readJsonFolder(here(second))
+    // The series home's image holds: this checkout's samples of each.
+    const held = new Map<string, Series>()
+    for (const id of CARDS_SERIES)
+      for (const file of await readdir(join(SAMPLE_SERIES, id))) {
+        const version = versionOfFile(file)
+        if (version === null) continue
+        const series = await readSeries(join(SAMPLE_SERIES, id), version)
+        // A sample that is here but unreadable is this checkout's fault,
+        // not the essay's: say so, rather than "has no version".
+        if (!series.ok)
+          fail([
+            `the sample series ${id} v${version} in this checkout doesn't read:`,
+            ...series.problems,
+          ])
+        held.set(`${id}@${version}`, series.value)
+      }
+    const clones = clonesOf(values.repo)
+    const sources = cardsFolderSources(files, readAt(clones))
+    const cited = new Set<string>()
+    for (const name of files.keys()) {
+      const essay = parseCardsEssay(
+        name.replace(/\.json$/, ""),
+        files.get(name)
+      )
+      if (essay.ok) for (const repo of citedRepos(essay.value)) cited.add(repo)
+    }
+    unknownRepos(clones, cited, "no essay here cites it")
+    const problems = [
+      ...cardsFolderProblems(
+        files,
+        (id, version) => held.get(`${id}@${version}`) ?? null
+      ),
+      ...sources.problems,
+    ]
+    for (const note of sources.notes) process.stderr.write(`note: ${note}\n`)
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    const essays = files.size - 1
+    process.stdout.write(
+      `${second}: ${essays} ${essays === 1 ? "essay" : "essays"}, ready\n`
+    )
+    return
+  }
+  if (first === "cards-stale") {
+    if (!second || values.repo.length === 0)
+      fail([
+        "usage: render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <owner/repo>=<commit> …]",
+      ])
+    const file = here(second)
+    const essay = parseCardsEssay(basename(file, ".json"), await readJson(file))
+    if (!essay.ok) fail([`${second} isn't a cards essay:`, ...essay.problems])
+    const clones = clonesOf(values.repo)
+    const cited = citedRepos(essay.value)
+    if (cited.size === 0)
+      fail([`${second}: it cites no source, so there is nothing to follow`])
+    unknownRepos(clones, cited, "the essay cites no file in it")
+    const ats = pairsOf("--at", values.at)
+    unknownRepos(ats, cited, "the essay cites no file in it")
+    const { stale, unfollowed } = staleClaims(
+      essay.value,
+      readAt(clones),
+      (repo) => {
+        const dir = clones.get(repo)
+        return dir === undefined
+          ? undefined
+          : gitOut(dir, [
+              "rev-parse",
+              "--verify",
+              `${ats.get(repo) ?? "HEAD"}^{commit}`,
+            ])
+      }
+    )
+    for (const claim of stale)
+      process.stdout.write(
+        `${claim.scene}: ${sourceName(claim.source)}: ${claim.why}\n  it says: ${claim.said}\n`
+      )
+    for (const line of unfollowed)
+      process.stderr.write(`not followed: ${line}\n`)
+    process.stdout.write(
+      `${second}: ${stale.length === 0 ? "no line's source has moved" : `${stale.length} ${stale.length === 1 ? "source has" : "sources have"} moved since its stamp`}${unfollowed.length === 0 ? "" : `, and ${unfollowed.length} couldn't be followed`}\n`
+    )
+    // Either is a finding: a stale line, or one that couldn't be checked.
+    if (stale.length > 0 || unfollowed.length > 0) process.exitCode = 1
     return
   }
   if (first === "clip-check") {
@@ -287,15 +451,8 @@ const HeardSchema = z.union([
   z.object({ words: WordsSchema }).transform(({ words }) => words),
 ])
 
-/** The bodies of the issues already filed: as text, or as GitHub lists them. */
-const FiledSchema = z.array(
-  z.union([
-    z.string(),
-    z
-      .object({ body: z.string().nullable() })
-      .transform(({ body }) => body ?? ""),
-  ])
-)
+/** The issues already filed (`pending.ts`' `FiledSchema`). */
+const FiledListSchema = z.array(FiledSchema)
 
 async function readAs<T>(schema: z.ZodType<T>, file: string): Promise<T> {
   const parsed = schema.safeParse(await readJson(file))
@@ -360,6 +517,96 @@ async function convert(
 }
 
 const run = promisify(execFile)
+
+/** Each `<owner/repo>=<value>` given to `flag`, by its repository. */
+function pairsOf(
+  flag: string,
+  given: ReadonlyArray<string>
+): ReadonlyMap<string, string> {
+  const pairs = new Map<string, string>()
+  for (const pair of given) {
+    const at = pair.indexOf("=")
+    const repo = pair.slice(0, at)
+    const value = pair.slice(at + 1)
+    if (at < 1 || !SOURCE_REPO.test(repo) || value === "")
+      fail([`${flag} ${pair}: it isn't <owner/repo>=<value>`])
+    if (pairs.has(repo)) fail([`${flag} names ${repo} twice`])
+    pairs.set(repo, value)
+  }
+  return pairs
+}
+
+/** Each `--repo <owner/repo>=<clone>`, refusing a folder that isn't one. */
+function clonesOf(given: ReadonlyArray<string>): ReadonlyMap<string, string> {
+  const clones = new Map<string, string>()
+  for (const [repo, path] of pairsOf("--repo", given)) {
+    const dir = here(path)
+    if (gitOut(dir, ["rev-parse", "--git-dir"]) === undefined)
+      fail([`--repo ${repo}=${path}: it isn't a clone`])
+    clones.set(repo, dir)
+  }
+  return clones
+}
+
+/**
+ * Refuses a repository given that nothing cites: a misspelt name would
+ * otherwise leave the repository it meant unchecked.
+ */
+function unknownRepos(
+  given: ReadonlyMap<string, string>,
+  cited: ReadonlySet<string>,
+  why: string
+): void {
+  const unknown = [...given.keys()].filter((repo) => !cited.has(repo))
+  if (unknown.length > 0)
+    fail(
+      unknown.map(
+        (repo) =>
+          `${repo}: ${why} (it cites ${[...cited].join(", ") || "nothing"})`
+      )
+    )
+}
+
+/** What `git` prints in `dir`, or `undefined` when it refuses. */
+function gitOut(dir: string, args: ReadonlyArray<string>): string | undefined {
+  try {
+    return execFileSync("git", ["-C", dir, ...args], {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A file at a commit, read from the clone given for its repository: no
+ * clone, or a clone without that commit (a shallow one), reads nothing.
+ */
+function readAt(clones: ReadonlyMap<string, string>): ReadFile {
+  return (repo, commit, path) => {
+    const dir = clones.get(repo)
+    if (dir === undefined) return { kind: "no-clone" }
+    if (gitOut(dir, ["cat-file", "-e", `${commit}^{commit}`]) === undefined)
+      return { kind: "no-commit" }
+    // A folder, or nothing, at that path is no file to cite.
+    if (gitOut(dir, ["cat-file", "-t", `${commit}:${path}`]) !== "blob")
+      return { kind: "absent" }
+    try {
+      // The blob's own bytes, untrimmed: a line count is the file's own,
+      // and no attribute or filter rewrites them.
+      const text = execFileSync(
+        "git",
+        ["-C", dir, "cat-file", "blob", `${commit}:${path}`],
+        { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+      )
+      return { kind: "file", text }
+    } catch (e) {
+      return fail([`${repo} ${path} at ${commit} couldn't be read:`, String(e)])
+    }
+  }
+}
 
 /** GitHub's search answers at most this many results to one query. */
 const SEARCH_MOST = 1000
@@ -427,15 +674,15 @@ const IssueHit = z.object({
   body: z.string(),
 })
 
-/** The calls record's path in some-ui. */
-const CALLS_RECORD = "docs/calls.json"
-
 /**
  * The calls record on this checkout's history as it stood at `day`'s start
- * (UTC): null when there was none yet. The weekly run starts from some-ui's
+ * (UTC), and whether it was the folder: null when there was none yet. The weekly run starts from some-ui's
  * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
  */
-async function recordAt(day: string): Promise<string | null> {
+async function recordAt(day: string): Promise<{
+  readonly calls: ReadonlyArray<Call>
+  readonly folder: boolean
+} | null> {
   const root = (
     await run("git", ["rev-parse", "--show-toplevel"])
   ).stdout.trim()
@@ -454,17 +701,13 @@ async function recordAt(day: string): Promise<string | null> {
     fail([
       `no commit before ${day} on this checkout: fetch main's history back to the week's start`,
     ])
-  const at = `${commit}:${CALLS_RECORD}`
-  try {
-    await run("git", ["-C", root, "cat-file", "-e", at])
-  } catch {
-    return null
-  }
-  try {
-    return (await run("git", ["-C", root, "show", at])).stdout
-  } catch {
-    return fail([`${CALLS_RECORD} at ${commit} could not be read`])
-  }
+  const record = callsAtCommit(root, commit)
+  if (record.layout === "none") return null
+  if (record.calls === null)
+    return fail([
+      `the calls record at ${commit} could not be read (pnpm check:calls says why)`,
+    ])
+  return { calls: record.calls, folder: record.layout === "folder" }
 }
 
 /** The day after `day`. */
@@ -485,7 +728,11 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
   }
   const after = await recordAt(dayAfter(to))
   if (after !== null)
-    facts.calls.push(...callsEntered(await recordAt(from), after))
+    facts.calls.push(
+      ...callsEntered((await recordAt(from))?.calls ?? null, after.calls, {
+        byDay: after.folder,
+      })
+    )
   for (const repo of WORK_REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(
@@ -547,6 +794,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
         repo,
         number: e.number,
         title: e.title,
+        why: whyOf(e.body),
         whereWeAre: whereWeAreOf(e.body),
       })
   }

@@ -18,6 +18,7 @@ import { failing, memoryStore, untouchable } from "./stores"
 const ROUTINE = "test-routine-token"
 const HOME = "test-home-token"
 const ARCHIVE = "test-archive-token"
+const PAGES = "test-pages-token"
 const NOW = new Date("2026-10-21T14:52:00.000Z")
 
 const DIGEST = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [] })
@@ -48,7 +49,7 @@ function deps(
   rings: Array<Folder> = []
 ): Deps {
   return {
-    tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE },
+    tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE, pages: PAGES },
     store,
     now: () => NOW,
     report: (error): void => {
@@ -60,7 +61,7 @@ function deps(
 
 type Init = {
   readonly token?: string | null
-  readonly body?: string
+  readonly body?: string | Uint8Array
   readonly type?: string | null
   readonly headers?: Record<string, string>
 }
@@ -97,7 +98,8 @@ async function json(response: Response): Promise<unknown> {
 function streamed(
   d: Deps,
   chunks: ReadonlyArray<Uint8Array>,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  path = `/v1/brief/items/${DIGEST_NAME}`
 ): { response: Promise<Response>; pulls: () => number } {
   const queue = [...chunks]
   let pulls = 0
@@ -124,10 +126,7 @@ function streamed(
     duplex: "half",
   }
   return {
-    response: handle(
-      new Request(`https://mailbox.test/v1/brief/items/${DIGEST_NAME}`, init),
-      d
-    ),
+    response: handle(new Request(`https://mailbox.test${path}`, init), d),
     pulls: () => pulls,
   }
 }
@@ -190,7 +189,12 @@ describe("authentication", () => {
     const { store, touched } = untouchable()
     const d: Deps = {
       ...deps(store),
-      tokens: { routine: undefined, home: "", archive: undefined },
+      tokens: {
+        routine: undefined,
+        home: "",
+        archive: undefined,
+        pages: undefined,
+      },
     }
     for (const token of ["", "undefined", "null", "empty"]) {
       const response = await send(d, "GET", "/v1/brief/items", { token })
@@ -203,12 +207,13 @@ describe("authentication", () => {
     const { store, touched } = untouchable()
     const shared = "test-shared-token"
     for (const tokens of [
-      { routine: shared, home: shared, archive: ARCHIVE },
-      { routine: ROUTINE, home: shared, archive: shared },
-      { routine: shared, home: HOME, archive: shared },
+      { routine: shared, home: shared, archive: ARCHIVE, pages: PAGES },
+      { routine: ROUTINE, home: shared, archive: shared, pages: PAGES },
+      { routine: shared, home: HOME, archive: shared, pages: PAGES },
+      { routine: ROUTINE, home: shared, archive: ARCHIVE, pages: shared },
     ]) {
       const d: Deps = { ...deps(store), tokens }
-      for (const token of [shared, ROUTINE, HOME, ARCHIVE]) {
+      for (const token of [shared, ROUTINE, HOME, ARCHIVE, PAGES]) {
         const response = await send(d, "GET", "/v1/brief/items", { token })
         expect(response.status).toBe(401)
       }
@@ -438,6 +443,27 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
     })
   })
 
+  it("takes a /2 week, with its forks and academy, as it takes a /1 (RR25)", async () => {
+    const d = deps()
+    const v2 = JSON.stringify({
+      schema: "some-ui.rust-week/2",
+      id: "2026-w47",
+      tickets: [
+        {
+          id: "TB-101",
+          program: "fn main() {}\n",
+          academy: [{ starter: "fn main() {}\n" }],
+        },
+      ],
+    })
+    const name = "rust-week-2026-w47.json"
+    expect((await put(d, "brief", name, { body: v2 })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${name}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(v2)
+  })
+
   it("refuses a week whose name is not its id's, or another schema", async () => {
     const d = deps()
     const misnamed = await put(d, "brief", "rust-week-2026-w47.json", {
@@ -454,11 +480,119 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
     })
     const wrong = await put(d, "brief", NAME, { body: DIGEST })
     expect(await json(wrong)).toEqual({
-      error: "the body's schema must be some-ui.rust-week/1",
+      error:
+        "the body's schema must be some-ui.rust-week/2 or some-ui.rust-week/1",
     })
     expect(
       (await put(d, "brief", "rust-week-2026-46.json", { body: WEEK })).status
     ).toBe(422)
+  })
+})
+
+describe("a week of mock interview rides brief (MB2, IW4)", () => {
+  const week = (fields: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      schema: "some-ui.interview-week/1",
+      id: "2026-w47",
+      questions: [{ id: "conflict" }, { id: "decision-c266" }],
+      cards: [{ id: "invariant-rs1" }],
+      ...fields,
+    })
+  const NAME = "interview-week-2026-w47.json"
+
+  it("the routine puts one in brief, and home reads it with the digests", async () => {
+    const d = deps()
+    expect((await put(d, "brief", NAME, { body: week() })).status).toBe(201)
+    // The second version, with ready answers (IW8), rides the same way.
+    const second = week({ schema: "some-ui.interview-week/2" })
+    expect((await put(deps(), "brief", NAME, { body: second })).status).toBe(
+      201
+    )
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(week())
+  })
+
+  it("refuses a week whose name isn't its id's, or whose ids a take's ref can't name", async () => {
+    const refused = async (body: string, name = NAME): Promise<unknown> =>
+      json(await put(deps(), "brief", name, { body }))
+    expect(await refused(week(), "interview-week-2026-w48.json")).toEqual({
+      error: "the name must carry the week's id",
+    })
+    expect(await refused(week({ id: "2026-W47" }))).toEqual({
+      error: "id must be the week's, like 2026-w47",
+    })
+    expect(await refused(week({ questions: [{ id: "read" }] }))).toEqual({
+      error: "no question may be named read",
+    })
+    // A card may be named read: its ref is <week>:read:<card>.
+    expect(
+      (
+        await put(deps(), "brief", NAME, {
+          body: week({ cards: [{ id: "read" }] }),
+        })
+      ).status
+    ).toBe(201)
+    const slug = {
+      error: "each card's id must be a kebab slug of at most 64 characters",
+    }
+    for (const id of ["Rs1", "a--b", "-a", "x".repeat(65), 7]) {
+      expect(await refused(week({ cards: [{ id }] }))).toEqual(slug)
+    }
+    expect(
+      await refused(week({ questions: [{ id: "a" }, { id: "a" }] }))
+    ).toEqual({ error: "each question's id is used once" })
+    expect(await refused(week({ cards: undefined }))).toEqual({
+      error: "cards must be a list",
+    })
+    expect(await refused(DIGEST)).toEqual({
+      error:
+        "the body's schema must be some-ui.interview-week/2 or some-ui.interview-week/1",
+    })
+    expect(
+      (
+        await put(deps(), "brief", "interview-week-2026-47.json", {
+          body: week(),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
+
+describe("an interview essay's script rides brief (MB2, IW6)", () => {
+  const essay = (week: string): string =>
+    JSON.stringify({
+      schema: "some-ui.interview-essay/1",
+      week: { id: week, from: "2026-11-16", to: "2026-11-22" },
+      questions: [],
+    })
+  const ESSAY = essay("2026-w47")
+  const NAME = "interview-essay-2026-w47.json"
+
+  it("the routine puts one in brief, a correction as -r2, and home reads it", async () => {
+    const d = deps()
+    for (const name of [NAME, "interview-essay-2026-w47-r2.json"])
+      expect((await put(d, "brief", name, { body: ESSAY })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(ESSAY)
+    expect(
+      (await put(d, "brief", NAME, { body: ESSAY, token: HOME })).status
+    ).toBe(403)
+  })
+
+  it("refuses a name not its week's, and a week that is no week", async () => {
+    const d = deps()
+    expect(
+      await json(
+        await put(d, "brief", "interview-essay-2026-w48.json", { body: ESSAY })
+      )
+    ).toEqual({ error: "the name must carry the week's id" })
+    expect(
+      await json(await put(d, "brief", NAME, { body: essay("week-47") }))
+    ).toEqual({ error: "week.id must be the week's, like 2026-w46" })
   })
 })
 
@@ -1135,6 +1269,15 @@ describe("voice transcripts", () => {
     }
   })
 
+  it("takes an interview take's transcript, named by its week and question or read card (IW1)", async () => {
+    for (const ref of ["2026-w47:about-you", "2026-w47:read:home-first"]) {
+      const said = { ...HEARD, of: "interview", ref }
+      expect((await asHome(deps(), NAME, JSON.stringify(said))).status).toBe(
+        201
+      )
+    }
+  })
+
   it("takes only a transcript's own shape", async () => {
     const d = deps()
     const { text: _text, ...untold } = HEARD
@@ -1177,7 +1320,7 @@ describe("voice transcripts", () => {
       [{ ...HEARD, note: "k3v" }, "the name must carry the note's id"],
       [
         { ...HEARD, of: "diary" },
-        "of must be reflection, jobs, scene, studio or rust-round",
+        "of must be reflection, jobs, scene, studio, rust-round or interview",
       ],
       [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
       [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
@@ -1333,7 +1476,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections or call or rust",
+      error: "routine must be jobs or reflections or call or rust or interview",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1776,6 +1919,82 @@ const ASKED_FOR = {
   ].join("\n"),
 }
 
+describe("home's interview week index (IW4)", () => {
+  // A final week as home's record gives it (paulgsc/server `GET /interview-weeks/:id/record`).
+  const W47 = {
+    week: "2026-w47",
+    opens: "2026-11-16T00:00:00-08:00",
+    due: "2026-11-22T23:59:00-08:00",
+    closed: true,
+    sent: {
+      at: "2026-11-21T20:31:07.000Z",
+      receivedAt: "2026-11-21T20:31:09.120Z",
+      draft: false,
+    },
+    questions: [
+      {
+        question: "conflict",
+        answered: true,
+        take: "note-401",
+        recordedAt: "2026-11-21T20:12:40.000Z",
+      },
+    ],
+    cards: [
+      { card: "invariant-rs1", read: false, take: null, recordedAt: null },
+    ],
+    unanswered: [],
+    unread: ["invariant-rs1"],
+  }
+  const INDEX = {
+    schema: "some-ui.routine-index/1",
+    routine: "interview",
+    asOf: "2026-11-22T23:59:00.000-08:00",
+    weeks: [W47],
+  }
+  const NAME = "index-interview-20261123T090000000Z.json"
+  const asHome = (body: unknown): Promise<Response> =>
+    put(deps(), "index", NAME, { token: HOME, body: JSON.stringify(body) })
+
+  it("home puts it, before any week is final too", async () => {
+    expect((await asHome(INDEX)).status).toBe(201)
+    expect((await asHome({ ...INDEX, asOf: null, weeks: [] })).status).toBe(201)
+    expect(
+      (await asHome({ ...INDEX, weeks: [{ ...W47, sent: null }] })).status
+    ).toBe(201)
+  })
+
+  it("takes only final weeks with their lists, and only its own keys", async () => {
+    const error = async (body: unknown): Promise<unknown> =>
+      json(await asHome(body))
+    expect(await error({ ...INDEX, tickets: [] })).toEqual({
+      error: "tickets is not part of an interview index",
+    })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, closed: false }] })
+    ).toEqual({ error: "each week must be past its deadline" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, sent: { draft: true } }] })
+    ).toEqual({ error: "each week's send must be its final, or null" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, unread: undefined }] })
+    ).toEqual({
+      error:
+        "each week's questions, cards, unanswered and unread must be lists",
+    })
+    expect(await error({ ...INDEX, weeks: [W47, W47] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      (
+        await put(deps(), "index", "index-rust-20261123T090000000Z.json", {
+          token: HOME,
+          body: JSON.stringify(INDEX),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
+
 describe("written reflections", () => {
   const REFLECTION = JSON.stringify(WRITTEN)
   const NAME = `reflection-${WRITTEN.reflection}.json`
@@ -2044,6 +2263,274 @@ describe("notes on an episode", () => {
     }
     for (const name of ["feedback-.json", `feedback-${"a".repeat(65)}.json`]) {
       expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
+const READY = {
+  schema: "some-ui.take-pickup/1",
+  note: "take-7f3a91c2",
+  ref: "build-journal:ep04:2",
+  heard: "This shot opens on the conveyor page, then cuts to the phone.",
+  labels: ["ep04", "opening"],
+  readyAt: "2026-11-13T21:40:00.000Z",
+  seq: 3,
+}
+const FILED = {
+  schema: "some-ui.take-picked/1",
+  note: READY.note,
+  seq: READY.seq,
+  issue: "paulgsc/some-ui#2990",
+}
+
+describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => {
+  const PICKUP = JSON.stringify(READY)
+  const PICKED = JSON.stringify(FILED)
+  const PICKUP_NAME = `pickup-${READY.note}-${READY.seq}.json`
+  const PICKED_NAME = `picked-${FILED.note}-${FILED.seq}.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = PICKUP
+  ): Promise<Response> => put(d, "pickup", name, { token: HOME, body })
+  const asRoutine = (
+    d: Deps,
+    name: string,
+    body: string = PICKED
+  ): Promise<Response> => put(d, "picked", name, { body })
+
+  it("home puts a pickup once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(201)
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(200)
+    expect(
+      (
+        await asHome(
+          d,
+          PICKUP_NAME,
+          JSON.stringify({ ...READY, labels: ["ep05"] })
+        )
+      ).status
+    ).toBe(409)
+    const path = `/v1/pickup/items/${PICKUP_NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PICKUP)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "pickup", PICKUP_NAME, { body: PICKUP })).status).toBe(
+      403
+    )
+  })
+
+  it("the routine neither lists archived pickups nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/pickup/archived")).status).toBe(403)
+    expect(
+      (await send(d, "PUT", `/v1/pickup/wanted/${PICKUP_NAME}`)).status
+    ).toBe(403)
+  })
+
+  it("the routine puts its answer, which rings home, and home reads it; neither the other way", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await asRoutine(d, PICKED_NAME)).status).toBe(201)
+    expect(rings).toEqual(["picked"])
+    expect((await asRoutine(d, PICKED_NAME)).status).toBe(200)
+    expect(rings).toEqual(["picked"])
+    const path = `/v1/picked/items/${PICKED_NAME}`
+    const read = await send(d, "GET", path, { token: HOME })
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PICKED)
+    expect(
+      (await send(d, "GET", "/v1/picked/items", { token: HOME })).status
+    ).toBe(200)
+    expect(
+      (await put(d, "picked", PICKED_NAME, { token: HOME, body: PICKED }))
+        .status
+    ).toBe(403)
+  })
+
+  it("takes a take with no labels, and with as many and as long as home keeps", async () => {
+    const d = deps()
+    const labelled = [
+      [],
+      Array.from({ length: 8 }, (_, n) => `l${n}`),
+      ["a".repeat(32)],
+      ["\u{1F600}".repeat(32)],
+      // Home's trim (Rust's) keeps U+FEFF, so the mailbox takes it too.
+      ["\uFEFFep04"],
+    ]
+    for (const [seq, labels] of labelled.entries()) {
+      const body = JSON.stringify({ ...READY, seq: seq + 1, labels })
+      const name = `pickup-${READY.note}-${seq + 1}.json`
+      expect([labels, (await asHome(d, name, body)).status]).toEqual([
+        labels,
+        201,
+      ])
+    }
+  })
+
+  it("names a pickup and its answer only as <folder>-<note>-<seq>.json", async () => {
+    const d = deps()
+    // Each body carries its name, so only the name's own rule refuses it.
+    for (const note of ["a".repeat(65), "a b"]) {
+      for (const [folder, base, token] of [
+        ["pickup", READY, HOME],
+        ["picked", FILED, ROUTINE],
+      ] as const) {
+        const answer = await put(d, folder, `${folder}-${note}-3.json`, {
+          token,
+          body: JSON.stringify({ ...base, note, seq: 3 }),
+        })
+        expect([folder, note, await json(answer)]).toEqual([
+          folder,
+          note,
+          { error: "the name does not fit this folder" },
+        ])
+      }
+    }
+    for (const [folder, base, token] of [
+      ["pickup", READY, HOME],
+      ["picked", FILED, ROUTINE],
+    ] as const) {
+      for (const name of [
+        `${folder}-${base.note}.json`,
+        `${folder}-${base.note}-0.json`,
+        `${folder}-${base.note}-03.json`,
+        `${folder}-${base.note}-3.txt`,
+      ]) {
+        const answer = await put(d, folder, name, {
+          token,
+          body: JSON.stringify(base),
+        })
+        expect([name, await json(answer)]).toEqual([
+          name,
+          { error: "the name does not fit this folder" },
+        ])
+      }
+    }
+  })
+
+  it("takes only a pickup's own shape, and no comment", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...READY, comment: "use the second half" },
+        "comment is not part of a take ready for pickup",
+      ],
+      [
+        { ...READY, audio: "T2dnUwACAAAAAAAA" },
+        "a take carries no audio: home keeps the audio",
+      ],
+      [
+        { ...READY, heard: `data:audio/webm;base64,${"A".repeat(40)}` },
+        "a take carries no audio: home keeps the audio",
+      ],
+      [
+        { ...READY, driveId: "1AbCdEf" },
+        "a take names no Drive file: home keeps the audio",
+      ],
+      [{ ...READY, note: "a/b" }, "note must be the take's id"],
+      [{ ...READY, seq: 0 }, "seq must be the ready-for-pickup move's number"],
+      [
+        { ...READY, seq: 1.5 },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, seq: "3" },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, seq: 2 ** 53 },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, note: "another-take" },
+        "the name must carry the take's id and the move's number",
+      ],
+      [
+        { ...READY, seq: 4 },
+        "the name must carry the take's id and the move's number",
+      ],
+      [{ ...READY, ref: "" }, "ref must name the shot the take belongs to"],
+      [{ ...READY, heard: "  " }, "heard must be what home heard in the take"],
+      [{ ...READY, heard: null }, "heard must be what home heard in the take"],
+      ...[
+        undefined,
+        "ep04",
+        [""],
+        [" ep04"],
+        ["ep04 "],
+        // C1 controls inside a label, past the edge rule (U+0085 is also White_Space).
+        ["x\u0085x"],
+        ["a\u0080"],
+        ["\u007f"],
+        null,
+        // Code points, as home counts them: 33 astral characters.
+        ["\u{1F600}".repeat(33)],
+        ["a".repeat(33)],
+        ["tab\there"],
+        [7],
+        Array.from({ length: 9 }, (_, n) => `l${n}`),
+      ].map(
+        (labels) =>
+          [
+            { ...READY, labels },
+            "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end",
+          ] as const
+      ),
+      [
+        { ...READY, readyAt: "Thursday" },
+        "readyAt must be when the take was moved to ready for pickup",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, PICKUP_NAME, JSON.stringify(body))
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: why })
+    }
+  })
+
+  it("takes only an answer's own shape", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...FILED, labels: ["ep04"] },
+        "labels is not part of a take picked up",
+      ],
+      [{ ...FILED, note: "a/b" }, "note must be the take's id"],
+      [{ ...FILED, seq: 0 }, "seq must be the ready-for-pickup move's number"],
+      [
+        { ...FILED, note: "another-take" },
+        "the name must carry the take's id and the move's number",
+      ],
+      [
+        { ...FILED, seq: 4 },
+        "the name must carry the take's id and the move's number",
+      ],
+      ...[
+        "#2990",
+        "paulgsc/some-ui",
+        "paulgsc/some-ui#0",
+        "paulgsc/some-ui#02",
+        "https://github.com/paulgsc/some-ui/issues/2990",
+        "paul gsc/some-ui#1",
+        `${"a".repeat(101)}/some-ui#1`,
+        "paulgsc/some-ui#1234567890",
+        2990,
+      ].map(
+        (issue) =>
+          [
+            { ...FILED, issue },
+            "issue must be the issue it was filed as, <owner>/<repo>#<n>",
+          ] as const
+      ),
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asRoutine(d, PICKED_NAME, JSON.stringify(body))
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: why })
     }
   })
 })
@@ -2604,8 +3091,17 @@ describe("the bell (MBP1: MB2, MB6)", () => {
     expect(reported).toHaveLength(1)
   })
 
-  it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
-    expect(RINGS).toEqual(["brief", "scene", "drama", "run", "leetype"])
+  it("rings for exactly what home reads: paulgsc/server's pass::READS, which lives in the other repo", () => {
+    // `picked` is ahead of pass::READS until home's half of CONVEYOR3 adds it
+    // there (paulgsc/some-ui#2875); until then a `picked` ring runs a plain pass.
+    expect(RINGS).toEqual([
+      "brief",
+      "scene",
+      "drama",
+      "run",
+      "leetype",
+      "picked",
+    ])
   })
 
   it("a ring names its folder and nothing else (MB6)", () => {
@@ -2662,6 +3158,8 @@ describe("archiving", () => {
       "reflection",
       "prompt",
       "feedback",
+      "pickup",
+      "picked",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
@@ -2887,5 +3385,469 @@ describe("the backfill's last day", () => {
     expect(bound("../../../../packages/job-desk/src/home-index.ts")).toBe(
       worker
     )
+  })
+})
+
+const COMMIT = "a6e171f0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+const SHA = `${"0".repeat(63)}1`
+const SNIP = {
+  id: "apk:@studio/takes:android:2.4.0:0123456789ab",
+  surface: "apk",
+  build: "release",
+  route: "@studio/takes",
+  path: "@studio/takes",
+  viewport: "android",
+  width: 1080,
+  height: 1920,
+  scale: 1,
+  regions: [],
+  appVersion: "2.4.0",
+  module: "Studio",
+  shows: "Takes",
+  description: "Studio: Takes, on the Android app, with sample data.",
+  image: {
+    name: "apk/android/release-studio~takes-0123456789ab.png",
+    kind: "png",
+    bytes: 48213,
+    sha256: SHA,
+  },
+}
+const MANIFEST = {
+  schema: "some-ui.snips/1",
+  appVersion: "2.4.0",
+  commit: COMMIT,
+  run: "https://github.com/paulgsc/some-ui/actions/runs/44072396351",
+  frozenAt: "2026-01-15T17:00:00.000Z",
+  data: "sample",
+  snips: [SNIP],
+  unreached: [{ surface: "web", route: "/auth", why: "it sends a visitor on" }],
+}
+
+describe("a capture's snip list (SNIPS2, #3116)", () => {
+  const RUN = "44072396351"
+  const NAME = `snips-${COMMIT}-${RUN}.json`
+  const LIST = JSON.stringify(MANIFEST)
+  const asHome = (
+    d: Deps,
+    name: string = NAME,
+    body: string = LIST
+  ): Promise<Response> => put(d, "snips", name, { token: HOME, body })
+
+  it("home puts a commit's list once, a bundle fetched again adds nothing, and the routine reads it", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await asHome(d)).status).toBe(201)
+    expect((await asHome(d)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...MANIFEST, snips: [] }))).status
+    ).toBe(409)
+    expect(rings).toEqual([])
+    const path = `/v1/snips/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(LIST)
+    expect((await send(d, "GET", path, { token: ARCHIVE })).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "snips", NAME, { body: LIST })).status).toBe(403)
+  })
+
+  it("nothing archives a list or asks one back: a capture makes it again", async () => {
+    let now = NOW
+    const d: Deps = { ...deps(), now: () => now }
+    expect((await asHome(d)).status).toBe(201)
+    now = new Date(NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * 10 * 86_400_000)
+    const sha = createHash("sha256").update(LIST).digest("hex")
+    for (const token of [ROUTINE, HOME, ARCHIVE]) {
+      expect(
+        (
+          await send(d, "DELETE", `/v1/snips/items/${NAME}`, {
+            token,
+            headers: { "if-match": `"${sha}"` },
+          })
+        ).status
+      ).toBe(403)
+      expect(
+        (await send(d, "GET", "/v1/snips/archived", { token })).status
+      ).toBe(403)
+      expect(
+        (await send(d, "PUT", `/v1/snips/wanted/${NAME}`, { token })).status
+      ).toBe(403)
+    }
+  })
+
+  it("is named for its commit and run, so a second capture of a commit has its own list", async () => {
+    const d = deps()
+    for (const name of [
+      `snips-${COMMIT}.json`,
+      `snips-${COMMIT.slice(0, 12)}-${RUN}.json`,
+      `snips-${COMMIT.toUpperCase()}-${RUN}.json`,
+      `snips-${COMMIT}-${RUN}.png`,
+      `snips-${COMMIT}-0${RUN}.json`,
+    ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+    for (const name of [
+      `snips-${"b".repeat(40)}-${RUN}.json`,
+      `snips-${COMMIT}-1.json`,
+    ]) {
+      const answer = await asHome(d, name)
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({
+        error: "the name must carry the commit and the run",
+      })
+    }
+    const again = JSON.stringify({
+      ...MANIFEST,
+      run: "https://github.com/paulgsc/some-ui/actions/runs/44072399999",
+    })
+    expect((await asHome(d)).status).toBe(201)
+    expect(
+      (await asHome(d, `snips-${COMMIT}-44072399999.json`, again)).status
+    ).toBe(201)
+    for (const run of ["https://example.com/runs/1", "44072396351", 7]) {
+      const answer = await asHome(d, NAME, JSON.stringify({ ...MANIFEST, run }))
+      expect(await json(answer)).toEqual({
+        error: "run must be the capture's run on GitHub",
+      })
+    }
+  })
+
+  it("takes a capture's manifest as the bundle writes it: pretty-printed, web parts boxed, a recording", async () => {
+    const d = deps()
+    const hash = "0123456789ab"
+    const web = {
+      ...SNIP,
+      id: `web:/rust/$week:phone:2.4.0:${hash}`,
+      surface: "web",
+      route: "/rust/$week",
+      path: "/rust/2026-w47?tab=cards",
+      viewport: "phone",
+      width: 824,
+      height: 1830,
+      scale: 2,
+      regions: Array.from({ length: 12 }, (_, i) => ({
+        ref: `card-${String(i)}`,
+        box: { x: 16, y: 120 * i, width: 380, height: 112 },
+      })),
+      shows: "Rust Rounds: the week's cards",
+      image: { ...SNIP.image, name: `web/phone/rust~$week-${hash}.png` },
+      recording: {
+        name: `web/phone/rust~$week-${hash}.webm`,
+        kind: "webm",
+        bytes: 913_201,
+        sha256: SHA,
+      },
+    }
+    const body = JSON.stringify({ ...MANIFEST, snips: [SNIP, web] }, null, 2)
+    expect((await asHome(d, NAME, body)).status).toBe(201)
+  })
+
+  it("carries records, never a picture", async () => {
+    const d = deps()
+    const withSnip = (snip: Record<string, unknown>): unknown => ({
+      ...MANIFEST,
+      snips: [snip],
+    })
+    const shapes: Array<[unknown, string]> = [
+      [{ ...MANIFEST, owner: "x" }, "owner is not part of a snip list"],
+      [
+        { ...MANIFEST, png: "x" },
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        { ...MANIFEST, imageBytes: "x" },
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        { ...MANIFEST, note: `data:image/png;base64,iVBORw0KGgo=` },
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, shows: "A".repeat(300) }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, pixels: "x" }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, mark: "keep" }),
+        "mark is not part of a snip's record",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, data: "x" } }),
+        "data is not part of a snip's file: only its name, kind, size and SHA-256",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, pixels: "x" } }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, kind: "mp4" } }),
+        "image must be a png",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, kind: "jpeg" } }),
+        "image must be a png",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, sha256: "ABC" } }),
+        "image must carry its SHA-256, in lower-case hex",
+      ],
+      [
+        withSnip({
+          ...SNIP,
+          recording: { ...SNIP.image, kind: "mp4", bytes: 0 },
+        }),
+        "recording must say its size in bytes",
+      ],
+      [{ ...MANIFEST, snips: [SNIP, SNIP] }, "each snip is listed once"],
+      [
+        { ...MANIFEST, data: "home" },
+        "data must be sample: a capture shows sample data only",
+      ],
+      [{ ...MANIFEST, snips: {} }, "snips must be a list"],
+      [
+        { ...MANIFEST, commit: "main" },
+        "commit must be the captured commit's 40 hex digits",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    const moved = withSnip({
+      ...SNIP,
+      recording: { ...SNIP.image, name: "x.mp4", kind: "mp4" },
+    })
+    expect((await asHome(d, NAME, JSON.stringify(moved))).status).toBe(201)
+    const stillPicture = withSnip({
+      ...SNIP,
+      recording: { ...SNIP.image, name: "x.png", kind: "png" },
+    })
+    expect(
+      await json(await asHome(d, NAME, JSON.stringify(stillPicture)))
+    ).toEqual({ error: "recording must be an mp4 or webm" })
+  })
+})
+
+/** A PNG's head: the signature and an `IHDR` of `width` by `height`. */
+function png(width = 1280, height = 720): Uint8Array {
+  const bytes = new Uint8Array(64)
+  bytes.set([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48,
+    0x44, 0x52,
+  ])
+  const view = new DataView(bytes.buffer)
+  view.setUint32(16, width)
+  view.setUint32(20, height)
+  return bytes
+}
+
+/** An MP4 of `length` bytes: its `ftyp` box, then zeros. */
+function atLength(length: number): Uint8Array {
+  const bytes = new Uint8Array(length)
+  bytes.set(mp4())
+  return bytes
+}
+
+/** An MP4's head: its `ftyp` box. */
+function mp4(): Uint8Array {
+  const bytes = new Uint8Array(64)
+  bytes.set([0, 0, 0, 32, ...new TextEncoder().encode("ftypisom")])
+  return bytes
+}
+
+describe("the site's pictures (C1071, #3415)", () => {
+  const CORES = "cores-20261123T000000000Z.png"
+  const SERVER = "server-20261123T000000000Z.mp4"
+  const still = { token: HOME, body: png(), type: "image/png" }
+  const clip = { token: HOME, body: mp4(), type: "video/mp4" }
+
+  it("home puts a still and a clip, and the pages role reads them back as they were", async () => {
+    const d = deps()
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    expect((await put(d, "site-assets", SERVER, clip)).status).toBe(201)
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(200)
+
+    const listing = await send(d, "GET", "/v1/site-assets/items", {
+      token: PAGES,
+    })
+    expect(listing.status).toBe(200)
+    const read = await send(d, "GET", `/v1/site-assets/items/${CORES}`, {
+      token: PAGES,
+    })
+    expect(read.status).toBe(200)
+    expect(read.headers.get("content-type")).toBe("image/png")
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(png())
+    const video = await send(d, "GET", `/v1/site-assets/items/${SERVER}`, {
+      token: PAGES,
+    })
+    expect(video.headers.get("content-type")).toBe("video/mp4")
+  })
+
+  it("only the newest of each kind stays, and an older one is superseded", async () => {
+    const d = deps()
+    const older = "cores-20261116T000000000Z.png"
+    expect((await put(d, "site-assets", older, still)).status).toBe(201)
+    expect((await put(d, "site-assets", SERVER, clip)).status).toBe(201)
+    expect(
+      (await put(d, "site-assets", CORES, { ...still, body: png(640, 360) }))
+        .status
+    ).toBe(201)
+    const listing = await send(d, "GET", "/v1/site-assets/items", {
+      token: PAGES,
+    })
+    expect(await json(listing)).toMatchObject({
+      items: [{ name: SERVER }, { name: CORES }],
+    })
+    const late = await put(d, "site-assets", older, still)
+    expect(late.status).toBe(409)
+    expect(await json(late)).toEqual({
+      error: "a newer one of this kind is held",
+    })
+  })
+
+  it("a picture is refused unless its type, name and first bytes agree", async () => {
+    const d = deps()
+    const refused: ReadonlyArray<
+      readonly [string, Init, number, string | null]
+    > = [
+      [CORES, { ...still, type: "video/mp4" }, 422, "image/png"],
+      [CORES, { ...still, type: "application/json" }, 422, "image/png"],
+      [CORES, { ...still, body: mp4() }, 422, "not a PNG"],
+      [SERVER, { ...clip, body: png() }, 422, "not an MP4"],
+      [CORES, { ...still, body: png(4097, 10) }, 422, "4096 pixels"],
+      [CORES, { ...still, body: png(0, 10) }, 422, "4096 pixels"],
+      ["cores-20261123T000000000Z.mp4", clip, 422, "name"],
+      ["server-20261123T000000000Z.png", still, 422, "name"],
+      ["disk-20261123T000000000Z.png", still, 422, "name"],
+      [
+        CORES,
+        { ...still, body: new Uint8Array(1_048_577).fill(1) },
+        413,
+        "too_big",
+      ],
+      [
+        SERVER,
+        {
+          ...clip,
+          body: atLength(786_433),
+        },
+        413,
+        "too_big",
+      ],
+    ]
+    for (const [name, init, status, why] of refused) {
+      const response = await put(d, "site-assets", name, init)
+      expect(response.status).toBe(status)
+      expect(JSON.stringify(await json(response))).toContain(why)
+    }
+    expect(
+      (await send(d, "GET", "/v1/site-assets/items", { token: PAGES })).status
+    ).toBe(200)
+    // Past the picture's cap, declared or streamed, it is refused before
+    // more is read.
+    const at = `/v1/site-assets/items/${SERVER}`
+    const asHome = {
+      authorization: `Bearer ${HOME}`,
+      "content-type": "video/mp4",
+    }
+    const declared = streamed(
+      d,
+      [mp4()],
+      { ...asHome, "content-length": String(786_433) },
+      at
+    )
+    expect((await declared.response).status).toBe(413)
+    expect(declared.pulls()).toBe(0)
+    const undeclared = streamed(
+      d,
+      [atLength(500_000), new Uint8Array(300_000), new Uint8Array(200_000)],
+      asHome,
+      at
+    )
+    expect((await undeclared.response).status).toBe(413)
+    // 500,000 + 300,000 passes 786,432 at the second chunk; the third is
+    // never pulled.
+    expect(undeclared.pulls()).toBe(2)
+    // At the bound exactly, a picture is taken.
+    expect(
+      (
+        await put(d, "site-assets", SERVER, {
+          ...clip,
+          body: atLength(786_432),
+        })
+      ).status
+    ).toBe(201)
+  })
+
+  it("the pages role reads the pictures and nothing else, and puts nothing", async () => {
+    const d = deps()
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      201
+    )
+    for (const path of ["/v1/brief/items", `/v1/brief/items/${DIGEST_NAME}`]) {
+      expect((await send(d, "GET", path, { token: PAGES })).status).toBe(403)
+    }
+    expect(
+      (await put(d, "site-assets", CORES, { ...still, token: PAGES })).status
+    ).toBe(403)
+    expect((await send(d, "GET", "/v1/bell", { token: PAGES })).status).toBe(
+      403
+    )
+  })
+
+  it("home puts a picture and reads none back", async () => {
+    const d = deps()
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    for (const path of [
+      "/v1/site-assets/items",
+      `/v1/site-assets/items/${CORES}`,
+    ]) {
+      expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    }
+  })
+
+  it("nothing archives a picture or asks one back: home takes it again", async () => {
+    let now = NOW
+    const d: Deps = { ...deps(), now: () => now }
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    now = new Date(NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * 10 * 86_400_000)
+    const sha = createHash("sha256").update(png()).digest("hex")
+    for (const token of [ROUTINE, HOME, ARCHIVE, PAGES]) {
+      expect(
+        (
+          await send(d, "DELETE", `/v1/site-assets/items/${CORES}`, {
+            token,
+            headers: { "if-match": `"${sha}"` },
+          })
+        ).status
+      ).toBe(403)
+      for (const collection of ["archived", "wanted"]) {
+        expect(
+          (await send(d, "GET", `/v1/site-assets/${collection}`, { token }))
+            .status
+        ).toBe(403)
+      }
+      expect(
+        (await send(d, "PUT", `/v1/site-assets/wanted/${CORES}`, { token }))
+          .status
+      ).toBe(403)
+    }
+  })
+
+  it("the routine and the archive role neither read nor put a picture", async () => {
+    const d = deps()
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    for (const token of [ROUTINE, ARCHIVE]) {
+      expect(
+        (await send(d, "GET", "/v1/site-assets/items", { token })).status
+      ).toBe(403)
+      expect(
+        (await put(d, "site-assets", SERVER, { ...clip, token })).status
+      ).toBe(403)
+    }
   })
 })

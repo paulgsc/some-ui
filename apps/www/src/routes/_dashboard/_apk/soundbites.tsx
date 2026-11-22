@@ -3,9 +3,9 @@ import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import {
+  phoneSoundbiteKeeping,
   phoneSoundbiteStore,
   Soundbites,
-  soundbitesHeldByHome,
   soundbitesOweMarks,
 } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -144,10 +144,7 @@ const SoundbitesRoute = (): JSX.Element => {
       unowe: voiceMarks.unowe,
     })
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
-    keepSoundbites({
-      store: phoneSoundbiteStore(),
-      heldByHome: soundbitesHeldByHome,
-    })
+    keepSoundbites(phoneSoundbiteKeeping())
   }, [])
 
   return (

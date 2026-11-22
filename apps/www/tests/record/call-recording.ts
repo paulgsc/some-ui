@@ -9,11 +9,12 @@ import { join, resolve } from "node:path"
 import type { Route } from "@playwright/test"
 import {
   CALL_INDEX_SCHEMA,
-  CALL_VOICES,
   callChapterMarks,
   callCutList,
   callFormat,
+  callParts,
   callScenes,
+  callVoices,
   hasCaptions,
   parseCallWeek,
 } from "@some-ui/video-render"
@@ -29,6 +30,7 @@ import {
   renderCut,
   shownFrame,
   siteOf,
+  speakerFlag,
 } from "./voiced"
 
 /** The frame the stage is recorded at: the call's series. */
@@ -83,7 +85,7 @@ async function answer(route: Route, kept: Kept): Promise<void> {
   return route.fulfill({ status: 404, body: "" })
 }
 
-/** The flags `record:call` and `record:preview` share. */
+/** The flags `record:call`, `record:preview` and `record:cards` share. */
 export const CALL_OPTIONS = {
   voices: { type: "string", default: "none" },
   speaker: { type: "string", default: "http://127.0.0.1:8880" },
@@ -97,6 +99,8 @@ export const CALL_OPTIONS = {
 export type CallValues = {
   readonly week?: string
   readonly "week-file"?: string
+  /** Which video of the week's series to record (#2918), from 1. */
+  readonly part?: string
   readonly voices: string
   readonly speaker: string
   readonly out: string
@@ -118,8 +122,7 @@ export async function recordCall(
   { preview = false }: { readonly preview?: boolean } = {}
 ): Promise<void> {
   const policy = policyOf(values)
-  if (values.voices !== "kokoro" && values.voices !== "none")
-    fail(["--voices is kokoro or none"])
+  const speaker = speakerFlag(values)
   // A preview is always of the template's sample week (SFEED12).
   const kept =
     !preview && values["week-file"] ? await keptWeek(values["week-file"]) : null
@@ -132,9 +135,11 @@ export async function recordCall(
       deviceScaleFactor: 1,
     })
     if (kept) await page.route(TESTING_CALL, (route) => answer(route, kept))
+    let part = 1
     const url = (scene: string): string =>
       `${site.origin}/call?${new URLSearchParams({
         ...(weekAsked ? { week: weekAsked } : {}),
+        ...(part > 1 ? { part: String(part) } : {}),
         scene,
         record: "true",
       }).toString()}`
@@ -151,22 +156,40 @@ export async function recordCall(
     if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
       fail([`there is no week of ${weekAsked}`])
 
-    const scenes = callScenes(week)
+    const of = preview ? 1 : callParts(week).length
+    if (values.part !== undefined) {
+      part = Number(values.part)
+      if (!Number.isInteger(part) || part < 1 || part > of)
+        fail([
+          `--part is a whole number from 1 to ${String(of)}, the parts of this week`,
+        ])
+    } else if (of > 1)
+      fail([
+        `the week of ${week.week.from} is ${String(of)} parts: record each with --part 1 to --part ${String(of)}`,
+      ])
+    const scenes = callScenes(week, part)
     // A preview's length is its cut's, which the renderer checks exactly; the
     // whole sample's words don't bound it.
     if (!preview) refuseLong(scenes, policy)
-    const root = here(preview ? values.out : join(values.out, week.week.from))
+    const root = here(
+      preview
+        ? values.out
+        : of > 1
+          ? join(values.out, week.week.from, `part-${String(part)}`)
+          : join(values.out, week.week.from)
+    )
+    const voices = callVoices(scenes)
     const takes = await recordStills({
       page,
       root,
-      shots: scenes.map((scene) => ({
+      shots: scenes.map((scene, i) => ({
         id: scene.id,
         url: url(scene.id),
         said: scene.said,
-        voice: CALL_VOICES[scene.section],
+        voice: voices[i] ?? fail([`${scene.id}: no voice for it`]),
       })),
       frame: (id) => `[data-scene="${id}"]`,
-      speaker: values.voices === "kokoro" ? values.speaker : null,
+      speaker,
       timed: hasCaptions(callFormat(week.template.version)),
       policy,
     })
@@ -181,10 +204,17 @@ export async function recordCall(
       join(root, "week.json"),
       `${JSON.stringify(week, null, 1)}\n`
     )
-    await renderCut(root, SERIES, callCutList(week, takes, { bed }), {
+    await renderCut(root, SERIES, callCutList(week, takes, { bed, part }), {
       preview,
       episode: "call.mp4",
-      marks: () => callChapterMarks(week),
+      thumbnail: {
+        genre: "call",
+        from: week.week.from,
+        to: week.week.to,
+        part,
+        of,
+      },
+      marks: () => callChapterMarks(week, part),
       policy,
       browser,
       origin: site.origin,

@@ -1,0 +1,18 @@
+{
+  "id": "C190",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/engagement-report-video.ts",
+    "apps/www/src/lib/web-surface/call/report-stage.tsx"
+  ],
+  "chose": "In the engagement report's video, a pipeline's table reads out each line that showed a count of 5 or more, and counts its quiet lines (fewer than 5 of anything in every week on record) and its unrecorded lines together in one sentence; on screen a quiet line is dimmed, its cells reading \"< 5\".",
+  "options": [
+    "read out every line's own sentence",
+    "count quiet and unrecorded lines together, reading out the rest",
+    "leave quiet lines out of the video"
+  ],
+  "gray": "The registry has 64 lines and only TOPIK's emit today, so reading each quiet line aloud makes most of the video the same sentence; leaving them out would hide what the app offered. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+  "undo": "In pageSaid, return every line's said joined, and drop the dimming in report-stage.tsx's Statement.",
+  "refs": ["#2700"]
+}

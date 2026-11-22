@@ -8,7 +8,7 @@
 import type { TemplateId } from "@some-ui/video-render"
 
 import { videoFiles } from "@/lib/call-videos/files"
-import { readPart } from "@/lib/call-videos/model"
+import { partOf } from "@/lib/call-videos/model"
 import { PART_BYTES } from "@/lib/call-videos/parts"
 import {
   askMakePreview,
@@ -33,13 +33,13 @@ function create(template: TemplateId): TemplatePreview {
   return createTemplatePreview({
     async read(): Promise<HomeState> {
       const asked = await askWhileBusy(() => askPreview(template))
-      if (asked.kind === "unpaired") return asked
+      if (asked.kind === "unpaired" || asked.kind === "busy") return asked
       if (asked.kind === "unreachable") return { kind: "away" }
       return readPreview(asked.answer)
     },
     async make() {
       const asked = await askWhileBusy(() => askMakePreview(template))
-      if (asked.kind === "unpaired") return asked
+      if (asked.kind === "unpaired" || asked.kind === "busy") return asked
       if (asked.kind === "answered") return readMade(asked.answer)
       return { kind: "away" }
     },
@@ -47,9 +47,7 @@ function create(template: TemplateId): TemplatePreview {
       const asked = await askWhileBusy(() =>
         askPreviewPart(template, id, start, end)
       )
-      return asked.kind === "answered"
-        ? readPart(asked.answer)
-        : { kind: "away" }
+      return partOf(asked)
     },
     files: videoFiles("preview"),
     partBytes: PART_BYTES,

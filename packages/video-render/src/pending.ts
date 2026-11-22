@@ -12,6 +12,16 @@
  * its categories send it (`./feedback`), each ending with
  * `noteFiledLine(note, goes)`, with what home heard in its spoken note when
  * it has one.
+ *
+ * A Studio take the owner moved to ready for pickup on the conveyor
+ * (CONVEYOR3, #2875) is filed the same way, from the mailbox's `pickup`
+ * folder (`some-ui.take-pickup/1`): one issue per take, ending with the same
+ * `filedLine(note)`, and the routine puts back `some-ui.take-picked/1` with
+ * the issue so home records the take as picked up. Only a take the owner
+ * marked ready reaches that folder: recording one, or leaving it cooking,
+ * files nothing. Known limit (#2973): home doesn't take a pickup back, so a
+ * take moved on from ready before the run is still filed; its answer is
+ * stale, and home leaves the take where it is.
  */
 
 import { z } from "zod"
@@ -50,6 +60,17 @@ const FeedbackSchema = z.object({
   writtenAt: z.iso.datetime({ offset: true }),
 })
 
+/** A take moved to ready for pickup, as home files it for the routine (CONVEYOR3). */
+const PickupSchema = z.object({
+  schema: z.literal("some-ui.take-pickup/1"),
+  note: z.string().min(1),
+  ref: z.string(),
+  heard: z.string().trim().min(1),
+  labels: z.array(z.string()),
+  readyAt: z.iso.datetime({ offset: true }),
+  seq: z.number().int().positive(),
+})
+
 /** What a take is to be filed as. */
 export type Pending = {
   /** An answer to an ask. */
@@ -86,11 +107,16 @@ export const filedLine = (note: string): string =>
 // A body edited on GitHub ends its lines in CRLF.
 const FILED = /^Kept on home as the take `([^`]+)`\.\r?$/gm
 
-function filedNotes(bodies: ReadonlyArray<string>): Set<string> {
-  const notes = new Set<string>()
-  for (const body of bodies)
-    for (const match of body.matchAll(FILED))
-      if (match[1] !== undefined) notes.add(match[1])
+/** Each take an issue was filed for, by its id, with that issue when known. */
+function filedNotes(filed: ReadonlyArray<Filed>): Map<string, string | null> {
+  const notes = new Map<string, string | null>()
+  for (const one of filed)
+    for (const match of bodyOf(one).matchAll(FILED)) {
+      const note = match[1]
+      if (note === undefined) continue
+      const issue = typeof one === "string" ? null : one.issue
+      if (!notes.has(note) || notes.get(note) === null) notes.set(note, issue)
+    }
   return notes
 }
 
@@ -133,8 +159,112 @@ export type FeedbackToFile = {
   readonly line: string
 }
 
+/** A take moved to ready for pickup, left to file (CONVEYOR3). */
+export type PickupToFile = {
+  readonly kind: "pickup"
+  readonly repo: "some-ui"
+  /** The take's id on home. */
+  readonly note: string
+  /** Its ready-for-pickup move's number, which its answer names. */
+  readonly seq: number
+  /** What it belongs to on home, `<project>:<shot>:<take>`. */
+  readonly ref: string
+  /** When it was moved to ready for pickup. */
+  readonly at: string
+  /** What home heard, for the routine to paraphrase; never quoted. */
+  readonly heard: string
+  /** The owner's labels on it, said in the body as context. */
+  readonly takeLabels: ReadonlyArray<string>
+  readonly labels: typeof PENDING_LABELS
+  readonly line: string
+  /** The answer's name in the mailbox's `picked` folder, once it is filed. */
+  readonly picked: string
+}
+
 /** One item left to file. */
-export type ToFile = TakeToFile | FeedbackToFile
+export type ToFile = TakeToFile | FeedbackToFile | PickupToFile
+
+/**
+ * The routine's answer to a pickup (`some-ui.take-picked/1`), put in the
+ * mailbox's `picked` folder under `name`: the issue the take was filed as.
+ */
+export type PickedAnswer = {
+  readonly name: string
+  readonly body: {
+    readonly schema: "some-ui.take-picked/1"
+    readonly note: string
+    readonly seq: number
+    /** `<owner>/<repo>#<n>`. */
+    readonly issue: string
+  }
+}
+
+/** An answer's name in the mailbox's `picked` folder. */
+export const pickedName = (note: string, seq: number): string =>
+  `picked-${note}-${String(seq)}.json`
+
+/** The answer to `note`'s pickup `seq`, filed as `issue` (`<owner>/<repo>#<n>`). */
+export const pickedAnswer = (
+  note: string,
+  seq: number,
+  issue: string
+): PickedAnswer => ({
+  name: pickedName(note, seq),
+  body: { schema: "some-ui.take-picked/1", note, seq, issue },
+})
+
+/**
+ * An issue already filed: its body, and where it is (`<owner>/<repo>#<n>`)
+ * when the list said, which a pickup already filed is answered with.
+ */
+export type Filed =
+  | string
+  | { readonly body: string; readonly issue: string | null }
+
+/** `https://github.com/<owner>/<repo>/issues/<n>`, its parts. */
+const ISSUE_URL =
+  /^https:\/\/github\.com\/([\w.-]{1,100})\/([\w.-]{1,100})\/issues\/([1-9]\d{0,8})$/
+/** `<owner>/<repo>`. */
+const REPO_NAME = /^[\w.-]{1,100}\/[\w.-]{1,100}$/
+
+/**
+ * An issue already filed, as the routine saves it: its body as text, or the
+ * issue with its `body` and where it is, by its `repo` (`<owner>/<repo>`,
+ * the repository the routine listed) and `number`, or by its `html_url`.
+ * Where it is is held to what the mailbox takes as an issue, or left
+ * unknown; an entry of any other shape stops `render pending` whole, so a
+ * list it can't read files nothing twice.
+ */
+export const FiledSchema = z.union([
+  z.string(),
+  z
+    .object({
+      body: z.string().nullable(),
+      repo: z.string().optional(),
+      number: z.number().int().positive().optional(),
+      html_url: z.string().optional(),
+    })
+    .transform(({ body, repo, number, html_url: url }): Filed => {
+      if (
+        repo !== undefined &&
+        REPO_NAME.test(repo) &&
+        number !== undefined &&
+        number < 1e9
+      )
+        return { body: body ?? "", issue: `${repo}#${String(number)}` }
+      const [, owner, name, n] = ISSUE_URL.exec(url ?? "") ?? []
+      return {
+        body: body ?? "",
+        issue:
+          owner === undefined || name === undefined || n === undefined
+            ? null
+            : `${owner}/${name}#${n}`,
+      }
+    }),
+])
+
+const bodyOf = (filed: Filed): string =>
+  typeof filed === "string" ? filed : filed.body
 
 /**
  * The line an issue filed from a note on an episode ends with, one per place
@@ -159,11 +289,11 @@ const NOTE_FILED =
 
 /** The places each note already has an issue for, by its id. */
 function filedPlaces(
-  bodies: ReadonlyArray<string>
+  filed: ReadonlyArray<Filed>
 ): Map<string, Set<Destination>> {
   const places = new Map<string, Set<Destination>>()
-  for (const body of bodies)
-    for (const match of body.matchAll(NOTE_FILED)) {
+  for (const one of filed)
+    for (const match of bodyOf(one).matchAll(NOTE_FILED)) {
       const goes = PLACE_OF.get(match[2] ?? "")
       if (match[1] === undefined || goes === undefined) continue
       const of = places.get(match[1]) ?? new Set<Destination>()
@@ -185,7 +315,7 @@ export type Passed = {
   readonly place: number
   readonly why: string
   /** The list it is in; a transcript's when absent. */
-  readonly in?: "feedback"
+  readonly in?: "feedback" | "pickup"
 }
 
 /**
@@ -196,14 +326,25 @@ export type Passed = {
  */
 export function toFile(
   transcripts: ReadonlyArray<unknown>,
-  filed: ReadonlyArray<string>,
+  filed: ReadonlyArray<Filed>,
   feedback: ReadonlyArray<unknown> = [],
-  now: number = Date.now()
+  now: number = Date.now(),
+  pickups: ReadonlyArray<unknown> = [],
+  /** The names already in the mailbox's `picked` folder. */
+  picked: ReadonlyArray<string> = []
 ): {
   readonly items: ReadonlyArray<ToFile>
   readonly passed: ReadonlyArray<Passed>
   /** Notes waiting for home to hear their spoken note, by id. */
   readonly waiting: ReadonlyArray<string>
+  /**
+   * Answers to put in the `picked` folder now: pickups of takes an issue
+   * already carries (an answer to an ask, or one filed by a run whose answer
+   * didn't land), each naming that issue.
+   */
+  readonly answers: ReadonlyArray<PickedAnswer>
+  /** Pickups of takes already filed whose issue the list didn't say, by note. */
+  readonly unanswered: ReadonlyArray<string>
 } {
   const done = filedNotes(filed)
   const passed: Array<Passed> = []
@@ -276,9 +417,55 @@ export function toFile(
       })
     }
   })
-  const items = [...byNote.values(), ...places].sort(
+  // Of a take's pickups, only its newest move counts: home records a pickup
+  // only while that move is the take's newest, and a take is filed once.
+  const newest = new Map<string, z.infer<typeof PickupSchema>>()
+  pickups.forEach((raw, place) => {
+    const read = PickupSchema.safeParse(raw)
+    if (!read.success) {
+      passed.push({
+        place,
+        why: "it doesn't read as a take ready for pickup",
+        in: "pickup",
+      })
+      return
+    }
+    const was = newest.get(read.data.note)
+    if (was === undefined || read.data.seq > was.seq)
+      newest.set(read.data.note, read.data)
+  })
+  const answered = new Set(picked)
+  const ready: Array<PickupToFile> = []
+  const answers: Array<PickedAnswer> = []
+  const unanswered: Array<string> = []
+  for (const take of newest.values()) {
+    const name = pickedName(take.note, take.seq)
+    if (answered.has(name)) continue
+    if (done.has(take.note) || byNote.has(take.note)) {
+      // Filed already, or filed this run as an answer to an ask: no second
+      // issue. Answer with the one there is, once its number is known.
+      const issue = done.get(take.note) ?? null
+      if (issue === null) unanswered.push(take.note)
+      else answers.push(pickedAnswer(take.note, take.seq, issue))
+      continue
+    }
+    ready.push({
+      kind: "pickup",
+      repo: "some-ui",
+      note: take.note,
+      seq: take.seq,
+      ref: take.ref,
+      at: take.readyAt,
+      heard: take.heard,
+      takeLabels: take.labels,
+      labels: PENDING_LABELS,
+      line: filedLine(take.note),
+      picked: name,
+    })
+  }
+  const items = [...byNote.values(), ...places, ...ready].sort(
     (a, b) =>
       Date.parse(a.at) - Date.parse(b.at) || a.note.localeCompare(b.note)
   )
-  return { items, passed, waiting }
+  return { items, passed, waiting, answers, unanswered }
 }

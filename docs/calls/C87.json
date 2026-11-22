@@ -1,0 +1,23 @@
+{
+  "id": "C87",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": [
+    "server:.github/workflows/assurance.yml",
+    "server:.github/workflows/deny.yml",
+    "server:.github/workflows/detect.yml",
+    "server:.github/workflows/lint.yml",
+    "server:.github/workflows/loc.yml",
+    "server:.github/workflows/routes.yml",
+    "server:.github/workflows/rust-runner.yml",
+    "server:.github/workflows/test.yml"
+  ],
+  "chose": "Tell PR gate is skipped when the head is a fork's, and fork heads are left to the sweep, as before.",
+  "options": [
+    "skip Tell PR gate on a fork's head and leave it to the sweep",
+    "let it run and fail"
+  ],
+  "gray": "A fork's pull_request token is read-only, so the dispatch would fail and turn an otherwise green run red (Codex on server#783). Skipping keeps such a gate on the slow sweep; failing makes it red for a reason that is not the code's.",
+  "undo": "Drop the head.repo.full_name clause from TELL_IF in the eight workflows.",
+  "refs": ["server#772", "server#783"]
+}

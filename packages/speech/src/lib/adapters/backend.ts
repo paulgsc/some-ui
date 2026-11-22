@@ -3,11 +3,10 @@
  *
  * A backend as the app hands it to the session: a token, not a factory.
  *
- * Each real backend lives in its own package entry (`@some-ui/speech/http`,
- * `/web-speech`, `/native`), so a build carries only the ones its app
- * imports. The app picks them and passes them in `SpeechConfig.adapters`;
- * this package never imports one itself, or every build would carry all
- * three.
+ * Each real backend lives in its own package entry
+ * (`@some-ui/speech/web-speech`, `/native`), so a build carries only the one
+ * its app imports. The app picks it and passes it as `SpeechConfig.backend`;
+ * this package never imports one itself, or every build would carry both.
  *
  * What an entry exports is inert. Only the session (`./registry`) can read
  * the factory behind it, because the key it sits under is not exported. An

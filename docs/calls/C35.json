@@ -1,0 +1,19 @@
+{
+  "id": "C35",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/ui/burn-ins/src/lib/preview-mark.ts",
+    "packages/video-render/src/preview.ts"
+  ],
+  "chose": "A template's preview carries a burn-in, \"PREVIEW, SAMPLE DATA\" in amber capitals on a dark plate, over the whole video, at the left of a new foot region: the strip under the safe area, where no stage draws and below where captions are drawn. Only previewOf adds it; no episode ever carries it.",
+  "options": [
+    "the foot strip under the safe area, at its left",
+    "the header's top-right corner, over the stages' header rows",
+    "the gutter, which the authorship mark holds",
+    "centred in the foot"
+  ],
+  "gray": "#2757 asked for a visible mark clear of the stage and the captions band, but every stage fills the whole frame, so that place had to be read: as where the stage draws nothing and captions are never drawn. Its words also had to be chosen.",
+  "undo": "Change REGIONS_OF[\"preview-mark\"] and drawPreviewMark as a new design (or WORDS.previewMark for the words), and drop the foot region if nothing else uses it.",
+  "refs": ["#2757"]
+}

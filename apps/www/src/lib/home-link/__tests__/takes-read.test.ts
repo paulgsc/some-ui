@@ -13,13 +13,15 @@ let answer: HomeAnswer | Error | null = { status: 200, body: "{}" }
 const asked: Array<[string, string]> = []
 
 vi.mock("@/lib/home-link", () => ({
-  paired: (): boolean => pairedNow,
   homeLink: (): unknown => ({
     keep: async (
       run: (send: HomeCall) => Promise<unknown>
-    ): Promise<{ kind: "done"; value: unknown } | null> => {
+    ): Promise<
+      { kind: "done"; value: unknown } | { kind: "refused"; why: string }
+    > => {
       // A link busy with another run turns this one away.
-      if (answer === null) return null
+      if (!pairedNow) return { kind: "refused", why: "unpaired" }
+      if (answer === null) return { kind: "refused", why: "busy" }
       const reply = answer
       const value = await run((method, path) => {
         asked.push([method, path])
@@ -32,7 +34,16 @@ vi.mock("@/lib/home-link", () => ({
   }),
 }))
 
+const reported = vi.hoisted((): Array<string> => [])
+vi.mock("@some-ui/intent-kit", async (actual) => ({
+  ...(await actual<object>()),
+  reportFailure: ({ port }: { port: string }): void => {
+    reported.push(port)
+  },
+}))
+
 const { askTakes, takesPath } = await import("@/lib/home-link/takes-read")
+const { ForeignCallError } = await import("@/lib/intent/foreign")
 
 beforeEach(() => {
   pairedNow = true
@@ -42,8 +53,34 @@ beforeEach(() => {
 
 describe("the read of the takes home keeps (ST32)", () => {
   it("asks for the newest, or for the takes whose words hold a search's", () => {
-    expect(takesPath(null)).toBe("/voice-notes/takes")
-    expect(takesPath("brand intro")).toBe("/voice-notes/takes?q=brand%20intro")
+    // Every kind, from epoch 19; a home before it ignores `kind`.
+    expect(takesPath(null)).toBe("/voice-notes/takes?kind=all")
+    expect(takesPath("brand intro")).toBe(
+      "/voice-notes/takes?kind=all&q=brand%20intro"
+    )
+    // `next` goes back as home gave it, an opaque cursor, URL-encoded.
+    expect(
+      takesPath(null, "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1")
+    ).toBe(
+      "/voice-notes/takes?kind=all&after=2026-11-03T09%3A00%3A00.000Z%7C2026-11-03T09%3A01%3A00.000Z%7Ct1"
+    )
+    // The kinds, topic and order picked, asked of home.
+    expect(
+      takesPath("rams", null, {
+        kinds: ["game"],
+        about: "game:401772",
+        sort: "oldest",
+      })
+    ).toBe(
+      "/voice-notes/takes?kind=game&about=game%3A401772&sort=oldest&q=rams"
+    )
+    expect(
+      takesPath(null, null, {
+        kinds: ["studio", "game"],
+        about: null,
+        sort: "newest",
+      })
+    ).toBe("/voice-notes/takes?kind=studio&kind=game")
   })
 
   it("hands back home's answer to one GET", async () => {
@@ -51,7 +88,7 @@ describe("the read of the takes home keeps (ST32)", () => {
       kind: "answered",
       answer,
     })
-    expect(asked).toEqual([["GET", "/voice-notes/takes?q=brand"]])
+    expect(asked).toEqual([["GET", "/voice-notes/takes?kind=all&q=brand"]])
   })
 
   it("asks nothing while unpaired", async () => {
@@ -65,5 +102,20 @@ describe("the read of the takes home keeps (ST32)", () => {
     await expect(askTakes(null)).resolves.toEqual({ kind: "busy" })
     answer = new Error("no answer")
     await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+  })
+
+  it("reports a fault on this phone once: a foreign port's own was reported by it (#3155)", async () => {
+    reported.length = 0
+    answer = new Error("a fault")
+    await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+    expect(reported).toEqual(["home link: an ask of home"])
+    answer = new ForeignCallError({
+      kind: "unknown",
+      retryable: false,
+      summary: "The phone couldn't read or keep its pairing.",
+      cause: null,
+    })
+    await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+    expect(reported).toEqual(["home link: an ask of home"])
   })
 })

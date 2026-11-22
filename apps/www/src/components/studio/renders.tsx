@@ -8,7 +8,7 @@
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { StationStrip } from "@some-ui/shared"
+import { CardLink, CardLinkBody, StationStrip } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
@@ -17,6 +17,7 @@ import type { Board, RendersOutcome, Row, Subject } from "@/lib/renders"
 import {
   CONVEYOR_WORDS,
   doneLine,
+  failedAside,
   failedLine,
   feedName,
   kindName,
@@ -34,7 +35,7 @@ import {
   thingName,
 } from "@/lib/renders"
 
-import { Part, ReadList, StudioPage, TILE } from "./layout"
+import { Part, ReadList, StudioPage } from "./layout"
 
 const WORDS = RENDERS_WORDS
 
@@ -121,6 +122,17 @@ const ToPage = ({
         </Link>
       )
     }
+    case "essay": {
+      return (
+        <Link
+          to="/journal/cards/$key"
+          params={{ key: subject.key }}
+          className={className}
+        >
+          {children}
+        </Link>
+      )
+    }
     case "other": {
       return null
     }
@@ -172,11 +184,15 @@ const RowTile = ({
   return (
     <li>
       {!opens(subject) ? (
-        <div className={TILE}>{body}</div>
-      ) : (
-        <ToPage subject={subject} className={TILE}>
+        <div className="bg-card border-border/60 flex h-full flex-col gap-1 rounded-2xl border px-4 py-3">
           {body}
-        </ToPage>
+        </div>
+      ) : (
+        <CardLink asChild>
+          <ToPage subject={subject} className="">
+            <CardLinkBody>{body}</CardLinkBody>
+          </ToPage>
+        </CardLink>
       )}
     </li>
   )
@@ -248,7 +264,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
               <RowTile
                 key={`${failed.feed}/${failed.key}`}
                 row={failed}
-                tag={ROW_TAGS.failed}
+                tag={CONVEYOR_WORDS.asides[failedAside(failed)]}
                 line={failedLine(failed)}
               />
             ))}
@@ -318,12 +334,16 @@ export const RendersLine = (): JSX.Element | null => {
   const line = lineOf(useQuery(rendersQuery).data)
   // The page is the phone's ("apk"), as this line is (A3).
   return hasAudience("apk") ? (
-    <Link to="/journal/renders" className={TILE}>
-      <span className="truncate text-sm font-medium">{line}</span>
-      <span className="text-muted-foreground truncate text-sm">
-        {WORDS.open}
-      </span>
-    </Link>
+    <CardLink asChild>
+      <Link to="/journal/renders">
+        <CardLinkBody className="gap-0">
+          <span className="w-full truncate text-sm font-medium">{line}</span>
+          <span className="text-muted-foreground w-full truncate text-sm">
+            {WORDS.open}
+          </span>
+        </CardLinkBody>
+      </Link>
+    </CardLink>
   ) : null
 }
 

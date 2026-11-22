@@ -3,8 +3,10 @@
  * each feed (`FEEDS`), newest first, each on its own page under Studio's
  * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
- * YouTube link is saved with the episode, beside its chapters to copy into
- * the upload's description (SFEED4); once home's copy is let go (My data),
+ * YouTube link is saved with the episode where its feed takes one
+ * (`LINKED_FEEDS`), beside its chapters to copy into
+ * the upload's description (SFEED4); once home's copy is let go (My data,
+ * `LET_GO_FEEDS`),
  * the link is how it is watched. Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
  * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
@@ -14,12 +16,11 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
 
-import { hasAudience } from "@/lib/build-profile"
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
   episodeChapters,
+  episodeName,
   FEED_WORDS,
   feedVideos,
   VIDEOS_WORDS,
@@ -33,25 +34,34 @@ import type {
   VideosState,
 } from "@/lib/call-videos/model"
 import { homeBytes, listedEpisode, standing } from "@/lib/call-videos/model"
-import { isNoted } from "@/lib/feeds"
+import { isLinked } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
-import { TILE, TileBody } from "@/components/studio/layout"
 import { VideoFetch } from "@/components/video-fetch"
 
 const WORDS = VIDEOS_WORDS
+
+/**
+ * `src` starting at `ms`, by a media fragment (`#t=`), so the player opens
+ * there with no seek of ours to time.
+ */
+const atMoment = (src: string, ms: number): string =>
+  `${src}#t=${String(Math.floor(ms / 1000))}`
 
 const Watching = ({
   feed,
   episode,
   fetch,
   videos,
+  startAt,
 }: {
   feed: Feed
   episode: Episode
   fetch: Fetch | undefined
   videos: FeedVideos
+  /** Where the video starts, from its start: a note's moment (TAKES2). */
+  startAt?: number | undefined
 }): JSX.Element => {
   const video = useRef<HTMLVideoElement>(null)
   if (fetch?.kind === "ready") {
@@ -60,7 +70,7 @@ const Watching = ({
         {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws captions), and home makes no caption file */}
         <video
           ref={video}
-          src={fetch.src}
+          src={startAt === undefined ? fetch.src : atMoment(fetch.src, startAt)}
           controls
           playsInline
           className="w-full rounded-lg"
@@ -68,9 +78,7 @@ const Watching = ({
         <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
-        {isNoted(feed) && (
-          <EpisodeNote feed={feed} episode={episode.key} video={video} />
-        )}
+        <EpisodeNote feed={feed} episode={episode.key} video={video} />
       </div>
     )
   }
@@ -115,6 +123,9 @@ const LinkField = ({
       {save?.kind === "notAVideo" && (
         <p className="text-destructive text-sm">{WORDS.notAVideo}</p>
       )}
+      {save?.kind === "older" && (
+        <p className="text-destructive text-sm">{WORDS.linkOlder}</p>
+      )}
       {save?.kind === "away" && (
         <p className="text-destructive text-sm">{WORDS.linkAway}</p>
       )}
@@ -131,24 +142,32 @@ const EpisodeRow = ({
   fetch,
   save,
   videos,
+  startAt,
 }: {
   feed: Feed
   episode: Episode
   fetch: Fetch | undefined
   save: LinkSave | undefined
   videos: FeedVideos
+  startAt?: number | undefined
 }): JSX.Element => {
   const stands = standing(episode)
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3">
-      <h2 className="font-medium">{FEED_WORDS[feed].label(episode.key)}</h2>
+      <h2 className="font-medium">{episodeName(feed, episode)}</h2>
       {stands === "waiting" && (
         <p className="text-muted-foreground text-sm">
           {FEED_WORDS[feed].waiting}
         </p>
       )}
       {stands === "kept" && (
-        <Watching feed={feed} episode={episode} fetch={fetch} videos={videos} />
+        <Watching
+          feed={feed}
+          episode={episode}
+          fetch={fetch}
+          videos={videos}
+          startAt={startAt}
+        />
       )}
       {stands === "letGo" && (
         <p className="text-muted-foreground text-sm">
@@ -163,7 +182,7 @@ const EpisodeRow = ({
           {WORDS.onYouTube}
         </a>
       )}
-      {stands === "kept" && (
+      {stands === "kept" && isLinked(feed) && (
         <LinkField episode={episode} save={save} videos={videos} />
       )}
     </li>
@@ -250,6 +269,7 @@ export const EpisodesList = ({
       )
     }
     case "away":
+    case "busy":
     case "older":
     case "unreadable": {
       return (
@@ -281,48 +301,6 @@ export const EpisodesList = ({
 }
 
 /**
- * `feed`'s episodes as links to each one's page (SFEED1's Episodes list),
- * newest first, as home's list has them, or what the list says while it
- * can't show them.
- */
-export const FeedEpisodeLinks = ({
-  feed,
-  pair,
-}: {
-  feed: Feed
-  /** The way to pairing, for a phone that isn't paired. */
-  pair: JSX.Element
-}): JSX.Element => {
-  const { videos, state } = useFeedVideos(feed)
-  const { list } = state
-  return (
-    <EpisodesList
-      feed={feed}
-      list={list}
-      pair={pair}
-      onTryAgain={() => void videos.open()}
-    >
-      {/* An episode's page is the phone's ("apk"), as this list is (A3). */}
-      {list.kind === "read" && hasAudience("apk") && (
-        <ul className="flex flex-col gap-2">
-          {list.episodes.map((episode) => (
-            <li key={episode.key}>
-              <Link
-                to="/journal/episodes/$feed/$key"
-                params={{ feed, key: episode.key }}
-                className={TILE}
-              >
-                <TileBody title={FEED_WORDS[feed].label(episode.key)} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </EpisodesList>
-  )
-}
-
-/**
  * One episode of `feed` (SFEED1's episode page): its video to watch, share to
  * YouTube and save the link of, as home's list has it now, or what the list
  * says while it can't show it.
@@ -331,9 +309,12 @@ export const EpisodeScreen = ({
   feed,
   episodeKey,
   pair,
+  startAt,
 }: {
   feed: Feed
   episodeKey: string
+  /** Where its video starts, from its start (a note's moment, TAKES2). */
+  startAt?: number | undefined
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
 }): JSX.Element => {
@@ -372,6 +353,7 @@ export const EpisodeScreen = ({
                 fetch={state.fetches[episode.key]}
                 save={state.links[episode.key]}
                 videos={videos}
+                startAt={startAt}
               />
             </ul>
             <Chapters feed={feed} episodeKey={episode.key} />

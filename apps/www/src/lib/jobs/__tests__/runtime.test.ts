@@ -180,6 +180,14 @@ describe("createJobsRuntime", () => {
     runtime.sweep()
     await settle()
     expect(await p.audio.ids()).toEqual(["v2"])
+    // HEARD4: a note home deleted for good leaves, audio and entry; the
+    // event that named it stays in the log.
+    const logged = runtime.getSnapshot().state.log.length
+    expect(runtime.letGo(new Set(["v2"]))).toBe(true)
+    await settle()
+    expect(await p.audio.ids()).toEqual([])
+    expect(runtime.getSnapshot().state.voice).toEqual([])
+    expect(runtime.getSnapshot().state.log).toHaveLength(logged)
   })
 
   it("keeps a form's voice note under its owner, and Redo and Let go keep every note out of the draft (D2, D3)", async () => {

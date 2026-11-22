@@ -99,6 +99,12 @@ describe("standingOf", () => {
       "12 of 50 kept"
     )
     expect(
+      standingOf(unit("wordSets"), { kept: 12, limit: 50, aside: 3 })
+    ).toBe("12 of 50 kept · 3 archived")
+    expect(
+      standingOf(unit("wordSets"), { kept: 12, limit: 50, aside: 0 })
+    ).toBe("12 of 50 kept")
+    expect(
       standingOf(unit("storage"), {
         kept: 1024 * 1024,
         limit: 25 * 1024 * 1024,

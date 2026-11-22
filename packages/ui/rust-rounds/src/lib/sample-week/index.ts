@@ -14,15 +14,16 @@
  *   for `'static`. The same body under `thread::scope` (spawning with
  *   `s.spawn` and joining inside the scope) compiles and prints `2 rows`.
  *
- * Tests and the viewer's sample week (RR21) read it.
+ * Tests read it, here and in www.
  */
-import type { Week } from "@rust-rounds/lib/formats/week"
-import { WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
+import type { Week, WeekV1 } from "@rust-rounds/lib/formats/week"
+import { upgradeWeek, WEEK_SCHEMA_V1 } from "@rust-rounds/lib/formats/week"
 
 const program = (...lines: Array<string>): string => `${lines.join("\n")}\n`
 
-export const QUILLMOSS_WEEK: Week = {
-  schema: WEEK_SCHEMA,
+/** The sample week as its file holds it (`/1`). */
+export const QUILLMOSS_WEEK_FILE: WeekV1 = {
+  schema: WEEK_SCHEMA_V1,
   id: "2026-w46",
   by: "claude-routine",
   family: "performance-task",
@@ -147,3 +148,6 @@ export const QUILLMOSS_WEEK: Week = {
   references: ["rust-reference", "ownership-inventory"],
   rubric: "solo",
 }
+
+/** The sample week as the phone holds it (`upgradeWeek`). */
+export const QUILLMOSS_WEEK: Week = upgradeWeek(QUILLMOSS_WEEK_FILE)

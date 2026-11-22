@@ -1,0 +1,22 @@
+{
+  "id": "C1058",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/landing",
+    "apps/www/src/landing",
+    "apps/www/render-public-site.ts",
+    "apps/www/vite.config.ts",
+    "apps/www/build.paths.ts"
+  ],
+  "chose": "The public site carries no app: every page is static HTML drawn at build time, beside the landing. The résumé reads as HTML at every width, the same reading view the app's phones show, one page a version (/resume/ the default, /resume/<version>/ the rest) with that version's PDF as a download, where the app embedded the PDF on a desktop and switched versions by a button. The authorship record keeps a script, its one: the record comes from the video's link, so it is drawn in the browser, by the record's own component with no router or app around it. A path the site doesn't have answers a static 404 page linking to the front page and the résumé, where the app sent it to the landing.",
+  "options": [
+    "keep the app on Pages for /resume and /authorship (story 4 as merged)",
+    "static résumé pages that embed the PDF on a desktop, by a media query",
+    "static résumé pages in HTML at every width, with the PDF a download",
+    "a static authorship page that draws no record, only the key"
+  ],
+  "gray": "Story 7 of #3401 asked for /resume and /authorship as static pages, and left open what a desktop reader sees in place of the embedded PDF and how versions are chosen without a script. The owner would notice both on the screen.",
+  "undo": "Give the Pages build the app's index.html as an entry again, with resume/index.html from git history, and write it as 404.html in place of the not-found page; render-public-site.ts then renders the landing alone.",
+  "refs": ["#3401"]
+}

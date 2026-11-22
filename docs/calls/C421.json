@@ -1,0 +1,17 @@
+{
+  "id": "C421",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx",
+    "some-ui:packages/ui/shared/src/lib/dot-meaning/index.ts"
+  ],
+  "chose": "A kind of take is marked by its shape alone (a clapperboard, a light bulb, a screen, a question mark, a microphone), drawn in the text colour; only a dot's colour carries a meaning, from the one shared table (`dotClass`).",
+  "options": [
+    "shape alone, no hue (now)",
+    "shape first, a hue per kind second, as the prototype drew it"
+  ],
+  "gray": "The prototype gave each kind a hue, and the owner then asked that a dot's colour mean one thing on every screen. With five theme hues, a hue per kind would reuse the hues the dots mean, sky among them; no check settles which the owner meant to win.",
+  "undo": "Give `Mark` a class per kind in take-library; keep the hues off the dot meanings.",
+  "refs": ["#3029", "#3069"]
+}

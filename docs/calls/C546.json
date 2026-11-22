@@ -1,0 +1,18 @@
+{
+  "id": "C546",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/workflows/android-compat.yml",
+    "some-ui:apps/mobile/compat/run-level.sh"
+  ],
+  "chose": "The stamp's default API levels are 34 and 36; 24, 28 and 31 stay as inputs, and a level whose stock WebView is under 111 is not tested and its row says \"stock WebView <n> (needs ≥111)\" instead of reading red.",
+  "options": [
+    "default 34 and 36, older levels marked by their WebView",
+    "default 24 to 36, older levels red",
+    "drop 24 to 31 entirely"
+  ],
+  "gray": "The first full run showed the API 24/28/31 images carry Chrome 69 and WebView 91, below the bundle's target (about Chrome 111), while a real phone there takes a Play-updated WebView; the coordinator directed this split, and the owner may still want the older levels by default.",
+  "undo": "Set api_levels' default back to 24,28,31,34,36 and drop the MIN_WEBVIEW skip in run-level.sh.",
+  "refs": ["#3104", "#3105"]
+}

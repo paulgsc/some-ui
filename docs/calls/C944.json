@@ -1,0 +1,18 @@
+{
+  "id": "C944",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/friction.ts",
+    "some-ui:packages/video-render/src/sample/friction.json"
+  ],
+  "chose": "Home's friction aggregate is some-ui.friction/1, defined in @some-ui/video-render beside the engagement report it shares PublicCount and 'fewer than 5' with: per module, days opened in 28 and whole weeks quiet (null when never opened); per registry place, finished, left part-way and median time; Applying's debrief median. A made-up sample holds the contract until home serves it. The shape was proposed to the coordinator for S1, the server worker.",
+  "options": [
+    "video-render, beside the engagement report (chosen)",
+    "@some-ui/engagement, beside the registry",
+    "a schema of the server's own"
+  ],
+  "gray": "Two repos read it. Which side owns the contract, and whether weeksQuiet is published, aren't settled by any check. weeksQuiet exists because 'fewer than 5' days can't tell 0 from 4, and silence needs the 0.",
+  "undo": "Record a call that moves this one, and move or reshape FrictionSchema, with the server's writer in the same change.",
+  "refs": ["#3282", "#3337", "#3338"]
+}

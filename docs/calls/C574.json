@@ -1,0 +1,18 @@
+{
+  "id": "C574",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay-fit.ts",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts"
+  ],
+  "chose": "A Rust Rounds essay's best, beside or deep dive scene that runs past the frame is refused by the Monday routine's finish, naming the scene and what to shorten, so the routine rewrites its own words before the put; the scene is never paged.",
+  "options": [
+    "refuse in finish, and the routine shortens its words",
+    "page a long scene as the weekly call does (CF1)",
+    "shrink the text to fit"
+  ],
+  "gray": "For the weekly call the owner turned down cuts and chose paging (CF1); here the words are the routine's own, written to fit one frame, so a rewrite cuts nothing of the owner's, but how much a dive shows on screen is the owner's to see.",
+  "undo": "Drop essayFit from finish's buildEssay and page the scenes in essayScenes and the stage instead.",
+  "refs": ["#2231", "#3187"]
+}

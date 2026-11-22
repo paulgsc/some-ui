@@ -235,13 +235,21 @@ describe("the step cache", () => {
 describe("ffmpeg through the step cache", () => {
   const version = (): Promise<string> => Promise.resolve("ffmpeg version 6.1.1")
 
-  it("runs a step once for the same inputs, again when an input's bytes change", async () => {
+  it("runs a step once for the same inputs, again when an input's bytes change, and says each hit", async () => {
     const runs: Array<ReadonlyArray<string>> = []
     const warned: Array<string> = []
+    const hits: Array<string> = []
     const cached = withCachedFfmpeg(
       ports(runs),
       root,
-      stepCache(join(root, "steps"), policy(1_000_000), (l) => warned.push(l)),
+      {
+        ...stepCache(join(root, "steps"), policy(1_000_000), (l) =>
+          warned.push(l)
+        ),
+        hit: (what): void => {
+          hits.push(what)
+        },
+      },
       version
     )
     await writeFile(join(root, "in.png"), "still")
@@ -261,6 +269,7 @@ describe("ffmpeg through the step cache", () => {
       "made from edited"
     )
     expect(warned).toEqual([])
+    expect(hits).toEqual(["s1.mkv", "renamed.mkv"])
   })
 
   it("always runs a step that writes nothing, since what it says is on stderr", async () => {

@@ -119,9 +119,8 @@ const noManifest = (): Promise<unknown> =>
 const TopikHandheld = (): JSX.Element => (
   <SpeechProvider
     config={{
-      mode: "static",
       language: "korean",
-      adapters: { static: quickVoice },
+      backend: quickVoice,
     }}
   >
     {/* The room the session viewport gives the applet, which fills it. */}

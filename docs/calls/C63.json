@@ -1,0 +1,14 @@
+{
+  "id": "C63",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/mailbox.rs"],
+  "chose": "A pass that folds several causes is counted and logged once, under the first of ring, connect, local and timer, and every pass restarts the backstop timer.",
+  "options": [
+    "count every cause a pass folds",
+    "count each pass once, by precedence"
+  ],
+  "gray": "server#500 asks for passes counted by cause without saying how folded causes count.",
+  "undo": "Change Wake::take and record_pass_cause in run_passes (mailbox.rs).",
+  "refs": ["server#500", "server#499", "#2142", "#2833"]
+}

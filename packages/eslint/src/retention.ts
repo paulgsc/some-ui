@@ -82,6 +82,97 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 0,
     ttlDays: 1,
   },
+  // android-compat.yml: the APKs its level jobs install, and each level's
+  // row and logs, read by its stamp job. Dispatch only; nothing is kept.
+  {
+    kind: "artifact",
+    name: "android-compat-apk-${{ github.run_id }}",
+    workflows: ["Android Compat"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  {
+    kind: "artifact",
+    name: "android-compat-out-${{ matrix.api }}-${{ github.run_id }}",
+    workflows: ["Android Compat"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  // snips-capture.yml (SNIPS1, docs/snips.md): each capture job's half,
+  // joined by its bundle job in the same run; nothing kept.
+  {
+    kind: "artifact",
+    name: "snips-web-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  {
+    kind: "artifact",
+    name: "snips-apk-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  // The APK's walks (WALK1, apps/mobile/walk), after the snips in the same
+  // job: read by a person right after the run; nothing kept.
+  {
+    kind: "artifact",
+    name: "walks-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  // The bundle home picks up after the run (SNIPS2): the newest is kept for
+  // its day, an older one superseded once a newer capture succeeds. A missed
+  // one is a re-run away, the capture being deterministic.
+  {
+    kind: "artifact",
+    name: "snips-bundle-${{ github.sha }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 1,
+  },
+  // The public site's media (PAGES #3401, C1059): pages.yml fetches the
+  // newest of each kind at its next deploy, which waits on an approval, so
+  // one is kept for 30 days; a kind with none shows its drawn placeholder.
+  {
+    kind: "artifact",
+    name: "site-assets-page-filter-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  {
+    kind: "artifact",
+    name: "site-assets-extensions-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  // Home's dashboards (#3415, C1071): the newest picture of each kind that
+  // home put in the mailbox, fetched by Site Assets' `home` job.
+  {
+    kind: "artifact",
+    name: "site-assets-server-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  {
+    kind: "artifact",
+    name: "site-assets-cores-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  {
+    kind: "artifact",
+    name: "site-assets-apk-${{ github.sha }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 30,
+  },
   {
     kind: "artifact",
     name: "github-pages",

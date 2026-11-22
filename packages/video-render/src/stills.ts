@@ -5,13 +5,15 @@
  * on a timeline the renderer draws.
  *
  * CV1 (promise, #2671): every scene shows the whole still the stage
- * recorded, held still (`__tests__/call-video.test.ts`). Captions draw only
+ * recorded, held still (`__tests__/call-video.test.ts`). A scene given a
+ * composition for its picture (the brand's open and close, a screen zoomed
+ * to its parts, `./zoom`) draws that instead, with its own motion. Captions draw only
  * in the band at the frame's foot, which a stage leaves empty for them
  * (`@some-ui/burn-ins`' `captionSpace`).
  */
 
 import { CUT_LIST_SCHEMA } from "./cut-list"
-import type { Composition, CutList, TimedWord } from "./cut-list"
+import type { Composition, CutList, Shot, TimedWord } from "./cut-list"
 import { markThemeOf } from "./format"
 import type { Format, Shape } from "./format"
 import type { Look } from "./plans"
@@ -23,7 +25,7 @@ export const BRAND_MS = 3_000
 export const FEED_SPEAKER = "kokoro"
 
 /** When a scene's take starts, and the beat after it ends, in ms. */
-const VOICE_IN_MS = 300
+export const VOICE_IN_MS = 300
 export const TAIL_MS = 700
 
 /** How long a scene with no take holds: its words read at a calm pace. */
@@ -34,10 +36,19 @@ export const readingMs = (said: string): number =>
 export const unsaidMs = (said: string): number =>
   said === "" ? BRAND_MS : readingMs(said)
 
-/** About how long `scenes` run before anything is said: each for `unsaidMs`. */
+/**
+ * How long a scene with no take holds: its own `holdMs` (a page that shows
+ * more than is said over it), else `unsaidMs`.
+ */
+export const heldMs = (scene: {
+  readonly said: string
+  readonly holdMs?: number
+}): number => scene.holdMs ?? unsaidMs(scene.said)
+
+/** About how long `scenes` run before anything is said: each for `heldMs`. */
 export const estimatedMs = (
-  scenes: ReadonlyArray<{ readonly said: string }>
-): number => scenes.reduce((total, scene) => total + unsaidMs(scene.said), 0)
+  scenes: ReadonlyArray<{ readonly said: string; readonly holdMs?: number }>
+): number => scenes.reduce((total, scene) => total + heldMs(scene), 0)
 
 /** Whether a format version's shape draws captions, which need each word's time. */
 export const hasCaptions = (format: Format): boolean =>
@@ -81,6 +92,10 @@ export type StillScene = {
   readonly file: string
   /** Empty for a brand slide, which says nothing. */
   readonly said: string
+  /** How long it holds with nothing said, when not `unsaidMs`. */
+  readonly holdMs?: number
+  /** A composition drawn in place of its still (`./zoom`). */
+  readonly picture?: Composition
 }
 
 /** The composition that draws the brand intro and outro, from HYPER5 (#2728). */
@@ -108,6 +123,29 @@ export function brandPicture(
       ...(theme === undefined ? {} : { theme }),
     },
     files: [],
+  }
+}
+
+/**
+ * How long scene `scene` holds, and its take where `take` was said into
+ * `<file>.wav`: the take with a beat either side, or `heldMs` with none.
+ */
+export function heldFor(
+  scene: StillScene,
+  take: StillTake | null
+): Pick<Shot, "durationMs" | "voiceInMs" | "take" | "speaker"> {
+  if (take === null)
+    return { durationMs: heldMs(scene), voiceInMs: VOICE_IN_MS }
+  return {
+    durationMs: VOICE_IN_MS + take.ms + TAIL_MS,
+    voiceInMs: VOICE_IN_MS,
+    take: {
+      file: `${scene.file}.wav`,
+      inMs: 0,
+      outMs: take.ms,
+      ...(take.words ? { words: [...take.words] } : {}),
+    },
+    ...(take.owner ? {} : { speaker: FEED_SPEAKER }),
   }
 }
 
@@ -142,26 +180,11 @@ export function stillsCutList(
     ...(feed.bed ? {} : { music: "off" as const }),
     shots: scenes.map((scene, i) => {
       const take = takes[i] ?? null
-      const motion = brandPicture(feed.shape, scene.id)
+      const motion = brandPicture(feed.shape, scene.id) ?? scene.picture
       return {
         id: scene.id,
         picture: motion ?? { kind: "still", source: `${scene.file}.png` },
-        durationMs:
-          take !== null
-            ? VOICE_IN_MS + take.ms + TAIL_MS
-            : unsaidMs(scene.said),
-        ...(take === null
-          ? {}
-          : {
-              take: {
-                file: `${scene.file}.wav`,
-                inMs: 0,
-                outMs: take.ms,
-                ...(take.words ? { words: [...take.words] } : {}),
-              },
-              ...(take.owner ? {} : { speaker: FEED_SPEAKER }),
-            }),
-        voiceInMs: VOICE_IN_MS,
+        ...heldFor(scene, take),
         // CV1: the still's text runs to the frame's edges, which any zoom
         // would crop; the look's crossfade and music still apply. A
         // composition draws its own picture.

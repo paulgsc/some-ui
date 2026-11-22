@@ -1,7 +1,7 @@
 /**
  * A bundle's parts (STUDIO ST26; RR13 #2688):
  * its cards, one item each, swiped between with the thumb (`BundleCards`),
- * each answer said and heard back on the take pattern's parts, and the look
+ * or one item's take on a page of its own (`BundleTake`), each answer said and heard back on the take pattern's parts, and the look
  * over before Send (`BundleReview`). They render `@some-ui/voice-capture`'s
  * `bundleMachine` state and forward taps; what an item says (a question, a
  * ticket) is the screen's (`renderHead`, `label`), and the words are the screen's
@@ -20,6 +20,7 @@ import type {
   BundleState,
   BundleTakes,
   TakePatternSnapshot,
+  TakeWords,
 } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
 import { Keyboard, MicOff } from "lucide-react"
@@ -281,21 +282,18 @@ const Typed = <K extends BundleKind>({
   </div>
 )
 
-type CardProps<K extends BundleKind> = Parts<K> & {
+type BodyProps<K extends BundleKind> = Parts<K> & {
   item: K["item"]
-  n: number
+  /** Its card is the one on screen: only that one says why a take failed. */
   active: boolean
-  /** What the card says of its item, above its take. */
-  head: ReactNode
-  /** Where it sits beside the card on screen, and the finger's travel. */
-  offset: {
-    readonly cards: number
-    readonly px: number
-    readonly easing: boolean
-  }
+  /** Seconds left of the screen's own count-in before the take starts, if one runs. */
+  counting?: number | null
+  /** The take's own words, where the page says them its way. */
+  takeWords?: TakeWords
 }
 
-const Card = <K extends BundleKind>({
+/** What a card offers under its head: its take, or what to do when one didn't come through. */
+const CardBody = <K extends BundleKind>({
   machine,
   state,
   takes,
@@ -303,38 +301,28 @@ const Card = <K extends BundleKind>({
   dispatch,
   words,
   item,
-  n,
   active,
-  head,
-  offset,
-}: CardProps<K>): JSX.Element => {
+  counting = null,
+  takeWords,
+}: BodyProps<K>): JSX.Element => {
   const { spec } = machine
   const answers = machine.answersOf(state, item)
   const recording =
     snapshot.take.kind !== "idle" && snapshot.answers === answers
   const card = machine.cardView(state, item, recording)
-  const of = spec.items.length
-  const view = takeItemView(
+  const taken = takeItemView(
     snapshot,
     state.takes,
     answers,
     takes.pattern.options
   )
+  // A count-in shows on the button it starts from, so the two never disagree.
+  const view =
+    counting !== null && taken.button.kind === "ready"
+      ? { ...taken, button: { kind: "counting" as const, left: counting } }
+      : taken
   return (
-    <section
-      aria-label={words.cardOf(n, of)}
-      aria-hidden={!active}
-      inert={!active}
-      data-card={item}
-      className={cn(
-        "col-start-1 row-start-1 flex min-w-0 flex-col gap-3 px-1",
-        offset.easing && "transition-transform duration-200 ease-out"
-      )}
-      style={{
-        transform: `translateX(calc(${offset.cards * 100}% + ${offset.px}px))`,
-      }}
-    >
-      {head}
+    <>
       {card.kind === "failed" && (
         <Failed
           item={item}
@@ -375,10 +363,13 @@ const Card = <K extends BundleKind>({
           <TakeItem
             view={view}
             size="large"
+            buttonWords={takeWords}
             onTap={() => dispatch({ type: "tap", item })}
             onPlay={(take) => dispatch({ type: "play", take })}
             onRedo={() => dispatch({ type: "tap", item })}
             onLetGo={
+              // An item whose every take is kept offers none to let go (C783).
+              spec.keepsEvery?.(answers) !== true &&
               view.current.some((row) => row.unsent)
                 ? (): void => dispatch({ type: "askDelete", item })
                 : undefined
@@ -401,6 +392,41 @@ const Card = <K extends BundleKind>({
           {words.unheard.type}
         </Button>
       )}
+    </>
+  )
+}
+
+type CardProps<K extends BundleKind> = BodyProps<K> & {
+  n: number
+  /** What the card says of its item, above its take. */
+  head: ReactNode
+  /** Where it sits beside the card on screen, and the finger's travel. */
+  offset: {
+    readonly cards: number
+    readonly px: number
+    readonly easing: boolean
+  }
+}
+
+const Card = <K extends BundleKind>(props: CardProps<K>): JSX.Element => {
+  const { machine, words, item, n, active, head, offset } = props
+  const of = machine.spec.items.length
+  return (
+    <section
+      aria-label={words.cardOf(n, of)}
+      aria-hidden={!active}
+      inert={!active}
+      data-card={item}
+      className={cn(
+        "col-start-1 row-start-1 flex min-w-0 flex-col gap-3 px-1",
+        offset.easing && "transition-transform duration-200 ease-out"
+      )}
+      style={{
+        transform: `translateX(calc(${offset.cards * 100}% + ${offset.px}px))`,
+      }}
+    >
+      {head}
+      <CardBody {...props} />
       <p className="text-muted-foreground flex justify-between text-xs">
         <span>{n > 1 ? words.prev(n - 1) : ""}</span>
         <span>{n < of ? words.next(n + 1) : words.last}</span>
@@ -408,6 +434,34 @@ const Card = <K extends BundleKind>({
     </section>
   )
 }
+
+export type BundleTakeProps<K extends BundleKind> = Parts<K> & {
+  item: K["item"]
+  /** What the page says of its item, above its take. */
+  head: ReactNode
+  /** Seconds left of the page's count-in before the take starts (the interview's cue), if one runs. */
+  counting?: number | null
+  /** The take button's words, where the page says them its way: the pattern's otherwise. */
+  takeWords?: TakeWords
+}
+
+/**
+ * One item's take on a page of its own (IW8, #3175), where a screen steps
+ * between its items by navigation rather than by swiping a row of cards.
+ */
+export const BundleTake = <K extends BundleKind>(
+  props: BundleTakeProps<K>
+): JSX.Element => (
+  <section data-card={props.item} className="flex flex-col gap-3">
+    {props.head}
+    <CardBody {...props} active />
+    <BundleNoticeLine
+      notice={props.state.notice}
+      onDismiss={() => props.dispatch({ type: "noticeDismissed" })}
+      words={props.words}
+    />
+  </section>
+)
 
 export type BundleCardsProps<K extends BundleKind> = Parts<K> & {
   /** What a card says of its item, above its take: a question, a ticket. */
@@ -509,6 +563,18 @@ export type BundleReviewProps<K extends BundleKind> = Parts<K> & {
   label: (item: K["item"]) => ReactNode
   /** What an unsaid item's row says, when the surface says more than "Not said yet". */
   notSaid?: (item: K["item"]) => ReactNode
+  /**
+   * Whether an item is listed; every item when absent. A surface with items
+   * nothing records any more (a Rust Rounds ticket's own, once its points
+   * are answered on their own, RR24) lists them only when said.
+   */
+  shown?: (item: K["item"], said: boolean) => boolean
+  /**
+   * Whether an item's take may be said again here; every item when absent.
+   * One nothing records any more (that same ticket's own take) is kept or
+   * let go, never redone.
+   */
+  redoes?: (item: K["item"]) => boolean
   /** Under the answers, above Send: where home is, the way to pairing. */
   beforeSend?: ReactNode
   /** Send's label. */
@@ -557,6 +623,7 @@ export const BundleReview = <K extends BundleKind>(
       <ol className="flex flex-col gap-3">
         {machine.spec.items.map((item) => {
           const how = machine.answered(state, item)
+          if (props.shown?.(item, how !== null) === false) return null
           const typed = state.draft.typed[item]
           // Words typed beside a take kept unheard show with that take (ST34).
           const take = how === "said" || machine.standsBeside(state, item)
@@ -573,7 +640,15 @@ export const BundleReview = <K extends BundleKind>(
                   )}
                   onPlay={(each) => dispatch({ type: "play", take: each })}
                   onRedo={() => dispatch({ type: "tap", item })}
-                  onLetGo={() => dispatch({ type: "askDelete", item })}
+                  canRedo={props.redoes?.(item) ?? true}
+                  onLetGo={
+                    // An item whose every take is kept offers none to let go (C783).
+                    machine.spec.keepsEvery?.(
+                      machine.answersOf(state, item)
+                    ) === true
+                      ? undefined
+                      : (): void => dispatch({ type: "askDelete", item })
+                  }
                 />
               )}
               {how === "typed" && typed !== undefined && (

@@ -1,0 +1,21 @@
+{
+  "id": "C930",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/library/compartments.ts",
+    "some-ui:packages/ui/soundbites/src/lib/library/words.ts",
+    "some-ui:packages/video-render/src/spoken-line.ts",
+    "some-ui:apps/www/src/lib/take-about/model.ts",
+    "some-ui:apps/www/src/lib/studio-spoken/model.ts"
+  ],
+  "chose": "A spoken card's takes are a Studio kind of their own in Takes, Spoken cards, beside Ideas and Asks, read from their line (`spoken:<card>.<part>`, C807). Each card is a topic, so the compartment groups and filters them by card, named by the card's title while this phone keeps it, else as a spoken card; each take says which part it is. The line's parser moved from www's Spoken into @some-ui/video-render, beside the spoken cards, so Studio, Takes and www's join read it from one copy; a soundbites contract can't carry it (A2: no implementation). Before, these takes showed as recorded on Takes.",
+  "options": [
+    "its own Studio kind, grouped by card (chosen)",
+    "under Recorded here, as before: the owner asked for a card for Spoken",
+    "one compartment per card: the compartments are kinds, and a card is a topic of one"
+  ],
+  "gray": "How Takes groups a kind of take is on the screen; no check settles it.",
+  "undo": "Drop `spoken` from STUDIO_KINDS and its about, words and mark; spoken takes then read as recorded here.",
+  "refs": ["#3339", "#3314"]
+}

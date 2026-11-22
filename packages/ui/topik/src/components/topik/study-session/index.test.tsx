@@ -90,8 +90,7 @@ describe("KoreanStudyPage - mountable by the registry", () => {
     renderApplet(
       <SpeechProvider
         config={{
-          mode: "static",
-          adapters: { server: () => adapter, static: () => adapter },
+          backend: () => adapter,
         }}
       >
         <KoreanStudyPage />

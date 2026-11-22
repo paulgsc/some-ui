@@ -22,13 +22,15 @@ import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { homeLink, pairingOf } from "./index"
+import { homeLink, pairing as pairingNow } from "./index"
 import type { LiveEffect, LiveEvent, LiveTimer } from "./live-machine"
 import { feedOf, initialLive, step } from "./live-machine"
 import { parseWeek } from "./live-model"
 import { livePairing } from "./live-pairing"
 import type { LiveSocket, LiveSocketEvents } from "./live-socket"
 import { openLiveSocket } from "./live-socket"
+import type { Pairing } from "./model"
+import { awayHeld } from "./model"
 
 export { OPEN_MS, PING_MS, QUIET_MS } from "./live-machine"
 
@@ -50,10 +52,14 @@ export type LivePorts = {
   wire: LiveWire
   /** The paired home's API base and token, or null when unpaired. */
   pairing: () => Promise<{ base: string; token: string } | null>
-  /** Calls `listener` when the pairing may have changed. */
+  /** Calls `listener` when the pairing, or the hold away from home, may have changed. */
   onLink: (listener: () => void) => () => void
+  /** Whether the home link holds the phone away from home now (AW1). */
+  held: () => boolean
+  /** Tells the home link home answered the socket (AW1). */
+  reached: () => void
   /** The id of the pairing this phone holds now, or null. */
-  pairingId: () => string | null
+  pairingId: () => Pairing
   open: (url: string, token: string, on: LiveSocketEvents) => LiveSocket
   /** Milliseconds since the epoch. */
   now: () => number
@@ -160,6 +166,10 @@ export function liveFeed(ports: LivePorts): FeedPort {
         keepWeek(ports.storage, effect.games)
         return
       }
+      case "reached": {
+        ports.reached()
+        return
+      }
       default: {
         assertNever(effect)
       }
@@ -168,9 +178,11 @@ export function liveFeed(ports: LivePorts): FeedPort {
 
   function start(): void {
     // Visibility first, so a page opened in the background opens nothing.
-    unwatchLink = ports.onLink(() =>
+    unwatchLink = ports.onLink(() => {
       dispatch({ kind: "relinked", pairingId: ports.pairingId() })
-    )
+      dispatch({ kind: "home", held: ports.held() })
+    })
+    dispatch({ kind: "home", held: ports.held() })
     unwatchPage = ports.onVisibility((hidden) =>
       dispatch({ kind: "visibility", hidden })
     )
@@ -225,7 +237,9 @@ export function gameDayFeed(wire: LiveWire): FeedPort {
     wire,
     pairing: livePairing,
     onLink: link.subscribe,
-    pairingId: () => pairingOf(),
+    held: () => awayHeld(link.getSnapshot(), Date.now()),
+    reached: () => link.answered(),
+    pairingId: () => pairingNow(),
     open: openLiveSocket,
     now: () => Date.now(),
     utcOffsetMinutes: () => -new Date().getTimezoneOffset(),

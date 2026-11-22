@@ -1,0 +1,18 @@
+{
+  "id": "C120",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": [
+    "server:deploy/home/release.json",
+    "server:.github/workflows/release-lock.yml"
+  ],
+  "chose": "Third-party images (redis, nats, prometheus, grafana, cadvisor, the exporters, metabase, redisinsight, ollama) are in the release, pinned repo:<real tag>@sha256, and refreshed by their own release PR monthly or on dispatch, never with an app publish. caddy runs at NixOS level and stays out.",
+  "options": [
+    "leave them floating on :latest",
+    "pin them in the release, refreshed on their own cadence",
+    "pin them in the release, refreshed with every publish"
+  ],
+  "gray": "Proposed by Claude in the design; the owner did not object. A month is a guess at the cost of reviewing third-party moves against the risk of a stale CVE fix, and no convention covers it.",
+  "undo": "Change the release-lock schedule, or drop the third-party services from the release and the guard.",
+  "refs": ["server#787", "server#796"]
+}

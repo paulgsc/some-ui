@@ -1,0 +1,21 @@
+{
+  "id": "C1063",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/workflows/android-compat.yml",
+    "some-ui:apps/mobile/compat/run-level.sh",
+    "some-ui:apps/mobile/compat/name-lookup.sh",
+    "some-ui:apps/mobile/compat/staged-dns.py",
+    "some-ui:apps/mobile/android/app/src/androidTest/java/dev/paulgsc/someui/NameLookupTest.java"
+  ],
+  "chose": "C1057's reproduction is a `name_only` scenario of android-compat.yml (dispatch only, already on main, so a dispatch on the fix branch runs that branch's copy before anything merges), not a new workflow. It stages the failure below the app: a resolver on the runner (staged-dns.py, the emulator's -dns-server) fails each staged name's first lookup with no address and the 1800 s negative TTL of home's real zone, then answers it; NameLookupTest asks again through HttpURLConnection, the way Capacitor's HTTP plugin sends, and through DnsResolver past its cache, the candidate fix. API 34 stands in for the S21 Ultra (shipped Android 11, updated to Android 14 under One UI 6) and API 36 for the S26 (Android 16), until the owner gives the exact versions.",
+  "options": [
+    "a scenario of android-compat.yml, staged below the app (chosen)",
+    "a new dispatch-only workflow, landed first in its own PR",
+    "the whole app paired with a stand-in home reached by name, the lookup failed once mid-session"
+  ],
+  "gray": "Which workflow carries the reproduction, what it stages and which API levels stand in for each phone change what the owner reads as proof; no check or earlier decision set them.",
+  "undo": "Record a call that moves this one, and take the name scenario out of android-compat.yml, run-level.sh and the stamp.",
+  "refs": ["#3411", "#3100"]
+}

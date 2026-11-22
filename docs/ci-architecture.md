@@ -33,6 +33,14 @@ dependents, and `_detect-changes.yml` decides which of Rust, Node and Deny
 run. `trunk.yml` asks "is the whole repo healthy?" on every push to `main`,
 unfiltered.
 
+`_detect-changes.yml` keeps one promise, CD1: a flag is true only when a
+changed file matches one of its patterns, and `node` covers every workspace
+the Node jobs reach. Its proof is `packages/eslint/tests/detect-changes.test.ts`,
+which Repo guards runs on every PR. Under paths-filter's default
+`predicate-quantifier: some`, a leading-`!` pattern matches every file it does
+not name, so `pnpm check:workflows` fails one; a filter leaves files out with
+a positive extglob instead (`crates/**/!(*.md)`).
+
 Each has one aggregate check, judged by `re-actors/alls-green` (#1952):
 
 - **CI Gate** is the one check branch protection requires. Every job votes;
@@ -137,6 +145,42 @@ shares, so it does not run after every push, deletes at most 300 items, and
 stops below a floor of remaining requests. A pull request that changes the
 sweep only reports. CLAUDE.md, "Workflow storage", has the model and what
 `check:workflows` enforces.
+
+## Inputs reach the shell as data
+
+A dispatch input is text whoever runs the workflow types. Expanded into a
+`run:` script with `${{ }}`, it becomes part of the script before the shell
+reads it, so a quote or `$(...)` in it runs as code (#2116).
+
+Promise WS1 holds that for the manual sign workflow: its free-text
+`extension` input reaches a `run:` script only as an `env:` variable, and the
+`Resolve extension metadata` step admits it only when it equals the name of a
+directory under `extensions/` with a `package.json` and a `manifest*.json`
+source. The matrix `_extension-sign.yml` expands into its scripts then holds a
+name read from the repository, never the input's own text. Its Family is every
+string a dispatcher can type, over each step that reads the input or the
+matrix built from it. `packages/eslint/tests/extension-sign-inputs.test.ts`
+is its proof, and the `guards` job in `pr.yml` runs it on every pull request.
+
+Promise WS2 holds the rest of `.github/`: no workflow or composite action
+carries a high-severity zizmor finding that `.github/zizmor.yml` does not
+suppress with its reason (an attacker's text expanded into a `run:` script, a
+dangerous trigger, a write permission zizmor rates as excessive at high
+severity, an unexplained `$GITHUB_ENV` write), and actionlint, with
+ShellCheck over every `run:` script, finds nothing `.github/actionlint.yaml`
+does not ignore with its reason. Its Family is every workflow and composite
+action under `.github/`, every trigger and every source of expression text.
+Its proof is `pnpm check:workflow-security`
+(`scripts/check-workflow-security.sh`), which runs actionlint, ShellCheck and
+zizmor at the versions it pins, offline; the `guards` job runs it on every
+pull request. Its Tolerance: zizmor's online audits (impostor commits, known
+vulnerable action versions) do not run, medium and lower findings are only
+reported by a local `--all` run. Every `uses:` names a commit, with its
+release in a trailing comment (`actions/checkout@<sha> # v7.0.1`), and a tag
+or branch ref fails (C953, the owner's go-ahead on #2116); Dependabot moves
+the hash and the comment together. That a pinned commit belongs to the
+action's own repository, and not a fork's, is the online audit's, so it is
+not checked.
 
 ## Decisions
 

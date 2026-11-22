@@ -52,7 +52,11 @@ export function testDesk(
   desks += 1
   const takes = deskList(`test-desk-${String(desks)}`, limits.max)
   const shelf = memoryShelf()
-  let lane = INITIAL_VOICE_HOME
+  // Under one pairing, whose home's word the desk reads (HP1).
+  let lane = stepVoiceHome(INITIAL_VOICE_HOME, {
+    kind: "paired",
+    pairing: "pairing-1",
+  })
   const copied = (id: string): void => {
     lane = stepVoiceHome(lane, {
       kind: "copied",
@@ -93,7 +97,12 @@ export function testDesk(
       copied,
       held: (id, at = new Date(Date.now()).toISOString()): void => {
         copied(id)
-        lane = stepVoiceHome(lane, { kind: "held", id, at })
+        lane = stepVoiceHome(lane, {
+          kind: "held",
+          id,
+          at,
+          pairing: "pairing-1",
+        })
       },
     },
     keptOn: (line, since) => keptOn(takes.read(), line, since),

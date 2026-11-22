@@ -40,8 +40,29 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
   },
   { route: "/captions", why: "The burn-ins' old address; it opens them." },
   {
+    route: "/journal/takes/conveyor",
+    why: "Where Studio's takes are moved along (CONVEYOR2): sorting what's kept, with nothing offered back. What a take made Ready for pickup becomes is the pickup's (CONVEYOR3).",
+  },
+  {
+    route: "/journal/takes/attention",
+    why: "The takes home couldn't hear well (HEARD3): reconciling what's kept, each heard and kept, marked to record again, or deleted through My data's delete. Nothing is offered back.",
+  },
+  {
     route: "/journal/renders",
     why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
+  },
+  ...[
+    "/journal/spoken",
+    "/journal/spoken/paste",
+    "/journal/spoken/$card",
+    "/journal/spoken/$card/$part",
+  ].map((route) => ({
+    route,
+    why: "Studio's Spoken (W5): a spoken card pasted and read aloud, each take kept for an essay to play. What it offers back is measured once an essay plays the takes (WALK7).",
+  })),
+  {
+    route: "/journal/cards/$key",
+    why: "A cards essay home made (CARDS7): its video to watch, with nothing offered back.",
   },
   ...[
     "/journal",
@@ -55,6 +76,7 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     "/journal/feeds",
     "/journal/feeds/$feed",
     "/journal/takes",
+    "/journal/takes/$kind",
     "/journal/takes/kept",
     "/journal/templates",
     "/journal/templates/$template",
@@ -70,6 +92,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
   {
     route: "/essay",
     why: "The Rust Rounds essay's stage: one scene at a time, for its video and to look over, on a week's essay as home's render worker hands it over, or the template's sample essay.",
+  },
+  {
+    route: "/rust-screen",
+    why: "A Rust Rounds ticket's card as the phone draws it, for the essay's recorder to photograph (RR31): nothing on it to tap, on a week as home's render worker hands it over, or the sample week.",
   },
   {
     route: "/report",

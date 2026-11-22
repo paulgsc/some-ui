@@ -20,7 +20,9 @@
     ".": "./src/index.ts",
     "./cues": "./src/cues.ts",
     "./node": "./src/node.ts",
-    "./testing": "./src/testing.ts"
+    "./snip": "./src/snip.ts",
+    "./testing": "./src/testing.ts",
+    "./thumbnail": "./src/thumbnail.ts"
   },
   "scripts": {
     "render": "tsx src/cli.ts",
@@ -34,11 +36,12 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/game-scenarios": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "tsx": "^4.19.2",

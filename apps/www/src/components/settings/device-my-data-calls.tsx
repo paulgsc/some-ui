@@ -1,5 +1,6 @@
 /**
- * My data's page for each feed's videos (`FEEDS`; ST38, #2661; FEED4): each
+ * My data's page for each feed's videos that can be let go (`LET_GO_FEEDS`;
+ * ST38, #2661; FEED4): each
  * episode home holds, newest first, and what of it can be let go. An
  * episode's video is offered once its YouTube link is saved (Studio's feed
  * videos), and the rest of its folder once the video went; each step asks
@@ -23,9 +24,10 @@ import {
 } from "@some-ui/shared"
 
 import type { Feed } from "@/lib/call-videos"
-import { FEED_WORDS, FEEDS } from "@/lib/call-videos"
+import { FEED_WORDS } from "@/lib/call-videos"
 import type { Episode } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
+import { LET_GO_FEEDS } from "@/lib/feeds"
 import { phoneCallDeleting } from "@/lib/my-data"
 import type { CallAsk, CallSheet } from "@/lib/my-data/call-deleting"
 import type { CallDeleting } from "@/lib/my-data/call-deleting-runtime"
@@ -118,11 +120,11 @@ const Asking = ({
       </SheetHeader>
       <div className="space-y-1">
         <p className="text-sm font-medium">{DELETING.goesTitle}</p>
-        <p className="text-sm">{WORDS.goes[ask.step](size)}</p>
+        <p className="text-sm">{WORDS.goes[ask.step](size, ask.feed)}</p>
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">{DELETING.staysTitle}</p>
-        <p className="text-sm">{WORDS.stays}</p>
+        <p className="text-sm">{WORDS.stays(ask.feed)}</p>
       </div>
       <div className="flex flex-col gap-2.5">
         <Button size="lg" className={BIG} onClick={onClose} disabled={deleting}>
@@ -241,7 +243,7 @@ export const DeviceMyDataCalls = (): JSX.Element => {
     <>
       <MyDataHeading title={WORDS.title} />
       <p className="text-muted-foreground text-sm">{WORDS.lead}</p>
-      {FEEDS.map((feed) => (
+      {LET_GO_FEEDS.map((feed) => (
         <FeedSection key={feed} feed={feed} deleting={deleting} />
       ))}
       <CallSheetView

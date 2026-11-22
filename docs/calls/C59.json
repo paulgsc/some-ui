@@ -1,0 +1,15 @@
+{
+  "id": "C59",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "After the deadline the week reads back on one scrolling screen: the brief, then every ticket with its spec, speak-to points, program and rustc's result, the take home had at the deadline (playable) with the words home heard, or \"Not answered.\"; a send home didn't have by then is named as not counting.",
+  "options": [
+    "one scrolling screen",
+    "the swiped cards, read-only",
+    "the brief only, each ticket opened from it"
+  ],
+  "gray": "#2832 lists what the read-back shows, not how it is laid out.",
+  "undo": "Render ReadBack's tickets as read-only cards on the pager.",
+  "refs": ["#2832"]
+}

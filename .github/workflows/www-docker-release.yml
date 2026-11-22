@@ -66,7 +66,7 @@ jobs:
     outputs:
       release_mode: ${{ steps.detect.outputs.release_mode }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: ./.github/actions/node-ci-setup
@@ -95,7 +95,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: ./.github/actions/node-ci-setup
@@ -121,7 +121,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Open release PR
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
         # WR1: the commit runs with the git hooks off (check:workflows).
         env:
           HUSKY: "0"
@@ -145,7 +145,7 @@ jobs:
     if: needs.detect.outputs.release_mode == 'publish'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The lines-of-code number in the dashboard header is a snapshot taken
       # here, as the image is built (apps/www/src/lib/loc-report). It is written
       # into the workspace, which is the Docker build's context; the history it
@@ -160,8 +160,8 @@ jobs:
       - name: Read version
         id: version
         run: echo "version=$(jq -r .version apps/www/package.json)" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -170,7 +170,7 @@ jobs:
       # was refused by, unseen because compose renders its own template over it.
       # Built once here and loaded; the push below reuses this builder's cache.
       # No build-record artifact: nothing reads it, and it kept 90 days.
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
@@ -180,6 +180,27 @@ jobs:
           push: false
           cache-from: type=gha
           tags: www:serve-check
+      # The labels server's release check reads (paulgsc/server#853), in the
+      # form its scripts/check_release.py parses, so a malformed one is refused
+      # here rather than by the release.
+      - name: Check the release labels
+        run: |
+          set -euo pipefail
+          pair='[a-z0-9][a-z0-9-]*=([0-9]+|[0-9a-f]{40})'
+          edges=''
+          for key in io.paulgsc.provides io.paulgsc.requires; do
+            value=$(docker inspect --format "{{ index .Config.Labels \"$key\" }}" www:serve-check)
+            echo "$key=$value"
+            if [ -n "$value" ] && ! [[ "$value" =~ ^$pair(,$pair)*$ ]]; then
+              echo "::error::$key is malformed: $value"
+              exit 1
+            fi
+            [ "$key" = io.paulgsc.requires ] && edges="$value"
+          done
+          if ! [[ ",$edges," =~ ,resume-api=[0-9]+, ]]; then
+            echo "::error::io.paulgsc.requires names no resume-api epoch"
+            exit 1
+          fi
       - name: Serve the image bare (WI1)
         run: |
           docker run -d --name www-serve-check -p 8080:80 www:serve-check
@@ -196,7 +217,7 @@ jobs:
           [ "$served" = yes ] || { echo "The image refused a request on :80."; exit 1; }
           grep -q '<div id="app"' index.html || { echo "The image served something other than the app's index.html."; exit 1; }
       # No build-record artifact: nothing reads it, and it kept 90 days.
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
@@ -208,3 +229,9 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_IMAGE }}:${{ steps.version.outputs.version }}
             ${{ env.DOCKERHUB_IMAGE }}:latest
+      # U1: asks home's release to look at what was just pushed.
+      - name: Ask server's release to look
+        uses: ./.github/actions/release-lock-dispatch
+        with:
+          token: ${{ secrets.SERVER_ROUTES_DISPATCH_TOKEN }}
+          reason: "pgathondu/www:${{ steps.version.outputs.version }} published by some-ui"

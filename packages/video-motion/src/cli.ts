@@ -1,17 +1,27 @@
-/** `motion render | prove | video | walk | promo`: the README says what each does. */
+/** `motion render | prove | video | walk | promo | walkthrough`: the README says what each does. */
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
+import { PIPELINES } from "@some-ui/engagement"
+import { DEFAULT_POLICY, frictionOf } from "@some-ui/video-render"
+import type {
+  CutList,
+  Friction,
+  StillTake,
+  TimedWord,
+} from "@some-ui/video-render"
 import {
   here,
+  layAudio,
   nodePorts,
   readJson,
   Refused,
   renderFolder,
   runCommand,
+  sayLines,
 } from "@some-ui/video-render/node"
 import { z } from "zod"
 
@@ -21,9 +31,18 @@ import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
 import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
-import { runWalk } from "./walk/run"
-import type { WalkFile } from "./walk/run"
+import { homeCores, homeServer } from "./walk/home-dashboards"
+import { jobs } from "./walk/jobs"
+import { runWalk, WalkFileSchema } from "./walk/run"
+import type { Walk, WalkFile } from "./walk/run"
 import { suspenderLedger } from "./walk/suspender-ledger"
+import {
+  voicedWalkthrough,
+  walkthroughLines,
+  walkthroughProblems,
+  WalkthroughSchema,
+} from "./walkthrough"
+import type { LaidTake } from "./walkthrough"
 
 const USAGE = [
   "usage: motion render <composition> --out <clip.mkv> [--variables <file>]",
@@ -31,11 +50,34 @@ const USAGE = [
   "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
   "       motion promo <release folder> --out <folder> [--brand <folder>] [--prove]",
+  "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder> | --speaker <url>] [--brand <folder>] [--prove]",
 ].join("\n")
 
-/** The apps a walk can show, each by its sample's schema and its steps. */
-const WALKS: ReadonlyMap<string, typeof suspenderLedger> = new Map([
-  ["suspender-ledger", suspenderLedger],
+/** A walk of one app: its sample's schema and the steps it makes of one. */
+type WalkEntry<S> = {
+  readonly sample: z.ZodType<S>
+  readonly walk: (sample: S) => Walk
+}
+
+/** An entry with its sample's type kept inside it: a sample as given, read, or a refusal. */
+const entry =
+  <S>(e: WalkEntry<S>) =>
+  (given: unknown): Walk => {
+    const read = e.sample.safeParse(given)
+    if (!read.success) throw new Refused(`the sample: ${read.error.message}`)
+    return e.walk(read.data)
+  }
+
+/**
+ * The apps a walk can show. Home's dashboards walk on its own Grafana
+ * (`home-server`, `home-cores`, C1073). Suspender Ledger walks in the sandbox; Jobs on
+ * the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
+ */
+const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
+  ["suspender-ledger", entry(suspenderLedger)],
+  ["jobs", entry(jobs)],
+  ["home-server", entry(homeServer)],
+  ["home-cores", entry(homeCores)],
 ])
 
 /** The series of a vertical whose scenes are compositions, the default. */
@@ -59,6 +101,10 @@ const { positionals, values } = parseArgs({
     prove: { type: "boolean", default: false },
     runs: { type: "string", default: "2" },
     brand: { type: "string" },
+    walk: { type: "string" },
+    home: { type: "string" },
+    takes: { type: "string" },
+    speaker: { type: "string" },
   },
 })
 
@@ -82,7 +128,7 @@ const say = (line: string): void => {
 }
 
 /** What `--name` was given, from where the command was typed. */
-function given(name: "out" | "sample" | "variables"): string {
+function given(name: "out" | "sample" | "variables" | "walk"): string {
   const value = values[name]
   if (value === undefined) throw new Refused(`--${name} is needed\n${USAGE}`)
   return here(value)
@@ -313,22 +359,21 @@ async function renderVideo(
   )
 }
 
-/** The walk of `app` in the sandbox, from `sample`, into `out`. */
+/** The walk of `app` on its stage, from `sample`, into `out`. */
 async function walkInto(
   app: string,
   sample: unknown,
   out: string
 ): Promise<WalkFile> {
-  const entry = WALKS.get(app)
-  if (!entry) {
+  const read = WALKS.get(app)
+  if (!read) {
     throw new Refused(
       `there is no walk of ${app}; there are: ${[...WALKS.keys()].join(", ")}`
     )
   }
-  const read = entry.sample.safeParse(sample)
-  if (!read.success) throw new Refused(`the sample: ${read.error.message}`)
+  const walked = read(sample)
   await mkdir(out, { recursive: true })
-  return runWalk(entry.walk(read.data), browser(), out)
+  return runWalk(walked, browser, out)
 }
 
 async function walk(app: string): Promise<void> {
@@ -367,6 +412,182 @@ async function promo(folder: string): Promise<void> {
   await renderVideo(out, VERTICAL, values.prove)
 }
 
+/** A line's take as home's speaker gave it: `<file>.json` beside `<file>.wav`. */
+const TakeFileSchema = z.strictObject({
+  ms: z.int().positive(),
+  /** What the take says: refused where it isn't the line asked for, as a week's numbers move. */
+  said: z.string(),
+  words: z
+    .array(
+      z.strictObject({
+        text: z.string().min(1),
+        startMs: z.int().min(0),
+        endMs: z.int().min(0),
+      })
+    )
+    .optional(),
+})
+
+/** Every line's take in `dir`, by its file; refused where one is missing. */
+async function takesIn(
+  dir: string,
+  lines: ReadonlyArray<{ readonly file: string; readonly said: string }>
+): Promise<ReadonlyMap<string, StillTake>> {
+  const takes = new Map<string, StillTake>()
+  for (const { file, said } of lines) {
+    const read = TakeFileSchema.safeParse(
+      await readJson(join(dir, `${file}.json`))
+    )
+    if (!read.success)
+      throw new Refused(`the take ${file}: ${read.error.message}`)
+    if (read.data.said !== said)
+      throw new Refused(
+        `the take ${file} says "${read.data.said}", not "${said}": say lines.json again`
+      )
+    const words: ReadonlyArray<TimedWord> | undefined = read.data.words
+    takes.set(file, { ms: read.data.ms, ...(words ? { words } : {}) })
+  }
+  return takes
+}
+
+/**
+ * Each voiced shot's lines laid into its take, `<out>/<shot>.wav`: each line
+ * from `<takes>/<line>.wav`, padded with silence to where the next starts
+ * (`laid`), as `laidTake` placed their words, by the one join of per-line
+ * takes (`layAudio`). Answers each laid file's own length, which bounds its
+ * shot's take.
+ */
+async function layTakes(
+  out: string,
+  takes: string,
+  laid: ReadonlyArray<LaidTake>
+): Promise<ReadonlyMap<string, number>> {
+  const ports = nodePorts(out)
+  const lengths = new Map<string, number>()
+  for (const shot of laid) {
+    const lines = shot.lines.map((line, k) => {
+      const next = shot.lines[k + 1]
+      return {
+        file: join(takes, line.file),
+        pad:
+          next === undefined
+            ? null
+            : { kind: "until" as const, ms: next.atMs - line.atMs },
+      }
+    })
+    lengths.set(shot.file, await layAudio(ports, lines, shot.file))
+  }
+  return lengths
+}
+
+/** `cut` with each laid take ending no later than its laid file does. */
+function boundedByLaid(
+  cut: CutList,
+  lengths: ReadonlyMap<string, number>
+): CutList {
+  return {
+    ...cut,
+    shots: cut.shots.map((shot) => {
+      const laidMs = shot.take ? lengths.get(shot.take.file) : undefined
+      return shot.take === undefined || laidMs === undefined
+        ? shot
+        : {
+            ...shot,
+            take: { ...shot.take, outMs: Math.min(shot.take.outMs, laidMs) },
+          }
+    }),
+  }
+}
+
+/**
+ * An app's walkthrough (WALK4, WALK5): its words (`some-ui.walkthrough/1`)
+ * over a walk already made (`--walk`, a folder with `walk.json` and its
+ * snips, as Snips Capture's walks artifact holds it: an APK walk needs the
+ * emulator), into `<out>` as a cut list, rendered there as `video.mp4`
+ * (with `--prove`, twice from nothing). It writes `lines.json` beside it,
+ * every line home's speaker is asked to say (`walkthroughLines`).
+ *
+ * `--home` is home's weekly read (`GET /app-events/weeks/:week`), mapped
+ * onto the registry as of its week's last day (`frictionOf`) and kept as
+ * `friction.json` beside the render: each stop then says what real use shows
+ * of it, the last names the modules nobody opens, and a card shows them.
+ * `--takes` is the folder home's speaker said `lines.json` into,
+ * `<file>.wav` and `<file>.json` (`{ms, words, said}`) per line: each stop is then
+ * voiced, its screens held for its lines (`voicedWalkthrough`). Or
+ * `--speaker` is home's Kokoro speaker (as `http://kokoro:8880`), which says
+ * `lines.json` itself into `<out>/takes`, each line kept in its step cache.
+ */
+async function walkthrough(file: string): Promise<void> {
+  const read = WalkthroughSchema.safeParse(await readJson(here(file)))
+  if (!read.success) throw new Refused(`the words: ${read.error.message}`)
+  const from = given("walk")
+  const walked = WalkFileSchema.safeParse(
+    await readJson(join(from, "walk.json"))
+  )
+  if (!walked.success) throw new Refused(`the walk: ${walked.error.message}`)
+  let friction: Friction | null = null
+  if (values.home !== undefined) {
+    const home: unknown = await readJson(here(values.home))
+    const parsed = frictionOf(home, PIPELINES)
+    if (!parsed.ok) throw new Refused(parsed.problems.join("\n"))
+    friction = parsed.value
+  }
+  const problems = walkthroughProblems(read.data, walked.data, friction)
+  if (problems.length > 0) throw new Refused(problems.join("\n"))
+  const out = given("out")
+  await mkdir(out, { recursive: true })
+  if (friction !== null)
+    await writeFile(
+      join(out, "friction.json"),
+      `${JSON.stringify(friction, null, 1)}\n`
+    )
+  await cp(join(from, "snips"), join(out, "snips"), { recursive: true })
+  const lines = walkthroughLines(
+    voicedWalkthrough(read.data, walked.data, friction).cut
+  )
+  await writeFile(
+    join(out, "lines.json"),
+    `${JSON.stringify(lines, null, 1)}\n`
+  )
+  if (values.takes !== undefined && values.speaker !== undefined)
+    throw new Refused(
+      "--takes and --speaker: give the takes, or a speaker to say them"
+    )
+  const saidInto =
+    values.speaker === undefined ? values.takes : join(out, "takes")
+  let takes = new Map<string, StillTake>()
+  if (values.speaker !== undefined) {
+    const said = await sayLines({
+      root: join(out, "takes"),
+      ports: nodePorts(join(out, "takes")),
+      lines,
+      speaker: values.speaker,
+      policy: DEFAULT_POLICY,
+    })
+    takes = new Map(
+      lines.flatMap((l, i) => {
+        const take = said[i]
+        return take ? [[l.file, take] as const] : []
+      })
+    )
+  } else if (values.takes !== undefined) {
+    takes = new Map(await takesIn(here(values.takes), lines))
+  }
+  const voiced = voicedWalkthrough(read.data, walked.data, friction, takes)
+  const cut =
+    saidInto === undefined
+      ? voiced.cut
+      : boundedByLaid(
+          voiced.cut,
+          await layTakes(out, here(saidInto), voiced.laid)
+        )
+  await writeFile(
+    join(out, "cut-list.json"),
+    `${JSON.stringify(cut, null, 1)}\n`
+  )
+  await renderVideo(out, VERTICAL, values.prove)
+}
+
 async function main(): Promise<void> {
   const [command, name] = positionals
   if (!name) throw new Refused(USAGE)
@@ -382,6 +603,9 @@ async function main(): Promise<void> {
     }
     case "promo": {
       return promo(name)
+    }
+    case "walkthrough": {
+      return walkthrough(name)
     }
     case "video": {
       return renderVideo(

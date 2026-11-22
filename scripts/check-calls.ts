@@ -1,31 +1,31 @@
 #!/usr/bin/env node
-// Guardrail: the calls record (ST37, #2637). The rule lives in
-// packages/eslint/src/calls.ts.
+// Guardrail: the calls record (ST37, #2637, #2976). The rule lives in
+// packages/eslint/src/calls.ts; the record is read by calls-record.ts.
 //
 //   node scripts/check-calls.ts [--base <ref>]
 //
-// docs/calls.json's shape, and that it only grew since the base ref's
-// (`--base <ref>`, else `origin/main` where it exists; a base without the file
-// holds nothing). Wired into the root `lint` script and pr.yml's `guards`
-// job, which CI Gate requires. Runs on Node's built-in type stripping, with no
-// install (see scripts/check-test-layout.ts).
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
+// docs/calls/: every file `C<n>.json`, named for the one call it holds, each
+// call in shape; and the record only grew since the base ref's (`--base
+// <ref>`, else `origin/main` where it exists), read in whichever layout the
+// base holds, so a base from before the split is held too (a base with no
+// record holds nothing). Wired into the root `lint` script and pr.yml's
+// `guards` job, which CI Gate requires. Runs on Node's built-in type
+// stripping, with no install (see scripts/check-test-layout.ts).
 
-// A relative import on purpose: Node's type stripping resolves no path aliases.
+// Relative imports on purpose: Node's type stripping resolves no path aliases.
 // eslint-disable-next-line no-restricted-imports
 import {
-  CALLS_FILE,
+  callsAtCommit,
+  callsInTree,
+} from "../packages/eslint/src/calls-record.ts"
+// eslint-disable-next-line no-restricted-imports
+import {
+  CALLS_DIR,
   describeCallsFinding,
   ratchetCalls,
-  readCalls,
 } from "../packages/eslint/src/calls.ts"
 // eslint-disable-next-line no-restricted-imports
-import {
-  gitOrNull,
-  repoRoot,
-  resolveBaseRef,
-} from "../packages/eslint/src/git-tree.ts"
+import { repoRoot, resolveBaseRef } from "../packages/eslint/src/git-tree.ts"
 
 function fail(lines: ReadonlyArray<string>): void {
   for (const line of lines) process.stderr.write(`[calls] ${line}\n`)
@@ -37,7 +37,11 @@ function fail(lines: ReadonlyArray<string>): void {
 
 function main(): void {
   const root = repoRoot()
-  const head = readCalls(readFileSync(join(root, CALLS_FILE), "utf8"))
+  const head = callsInTree(root)
+  if (head.layout !== "folder") {
+    fail([`${CALLS_DIR}/ is missing: the record is one file per call there.`])
+    return
+  }
   if (head.calls === null) {
     fail(head.findings.map(describeCallsFinding))
     return
@@ -47,17 +51,16 @@ function main(): void {
   try {
     const { ref, resolved } = resolveBaseRef(root, process.argv.slice(2))
     if (resolved) {
-      const text = gitOrNull(root, ["show", `${ref}:${CALLS_FILE}`])
-      if (text === null) {
-        held = `not compared, ${ref} has no ${CALLS_FILE}`
+      const base = callsAtCommit(root, ref)
+      if (base.layout === "none") {
+        held = `not compared, ${ref} has no record`
       } else {
-        const base = readCalls(text)
         if (base.calls === null)
-          throw new Error(`${CALLS_FILE} at ${ref} cannot be read`)
+          throw new Error(`the record at ${ref} cannot be read`)
         findings = ratchetCalls(base.calls, head.calls).map(
           describeCallsFinding
         )
-        held = `held against ${ref}`
+        held = `held against ${ref}${base.layout === "array" ? "'s one-array file" : ""}`
       }
     }
   } catch (error) {

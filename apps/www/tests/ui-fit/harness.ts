@@ -157,11 +157,20 @@ export const JOBS_STATUS_FIXTURE = "jobs-status"
 /** The phone's code card (RR2), measured by `./code-card-fit.spec.ts`. */
 export const CODE_CARD_FIXTURE = "code-card"
 
+/** Every scene of a week of the weekly call (CF1), drawn by `./call-fit.spec.ts`. */
+export const CALL_STAGE_FIXTURE = "call-stage"
+
+/** The best, beside and deep dive scenes of a Rust Rounds essay (EF1), drawn by `./essay-fit.spec.ts`. */
+export const ESSAY_STAGE_FIXTURE = "essay-stage"
+
 /** Practice Home's two buttons, idle and refused (`./intent-failure-fit.spec.ts`). */
 export const INTENT_FAILURE_FIXTURE = "intent-failure"
 
 /** Rust Rounds' screens (RR4), walked by `./rust-rounds-fit.spec.ts`. */
 export const RUST_ROUNDS_FIXTURE = "rust-rounds"
+
+/** The work tracker asking on return, and the week's time (RR26). */
+export const WORK_TRACKER_FIXTURE = "work-tracker"
 
 /** Settings' bar of pages (MD1), measured by `./settings-bar-fit.spec.ts`. */
 export const SETTINGS_BAR_FIXTURE = "settings-bar"
@@ -434,6 +443,30 @@ export type Walk = {
 }
 
 /**
+ * On the phone page (`./phone-page`): no violation in the fixture's slot,
+ * and nothing in the page's column wider than the phone.
+ */
+export async function expectFitsPhone(
+  page: Page,
+  where: string
+): Promise<void> {
+  const { mounted, violations } = await findViolations(page)
+  expect(mounted).toBe(true)
+  expect(
+    violations.map((violation) => describeViolation(where, violation))
+  ).toEqual([])
+  const wide = await page.evaluate(() => {
+    const body = document.querySelector<HTMLElement>(
+      "[data-scroll-intent=page]"
+    )!
+    return { scroll: body.scrollWidth, room: body.clientWidth }
+  })
+  expect(wide.scroll, `${where} is wider than the phone`).toBeLessThanOrEqual(
+    wide.room + 1
+  )
+}
+
+/**
  * Opens `url` and waits for its screen. Returns the page's errors, which
  * keep coming in as the walk goes on.
  */
@@ -486,6 +519,44 @@ export const happens = (action: string, does: string, arg?: unknown): Tap => ({
     )
   },
 })
+
+/**
+ * Each of `fixtures` on the phone page at each of `PHONE_VIEWPORTS`, one
+ * test apiece: it loads without an error, shows what `ready` names (a
+ * paragraph, unless a screen says everything in its links), and fits the
+ * phone (`expectFitsPhone`).
+ */
+export function fitsEachPhone(
+  title: string,
+  fixtures: ReadonlyArray<string>,
+  ready: "p" | "a" = "p"
+): void {
+  test.describe(title, () => {
+    const PAGE = servePhonePage()
+    PAGE.skipUnbuilt()
+    for (const phone of PHONE_VIEWPORTS) {
+      for (const fixture of fixtures) {
+        test(`${fixture} at ${phone.name} (${phone.width}x${phone.height})`, async ({
+          page,
+        }) => {
+          PAGE.expectBuilt()
+          await page.setViewportSize({
+            width: phone.width,
+            height: phone.height,
+          })
+          const errors: Array<string> = []
+          page.on("pageerror", (error) => errors.push(error.message))
+          await page.goto(PAGE.url(fixture), { waitUntil: "load" })
+          await expect(
+            page.locator(`[data-fit-slot] ${ready}`).first()
+          ).toBeVisible()
+          expect(errors, errors.join("\n")).toEqual([])
+          await expectFitsPhone(page, fixture)
+        })
+      }
+    }
+  })
+}
 
 /**
  * HS1's walks over the phone page, one test per phone of `PHONE_VIEWPORTS`:

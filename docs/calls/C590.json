@@ -1,0 +1,13 @@
+{
+  "id": "C590",
+  "made": "2026-11-18",
+  "by": "owner",
+  "paths": ["some-ui:docs/takes-to-sessions.md"],
+  "chose": "Path A: the owner brings a take to a coordinator session by pasting one block; nothing is published, home holds no GitHub key, and home finds the issue a take became by public search. Owner, verbatim: \"go with A\".",
+  "options": [
+    "A: paste into a session",
+    "B: A plus a private mailbox mirror that sessions can read"
+  ],
+  "undo": "Add B's mirror later: a mailbox folder of takes that sessions read.",
+  "refs": ["#3029", "#3209"]
+}

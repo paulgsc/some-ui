@@ -18,16 +18,18 @@ import type { Browser, Locator, Page } from "@playwright/test"
 import { installedCompositionPort } from "@some-ui/video-motion/node"
 import {
   chapterLines,
+  chaptersFound,
   chaptersOf,
   DEFAULT_POLICY,
   estimatedMs,
+  FEWEST_CHAPTERS,
   MB,
   overLength,
   previewOf,
   QUIET,
   spreadWords,
   stillFile,
-  TimedWordSchema,
+  thumbnailInput,
   UploadCopySchema,
 } from "@some-ui/video-render"
 import type {
@@ -37,21 +39,23 @@ import type {
   RenderPolicy,
   StillTake,
   TakeFiles,
-  TimedWord,
+  ThumbnailFacts,
 } from "@some-ui/video-render"
 import {
-  keyOf,
+  hit,
   nodePorts,
   placeBrandFiles,
   readSeries,
-  stepCache,
+  speakerOf,
+  STEPS,
+  TimedSchema,
+  warn,
 } from "@some-ui/video-render/node"
-import type { StepCache } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
-import { z } from "zod"
 
 import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here } from "./command"
+import { clearThumbnail, writeThumbnail } from "./thumbnail"
 
 /**
  * The owner's take of scene `file`, from `own` (any audio ffmpeg reads), as
@@ -86,114 +90,6 @@ async function ownTake({
           JSON.parse(await readFile(own.words, "utf8"))
         )
   return { ms, words, owner: true }
-}
-
-/** A take and each word said in it, as the speaker's `/timed` gives them. */
-const TimedSchema = z.object({
-  audio: z.string().min(1),
-  words: z.array(TimedWordSchema),
-})
-
-/**
- * `text` said in `voice` by home's Kokoro speaker at `speaker`, as a WAV: the
- * same bytes for the same words and voice. With `timed`, each word's place
- * in it too (`/timed`), for the captions.
- */
-async function said(
-  speaker: string,
-  text: string,
-  voice: string,
-  timed: boolean
-): Promise<{ wav: Buffer; words: ReadonlyArray<TimedWord> | null }> {
-  const response = await fetch(new URL(timed ? "/timed" : "/say", speaker), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice }),
-  })
-  if (!response.ok)
-    fail([
-      `The speaker at ${speaker} answered ${String(response.status)}: ${await response.text()}`,
-    ])
-  if (!timed)
-    return { wav: Buffer.from(await response.arrayBuffer()), words: null }
-  const parsed = TimedSchema.safeParse(await response.json())
-  if (!parsed.success)
-    fail([`The speaker at ${speaker} gave no words with its take`])
-  return {
-    wav: Buffer.from(parsed.data.audio, "base64"),
-    words: parsed.data.words,
-  }
-}
-
-/** The speaker's model, by its SHA-256: part of every take's key. */
-async function speakerModel(speaker: string): Promise<string> {
-  const response = await fetch(new URL("/health", speaker))
-  if (!response.ok)
-    fail([`The speaker at ${speaker} answered ${String(response.status)}`])
-  const health: unknown = await response.json()
-  if (
-    typeof health !== "object" ||
-    health === null ||
-    !("model" in health) ||
-    typeof health.model !== "string"
-  )
-    fail([`The speaker at ${speaker} named no model`])
-  return health.model
-}
-
-/** A cache warning, on its own line so the render worker can find it. */
-const warn = (line: string): void => {
-  process.stderr.write(`cache warning: ${line}\n`)
-}
-
-/**
- * Scene `file`'s take in `root`: `<file>.wav`, and with `timed`
- * `<file>.words.json`, asked of the speaker unless `cache` holds them for
- * these words, this voice and this model.
- */
-async function takeOf({
-  speaker,
-  model,
-  voice,
-  text,
-  timed,
-  root,
-  file,
-  cache,
-  ports,
-}: {
-  readonly speaker: string
-  readonly model: string
-  readonly voice: string
-  readonly text: string
-  readonly timed: boolean
-  readonly root: string
-  readonly file: string
-  readonly cache: StepCache
-  readonly ports: Ports
-}): Promise<StillTake> {
-  const wav = join(root, `${file}.wav`)
-  const kept = join(root, `${file}.words.json`)
-  const key = keyOf({ take: 1, model, voice, text })
-  const wordsKey = keyOf({ words: 1, model, voice, text })
-  const cached =
-    (await cache.get(key, ".wav", wav)) &&
-    (!timed || (await cache.get(wordsKey, ".json", kept)))
-  if (!cached) {
-    const take = await said(speaker, text, voice, timed)
-    await writeFile(wav, take.wav)
-    await cache.put(key, ".wav", wav, `${file}.wav`)
-    if (take.words) {
-      await writeFile(kept, `${JSON.stringify(take.words)}\n`)
-      await cache.put(wordsKey, ".json", kept, `${file}.words.json`)
-    }
-  }
-  const facts = await ports.probe(`${file}.wav`)
-  if (!facts) fail([`${file}.wav can't be read`])
-  const words = timed
-    ? TimedSchema.shape.words.parse(JSON.parse(await readFile(kept, "utf8")))
-    : undefined
-  return { ms: Math.round(facts.durationMs), ...(words ? { words } : {}) }
 }
 
 /** A whole number from a flag, or `fallback` when the flag is unset. */
@@ -291,8 +187,11 @@ export function refuseLong(
   if (tooLong) fail([`${tooLong}, by its words; nothing was recorded`])
 }
 
-/** Where the cache of takes and ffmpeg steps is kept in a video's folder. */
-const STEPS = "cache/steps"
+/**
+ * How a recorder keeps a video's steps: in its folder's `cache/steps`,
+ * saying each step not kept and each answered from the cache.
+ */
+const STEP_CACHE = { stepCacheDir: STEPS, warn, hit } as const
 
 /**
  * A scene to record: its stage address, and what is said over it, in which
@@ -305,6 +204,8 @@ export type Shot = {
   readonly voice: string
   /** Absolute paths. */
   readonly own?: TakeFiles
+  /** Its files' name, when not its place in `shots` (`stillFile`). */
+  readonly file?: string
 }
 
 /**
@@ -341,6 +242,7 @@ export async function recordStills({
   speaker,
   timed,
   policy,
+  announce = true,
 }: {
   readonly page: Page
   readonly root: string
@@ -350,18 +252,25 @@ export async function recordStills({
   readonly speaker: string | null
   readonly timed: boolean
   readonly policy: RenderPolicy
+  /**
+   * Whether it says `scenes <n>` itself; false when its caller counts these
+   * shots with others it records (a cards essay's cards and spoken scenes).
+   */
+  readonly announce?: boolean
 }): Promise<ReadonlyArray<StillTake | null>> {
   await mkdir(root, { recursive: true })
   const ports = nodePorts(root)
-  const cache = stepCache(join(root, STEPS), policy, warn)
-  const model = speaker === null ? null : await speakerModel(speaker)
+  const say =
+    speaker === null
+      ? null
+      : await speakerOf(root, speaker, policy, nodePorts(root))
   const takes: Array<StillTake | null> = []
   const overflowing: Array<string> = []
   // Home's board says "scene k of n" (#2899): `scenes <n>` once, before the
   // first `recorded <file>`, is the n (paulgsc/server's render worker reads it).
-  console.log(`scenes ${String(shots.length)}`)
+  if (announce) console.log(`scenes ${String(shots.length)}`)
   for (const [i, shot] of shots.entries()) {
-    const file = stillFile(i, shot.id)
+    const file = shot.file ?? stillFile(i, shot.id)
     await page.goto(shot.url)
     const shown = await shownFrame(page, frame(shot.id))
     await page.evaluate(async () => {
@@ -383,18 +292,8 @@ export async function recordStills({
             file,
             ports,
           })
-        : speaker !== null && model !== null && shot.said !== ""
-          ? await takeOf({
-              speaker,
-              model,
-              voice: shot.voice,
-              text: shot.said,
-              timed,
-              root,
-              file,
-              cache,
-              ports,
-            })
+        : say !== null && shot.said !== ""
+          ? await say({ file, text: shot.said, voice: shot.voice, timed })
           : null
     )
     console.log(`recorded ${file}`)
@@ -408,9 +307,23 @@ export async function recordStills({
 }
 
 /**
+ * The speaker `values` ask for: `--speaker` under `--voices kokoro`, or null
+ * under `--voices none`, a silent video. Any other `--voices` is refused.
+ */
+export function speakerFlag(values: {
+  readonly voices: string
+  readonly speaker: string
+}): string | null {
+  if (values.voices !== "kokoro" && values.voices !== "none")
+    fail(["--voices is kokoro or none"])
+  return values.voices === "kokoro" ? values.speaker : null
+}
+
+/**
  * Renders a recording's whole cut list, or, for a template's preview, the
  * 15–30 s cut of it (`previewOf`) into `preview.mp4`. A preview is never
- * uploaded, so it carries no chapter marks.
+ * uploaded, so it carries no chapter marks and no thumbnail; an episode's
+ * thumbnail is drawn beside its video (`./thumbnail`).
  */
 export async function renderCut(
   root: string,
@@ -420,6 +333,8 @@ export async function renderCut(
     readonly preview: boolean
     /** The episode's file, when it isn't a preview. */
     readonly episode: string
+    /** The episode's facts, which its thumbnail's genre and title come from. */
+    readonly thumbnail: ThumbnailFacts
     readonly marks: () => ReadonlyArray<ChapterMark>
     readonly policy: RenderPolicy
     readonly browser: Browser
@@ -432,6 +347,7 @@ export async function renderCut(
   const { preview } = options
   const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
   if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
+  if (!preview) await clearThumbnail(root)
   await renderStills(root, series, cut.value, {
     out: preview ? "preview.mp4" : options.episode,
     policy: options.policy,
@@ -439,6 +355,14 @@ export async function renderCut(
     origin: options.origin,
     marks: preview ? [] : options.marks(),
   })
+  // An episode's thumbnail, made with its video, once the video is (C1026);
+  // a preview has none.
+  if (!preview)
+    await writeThumbnail(
+      options.browser,
+      root,
+      thumbnailInput(options.thumbnail, whole)
+    )
 }
 
 /**
@@ -486,8 +410,7 @@ async function renderStills(
       workDir: "cache",
       out,
       policy,
-      stepCacheDir: STEPS,
-      warn,
+      ...STEP_CACHE,
       ...(compositions?.ok ? { compositions: compositions.port } : {}),
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
@@ -495,9 +418,15 @@ async function renderStills(
     // A render with no chapters leaves none from an earlier one.
     const file = join(root, "description.txt")
     await rm(file, { force: true })
+    const found = chaptersFound(done.value.shotTimes, marks)
     const lines = chapterLines(chaptersOf(done.value.shotTimes, marks))
     const description = UploadCopySchema.shape.description.safeParse(lines)
-    if (lines !== "" && !description.success)
+    // A render that marks chapters says why it wrote none (#3032).
+    if (marks.length > 0 && found.length < FEWEST_CHAPTERS)
+      process.stderr.write(
+        `no chapters: ${String(found.length)} found, YouTube shows chapters from ${String(FEWEST_CHAPTERS)}\n`
+      )
+    else if (lines !== "" && !description.success)
       process.stderr.write(
         `no chapters written: ${description.error.issues.map((i) => i.message).join("; ")}\n`
       )

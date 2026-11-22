@@ -1,0 +1,18 @@
+{
+  "id": "C699",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "server:crates/db/rust_round/src/work_span.rs",
+    "server:apps/servers/file_host/src/handlers/rust_work_spans.rs"
+  ],
+  "chose": "Home's work spans (RR26): home doesn't enforce the tracker's 2-hour cap, only that the counted seconds fit the span; a start checks the week's and ticket's format, not that home holds that week; the device is a free label of at most 64 characters, never a key or an identity.",
+  "options": [
+    "counted fits the span, format-only, free label",
+    "cap enforced on home, week must be held, device registered"
+  ],
+  "gray": "The phone owns the cap and the flow; checking more on home would refuse spans the owner really worked if the phone's rules move.",
+  "undo": "Add the checks to work_span::read_start and close.",
+  "refs": ["#3250"]
+}
