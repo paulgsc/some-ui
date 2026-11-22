@@ -3,7 +3,7 @@ set -euo pipefail
 shopt -s inherit_errexit
 
 # Bucket prune (.claude/skills/coordinate/SKILL.md, "Buckets"): once a bucket
-# PR (head `claude/bucket-<repo>-<n>`) has squash-merged, delete the branches
+# PR (head `claude/bucket-<repo>-<n>`) has merged, delete the branches
 # it carried. GitHub's delete-on-merge removes only the bucket's own branch;
 # the worker branches merged into it with merge commits stay behind, and a
 # cloud session cannot delete a branch (its push gets a 403). Run by
@@ -14,7 +14,7 @@ shopt -s inherit_errexit
 # (a merge of main into the bucket carries nothing); it only names why a
 # branch goes. A remote branch whose tip is not on main and is an ancestor of
 # the bucket's head is deleted: all its work reached main through the
-# squash. That covers a branch the bucket merged, one it was started from,
+# merge. That covers a branch the bucket merged, one it was started from,
 # an older point of either, and a branch made at a bucket commit with no
 # work of its own yet. A branch that shares bucket work with the head but
 # whose tip is not in it has moved on since the bucket took it: it is kept,
@@ -28,12 +28,14 @@ shopt -s inherit_errexit
 # A branch a ruleset protects is not listed; its delete is refused and the
 # run goes red, naming it.
 #
-# Usage:
 # "Main" throughout is <main-rev>: main just before the bucket merged (the
-# merge commit's first parent, whether GitHub squashed or merged it). Main
-# as it is now will not do: after a merge commit it holds the whole bucket,
-# and every carried branch would read as already on main.
+# first parent of the PR's merge_commit_sha, after a squash or a merge
+# commit; after a rebase, the commit before the last rewritten one, which
+# holds none of the bucket's own commits either). Main as it is now will
+# not do: after a merge commit it holds the whole bucket, and every carried
+# branch would read as already on main.
 #
+# Usage:
 #   scripts/bucket-prune.sh plan <head-sha> <main-rev>
 #       prints one line per branch of the bucket's, tab-separated:
 #       delete|keep, branch, tip, reason. Reads branches from
@@ -90,7 +92,7 @@ plan() {
     [ "$name" = HEAD ] && continue
     is_ancestor "$tip" "$base" && continue
     if is_ancestor "$tip" "$head"; then
-      # Its whole history is in the bucket, so in main's squash.
+      # Its whole history is in the bucket, so main holds it through the merge.
       why="the bucket holds its tip"
       for p in "${carried[@]}"; do
         [ "$tip" = "$p" ] && why="its tip is a commit the bucket merged"

@@ -4,10 +4,22 @@
  * it keeps. Each case builds a real repository shaped like a bucket (worker
  * branches merged into `claude/bucket-…` with merge commits, main moving on
  * by a squash) and reads the plan, so the rules are git's own ancestry.
+ *
+ * `run`, the workflow's step, is driven end to end: a bare repository stands
+ * in for GitHub's remote, and a stub `gh` serves the PR's JSON through jq,
+ * as `gh api --jq` does. That covers each way GitHub merges (squash, merge
+ * commit, rebase) and each payload `run` must refuse.
  */
 
 import { execFileSync, spawnSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -325,5 +337,145 @@ describe("bucket-prune plan", () => {
     remote("claude/at-m2", m2)
     remote("claude/at-m1", m1)
     expect(plan(head)).toEqual([])
+  })
+})
+
+// gh, as `run` calls it: `api [--paginate] <path> --jq <expr>`. The PR comes
+// from pr.json; the protected-branch and open-PR lists are empty.
+const GH_STUB = `#!/usr/bin/env bash
+set -euo pipefail
+path="" expr=""
+shift
+while [ $# -gt 0 ]; do
+  case $1 in
+    --jq) expr=$2; shift 2 ;;
+    repos/*) path=$1; shift ;;
+    *) shift ;;
+  esac
+done
+case $path in
+  */pulls/[0-9]*) file="$STUB_DIR/pr.json" ;;
+  *) file="$STUB_DIR/empty.json" ;;
+esac
+jq -r "$expr" "$file"
+`
+
+describe("bucket-prune run", () => {
+  type Merge = "squash" | "merge" | "rebase"
+
+  // origin.git holds main, the workers' branches and refs/pull/7/head, as
+  // GitHub does once the bucket merged and delete-on-merge removed its
+  // branch. Returns the shas a PR payload names.
+  function merged(how: Merge): { head: string; a1: string; merge: string } {
+    git("checkout", "-q", "-b", "main")
+    const m1 = commit("m1")
+    git("checkout", "-q", "-b", "claude/a")
+    const a1 = commit("a1")
+    git("checkout", "-q", "-b", "claude/b", m1)
+    const b1 = commit("b1")
+    git("checkout", "-q", "-b", "claude/bucket-some-ui-1", m1)
+    git("merge", "-q", "--no-ff", "-m", "merge a", a1)
+    git("merge", "-q", "--no-ff", "-m", "merge b", b1)
+    const head = git("rev-parse", "HEAD")
+    git("checkout", "-q", "main")
+    if (how === "squash") {
+      git("merge", "-q", "--squash", head)
+      git("commit", "-q", "-m", "bucket 1")
+    } else if (how === "merge") {
+      git("merge", "-q", "--no-ff", "-m", "merge bucket 1", head)
+    } else {
+      // GitHub's rebase writes new commits; main moving first makes sure
+      // these differ from a1 and b1, as GitHub's would.
+      commit("m2")
+      git("cherry-pick", a1, b1)
+    }
+    const merge = git("rev-parse", "HEAD")
+    git("init", "-q", "--bare", join(dir, "origin.git"))
+    git("remote", "add", "origin", join(dir, "origin.git"))
+    git("push", "-q", "origin", "main", "claude/a", "claude/b")
+    git("push", "-q", "origin", `${head}:refs/pull/7/head`)
+    return { head, a1, merge }
+  }
+
+  function payload(head: string, mergeSha: string | null): void {
+    mkdirSync(join(dir, "stub"), { recursive: true })
+    writeFileSync(join(dir, "stub", "gh"), GH_STUB)
+    chmodSync(join(dir, "stub", "gh"), 0o755)
+    writeFileSync(join(dir, "stub", "empty.json"), "[]")
+    writeFileSync(
+      join(dir, "stub", "pr.json"),
+      JSON.stringify({
+        merged: true,
+        head: {
+          ref: "claude/bucket-some-ui-1",
+          sha: head,
+          repo: { full_name: "owner/repo" },
+        },
+        base: { repo: { full_name: "owner/repo" } },
+        merge_commit_sha: mergeSha,
+      })
+    )
+  }
+
+  // The workflow's checkout: a clone of the remote, then the step.
+  function run(): { status: number | null; summary: string; left: string } {
+    const checkout = join(dir, "checkout")
+    git("clone", "-q", join(dir, "origin.git"), checkout)
+    const summary = join(dir, "summary.md")
+    writeFileSync(summary, "")
+    const result = spawnSync("bash", [SCRIPT, "run"], {
+      cwd: checkout,
+      encoding: "utf8",
+      env: {
+        ...cleanEnv(),
+        PATH: `${join(dir, "stub")}:${process.env["PATH"] ?? ""}`,
+        STUB_DIR: join(dir, "stub"),
+        GH_TOKEN: "dummy",
+        GITHUB_REPOSITORY: "owner/repo",
+        DEFAULT_BRANCH: "main",
+        PR: "7",
+        GITHUB_STEP_SUMMARY: summary,
+      },
+    })
+    const left = git("ls-remote", "--heads", join(dir, "origin.git"))
+      .split("\n")
+      .map((line) => line.replace(/^\S+\s+refs\/heads\//, ""))
+      .sort()
+      .join(" ")
+    return {
+      status: result.status,
+      summary: readFileSync(summary, "utf8"),
+      left,
+    }
+  }
+
+  for (const how of ["squash", "merge", "rebase"] as const) {
+    it(`deletes the carried branches after a ${how} merge`, () => {
+      const { head, merge } = merged(how)
+      payload(head, merge)
+      const result = run()
+      expect(result.status).toBe(0)
+      expect(result.left).toBe("main")
+      expect(result.summary).toContain("- deleted `claude/a`")
+      expect(result.summary).toContain("- deleted `claude/b`")
+    })
+  }
+
+  it("refuses a PR with no merge commit, deleting nothing", () => {
+    const { head } = merged("squash")
+    payload(head, null)
+    const result = run()
+    expect(result.status).not.toBe(0)
+    expect(result.left).toBe("claude/a claude/b main")
+    expect(result.summary).toBe("")
+  })
+
+  it("refuses a merge commit that is not on the default branch", () => {
+    const { head, a1 } = merged("squash")
+    payload(head, a1)
+    const result = run()
+    expect(result.status).not.toBe(0)
+    expect(result.left).toBe("claude/a claude/b main")
+    expect(result.summary).toBe("")
   })
 })
