@@ -153,7 +153,7 @@ jobs:
             name="${kind%%:*}"; rest="${kind#*:}"; dir="${rest%%:*}"; ext="${rest#*:}"
             # The greatest name of a kind is its newest (`<kind>-<stamp>.<ext>`).
             item=$(jq -r --arg kind "$name" --arg ext "$ext" \
-              '[.items[]?.name | strings | select(test("^" + $kind + "-[0-9]{8}T[0-9]{9}Z\\." + $ext + "$"))] | sort | last // empty' \
+              '[.items[] | objects | .name | strings | select(test("^" + $kind + "-[0-9]{8}T[0-9]{9}Z\\." + $ext + "$"))] | sort | last // empty' \
               "$RUNNER_TEMP/items.json")
             if [ -z "$item" ]; then
               echo "- $name: none in the mailbox; its slot keeps its drawing" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,24 @@
+{
+  "id": "C1074",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/site_shots.rs",
+    "server:apps/servers/file_host/src/mailbox.rs",
+    "server:infra/render/render-calls.sh",
+    "server:infra/compose/call-render.yml",
+    "server:infra/compose/monitoring.yml",
+    "server:docs/identity.md"
+  ],
+  "chose": "Home's side of the site's pictures (#3415): one week at a time, the week that ended at the last Monday 00:00 UTC, asked of the render worker once that week has ended (a time that has passed, as the report weeks' are; the lane starts the job, home-compute invariant 6) and put in the mailbox from the mailbox pass, last, under a two-minute deadline, named for the window's end (`server-<day>T000000000Z.mp4`, `cores-<day>T000000000Z.png`). Once sent, home deletes the week's request, render and work and keeps a `<day>.sent` mark; a picture over 768 KiB or not its type, or one the mailbox refuses, leaves `<day>.refused` with why and an ERROR line, and the week is not asked again (the next one is); a mailbox that does not answer leaves the week for the next pass. Only the last week is kept on the drive. The render worker reaches Grafana on its own internal network, `site-shots-network`, which joins only Grafana and the worker, never monitoring-network (Prometheus, the exporters); the Viewer token SITE_SHOTS_GRAFANA_TOKEN reaches the worker's environment, and render-calls.sh takes it out at start and gives it only to the two walk commands. The clip is encoded silent at full size and, over the cap, at half size; over it then, the week fails in the worker's own failed.log.",
+  "options": [
+    "weekly, from the mailbox pass, on a dedicated internal network, the token given to the walks alone (taken)",
+    "on demand: the Site Assets run leaves an ask in the mailbox and home shoots then: a second writer to the mailbox and a pages role that puts, for pictures that change little week to week",
+    "daily: seven times the batch work for a window that is a week either way",
+    "the render worker joins monitoring-network: reaches Prometheus and every exporter as well as Grafana",
+    "the token in the worker's environment for every job: every recorder could read it"
+  ],
+  "gray": "No check or earlier decision settles how often home photographs its dashboards, how a failure is handled, or how the render worker, whose network reaches nothing today, is let reach Grafana; each changes home's exposure or its batch work.",
+  "undo": "Remove `site_shots` and its call from the mailbox pass, the render worker's `site-shots` job, `site-shots-network` from both compose files, the `site_shot_files` volume and SITE_SHOTS_GRAFANA_TOKEN; identity.md invariant 39 is then retired.",
+  "refs": ["#3415", "#3401"]
+}

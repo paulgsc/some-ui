@@ -275,10 +275,18 @@ export async function runWalk(
   await mkdir(join(out, "snips"), { recursive: true })
   const stage = await openStage(walk.stage, chrome)
   try {
-    await stage.open(
-      walk.microphone === undefined ? [] : [microphoneScript(walk.microphone)]
-    )
-    await stage.settle()
+    // The first step's page: a failure opening it is that step's too.
+    const first = walk.steps[0]?.label ?? walk.app
+    try {
+      await stage.open(
+        walk.microphone === undefined ? [] : [microphoneScript(walk.microphone)]
+      )
+      await stage.settle()
+    } catch (e) {
+      await leftAt(stage, out, first)
+      const said = e instanceof Error ? e.message : String(e)
+      throw new Error(`${first}: ${said}`, { cause: e })
+    }
 
     const snips: Array<WalkFile["snips"][number]> = []
     const taps: Array<WalkFile["taps"][number]> = []
