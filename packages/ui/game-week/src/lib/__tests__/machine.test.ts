@@ -6,10 +6,12 @@ import type {
 } from "@game-week/lib/machine"
 import {
   ASK_HOLD_MS,
+  biteView,
   currentGame,
   initialState,
   offerView,
   phaseOf,
+  RECENT_BITES,
   step,
   UNDO_MS,
 } from "@game-week/lib/machine"
@@ -175,16 +177,48 @@ describe("keeping a bite (GW3, GW4)", () => {
     })
   })
 
+  /** What the store keeps once `taken` reached it: each with its game. */
+  function storing(
+    state: GameWeekState,
+    ...bites: ReadonlyArray<{ id: string; at: number; gameId?: string }>
+  ): GameWeekState {
+    return step(state, {
+      type: "stored",
+      bites: bites.map(({ id, at, gameId }) => ({
+        id,
+        gameId: gameId ?? currentGame(state)?.id ?? "",
+        at: new Date(at).toISOString(),
+        contentType: "audio/webm",
+        durationMs: 4_000,
+        fields: {
+          how: "offered",
+          scenario: "in.third-long",
+          strip: "Q3 8:42 · SF 17",
+        },
+        holdUntil: at + UNDO_MS,
+      })),
+    }).state
+  }
+
   it("lists the kept bite as its row, plays it, and Undo takes the row and the sound away", () => {
-    const kept = run(
+    const taken = run(
       stopped(),
       { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
       { type: "kept", id: "b1" }
     ).state
-    expect(kept.lastBite).toMatchObject({
-      take: { id: "b1", durationMs: 4_000, kept: { place: "going" } },
-      stored: true,
-    })
+    // Its row shows once the store says it keeps it.
+    expect(biteView(taken).recent).toEqual([])
+    const kept = storing(taken, { id: "b1", at: T0 + 5_000 })
+    expect(biteView(kept).recent).toMatchObject([
+      {
+        row: {
+          take: { id: "b1", durationMs: 4_000, kept: { place: "going" } },
+          canPlay: true,
+        },
+        about: "Q3 8:42 · Third and long",
+        unplayable: false,
+      },
+    ])
     const asked = step(kept, { type: "play", id: "b1" })
     expect(asked.effects).toEqual([{ type: "loadAudio", id: "b1", play: 1 }])
     const playing = step(asked.state, {
@@ -198,8 +232,81 @@ describe("keeping a bite (GW3, GW4)", () => {
       { type: "stopAudio" },
       { type: "undo", id: "b1" },
     ])
-    expect(undone.state.lastBite).toBeNull()
+    expect(biteView(undone.state).recent).toEqual([])
     expect(undone.state.takes.playback).toEqual({ kind: "quiet" })
+  })
+
+  it("shows the game's newest bites under the recorder, other games' left out (GWB14)", () => {
+    const at = (n: number): number => T0 + n * 60_000
+    const state = storing(
+      stopped(),
+      { id: "old", at: at(1) },
+      { id: "elsewhere", at: at(5), gameId: "another-game" },
+      { id: "b2", at: at(2) },
+      { id: "b4", at: at(4) },
+      { id: "b3", at: at(3) }
+    )
+    expect(biteView(state).recent.map(({ row }) => row.take.id)).toEqual([
+      "b4",
+      "b3",
+      "b2",
+    ])
+    expect(RECENT_BITES).toBe(3)
+  })
+
+  it("keeps an undone row gone while the store answers, and brings it back if it couldn't", () => {
+    const kept = storing(
+      run(
+        stopped(),
+        { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+        { type: "kept", id: "b1" }
+      ).state,
+      { id: "b1", at: T0 + 5_000 }
+    )
+    const undone = step(kept, { type: "undo" }).state
+    expect(biteView(undone).recent).toEqual([])
+    // The store speaks of something else before the undo is done.
+    const meanwhile = storing(undone, { id: "b1", at: T0 + 5_000 })
+    expect(biteView(meanwhile).recent).toEqual([])
+    // Too late: the bite is still kept, on its way home.
+    const failed = step(meanwhile, { type: "undoFailed", id: "b1" }).state
+    expect(biteView(failed).recent.map(({ row }) => row.take.id)).toEqual([
+      "b1",
+    ])
+    // Thrown away: the store's word clears it for good.
+    expect(storing(undone).undoing).toEqual([])
+  })
+
+  it("says a bite home holds is on home, with nothing to play here", () => {
+    const kept = step(stopped(), {
+      type: "stored",
+      bites: [
+        {
+          id: "b1",
+          gameId: currentGame(stopped())?.id ?? "",
+          at: new Date(T0).toISOString(),
+          contentType: "audio/webm",
+          durationMs: 4_000,
+          fields: { how: "said-first", strip: "" },
+          holdUntil: T0,
+          homeSince: T0 + 60_000,
+        },
+      ],
+    }).state
+    expect(biteView(kept).recent).toMatchObject([
+      {
+        row: {
+          take: {
+            kept: {
+              place: "home",
+              since: new Date(T0 + 60_000).toISOString(),
+            },
+          },
+          canPlay: false,
+        },
+        about: "Said first",
+      },
+    ])
   })
 
   it("keeps it the moment it is taken, held back for Undo", () => {
@@ -326,7 +433,7 @@ describe("Undo", () => {
   })
 
   it("says so when the bite had already gone", () => {
-    expect(step(kept(), { type: "undoFailed" }).state.notice).toBe(
+    expect(step(kept(), { type: "undoFailed", id: "b1" }).state.notice).toBe(
       NOTICES.tooLateToUndo
     )
   })

@@ -59,6 +59,7 @@ import {
   toggled,
   topicOf,
   underChips,
+  withGaps,
 } from "@soundbites/lib/library/compartments"
 import type { TakeNames, TakeOf } from "@soundbites/lib/library/kinds"
 import { NO_NAMES, portAbout } from "@soundbites/lib/library/kinds"
@@ -129,6 +130,27 @@ export type TakeLibraryProps = {
    * this home filtered, as Game day's way to a game's takes is. Read once.
    */
   initialChips?: Partial<Chips> | undefined
+  /**
+   * What the topic picked holds that no take is about, each placed among
+   * the takes by when it was (`withGaps`): a game's big moments with no bite
+   * (GWB14 D15), later a week's questions not answered. Asked only while a
+   * topic is the one chip picked and nothing is searched, with home's takes
+   * about it; none without.
+   */
+  gaps?:
+    | ((
+        topicKey: string,
+        takes: ReadonlyArray<LibraryTake>
+      ) => ReadonlyArray<TopicGap>)
+    | undefined
+}
+
+/** One thing a topic holds with no take: its key, when it was, its row. */
+export type TopicGap = {
+  readonly key: string
+  /** ISO-8601, as a take's `recordedAt` is. */
+  readonly at: string
+  readonly body: ReactNode
 }
 
 /**
@@ -420,9 +442,16 @@ const OwnCard = ({
   )
 }
 
+const NO_GAPS: ReadonlyArray<TopicGap> = []
+
+/** When a take was said. */
+const at = (each: HomeRow | OwnRow): string =>
+  "own" in each ? each.own.recordedAt : each.take.recordedAt
+
 const Listed = ({
   page,
   rows,
+  gaps,
   others,
   compartment,
   chips,
@@ -437,6 +466,8 @@ const Listed = ({
   page: LibraryPage | null
   /** The takes in the compartment, under the chips picked, in order. */
   rows: ReadonlyArray<HomeRow | OwnRow>
+  /** What the topic picked holds with no take, by when each was. */
+  gaps: ReadonlyArray<TopicGap>
   /** How many of the phone's takes show above it. */
   others: number
   compartment: Compartment
@@ -475,6 +506,9 @@ const Listed = ({
   const live = fold ? rows.filter((each) => !isCanned(each)) : rows
   const canned = fold ? rows.filter(isCanned) : []
   const shelf = canned[0]?.station ?? null
+  // Home has every take to list once no older page is left to show.
+  const listedAll = page !== null && (page.next ?? null) === null
+  const liveListed = withGaps(live, gaps, order, at, listedAll)
   return (
     <div className="flex flex-col gap-3">
       {/* What the list below holds: the screen's own content. */}
@@ -506,8 +540,16 @@ const Listed = ({
             {anyPicked(chips) ? WORDS.noneUnder : WORDS.empty(compartment)}
           </p>
         )}
-      {live.length > 0 && (
-        <ul className="flex flex-col gap-2">{live.map(card)}</ul>
+      {liveListed.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {liveListed.map((each) =>
+            each.kind === "take" ? (
+              card(each.row)
+            ) : (
+              <li key={`gap:${each.gap.key}`}>{each.gap.body}</li>
+            )
+          )}
+        </ul>
       )}
       {shelf !== null && (
         <section className="flex flex-col gap-2">
@@ -913,6 +955,7 @@ export const TakeLibrary = ({
   tile,
   row,
   initialChips,
+  gaps,
 }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are; the first read asks for what the page opens on */
   const [library] = useState(() =>
@@ -1040,13 +1083,25 @@ export const TakeLibrary = ({
       shows(each) &&
       (state.asked === null || holdsWords(aboutWords(each.about), state.asked))
   )
-  const at = (each: HomeRow | OwnRow): string =>
-    "own" in each ? each.own.recordedAt : each.take.recordedAt
   const listedRows = ordered(
     [...ownShown, ...homeRows.filter(shows)],
     order,
     at
   )
+  // Only the topic picked, and nothing searched: then a take missing from
+  // the list is one there isn't.
+  const topic = chips.place === "phone" ? null : (chips.topic ?? null)
+  const topicGaps =
+    gaps !== undefined &&
+    topic !== null &&
+    !anyPicked({ ...chips, topic: null }) &&
+    state.asked === null &&
+    page !== null
+      ? gaps(
+          topic.key,
+          homeRows.filter(shows).map(({ take }) => take)
+        )
+      : NO_GAPS
   return (
     <div className="flex flex-col gap-4">
       <ChipBar
@@ -1143,6 +1198,7 @@ export const TakeLibrary = ({
       <Listed
         page={chips.place === "phone" ? null : page}
         rows={listedRows}
+        gaps={topicGaps}
         others={phoneShown.length}
         compartment={compartment}
         chips={chips}

@@ -1,0 +1,19 @@
+{
+  "id": "C948",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/snips-desk/index.ts",
+    "packages/video-render/src/snip.ts"
+  ],
+  "chose": "SNIPS3's desk lands first as its pure core, with no route or screen: a capture's manifest read with SnipsManifestSchema (now beside SnipRecordSchema in video-render, the one reading of a manifest), its snips grouped by module in a fixed order, the owner's keep or drop and note as a mark home keeps append-only by snip id with the newest shown, and the desk's words in one table. The screen goes on the phone, in Studio beside Clips, once home serves a capture, its pictures and the marks (#3364); its pictures come through the clip page's frame reader.",
+  "options": [
+    "the pure core now, the screen when home serves",
+    "a screen now behind a gate until home serves",
+    "a screen now that says home didn't answer",
+    "wait for home and build nothing"
+  ],
+  "gray": "The desk needs four home routes that don't exist. A screen before them would not do what it appears to do; nothing at all leaves the design only in the issue. The coordinator agreed to the pure core with no screen and no gate (2026-11-21).",
+  "undo": "Delete apps/www/src/lib/snips-desk; SnipsManifestSchema stays as the manifest's reading.",
+  "refs": ["#3364", "#3114"]
+}

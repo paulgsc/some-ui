@@ -1,0 +1,19 @@
+{
+  "id": "C1000",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-motion/src/walkthrough.ts",
+    "some-ui:apps/www/tests/walk/jobs-walkthrough.json"
+  ],
+  "chose": "Under the owner's C945, a walkthrough's voiced shots are its stops alone. Each stop's words carry its own narration (narration: one to four lines, written for that stop as promo and mission), followed by what real use shows of it, and the last stop also says the silence sentence. The lines are laid back to back, BREATH_MS apart (the cards essays' startsAfter), and the stop's screens are stretched by one factor until the walk holds every line and a breath (retimed), so the taps keep their place against each screen's end. The chapter cards and the silence card carry no spoken lines and no take. A line is no longer tied to a screen.",
+  "options": [
+    "the lines back to back, the stop's screens stretched by one factor (chosen)",
+    "each narration line held over its own screen, as captions were",
+    "the walk at its own pace, the narration cut to fit"
+  ],
+  "gray": "How the narration sits over the screens is pacing the owner hears; with authored lines not tied to a screen, nothing settles whether the picture or the words set the pace.",
+  "undo": "Record a call that moves this one, and lay the stop's lines from the screens' starts again in voicedWalkthrough.",
+  "refs": ["#3282", "#3337"],
+  "moves": "C940"
+}

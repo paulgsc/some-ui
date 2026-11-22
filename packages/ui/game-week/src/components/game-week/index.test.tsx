@@ -1,6 +1,6 @@
 import type { FeedPort } from "@game-week/lib/feed"
 import { fixtureFeed } from "@game-week/lib/feed"
-import type { OutboxPort } from "@game-week/lib/ports"
+import type { OutboxPort, StoredBite } from "@game-week/lib/ports"
 import { storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import {
@@ -44,8 +44,8 @@ const awayFeed: FeedPort = {
 type Store = {
   /** Whether a keep is refused, held by the store to try again. */
   failKeep: boolean
-  /** Since when home holds a bite; null while it doesn't. */
-  homeSince: number | null
+  /** What it keeps, newest last. */
+  bites: Array<StoredBite>
   /** Tells the screen the store changed. */
   changed: () => void
 }
@@ -68,7 +68,7 @@ function phone(feed = fixtureFeed(() => NOW)): Phone {
   const listeners = new Set<() => void>()
   const store: Store = {
     failKeep: false,
-    homeSince: null,
+    bites: [],
     changed: () => {
       for (const listener of listeners) listener()
     },
@@ -83,15 +83,21 @@ function phone(feed = fixtureFeed(() => NOW)): Phone {
       player,
       store: {
         audio: () => Promise.resolve(new Blob(["said"])),
-        keep: () =>
-          store.failKeep
-            ? Promise.reject(new Error("full"))
-            : Promise.resolve(),
+        keep: (bite): Promise<void> => {
+          if (store.failKeep) return Promise.reject(new Error("full"))
+          store.bites = [...store.bites, bite]
+          store.changed()
+          return Promise.resolve()
+        },
         amend: () => Promise.resolve("noted"),
         release: () => Promise.resolve(),
-        undo: () => Promise.resolve(),
+        undo: (id): Promise<void> => {
+          store.bites = store.bites.filter((bite) => bite.id !== id)
+          store.changed()
+          return Promise.resolve()
+        },
         isKept: () => !store.failKeep,
-        homeSince: () => store.homeSince,
+        getSnapshot: () => store.bites,
         subscribe: (listener) => {
           listeners.add(listener)
           return () => listeners.delete(listener)
@@ -235,7 +241,12 @@ describe("GameWeek", () => {
     fireEvent.click(await sayTheCard())
     await settle()
     expect(playOnRow()?.closest("li")).toHaveTextContent(TAKE_WORDS.place.going)
-    on.store.homeSince = NOW + 60_000
+    // Under the recorder, among the game's newest bites (GWB14).
+    expect(screen.getByText(WORDS.recentBites)).toBeTruthy()
+    on.store.bites = on.store.bites.map((bite) => ({
+      ...bite,
+      homeSince: NOW + 60_000,
+    }))
     act(() => on.store.changed())
     const play = playOnRow()
     expect(play).toBeDisabled()

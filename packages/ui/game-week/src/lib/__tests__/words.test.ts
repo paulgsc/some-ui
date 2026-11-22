@@ -9,6 +9,8 @@ import {
   gameLabel,
   keptLine,
   MINUTE_LINE,
+  MISSED_WORDS,
+  missedHead,
   MODE_WORDS,
   noGamesLine,
   noOfferLine,
@@ -147,5 +149,31 @@ describe("the recorder's words", () => {
   it("counts time the way the screen shows it", () => {
     expect(ago(40_000)).toBe("40 s ago")
     expect(ago(150_000)).toBe("2 min ago")
+  })
+})
+
+describe("a big moment with no bite (GWB14 D15)", () => {
+  const moment = {
+    scenario: "in.turnover" as const,
+    context: "CHI intercepted at the NE 40",
+    at: "2026-10-23T01:10:00Z",
+    playId: "1",
+    period: 3,
+    clock: "4:12",
+  }
+
+  it("heads it with its quarter and clock, as a matched bite's, then its scenario", () => {
+    expect(MISSED_WORDS.noBite).toBe("No bite")
+    expect(missedHead(moment)).toMatch(/^Q3 4:12 · \S/)
+    expect(missedHead({ ...moment, period: 5 })).toMatch(/^OT 4:12 · /)
+    expect(missedHead({ ...moment, period: null, clock: null })).not.toMatch(
+      /^ · /
+    )
+    expect(missedHead({ ...moment, period: null })).toMatch(/^4:12 · /)
+  })
+
+  it("says no machinery", () => {
+    expect(MISSED_WORDS.noBite).not.toMatch(MACHINERY)
+    expect(missedHead(moment)).not.toMatch(MACHINERY)
   })
 })

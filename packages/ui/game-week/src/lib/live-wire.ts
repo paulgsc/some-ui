@@ -108,6 +108,32 @@ function unitFrom(value: Record<string, unknown>): BiteUnit | null | undefined {
   return named === undefined ? undefined : { unit: named, side }
 }
 
+/** An entry of home's moment log, read; its `id` may be a scenario this build lacks. */
+export type MomentEntry = Line & {
+  /** When it happened, ISO 8601. */
+  readonly at: string
+  /** The unit its play was about; undefined from a home before it named one. */
+  readonly unit: BiteUnit | null | undefined
+}
+
+/**
+ * One entry of home's moment log, `{id, line, at, unit, unitSide}`, as
+ * "just happened" sends it and a game's moments list it: null when it
+ * doesn't read.
+ */
+export function momentEntryOf(value: unknown): MomentEntry | null {
+  const read = lineOf(value)
+  return read !== null && isRecord(value) && isString(value.at)
+    ? {
+        ...read,
+        at: value.at,
+        // A home before #3049's play units sends none: the list's is used.
+        // One this build can't read is none, never the list's guess.
+        unit: "unit" in value ? (unitFrom(value) ?? null) : undefined,
+      }
+    : null
+}
+
 /**
  * One entry of home's ranked list, `{id, tier, unit, unitSide}`, or null
  * for one this build doesn't know (a newer catalog's scenario, tier or
@@ -138,18 +164,7 @@ function asOffer(seq: number, value: unknown): Offer | null {
   if (!Array.isArray(value.scenarios) || !Array.isArray(value.justHappened))
     return null
   const scenarios = value.scenarios.map(lineOf)
-  const happened = value.justHappened.map((each) => {
-    const read = lineOf(each)
-    return read !== null && isRecord(each) && isString(each.at)
-      ? {
-          ...read,
-          at: each.at,
-          // A home before #3049's play units sends none: the list's is used.
-          // One this build can't read is none, never the list's guess.
-          unit: "unit" in each ? (unitFrom(each) ?? null) : undefined,
-        }
-      : null
-  })
+  const happened = value.justHappened.map(momentEntryOf)
   if (scenarios.includes(null) || happened.includes(null)) return null
   const cards: Array<OfferCard> = []
   for (const each of scenarios) {

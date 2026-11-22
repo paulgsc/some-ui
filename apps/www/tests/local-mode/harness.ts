@@ -49,7 +49,7 @@ const ENV: Record<BuildName, string> = {
 const HOW: Record<BuildName, string> = {
   lan: "pnpm --filter www exec vite build --outDir dist",
   pages:
-    "SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-pages",
+    "pnpm --filter www exec node render-landing.ts && SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-pages",
   snips:
     "SOME_UI_PROFILE=snips VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-snips",
 }
@@ -110,7 +110,10 @@ function listen(server: Server, port: number): Promise<Listening> {
 
 /**
  * The app's files under `base` (`/` for lan, `/some-ui/` for Pages), with the
- * single-page fallback both real hosts give: an unknown path answers the shell.
+ * single-page fallback each real host gives: an unknown path answers the
+ * app's shell. GitHub Pages answers `404.html`, which the Pages build writes
+ * (its `index.html` is the landing, vite.config.ts `landingPage`); the lan
+ * build has no `404.html`, and nginx answers `index.html`.
  */
 export function serveBuild(dir: string, base: string): Promise<Listening> {
   const server = createServer((req, res) => {
@@ -130,10 +133,11 @@ export function serveBuild(dir: string, base: string): Promise<Listening> {
       statSync(file).isDirectory()
     ) {
       const index = join(file, "index.html")
+      const shell = existsSync(join(dir, "404.html"))
+        ? "404.html"
+        : "index.html"
       file =
-        file.startsWith(dir) && existsSync(index)
-          ? index
-          : join(dir, "index.html")
+        file.startsWith(dir) && existsSync(index) ? index : join(dir, shell)
     }
     res.writeHead(200, {
       "content-type": TYPES[extname(file)] ?? "application/octet-stream",

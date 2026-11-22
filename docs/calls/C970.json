@@ -1,0 +1,21 @@
+{
+  "id": "C970",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/ui/game-week/src/lib/machine.ts",
+    "packages/ui/game-week/src/lib/ports.ts",
+    "packages/ui/game-week/src/lib/bite.ts",
+    "packages/ui/game-week/src/components/game-week/index.tsx"
+  ],
+  "chose": "GWB14's live strip is the recorder's one kept-bite row grown into the game's newest bites: the store's own record of every bite on this phone (BiteStore.getSnapshot), filtered to the game picked, newest first, the newest RECENT_BITES (3), each a take-pattern row (length, where it is kept, Play while its sound is here) with one line of what it was about from its own fields: the clock the screen showed, the scenario's name or \"Said first\", and the unit. It sits under the recorder, under the heading \"Said about this game\". The single lastBite row, and the homeHolds signal that moved it to home, are gone: the store's record says where each bite is kept. The matched play stays Takes', which reads home.",
+  "options": [
+    "The newest three of the picked game, from the store's record (chosen): the one row was the one-item case of this list, so it is one family, and it survives a reload because the record keeps bites after their sound leaves for home.",
+    "Keep the one row and add a separate strip beside it: two renderings of the same bite, the duplicate the owner asked us to avoid (C830).",
+    "Read the strip from home's take library: shows the matched play, but a bite just said is not on home yet, and the strip is for exactly that bite.",
+    "A longer strip (the mode's card count, or every bite of the game): turns the recorder into the Takes page, which already lists a game's bites."
+  ],
+  "gray": "How many bites show, and what each line says, is something the owner sees on the screen during a game; no earlier decision fixes either. Three is a judgement of what fits under the recorder on a phone without pushing the way to Takes off the first screen.",
+  "undo": "Set RECENT_BITES to 1 to show only the newest bite of the game, or move it; the strip's words are WORDS.recentBites and WORDS.saidFirst in packages/ui/game-week/src/lib/words.ts.",
+  "refs": ["#3039", "#2074"]
+}

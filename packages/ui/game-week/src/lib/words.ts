@@ -5,11 +5,13 @@
  * every phrase these functions can make to that.
  */
 import { counted, dayOf, formatDay } from "@some-ui/core-utils"
-import { UNIT_WORDS } from "@some-ui/game-scenarios"
+import { scenarioOf, UNIT_WORDS } from "@some-ui/game-scenarios"
+import { ABOUT_WORDS } from "@some-ui/soundbites"
 import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 
 import type { FeedLink } from "./feed"
 import type { ModeId } from "./modes"
+import type { GameMoment } from "./moments"
 import type { OutboxView } from "./ports"
 import type { BiteUnit, Tier } from "./ranked"
 
@@ -33,6 +35,10 @@ export const WORDS = {
   justHappened: "Just happened",
   sayItFirst: "Say it first",
   sayItFirstHint: "Talk now, say what it was about after.",
+  /** A bite said first that was never said to be about anything. */
+  saidFirst: "Said first",
+  /** Over the game's newest bites, under the recorder (GWB14). */
+  recentBites: "Said about this game",
   quietBar: "Stops when you go quiet",
   askTitle: "What was that about?",
   later: "Later: home works it out from what I said",
@@ -218,4 +224,23 @@ export const TIER_TITLES: Readonly<Record<Tier, string>> = {
 export function unitLine(unit: BiteUnit): string {
   const word = UNIT_WORDS[unit.unit]
   return unit.side === null ? word : `${unit.side} ${word.toLowerCase()}`
+}
+
+/**
+ * A game's big moment no bite was said about, as Takes lists it among the
+ * game's bites (GWB14 D15): "No bite", then its quarter and clock as a
+ * matched bite's are said, the scenario's name, and the play as home words it.
+ */
+export const MISSED_WORDS = { noBite: "No bite" } as const
+
+/** What heads a moment with no bite: "Q3 4:12 · Turnover". */
+export function missedHead(moment: GameMoment): string {
+  const { period, clock } = moment
+  const when =
+    period === null
+      ? (clock ?? "")
+      : ABOUT_WORDS.atPlay(period, clock ?? undefined)
+  return [when, scenarioOf(moment.scenario).name]
+    .filter((part) => part !== "")
+    .join(" · ")
 }

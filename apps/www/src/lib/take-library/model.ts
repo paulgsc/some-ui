@@ -14,11 +14,11 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
+import type { StoredBite } from "@some-ui/game-week"
 import type { LibraryPage, LibraryRead, PhoneTake } from "@some-ui/soundbites"
 import { MATCH_METHODS, TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
-import type { PhoneBite } from "@/lib/game-bites"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { isTakeStation } from "@/lib/take-conveyor/model"
 
@@ -64,6 +64,8 @@ const TakeSchema = z.object({
           method: z.enum(MATCH_METHODS).optional().catch(undefined),
           play: z
             .object({
+              // ESPN's id for the play: a game's moments of it (GWB14 D15).
+              id: z.string().min(1).nullable().optional().catch(undefined),
               period: z
                 .number()
                 .int()
@@ -151,6 +153,7 @@ function gameFields(
     fields.matchedBy = method
     if (play?.period != null) fields.playPeriod = String(play.period)
     if (play?.clock != null) fields.playClock = play.clock
+    if (play?.id != null) fields.playId = play.id
   }
   return fields
 }
@@ -196,7 +199,7 @@ export function readTakes(answer: HomeAnswer): LibraryRead {
  */
 export function phoneTakesOf(
   notes: ReadonlyArray<OnPhone>,
-  bites: ReadonlyArray<PhoneBite>,
+  bites: ReadonlyArray<StoredBite>,
   held: (id: string) => boolean,
   audio: {
     /** A bite's audio on this phone. */

@@ -131,6 +131,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/engagement-places/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
+  "apps/www/src/lib/game-moments/**",
   "apps/www/src/lib/handed-in/**",
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/idea-hearing/**",

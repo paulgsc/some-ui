@@ -1,7 +1,7 @@
 /**
  * A clip's frames from home, the Android app's only (`build.paths.ts`): read
- * one at a time through the paired link while the page shows them
- * (`clipFramesQuery`); a frame home doesn't hold shown as its label and why,
+ * one at a time through the paired link while the page shows them, each
+ * as it comes (`clipFramesQuery`); a frame home doesn't hold shown as its label and why,
  * never a broken image; and, away from home, the labels alone with a line saying so. While the
  * phone's own record of its pairing is still being read, the page says
  * nothing about home: the labels show, and no line appears only to vanish.
@@ -102,17 +102,21 @@ const sideOf = (
     </>
   )
 
+/** One side's frames, as the query asks for them. */
+const framesOf = (
+  name: "before" | "after",
+  side: ClipSide
+): Array<{ side: "before" | "after"; file: string; made: ClipSide["made"] }> =>
+  side.snips.map((snip) => ({ side: name, file: snip.file, made: side.made }))
+
 /** A clip's before and after, each frame from home when this phone is paired. */
 export const ClipFrames = ({ clip }: { clip: Clip }): JSX.Element => {
   const { link } = useHomeLink()
   const atHome = link.kind === "paired"
   const before = clip.before?.snips ?? []
   const frames = [
-    ...before.map((snip) => ({ side: "before" as const, file: snip.file })),
-    ...clip.after.snips.map((snip) => ({
-      side: "after" as const,
-      file: snip.file,
-    })),
+    ...(clip.before === null ? [] : framesOf("before", clip.before)),
+    ...framesOf("after", clip.after),
   ]
   const { data } = useQuery({
     ...clipFramesQuery(clip.id, frames),

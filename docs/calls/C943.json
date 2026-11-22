@@ -1,0 +1,19 @@
+{
+  "id": "C943",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-motion/src/walkthrough.ts",
+    "some-ui:packages/video-motion/src/walkthrough-words.ts",
+    "some-ui:packages/video-motion/compositions/walk-chapter/index.html"
+  ],
+  "chose": "Each stop's friction (C861's measures) is said over its chapter card and burned in on it, under the title, and the card holds longer while it carries it. The silent modules are named on a card of the same kind, before the close, by name and how long each has been quiet, with a count of the modules not measured. The chapter's own name stays unsaid until the owner settles it. Applying's debrief median is in the contract, but no card says it yet.",
+  "options": [
+    "friction on the chapter card, silence on a card before the close (chosen)",
+    "friction as an extra line over the stop's last screen",
+    "silence in the close's own words"
+  ],
+  "gray": "Where a viewer meets the honest numbers changes how the walkthrough reads, and the owner hasn't seen it rendered. A card per stop keeps the screens' captions about the screens.",
+  "undo": "Record a call that moves this one, and move frictionNotes/frictionSaid and the silence card in voicedWalkthrough.",
+  "refs": ["#3282", "#3337", "#3338"]
+}

@@ -119,13 +119,25 @@ several branches share one (owner, Nov 21, agreeing to C1021).
 - **Settle on the branch.** A branch has its fresh-context review, every fix, and its local
   checks (CLAUDE.md "Pre-commit verification"; server's fmt, clippy ratchet, tests, `sqlx
 prepare`) before it reaches a PR. Review after a PR opens is for the merge delta only.
+- **Every commit is reviewed before it is bucketed** (owner, Nov 22: "it has to pass the
+  reviews"). A commit added after a branch's review (a fix, a hand-resolved merge of `main`, the
+  coordinator's own fix on the bucket) gets its own fresh-context review of that delta first. The
+  coordinator reading it is not that review: it is not a fresh reader.
 - **One bucket per repo, lane and kind.** The coordinator merges settled worker branches into
   `claude/bucket-<repo>-<n>` with merge commits (never squash or rebase there), so each
   worker's commits and `Change-Kind`, `Promise`, `Relates` and `Call` trailers reach `main`
   through the PR's squash (COMMIT_MESSAGES). Where two branches touch the same file, the
   merge's resolution is reviewed as a delta before the bucket is pushed.
+- **Carried branches prune themselves.** Once a bucket PR merges, `bucket-prune.yml` deletes
+  each branch whose tip it holds, and keeps (and names) one that moved on or an open PR uses.
 - **Local checks on the bucket**, then one PR. Its body has one section per branch (what, its
-  review record, its Superseded) and "Calls I made" lists every branch's calls.
+  review record, its Superseded) and "Calls I made" lists every branch's calls. The review
+  record is the findings and what became of each, not "reviewed": a branch's review that lives
+  only in a worker's message to the coordinator is not on the record until the PR carries it.
+- **The bucket gets its own review.** Before it merges, a fresh-context agent reads the whole
+  bucket diff for what no branch review could see: two branches that each hold alone but break
+  together (a shared file, schema, ledger entry, route or call ID), and every hand-resolved
+  hunk. Its findings and outcomes go on the PR, as a branch's do.
 - **A defect is never bucketed.** It carries its own proof, and "a change that is both a story
   and a defect is two PRs" (CLAUDE.md).
 - **Small and timed.** Three to five branches; close a bucket when its last branch settles or

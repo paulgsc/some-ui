@@ -1,0 +1,15 @@
+{
+  "id": "C942",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["some-ui:packages/engagement/src/lib/silence.ts"],
+  "chose": "A module is silent after 4 whole weeks with no open (SILENT_WEEKS), the friction aggregate's 28-day window, so silent means 'opened on no day of the last 28'. A module whose opening isn't measured is never called silent; it is counted as not measured.",
+  "options": [
+    "4 weeks, the window C861 already publishes (chosen)",
+    "6 weeks, #3338's example",
+    "8 weeks"
+  ],
+  "gray": "#3338 leaves N as a policy constant. A shorter N names more modules, and the owner sees the list in the report and in a public video.",
+  "undo": "Record a call that moves this one and change SILENT_WEEKS (policy, C771).",
+  "refs": ["#3282", "#3337", "#3338"]
+}

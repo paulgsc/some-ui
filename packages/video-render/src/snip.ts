@@ -40,6 +40,9 @@ import { wholePicture, zoomPicture } from "./zoom"
 
 export { SNIP_ID } from "./snip-id"
 
+/** A capture's `manifest.json` (`docs/snips.md`, "The bundle"); home refuses another. */
+export const SNIPS_MANIFEST_SCHEMA = "some-ui.snips/1"
+
 /** What home hands beside an essay that names snips. */
 export const SNIPS_GIVEN_SCHEMA = "some-ui.snips-given/1"
 
@@ -116,6 +119,12 @@ export const SnipRecordSchema = z
         path: ["image", "kind"],
         message: "a snip's picture is a PNG",
       })
+    if (snip.recording?.kind === "png")
+      ctx.addIssue({
+        code: "custom",
+        path: ["recording", "kind"],
+        message: "a snip's recording is an mp4 or webm",
+      })
     const hash = SNIP_ID.exec(snip.id)?.[5]
     if (hash !== undefined && !snip.image.sha256.startsWith(hash))
       ctx.addIssue({
@@ -127,6 +136,26 @@ export const SnipRecordSchema = z
 export type SnipRecord = z.infer<typeof SnipRecordSchema>
 
 const commit = z.string().regex(COMMIT, "a commit's 40 hex digits")
+
+/**
+ * A capture's manifest as a reader takes it: the snips of one commit and the
+ * routes it couldn't reach (`docs/snips.md`). The capture writes it
+ * (`apps/www/src/lib/snips`), the mailbox carries it as a snip list, and
+ * the desk reads it (SNIPS3, #3364).
+ */
+export const SnipsManifestSchema = z.object({
+  schema: z.literal(SNIPS_MANIFEST_SCHEMA),
+  appVersion: z.string(),
+  commit,
+  run: z.string(),
+  frozenAt: z.string(),
+  data: z.literal("sample"),
+  snips: z.array(SnipRecordSchema),
+  unreached: z.array(
+    z.object({ surface: SurfaceSchema, route: z.string(), why: z.string() })
+  ),
+})
+export type SnipsManifest = z.infer<typeof SnipsManifestSchema>
 
 /**
  * What home handed: for each bundle it fetched, its commit and the records
