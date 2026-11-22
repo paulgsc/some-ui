@@ -181,8 +181,9 @@ describe("renderLanding", () => {
       ),
       ""
     )
-    expect(head).toContain("animation-name: turn-cube")
-    expect(outside).not.toContain("animation-name")
+    for (const name of ["turn-copy", "turn-cube", "type-cube"])
+      expect(head).toContain(`animation-name: ${name};`)
+    expect(outside).not.toMatch(/animation(-name)?\s*:/)
   })
 
   it("rests on each face, turns a face's angle, and ends where it began", () => {

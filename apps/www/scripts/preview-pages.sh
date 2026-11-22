@@ -10,8 +10,9 @@
 #      environment (the `pages` profile, static data, the /some-ui/ base);
 #   3. serves apps/www/dist at http://localhost:4173/some-ui/ until Ctrl-C.
 #
-# Needs pnpm, dependencies installed (`pnpm install`), and gh signed in to
-# an account that can read this repository's Actions (`gh auth status`).
+# Needs the repo's .#ci shell with dependencies installed (`nix develop
+# .#ci --command pnpm install`), and gh signed in to an account that can
+# read this repository's Actions (`gh auth status`).
 # Without gh the media step says so and the site shows every slot's drawn
 # placeholder, as a deploy with no media would. Run it inside the shell
 # Pages builds in, `nix develop .#ci --command pnpm --filter www
