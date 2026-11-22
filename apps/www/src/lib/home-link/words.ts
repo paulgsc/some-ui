@@ -429,10 +429,13 @@ export type LaneFacts = LaneCounts & {
 
 /**
  * Why the phone couldn't reach home, though home may be right there (NA1,
- * #3099): never "away", since the phone may well be at home.
+ * #3099): never "away", since the phone may well be at home. A name only
+ * says what the phone knows: its lookup found no address. It never guesses
+ * why (#3411: the router answered the name, other apps on the phone found
+ * it, and this phone's lookups still failed).
  */
 export const BLOCKED_LINE: Readonly<Record<HomeBlockedReason, string>> = {
-  name: "This phone can't find home's name on this network. On your home network, your router may be blocking it.",
+  name: "This phone couldn't look up home's name on this network, though home may be fine. It tries again on its own.",
   trust: "This phone doesn't trust home's certificate.",
   door: "Home's address answers, but home itself isn't answering just now. It may be restarting, as it does to update. This phone tries again on its own.",
 }

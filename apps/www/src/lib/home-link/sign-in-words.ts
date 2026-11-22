@@ -217,7 +217,7 @@ export function pairFailureLine(failure: PairFailure, host: string): string {
       return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
     }
     case "no-name": {
-      return `This phone can't find ${host} on this network. On your home network, your router may be blocking it. Nothing was sent.`
+      return `This phone couldn't look up ${host} on this network. Check the address, or try again in a while. Nothing was sent.`
     }
     case "bad-code": {
       return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
