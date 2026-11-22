@@ -1,0 +1,16 @@
+{
+  "id": "C1072",
+  "made": "2026-11-22",
+  "by": "claude",
+  "moves": "C1071",
+  "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+  "chose": "A site picture in the mailbox is held to 768 KiB (PICTURE_MAX_BYTES = 786,432), below the 1 MiB that C1071 named, and a body past it, declared or streamed, is refused (413) before more is read. D1 hands a stored body back as an array of byte values, and turning one near 1 MiB back into bytes may not fit Workers Free's 10 ms of CPU per request, which the README had never measured; the pages role's read of the clip would then fail. The mailbox's 1 MiB for every other file is unchanged. The deploy that adds `site-assets` measures a read of a clip near the bound before the GitHub secret is set (README, \"Updating a deployed mailbox\"). Home encodes the clip to fit (C1073: 756 KB at full size, 180 KB at half). C1071 is Claude's, made in this run, so this moves Claude's own call.",
+  "options": [
+    "a picture held to 768 KiB, refused before more is read (taken)",
+    "every file at 1 MiB as C1071 said, measured after deploy and lowered only if a read fails",
+    "raise the mailbox's cap for pictures: refused by the run's coordinator, and D1's 2 MB row leaves little room"
+  ],
+  "gray": "The fresh review of the mailbox commit found that a picture meant to sit near the 1 MiB cap is the first file to test an unmeasured CPU bound on the read path; how much headroom to leave is a choice no check settles.",
+  "undo": "Remove PICTURE_MAX_BYTES and pass MAX_BODY_BYTES to the picture branch's cappedBody; README and the assurance ledger back to 1 MiB.",
+  "refs": ["#3415"]
+}

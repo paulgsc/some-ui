@@ -98,7 +98,8 @@ async function json(response: Response): Promise<unknown> {
 function streamed(
   d: Deps,
   chunks: ReadonlyArray<Uint8Array>,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  path = `/v1/brief/items/${DIGEST_NAME}`
 ): { response: Promise<Response>; pulls: () => number } {
   const queue = [...chunks]
   let pulls = 0
@@ -125,10 +126,7 @@ function streamed(
     duplex: "half",
   }
   return {
-    response: handle(
-      new Request(`https://mailbox.test/v1/brief/items/${DIGEST_NAME}`, init),
-      d
-    ),
+    response: handle(new Request(`https://mailbox.test${path}`, init), d),
     pulls: () => pulls,
   }
 }
@@ -3749,6 +3747,29 @@ describe("the site's pictures (C1071, #3415)", () => {
     expect(
       (await send(d, "GET", "/v1/site-assets/items", { token: PAGES })).status
     ).toBe(200)
+    // Past the picture's cap, declared or streamed, it is refused before
+    // more is read.
+    const at = `/v1/site-assets/items/${SERVER}`
+    const asHome = {
+      authorization: `Bearer ${HOME}`,
+      "content-type": "video/mp4",
+    }
+    const declared = streamed(
+      d,
+      [mp4()],
+      { ...asHome, "content-length": String(786_433) },
+      at
+    )
+    expect((await declared.response).status).toBe(413)
+    expect(declared.pulls()).toBe(0)
+    const undeclared = streamed(
+      d,
+      [atLength(500_000), new Uint8Array(300_000), new Uint8Array(200_000)],
+      asHome,
+      at
+    )
+    expect((await undeclared.response).status).toBe(413)
+    expect(undeclared.pulls()).toBeLessThan(4)
     // At the bound exactly, a picture is taken.
     expect(
       (
