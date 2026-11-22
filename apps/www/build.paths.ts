@@ -1,7 +1,12 @@
 import type { PathRules } from "@some-ui/vite-config/bundle-paths"
 import { definePaths } from "@some-ui/vite-config/bundle-paths"
 
-import { MOBILE_PROFILE, profiles, routeGates } from "./build.profiles.ts"
+import {
+  CAPTURE_PROFILE,
+  MOBILE_PROFILE,
+  profiles,
+  routeGates,
+} from "./build.profiles.ts"
 
 /**
  * What each profile's output may carry, checked against a real build of it
@@ -21,9 +26,15 @@ function isProfile(name: string): name is Profile {
   return name in profiles
 }
 
-/** Every profile build.profiles.ts defines, in its order. */
-export const PROFILES: ReadonlyArray<Profile> =
-  Object.keys(profiles).filter(isProfile)
+/**
+ * Every profile build.profiles.ts defines that ships somewhere, in its order:
+ * the ones these rules and check-bundle-paths.ts hold. The capture profile
+ * (`CAPTURE_PROFILE`) is left out: Snips Capture photographs it and nothing
+ * deploys it, so no visit to a deployable can load what it carries.
+ */
+export const PROFILES: ReadonlyArray<Profile> = Object.keys(profiles)
+  .filter(isProfile)
+  .filter((profile) => profile !== CAPTURE_PROFILE)
 
 /**
  * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
@@ -38,6 +49,13 @@ export const profileBuildEnv: Readonly<
 > = {
   lan: { VITE_DEVICE_BACKEND: "", VITE_STATIC_DATA: "", VITE_BASE_PATH: "/" },
   pages: {
+    VITE_DEVICE_BACKEND: "",
+    VITE_STATIC_DATA: "true",
+    VITE_BASE_PATH: "/some-ui/",
+  },
+  // .github/workflows/snips-capture.yml: the Pages build's environment, so a
+  // snip of a route shows what the public site served of it.
+  [CAPTURE_PROFILE]: {
     VITE_DEVICE_BACKEND: "",
     VITE_STATIC_DATA: "true",
     VITE_BASE_PATH: "/some-ui/",
@@ -60,6 +78,7 @@ const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
   {
     lan: [],
     pages: [],
+    [CAPTURE_PROFILE]: [],
     [MOBILE_PROFILE]: [
       // What scripts/sync-resume.mjs copies in for /resume, which is not on
       // the Android app's surface (src/lib/app-surface).
