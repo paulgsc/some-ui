@@ -2,8 +2,8 @@
  * The Game Week essay (GWB, #2074): its format is one, refusing a newer
  * version; the sample parses; section 0's rules hold (a half or game with no
  * bite is refused, a bite has at most one still, a stance outside the set
- * is refused, and a host line quoting a play's text is refused while the
- * owner's own words are not); and an essay that contradicts itself is
+ * is refused, and a line Kokoro says quoting a play's text is refused, a
+ * bite read aloud included, while one in the owner's own voice is not); and an essay that contradicts itself is
  * refused with every reason.
  */
 import { parseFormat } from "@video-render/format"
@@ -135,7 +135,7 @@ describe("section 0: what the essay never is (D20)", () => {
     ])
   })
 
-  it(`refuses a host line that repeats ${QUOTE_RUN} words of a play's text in a row (our words, never theirs)`, () => {
+  it(`refuses a line the host says that repeats ${QUOTE_RUN} words of a play's text in a row (our words, never theirs)`, () => {
     const quoting = withFirstBite({
       answer: {
         said: "As they had it: pass short middle intended for the tight end.",
@@ -237,7 +237,7 @@ describe("an essay that contradicts itself", () => {
         })
       )
     ).toEqual([
-      "sample-bite-1: its play is in quarter 4, which is not the first half",
+      "sample-bite-1: its play is in the second half, and it is filed under the first half",
     ])
     expect(
       problems(

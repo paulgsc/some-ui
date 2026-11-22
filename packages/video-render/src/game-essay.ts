@@ -65,7 +65,7 @@ export const GAME_ESSAY_ID = "game-essay"
 export const GAME_ESSAY_VERSION = 1
 
 /**
- * The fewest words in a row a host's line may share with a play's text
+ * The fewest words in a row a line Kokoro says may share with a play's text
  * before it is refused as quoting it (section 0's third rule). Four words
  * ("at the CHI 45") are how anyone says where a ball is; five in a row of
  * ESPN's sentence is its sentence. Policy (C771, C1081).
@@ -374,6 +374,10 @@ const HALF_ORDER: Readonly<Record<Half, number>> = {
 const halfOfPeriod = (period: number): Half =>
   period <= 2 ? "first" : period <= 4 ? "second" : "overtime"
 
+/** A half as a refusal says it: "the first half", "overtime". */
+const halfSaid = (half: Half): string =>
+  half === "overtime" ? "overtime" : `the ${half} half`
+
 /** Every reason a game's data contradicts itself. */
 function gameProblems(game: GameEssayGame): Array<string> {
   const problems: Array<string> = []
@@ -406,7 +410,7 @@ function gameProblems(game: GameEssayGame): Array<string> {
       const { period, spot, possession } = bite.play.still
       if (halfOfPeriod(period) !== half.half)
         problems.push(
-          `${bite.take}: its play is in quarter ${String(period)}, which is not the ${half.half} half`
+          `${bite.take}: its play is in ${halfSaid(halfOfPeriod(period))}, and it is filed under ${halfSaid(half.half)}`
         )
       if (spot !== undefined && !plays.has(spot.side))
         problems.push(
