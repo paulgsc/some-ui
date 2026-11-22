@@ -612,6 +612,14 @@ jobs:
       - name: Check the Android-only tokens
         run: nix develop .#ci --command node scripts/check-android-only.ts
 
+      # C1029 (#3399): no media file in the repo outside its exemptions, no
+      # copy into a bundle's public/ folder, no write to the phone's disk, and
+      # the debt against the base's only shrinks (packages/eslint/src/assets.ts).
+      - name: Check generated assets
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-assets.ts --base "origin/$BASE_REF"
+
       # GES5 (packages/ui/shared/src/lib/pager): on the phone, a touch or
       # pointer handler lives only in the shared pager's runtime and the
       # pull's, and a PageControls comes with the pager
