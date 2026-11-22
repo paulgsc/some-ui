@@ -137,6 +137,9 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
 - **A red bucket** is fixed on the branch that broke it, merged into the bucket again; if that
   branch can't be fixed this round, rebuild the bucket without it.
 - Fast-lane work that can't wait for a bucket may still go alone, by the coordinator's call.
+- **When Codex has no credits** (Nov 21, every PR of the run): a fresh-context agent reviews each
+  head and the PR carries a coverage comment naming the range it read and each finding's
+  outcome. A rebase or a merge of `main` gets its own range-diff check, recorded the same way.
 
 ### While running
 
