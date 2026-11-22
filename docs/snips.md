@@ -194,6 +194,26 @@ owner's one step. The workflow holds no mailbox secret.
   drawn, and a cut list still naming one is refused by the render: never a
   blank frame.
 
+- **Public pages** (#3387). The third member of the family: a public page
+  photographed logged out, such as a pull request's checks, a run's job
+  graph or a page of GitHub's docs, for an essay whose subject lives outside
+  the app. `pnpm --filter www record:pages --pages-file <list> --out <dir>`
+  (`apps/www/tests/record/pages.ts`) opens each address in a browser with
+  no sign-in, cookie or token, at one size (1440×900 at 2×, UTC, light,
+  motion reduced), boxes the parts the list names by CSS selector, and
+  writes `pages.json` (`some-ui.pages/1`, `@some-ui/video-render`'s
+  `page.ts`) beside one `<slug>-<hash12>.png` per page. A scene shows one
+  by `{"from": "pages", "url": "…", "capturedAt": "…", "file": "…", "at": [ … ]}`:
+  the address and moment it was taken, the "as of" its viewer is told, and
+  its file. The render takes the folder beside the essay as `<key>.pages/`,
+  and `record:cards --pages <dir>` checks each picture's hash and size, and
+  refuses a scene whose page was taken at another address or moment than it
+  says. Nothing on a GitHub page holds still, so the same page taken twice
+  is two pictures, each named by its own hash. How the pictures reach home
+  is not settled: paulgsc/testing's guard refuses every picture, so they
+  can't sit beside the essay there. The snips' path, a capture run whose
+  bundle home fetches, is the likely one.
+
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are
   their empty state. Richer sample fixtures for the stub are a follow-up.

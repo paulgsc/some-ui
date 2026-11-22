@@ -32,6 +32,7 @@ import {
   speakScene,
   spreadWords,
   stillFile,
+  thumbnailInput,
   TimedWordSchema,
   UploadCopySchema,
 } from "@some-ui/video-render"
@@ -43,6 +44,7 @@ import type {
   SpeakerTake,
   StillTake,
   TakeFiles,
+  ThumbnailFacts,
 } from "@some-ui/video-render"
 import {
   keyOf,
@@ -57,6 +59,7 @@ import { z } from "zod"
 
 import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here } from "./command"
+import { clearThumbnail, writeThumbnail } from "./thumbnail"
 
 /**
  * The owner's take of scene `file`, from `own` (any audio ffmpeg reads), as
@@ -539,7 +542,8 @@ export function speakerFlag(values: {
 /**
  * Renders a recording's whole cut list, or, for a template's preview, the
  * 15–30 s cut of it (`previewOf`) into `preview.mp4`. A preview is never
- * uploaded, so it carries no chapter marks.
+ * uploaded, so it carries no chapter marks and no thumbnail; an episode's
+ * thumbnail is drawn beside its video (`./thumbnail`).
  */
 export async function renderCut(
   root: string,
@@ -549,6 +553,8 @@ export async function renderCut(
     readonly preview: boolean
     /** The episode's file, when it isn't a preview. */
     readonly episode: string
+    /** The episode's facts, which its thumbnail's genre and title come from. */
+    readonly thumbnail: ThumbnailFacts
     readonly marks: () => ReadonlyArray<ChapterMark>
     readonly policy: RenderPolicy
     readonly browser: Browser
@@ -561,6 +567,7 @@ export async function renderCut(
   const { preview } = options
   const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
   if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
+  if (!preview) await clearThumbnail(root)
   await renderStills(root, series, cut.value, {
     out: preview ? "preview.mp4" : options.episode,
     policy: options.policy,
@@ -568,6 +575,14 @@ export async function renderCut(
     origin: options.origin,
     marks: preview ? [] : options.marks(),
   })
+  // An episode's thumbnail, made with its video, once the video is (C1026);
+  // a preview has none.
+  if (!preview)
+    await writeThumbnail(
+      options.browser,
+      root,
+      thumbnailInput(options.thumbnail, whole)
+    )
 }
 
 /**

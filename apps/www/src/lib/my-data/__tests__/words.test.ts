@@ -214,6 +214,17 @@ describe("My data's words", () => {
     )
   })
 
+  it("say a delete takes any essay video that plays it, never its YouTube copy (rule (d))", () => {
+    for (const n of [1, 3]) {
+      const essay = DELETING.goes(n).find((line) => /essay video/.test(line))
+      expect(essay).toMatch(/a cards essay's included/)
+      expect(essay).toMatch(/won't make that essay again/)
+      expect(essay).toMatch(
+        /A copy you uploaded to YouTube is yours to take down/
+      )
+    }
+  })
+
   it("say when a week's middle take's recording went, what stayed, and where it still plays (IW14)", () => {
     const at = "2026-11-23T08:00:00.000Z"
     const went = `Its recording went when its week closed, on ${onDay(at)}. What home heard in it stays.`

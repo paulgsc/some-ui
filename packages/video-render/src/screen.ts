@@ -104,7 +104,7 @@ const regionRefSchema = z
 const px = z.number().nonnegative()
 
 /** A box in CSS pixels, from the picture's top-left. */
-const BoxSchema = z.strictObject({
+export const BoxSchema = z.strictObject({
   x: px,
   y: px,
   width: px.positive(),

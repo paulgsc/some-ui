@@ -1,0 +1,17 @@
+{
+  "id": "C1021",
+  "made": "2026-11-21",
+  "by": "claude",
+  "agreed": "2026-11-21",
+  "paths": [".claude/skills/coordinate/SKILL.md"],
+  "chose": "Worker branches are settled (fresh review, fixes, local checks) before any PR, then merged by the coordinator into a bucket branch per repo, lane and kind (three to five branches, merge commits so every trailer survives the squash), which opens one PR; defects are never bucketed, and a cross-repo pair rides as one bucket on each side.",
+  "options": [
+    "buckets of settled branches, one PR each",
+    "one PR per branch, as before",
+    "GitHub's merge queue, if the repos can have it",
+    "dropping strict up-to-date branch protection"
+  ],
+  "gray": "One PR per branch made every merge cost a full CI round for each PR still open, while CI found no fault review had missed on Nov 21; a bucket makes a red check block several branches and a revert coarser. The merge queue and branch protection are the owner's settings, not tried here.",
+  "undo": "Remove the Buckets section from the coordinate skill and open one PR per branch again.",
+  "refs": ["#3361"]
+}
