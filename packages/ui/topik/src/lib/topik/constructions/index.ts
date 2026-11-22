@@ -79,7 +79,7 @@ type Attachment =
       copula: SimpleAttachment
     }
 
-type SimpleAttachment = Exclude<Attachment, { kind: "by-class" }>
+export type SimpleAttachment = Exclude<Attachment, { kind: "by-class" }>
 
 /** A clause type the clause after the ending may be refused. */
 type Mood =
