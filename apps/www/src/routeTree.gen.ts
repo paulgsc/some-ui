@@ -37,6 +37,7 @@ import { Route as DashboardApkJobsRouteImport } from './routes/_dashboard/_apk/j
 import { Route as DashboardApkJournalRouteImport } from './routes/_dashboard/_apk/journal'
 import { Route as DashboardApkRustRoundsRouteImport } from './routes/_dashboard/_apk/rust-rounds'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
+import { Route as DashboardLanAsksRouteImport } from './routes/_dashboard/_lan/asks'
 import { Route as DashboardLanHomeSwitchesRouteImport } from './routes/_dashboard/_lan/home-switches'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanResumeBuildRouteImport } from './routes/_dashboard/_lan/resume-build'
@@ -69,8 +70,6 @@ import { Route as DashboardApkJobsInterviewIndexRouteImport } from './routes/_da
 import { Route as DashboardApkJobsInterviewHowRouteImport } from './routes/_dashboard/_apk/jobs/interview/how'
 import { Route as DashboardApkJobsInterviewPastRouteImport } from './routes/_dashboard/_apk/jobs/interview/past'
 import { Route as DashboardApkJobsInterviewQuestionsRouteImport } from './routes/_dashboard/_apk/jobs/interview/questions'
-import { Route as DashboardApkJournalAsksIndexRouteImport } from './routes/_dashboard/_apk/journal/asks/index'
-import { Route as DashboardApkJournalAsksAskRouteImport } from './routes/_dashboard/_apk/journal/asks/$ask'
 import { Route as DashboardApkJournalCardsKeyRouteImport } from './routes/_dashboard/_apk/journal/cards/$key'
 import { Route as DashboardApkJournalClipsIndexRouteImport } from './routes/_dashboard/_apk/journal/clips/index'
 import { Route as DashboardApkJournalClipsClipRouteImport } from './routes/_dashboard/_apk/journal/clips/$clip'
@@ -241,6 +240,11 @@ const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
   id: '/soundbites',
   path: '/soundbites',
   getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardLanAsksRoute = DashboardLanAsksRouteImport.update({
+  id: '/asks',
+  path: '/asks',
+  getParentRoute: () => DashboardLanRoute,
 } as any)
 const DashboardLanHomeSwitchesRoute =
   DashboardLanHomeSwitchesRouteImport.update({
@@ -420,18 +424,6 @@ const DashboardApkJobsInterviewQuestionsRoute =
     id: '/questions',
     path: '/questions',
     getParentRoute: () => DashboardApkJobsInterviewRoute,
-  } as any)
-const DashboardApkJournalAsksIndexRoute =
-  DashboardApkJournalAsksIndexRouteImport.update({
-    id: '/asks/',
-    path: '/asks/',
-    getParentRoute: () => DashboardApkJournalRoute,
-  } as any)
-const DashboardApkJournalAsksAskRoute =
-  DashboardApkJournalAsksAskRouteImport.update({
-    id: '/asks/$ask',
-    path: '/asks/$ask',
-    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalCardsKeyRoute =
   DashboardApkJournalCardsKeyRouteImport.update({
@@ -652,6 +644,7 @@ export interface FileRoutesByFullPath {
   '/journal': typeof DashboardApkJournalRouteWithChildren
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
+  '/asks': typeof DashboardLanAsksRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
@@ -683,7 +676,6 @@ export interface FileRoutesByFullPath {
   '/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
   '/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
-  '/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
   '/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
   '/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
@@ -700,7 +692,6 @@ export interface FileRoutesByFullPath {
   '/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
   '/settings/data/word-sets': typeof DashboardApkSettingsDataWordSetsRoute
   '/jobs/interview/': typeof DashboardApkJobsInterviewIndexRoute
-  '/journal/asks/': typeof DashboardApkJournalAsksIndexRoute
   '/journal/clips/': typeof DashboardApkJournalClipsIndexRoute
   '/journal/episodes/': typeof DashboardApkJournalEpisodesIndexRoute
   '/journal/feeds/': typeof DashboardApkJournalFeedsIndexRoute
@@ -742,6 +733,7 @@ export interface FileRoutesByTo {
   '/game-week': typeof DashboardApkGameWeekRoute
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
+  '/asks': typeof DashboardLanAsksRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
@@ -772,7 +764,6 @@ export interface FileRoutesByTo {
   '/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
   '/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
-  '/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
   '/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
   '/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
@@ -789,7 +780,6 @@ export interface FileRoutesByTo {
   '/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
   '/settings/data/word-sets': typeof DashboardApkSettingsDataWordSetsRoute
   '/jobs/interview': typeof DashboardApkJobsInterviewIndexRoute
-  '/journal/asks': typeof DashboardApkJournalAsksIndexRoute
   '/journal/clips': typeof DashboardApkJournalClipsIndexRoute
   '/journal/episodes': typeof DashboardApkJournalEpisodesIndexRoute
   '/journal/feeds': typeof DashboardApkJournalFeedsIndexRoute
@@ -838,6 +828,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal': typeof DashboardApkJournalRouteWithChildren
   '/_dashboard/_apk/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
+  '/_dashboard/_lan/asks': typeof DashboardLanAsksRoute
   '/_dashboard/_lan/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/resume-build': typeof DashboardLanResumeBuildRoute
@@ -869,7 +860,6 @@ export interface FileRoutesById {
   '/_dashboard/_apk/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
   '/_dashboard/_apk/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/_dashboard/_apk/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
-  '/_dashboard/_apk/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
   '/_dashboard/_apk/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
   '/_dashboard/_apk/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/_dashboard/_apk/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
@@ -886,7 +876,6 @@ export interface FileRoutesById {
   '/_dashboard/_apk/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
   '/_dashboard/_apk/settings/data/word-sets': typeof DashboardApkSettingsDataWordSetsRoute
   '/_dashboard/_apk/jobs/interview/': typeof DashboardApkJobsInterviewIndexRoute
-  '/_dashboard/_apk/journal/asks/': typeof DashboardApkJournalAsksIndexRoute
   '/_dashboard/_apk/journal/clips/': typeof DashboardApkJournalClipsIndexRoute
   '/_dashboard/_apk/journal/episodes/': typeof DashboardApkJournalEpisodesIndexRoute
   '/_dashboard/_apk/journal/feeds/': typeof DashboardApkJournalFeedsIndexRoute
@@ -933,6 +922,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/rust-rounds'
     | '/soundbites'
+    | '/asks'
     | '/home-switches'
     | '/lessons'
     | '/resume-build'
@@ -964,7 +954,6 @@ export interface FileRouteTypes {
     | '/jobs/interview/how'
     | '/jobs/interview/past'
     | '/jobs/interview/questions'
-    | '/journal/asks/$ask'
     | '/journal/cards/$key'
     | '/journal/clips/$clip'
     | '/journal/episodes/making'
@@ -981,7 +970,6 @@ export interface FileRouteTypes {
     | '/settings/data/deleted'
     | '/settings/data/word-sets'
     | '/jobs/interview/'
-    | '/journal/asks/'
     | '/journal/clips/'
     | '/journal/episodes/'
     | '/journal/feeds/'
@@ -1023,6 +1011,7 @@ export interface FileRouteTypes {
     | '/game-week'
     | '/rust-rounds'
     | '/soundbites'
+    | '/asks'
     | '/home-switches'
     | '/lessons'
     | '/resume-build'
@@ -1053,7 +1042,6 @@ export interface FileRouteTypes {
     | '/jobs/interview/how'
     | '/jobs/interview/past'
     | '/jobs/interview/questions'
-    | '/journal/asks/$ask'
     | '/journal/cards/$key'
     | '/journal/clips/$clip'
     | '/journal/episodes/making'
@@ -1070,7 +1058,6 @@ export interface FileRouteTypes {
     | '/settings/data/deleted'
     | '/settings/data/word-sets'
     | '/jobs/interview'
-    | '/journal/asks'
     | '/journal/clips'
     | '/journal/episodes'
     | '/journal/feeds'
@@ -1118,6 +1105,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/journal'
     | '/_dashboard/_apk/rust-rounds'
     | '/_dashboard/_apk/soundbites'
+    | '/_dashboard/_lan/asks'
     | '/_dashboard/_lan/home-switches'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/resume-build'
@@ -1149,7 +1137,6 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/jobs/interview/how'
     | '/_dashboard/_apk/jobs/interview/past'
     | '/_dashboard/_apk/jobs/interview/questions'
-    | '/_dashboard/_apk/journal/asks/$ask'
     | '/_dashboard/_apk/journal/cards/$key'
     | '/_dashboard/_apk/journal/clips/$clip'
     | '/_dashboard/_apk/journal/episodes/making'
@@ -1166,7 +1153,6 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/settings/data/deleted'
     | '/_dashboard/_apk/settings/data/word-sets'
     | '/_dashboard/_apk/jobs/interview/'
-    | '/_dashboard/_apk/journal/asks/'
     | '/_dashboard/_apk/journal/clips/'
     | '/_dashboard/_apk/journal/episodes/'
     | '/_dashboard/_apk/journal/feeds/'
@@ -1401,6 +1387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkSoundbitesRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_lan/asks': {
+      id: '/_dashboard/_lan/asks'
+      path: '/asks'
+      fullPath: '/asks'
+      preLoaderRoute: typeof DashboardLanAsksRouteImport
+      parentRoute: typeof DashboardLanRoute
+    }
     '/_dashboard/_lan/home-switches': {
       id: '/_dashboard/_lan/home-switches'
       path: '/home-switches'
@@ -1624,20 +1617,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/jobs/interview/questions'
       preLoaderRoute: typeof DashboardApkJobsInterviewQuestionsRouteImport
       parentRoute: typeof DashboardApkJobsInterviewRoute
-    }
-    '/_dashboard/_apk/journal/asks/': {
-      id: '/_dashboard/_apk/journal/asks/'
-      path: '/asks'
-      fullPath: '/journal/asks/'
-      preLoaderRoute: typeof DashboardApkJournalAsksIndexRouteImport
-      parentRoute: typeof DashboardApkJournalRoute
-    }
-    '/_dashboard/_apk/journal/asks/$ask': {
-      id: '/_dashboard/_apk/journal/asks/$ask'
-      path: '/asks/$ask'
-      fullPath: '/journal/asks/$ask'
-      preLoaderRoute: typeof DashboardApkJournalAsksAskRouteImport
-      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/cards/$key': {
       id: '/_dashboard/_apk/journal/cards/$key'
@@ -1949,7 +1928,6 @@ interface DashboardApkJournalRouteChildren {
   DashboardApkJournalIntuitionsRoute: typeof DashboardApkJournalIntuitionsRoute
   DashboardApkJournalRendersRoute: typeof DashboardApkJournalRendersRoute
   DashboardApkJournalIndexRoute: typeof DashboardApkJournalIndexRoute
-  DashboardApkJournalAsksAskRoute: typeof DashboardApkJournalAsksAskRoute
   DashboardApkJournalCardsKeyRoute: typeof DashboardApkJournalCardsKeyRoute
   DashboardApkJournalClipsClipRoute: typeof DashboardApkJournalClipsClipRoute
   DashboardApkJournalEpisodesMakingRoute: typeof DashboardApkJournalEpisodesMakingRoute
@@ -1961,7 +1939,6 @@ interface DashboardApkJournalRouteChildren {
   DashboardApkJournalTakesKeptRoute: typeof DashboardApkJournalTakesKeptRoute
   DashboardApkJournalTemplatesTemplateRoute: typeof DashboardApkJournalTemplatesTemplateRoute
   DashboardApkJournalTemplatesReleasePromoRoute: typeof DashboardApkJournalTemplatesReleasePromoRoute
-  DashboardApkJournalAsksIndexRoute: typeof DashboardApkJournalAsksIndexRoute
   DashboardApkJournalClipsIndexRoute: typeof DashboardApkJournalClipsIndexRoute
   DashboardApkJournalEpisodesIndexRoute: typeof DashboardApkJournalEpisodesIndexRoute
   DashboardApkJournalFeedsIndexRoute: typeof DashboardApkJournalFeedsIndexRoute
@@ -1980,7 +1957,6 @@ const DashboardApkJournalRouteChildren: DashboardApkJournalRouteChildren = {
   DashboardApkJournalIntuitionsRoute: DashboardApkJournalIntuitionsRoute,
   DashboardApkJournalRendersRoute: DashboardApkJournalRendersRoute,
   DashboardApkJournalIndexRoute: DashboardApkJournalIndexRoute,
-  DashboardApkJournalAsksAskRoute: DashboardApkJournalAsksAskRoute,
   DashboardApkJournalCardsKeyRoute: DashboardApkJournalCardsKeyRoute,
   DashboardApkJournalClipsClipRoute: DashboardApkJournalClipsClipRoute,
   DashboardApkJournalEpisodesMakingRoute:
@@ -1996,7 +1972,6 @@ const DashboardApkJournalRouteChildren: DashboardApkJournalRouteChildren = {
     DashboardApkJournalTemplatesTemplateRoute,
   DashboardApkJournalTemplatesReleasePromoRoute:
     DashboardApkJournalTemplatesReleasePromoRoute,
-  DashboardApkJournalAsksIndexRoute: DashboardApkJournalAsksIndexRoute,
   DashboardApkJournalClipsIndexRoute: DashboardApkJournalClipsIndexRoute,
   DashboardApkJournalEpisodesIndexRoute: DashboardApkJournalEpisodesIndexRoute,
   DashboardApkJournalFeedsIndexRoute: DashboardApkJournalFeedsIndexRoute,
@@ -2058,12 +2033,14 @@ const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
 )
 
 interface DashboardLanRouteChildren {
+  DashboardLanAsksRoute: typeof DashboardLanAsksRoute
   DashboardLanHomeSwitchesRoute: typeof DashboardLanHomeSwitchesRoute
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
   DashboardLanResumeBuildRoute: typeof DashboardLanResumeBuildRoute
 }
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
+  DashboardLanAsksRoute: DashboardLanAsksRoute,
   DashboardLanHomeSwitchesRoute: DashboardLanHomeSwitchesRoute,
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,
   DashboardLanResumeBuildRoute: DashboardLanResumeBuildRoute,

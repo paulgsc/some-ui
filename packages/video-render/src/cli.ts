@@ -95,7 +95,7 @@ import { callsAtCommit } from "@some-ui/eslint-kit/calls"
 import type { Call } from "@some-ui/eslint-kit/calls"
 import { z } from "zod"
 
-import { ASK_LABEL, readAskIssue } from "./ask"
+import { ASK_LABEL, callOptionsOf, readAskIssue } from "./ask"
 import { callFolderProblems, callParts, parseCallWeek } from "./call"
 import {
   callsEntered,
@@ -780,6 +780,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
         title: a.title,
         createdAt: a.createdAt,
         ask,
+        options: ask === null ? null : callOptionsOf(ask),
         problems,
       })
     }

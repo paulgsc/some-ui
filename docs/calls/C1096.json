@@ -1,0 +1,21 @@
+{
+  "id": "C1096",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/asks/kept.ts",
+    "apps/www/src/lib/asks/blank.ts",
+    "apps/www/src/lib/asks/receipt.ts",
+    "docs/learner-data-authority.md"
+  ],
+  "chose": "What the owner ticks, chooses and pastes on Asks is kept in that browser tab's sessionStorage only: a reload keeps the place, closing the tab lets it go, and nothing is sent to GitHub, home or anywhere else; it leaves only when the owner copies the receipt. A pasted result is blanked before it is kept: known token shapes; a credential after its scheme (basic, bearer, token, any case) or in an authorization header; a password in an address; a value after a secret-named flag (--password); a value set to a name with a part that says token, secret, password or credential, or ending in api, private, signing, access, session or secret key, in a line, a query, a list or JSON; a private key; long runs of mixed-case letters with digits; and hex of 32 characters or more (openssl's keys share a commit's 40 and a digest's 64, so only a digest written sha256:<hex> keeps its hex). It is a net, not a guarantee: a short lowercase password written as prose stays. The receipt is known per step and option by what it says, so an ask edited after some steps were done counts only those still reading the same. On screen the page says how many things the receipt holds; its text is only copied. The receipt only grows: a step done twice is two entries, and the last choice stands.",
+  "options": [
+    "the tab's sessionStorage, blanked before it is kept (taken)",
+    "localStorage, so a half-done checklist survives closing the browser, pruned once the ask closes",
+    "kept on home, beside the owner's other records",
+    "memory only: a reload starts over"
+  ],
+  "gray": "A pasted log can carry a secret, and the owner said what they paste must reach a session; how long the browser keeps it and what is blanked is a trade between losing a half-done checklist and keeping a secret on disk, which no check settles.",
+  "undo": "Point tabReceipts at window.localStorage (and prune receipts of asks no longer open after a read), or drop the blanking patterns that get in the way.",
+  "refs": ["#3423"]
+}

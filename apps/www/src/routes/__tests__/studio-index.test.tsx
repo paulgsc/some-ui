@@ -3,19 +3,14 @@
  *
  * Studio's index on the phone (SFEED1, #2731): it opens on the kinds,
  * A to Z, each a link to its own page, and with no video in the making
- * first; a template's page draws its storyboard; and Asks lists what the
- * open `ask` issues ask, opening each one's page.
+ * first; and a template's page draws its storyboard.
  */
 import { Route as IndexRoute } from "@/routes/_dashboard/_apk/journal/index"
-import {
-  createTestQueryClient,
-  withQueryClient,
-} from "@/test-support/query-client"
+import { withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
 import { templateFormat, templateStoryboard } from "@some-ui/video-render"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -31,7 +26,6 @@ import {
   STUDIO_INDEX_WORDS,
   STUDIO_KINDS,
 } from "@/lib/studio-index"
-import { AsksList } from "@/components/studio/asks"
 import { ClipScreen, ClipsList } from "@/components/studio/clips"
 import { TemplateShape } from "@/components/studio/template"
 
@@ -115,82 +109,6 @@ describe("a template's page", () => {
       board.frames.filter((f) => f.by === "fill").length
     )
     screen.getByText(W.captioned.word)
-  })
-})
-
-const issue = (number: number, question: string): object => ({
-  number,
-  title: `[ASK] ${question}`,
-  html_url: `https://github.com/paulgsc/some-ui/issues/${String(number)}`,
-  body: [
-    "```json ask",
-    JSON.stringify({
-      schema: "some-ui.ask/1",
-      question,
-      whyYours: "Only you decide it.",
-      options: [
-        { says: "Yes", unblocks: "the next story" },
-        { says: "Not yet", unblocks: "nothing" },
-      ],
-    }),
-    "```",
-  ].join("\n"),
-})
-
-const answer = (body: unknown): Response =>
-  new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  })
-
-describe("Asks", () => {
-  it("lists both repositories' open asks, each a link to its page", async () => {
-    const fetch = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation((input) =>
-        Promise.resolve(
-          answer(
-            String(input).includes("/server/")
-              ? [issue(9, "Redeploy home?")]
-              : [
-                  issue(2673, "Which music under the voice?"),
-                  issue(1, "Answer between turns?"),
-                ]
-          )
-        )
-      )
-    const { container } = render(withQueryClient(<AsksList />))
-    await screen.findByText("Redeploy home?")
-    const links = [...container.querySelectorAll("a")]
-    expect(links).toHaveLength(3)
-    for (const link of links)
-      expect(link.getAttribute("to")).toBe("/journal/asks/$ask")
-    expect(fetch).toHaveBeenCalledTimes(2)
-    screen.getByText(STUDIO_INDEX_WORDS.asks.from.server)
-  })
-
-  it("keeps what was read when a refresh fails, and says so", async () => {
-    vi.spyOn(globalThis, "fetch")
-      .mockImplementationOnce(() =>
-        Promise.resolve(answer([issue(9, "Redeploy home?")]))
-      )
-      .mockImplementationOnce(() => Promise.resolve(answer([])))
-      .mockResolvedValue(new Response("rate limited", { status: 403 }))
-    const client = createTestQueryClient()
-    render(withQueryClient(<AsksList />, client))
-    await screen.findByText("Redeploy home?")
-    await act(() => client.refetchQueries())
-    await screen.findByText(STUDIO_INDEX_WORDS.asks.stale)
-    screen.getByText("Redeploy home?")
-  })
-
-  it("says so when they can't be read, with a way to try again", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("rate limited", { status: 403 })
-    )
-    render(withQueryClient(<AsksList />))
-    await screen.findByText(STUDIO_INDEX_WORDS.asks.away)
-    screen.getByRole("button", { name: STUDIO_INDEX_WORDS.tryAgain })
   })
 })
 
