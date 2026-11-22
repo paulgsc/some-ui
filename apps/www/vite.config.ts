@@ -9,7 +9,7 @@ import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
 import { RELEASE_MINIFY } from "./build.minify.ts"
-import { offPathPublicFiles } from "./build.paths.ts"
+import { offPathPublicFiles, pagesRouteIgnorePattern } from "./build.paths.ts"
 import {
   buildAudiencePlugin,
   MOBILE_PROFILE,
@@ -130,8 +130,9 @@ function fitPageEntry(): Record<string, string> {
 // `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
 // out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
-// Only the Pages deployable gets the landing (landingPage, below).
-const isLandingBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
+// The Pages deployable: the landing (landingPage, below) and its own route
+// tree (build.paths.ts, PAGES_ROUTE_FILES).
+const isPagesSiteBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
 
 function stageEntry(): Record<string, string> {
   const profile = process.env.SOME_UI_PROFILE
@@ -235,6 +236,15 @@ function pagesConnectPolicy(): Plugin {
 // index.html. The app's shell moves to 404.html, the fallback GitHub Pages
 // serves for every other path, so the app's routes open as they did. Every
 // other profile keeps the app at index.html and builds no landing.
+// The Pages build's own route tree (C1055, #3401; build.paths.ts,
+// PAGES_ROUTE_FILES): generated into node_modules' cache, never into src/ and
+// never committed. Every other profile, the capture build Snips photographs
+// included, keeps the shared src/routeTree.gen.ts.
+const PAGES_ROUTE_TREE = resolve(
+  import.meta.dirname,
+  "node_modules/.cache/www/routeTree.pages.gen.ts"
+)
+
 function isPagesBuild(): boolean {
   return process.env.SOME_UI_PROFILE === "pages"
 }
@@ -384,6 +394,12 @@ export default defineConfig(
         // shows up as a phantom route instead of disappearing - loud, which is
         // the point.
         routeFileIgnorePattern: String.raw`(^|/)__tests__(/|$)`,
+        ...(isPagesSiteBuild
+          ? {
+              generatedRouteTree: PAGES_ROUTE_TREE,
+              routeFileIgnorePattern: pagesRouteIgnorePattern(),
+            }
+          : {}),
       }),
       viteReact(),
       ...(command === "serve"
@@ -393,7 +409,7 @@ export default defineConfig(
       pagesConnectPolicy(),
       ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
-      ...(isLandingBuild ? [landingPage()] : []),
+      ...(isPagesSiteBuild ? [landingPage()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -404,6 +420,12 @@ export default defineConfig(
     // loaded here to see one.
     define: {
       "import.meta.env.VITE_BUILD_COMMIT": JSON.stringify(buildCommit()),
+      // The public site's build (C1055, #3401): read inline where a branch
+      // must fold away at build time, as the web door reads
+      // VITE_DEVICE_BACKEND, so the Pages bundle drops what only the apps use.
+      "import.meta.env.VITE_PAGES_SITE": JSON.stringify(
+        isPagesSiteBuild ? "true" : ""
+      ),
       ...(command === "serve" &&
       fileHost.source !== "container" &&
       !loadEnv(mode, import.meta.dirname, "VITE_").VITE_FILE_HOST_ENDPOINT
@@ -415,9 +437,13 @@ export default defineConfig(
         : {}),
     },
     resolve: {
-      alias: {
-        "@": resolve(import.meta.dirname, "./src"),
-      },
+      alias: [
+        // The Pages build boots its own route tree (PAGES_ROUTE_TREE, above).
+        ...(isPagesSiteBuild
+          ? [{ find: /^\.\/routeTree\.gen$/, replacement: PAGES_ROUTE_TREE }]
+          : []),
+        { find: "@", replacement: resolve(import.meta.dirname, "./src") },
+      ],
       tsconfigPaths: true,
     },
     // The grammars `@some-ui/shared`'s code-tokens loads. Each is a plain
@@ -452,7 +478,7 @@ export default defineConfig(
                   : {
                       resume: resolve(import.meta.dirname, "resume/index.html"),
                     }),
-                ...(isLandingBuild
+                ...(isPagesSiteBuild
                   ? {
                       landing: resolve(
                         import.meta.dirname,

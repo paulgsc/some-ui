@@ -76,7 +76,12 @@ export const profileBuildEnv: Readonly<
 const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
   {
     lan: [],
-    pages: [],
+    pages: [
+      // The résumé's layout renders (`resume-<version>-<layout>.pdf`): the
+      // public site offers one PDF per version, in its default layout, and
+      // resume.pdf (C1055, #3401); the layouts are the owner's tool at home.
+      /^resume-[a-z]+-[a-z]+\.pdf$/,
+    ],
     [CAPTURE_PROFILE]: [],
     [MOBILE_PROFILE]: [
       // What scripts/sync-resume.mjs copies in for /resume, which is not on
@@ -231,6 +236,124 @@ const SHARED_ROUTE_TREE =
 const TAKE_PATTERN_ON_THE_WEB =
   "LeetType's record screen and play runtime use the take pattern's view and words, which the web builds bundle and never run: they give LeetType no microphone, so it offers typing only. Removed when those words and the view get a subpath entry of their own, or LeetType's web builds stop bundling the take parts (#2433)"
 
+/**
+ * The public site's own route tree (C1055, #3401): the route files it routes
+ * to. vite.config.ts hands the router generator `pagesRouteIgnorePattern()`
+ * for the Pages build, so every other route file is left out of it, and
+ * their pages with them. Its "/" is the static landing, not a route.
+ * `lib/app-surface`'s `PAGES_SURFACE` names the same pages as routes, and
+ * `routes/__tests__/pages-surface.test.ts` holds the two together.
+ *
+ * The generator tests each file and directory name, at every depth, against
+ * the ignore pattern: a name not listed here is left out.
+ */
+export const PAGES_ROUTE_FILES = [
+  "__root.tsx",
+  "_dashboard.tsx",
+  "_dashboard",
+  "resume.tsx",
+  "authorship.tsx",
+] as const
+
+/** The router generator's ignore pattern for the Pages build: every other name. */
+export function pagesRouteIgnorePattern(): string {
+  const kept = PAGES_ROUTE_FILES.map((name) =>
+    name.replaceAll(".", String.raw`\.`)
+  ).join("|")
+  return `^(?!(${kept})$)`
+}
+
+/**
+ * The deployables held whole by an allowlist of what they carry
+ * (`allowlists`, below), and so left out of `checkExclusivity`'s comparison
+ * across builds: beside a build this small, every other module would read as
+ * "ships only in lan and the Android app". The public site is one (C1055).
+ */
+export const ALLOWLISTED_PROFILES: ReadonlyArray<Deployable> = ["pages"]
+
+/**
+ * Everything of www's own the public site carries (`allowlists`, below),
+ * named one by one, so a module that reaches it later fails until someone
+ * adds it here. Today that is what `/resume` and `/authorship` boot: the app
+ * shell, its providers and the dashboard frame `/resume` sits in. It shrinks
+ * when those two become static pages too (#3401, story 7).
+ */
+const PAGES_MODULES: ReadonlyArray<string> = [
+  "apps/www/src/components/audio/audio-indicator.tsx",
+  "apps/www/src/components/auth/account-route-guard.tsx",
+  "apps/www/src/components/auth/account-unavailable-banner.tsx",
+  "apps/www/src/components/housekeeping/error-state.tsx",
+  "apps/www/src/components/housekeeping/not-found.tsx",
+  "apps/www/src/components/housekeeping/route-pending.tsx",
+  "apps/www/src/components/loc/loc-indicator.tsx",
+  "apps/www/src/components/mobile-shell/index.tsx",
+  "apps/www/src/components/page-body.tsx",
+  "apps/www/src/components/provenance-strip.tsx",
+  "apps/www/src/components/site-launcher/index.tsx",
+  "apps/www/src/components/theme-switcher.tsx",
+  "apps/www/src/components/wing-glyph.tsx",
+  "apps/www/src/lib/app-surface/index.ts",
+  "apps/www/src/lib/audio-preferences/index.ts",
+  "apps/www/src/lib/audio-preferences/use-audio-preferences.ts",
+  "apps/www/src/lib/auth/guards.ts",
+  "apps/www/src/lib/auth/session.ts",
+  "apps/www/src/lib/authority/runtime.ts",
+  "apps/www/src/lib/authority/singleton.ts",
+  "apps/www/src/lib/authority/state.ts",
+  "apps/www/src/lib/authority/use-authority.ts",
+  "apps/www/src/lib/build-profile/index.ts",
+  "apps/www/src/lib/data-mode/index.ts",
+  "apps/www/src/lib/demo/viewer-storage.ts",
+  "apps/www/src/lib/file-host-config/client.ts",
+  "apps/www/src/lib/file-host-config/index.ts",
+  "apps/www/src/lib/front-desk/index.ts",
+  "apps/www/src/lib/intent/durable-failure.ts",
+  "apps/www/src/lib/lesson-voice/index.ts",
+  "apps/www/src/lib/loc-report/schema.ts",
+  "apps/www/src/lib/loc-report/snapshot.ts",
+  "apps/www/src/lib/loc-report/summarize.ts",
+  "apps/www/src/lib/orchestrator/mock-orchestrator-engine.ts",
+  "apps/www/src/lib/orchestrator/orchestrator-store.ts",
+  "apps/www/src/lib/orchestrator/use-mock-orchestrator.ts",
+  "apps/www/src/lib/purpose/index.ts",
+  "apps/www/src/lib/resume-options.ts",
+  "apps/www/src/lib/route-bounds/index.ts",
+  "apps/www/src/lib/site-map/index.ts",
+  "apps/www/src/lib/study-nudge/index.ts",
+  "apps/www/src/lib/study-nudge/leave-account.ts",
+  "apps/www/src/lib/study-nudge/nudge-record.ts",
+  "apps/www/src/lib/study-nudge/service-worker.ts",
+  "apps/www/src/lib/study-nudge/use-study-nudge.ts",
+  "apps/www/src/lib/tenant/copy-receipt.ts",
+  "apps/www/src/lib/tenant/hooks.ts",
+  "apps/www/src/lib/tenant/http-sessions-repository/index.ts",
+  "apps/www/src/lib/tenant/json-object.ts",
+  "apps/www/src/lib/tenant/profile-repository/index.ts",
+  "apps/www/src/lib/tenant/queries.ts",
+  "apps/www/src/lib/tenant/session-id.ts",
+  "apps/www/src/lib/tenant/sessions-backend.ts",
+  "apps/www/src/lib/tenant/sessions-repository/index.ts",
+  "apps/www/src/lib/tenant/settings-repository/index.ts",
+  "apps/www/src/lib/tenant/storage.ts",
+  "apps/www/src/lib/web-surface/burn-ins/authorship.tsx",
+  "apps/www/src/lib/web-surface/index.ts",
+  "apps/www/src/lib/wings/entry.ts",
+  "apps/www/src/lib/wings/index.ts",
+  "apps/www/src/main.tsx",
+  "apps/www/src/providers/index.tsx",
+  "apps/www/src/providers/orchestrator.tsx",
+  "apps/www/src/providers/study-nudge.tsx",
+  "apps/www/src/providers/tanstack-query.tsx",
+  "apps/www/src/providers/theme.tsx",
+  "apps/www/src/providers/toaster.tsx",
+  "apps/www/src/providers/tts.tsx",
+  "apps/www/src/reportWebVitals.ts",
+  "apps/www/src/routes/__root.tsx*",
+  "apps/www/src/routes/_dashboard.tsx*",
+  "apps/www/src/routes/_dashboard/resume.tsx*",
+  "apps/www/src/routes/authorship.tsx*",
+]
+
 export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
     ...gatedRoutes,
@@ -282,8 +405,8 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/components/auth/viewer-auth.tsx",
         "apps/www/src/lib/auth/viewer-words.ts",
       ],
-      profiles: ["pages"],
-      why: "the viewer's /auth (SIGNIN5): only the Pages build has viewers, who have no sign-in to use",
+      profiles: [],
+      why: "the viewer's /auth (SIGNIN5): only the capture build Snips photographs has viewers now, and no deployable ships it; the public site is a CV with no sign-in page (C1055, #3401)",
     },
     {
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
@@ -333,13 +456,20 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       modules: ["apps/www/src/lib/clipboard/**"],
-      profiles: [MOBILE_PROFILE, "pages"],
-      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor, and that same copy in the viewer's Rust Rounds sample on Pages (src/lib/demo/rust-rounds-sample.ts). The home network's build copies nothing through it",
+      profiles: [MOBILE_PROFILE],
+      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor. The web builds copy nothing through it",
     },
     {
-      modules: ["apps/www/src/lib/demo/**"],
-      profiles: ["pages"],
-      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
+      // Not viewer-storage.ts: the public site still boots it first, so what
+      // its résumé page remembers stays in memory (CLAUDE.md, "A viewer
+      // tries, and nothing is kept").
+      modules: [
+        "apps/www/src/lib/demo/index.ts",
+        "apps/www/src/lib/demo/leetype-sample*",
+        "apps/www/src/lib/demo/rust-rounds-sample.ts",
+      ],
+      profiles: [],
+      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the capture build Snips photographs seeds them now, and no deployable ships them; the public site is a CV with no app to draft in (C1055, #3401), and the owner's builds keep to their own records",
     },
     {
       modules: ["apps/www/src/lib/web-surface/playoff-delta/**"],
@@ -409,6 +539,12 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
   ],
   allowlists: [
     {
+      profile: "pages",
+      within: "apps/www/src/**",
+      allow: PAGES_MODULES,
+      why: "off the public site's path: it is a CV (C1055, #3401), a static landing beside the résumé and the authorship record, with a route tree of its own (PAGES_ROUTE_FILES, above)",
+    },
+    {
       profile: MOBILE_PROFILE,
       within: "apps/www/src/routes/**",
       allow: MOBILE_ROUTE_FILES,
@@ -431,8 +567,12 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "pages",
-      modules: ["apps/www/src/components/auth/viewer-auth.tsx"],
-      why: "the viewer's /auth (SIGNIN5): without it the route renders the passkey screen, a sign-in a viewer cannot use. Also what keeps its `exclusive` rule from passing by matching nothing",
+      modules: [
+        "apps/www/src/routes/_dashboard/resume.tsx*",
+        "apps/www/src/routes/authorship.tsx*",
+        "apps/www/src/lib/web-surface/burn-ins/authorship.tsx",
+      ],
+      why: "the public site is the résumé and the record every published video's end card links (C1055, #3401); a build without them is a landing with dead links",
     },
     {
       profile: MOBILE_PROFILE,
@@ -491,11 +631,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
     },
-    {
-      profile: "pages",
-      modules: ["apps/www/src/lib/demo/index.ts"],
-      why: "a viewer starts from these sample drafts (src/main.tsx); without them the demo opens empty. Also what keeps its `exclusive` rule from passing by matching nothing",
-    },
   ],
   // Every profile builds one route tree, shared by design until now
   // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
@@ -504,25 +639,19 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
   // each deployable a route tree of its own routes; each entry goes with the
   // change that drops it.
   debt: [
-    ...(["lan", "pages"] as const).map(
-      (profile): Debt => ({
-        profile,
-        module: "apps/www/src/routes/_dashboard/_apk**",
-        why: SHARED_ROUTE_TREE,
-      })
-    ),
-    ...(["lan", "pages"] as const).flatMap(
+    {
+      profile: "lan",
+      module: "apps/www/src/routes/_dashboard/_apk**",
+      why: SHARED_ROUTE_TREE,
+    },
+    ...(["lan"] as const).flatMap(
       (profile): Array<Debt> =>
         [
           "packages/voice-capture/dist/@some-ui/voice-capture.es.js",
           "packages/voice-capture/dist/take-pattern-*.js",
         ].map((module) => ({ profile, module, why: TAKE_PATTERN_ON_THE_WEB }))
     ),
-    {
-      profile: "pages",
-      module: "apps/www/src/routes/_dashboard/_lan**",
-      why: SHARED_ROUTE_TREE,
-    },
+
     ...[
       "_dashboard/_lan**",
       "index.tsx*",

@@ -14,6 +14,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { Download, Layers3, LayoutTemplate } from "lucide-react"
 
+import { PAGES_SITE } from "@/lib/build-profile"
 import type { ResumeComposition } from "@/lib/resume-options"
 import {
   isResumeComposition,
@@ -26,6 +27,16 @@ const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 type ResumeTemplate = (typeof RESUME_TEMPLATES)[number]["id"]
 const DEFAULT_TEMPLATE: ResumeTemplate = "rail"
 const RESUME_TEMPLATE_KEY = "some-ui:resume-template"
+
+/**
+ * The print layouts this build offers. The public site offers each version
+ * in its default layout only, the PDFs it carries (C1055, #3401;
+ * build.paths.ts drops the other layouts' files from it); every other build
+ * offers them all.
+ */
+const TEMPLATES_HERE = PAGES_SITE
+  ? RESUME_TEMPLATES.filter(({ id }) => id === DEFAULT_TEMPLATE)
+  : RESUME_TEMPLATES
 const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 // A phone held sideways. `pointer: coarse` is what keeps a merely short
 // desktop window out of this branch; height alone would catch both.
@@ -55,7 +66,7 @@ function initialComposition(): ResumeComposition {
 }
 
 function isResumeTemplate(value: string | null): value is ResumeTemplate {
-  return RESUME_TEMPLATES.some(({ id }) => id === value)
+  return TEMPLATES_HERE.some(({ id }) => id === value)
 }
 
 function initialTemplate(): ResumeTemplate {
@@ -102,7 +113,7 @@ const ResumeRoute = (): JSX.Element => {
     RESUME_COMPOSITIONS.find(({ id }) => id === composition)?.label ??
     RESUME_COMPOSITIONS[0].label
   const templateLabel =
-    RESUME_TEMPLATES.find(({ id }) => id === template)?.label ??
+    TEMPLATES_HERE.find(({ id }) => id === template)?.label ??
     RESUME_TEMPLATES[0].label
 
   const selectComposition = (next: ResumeComposition): void => {
@@ -128,9 +139,9 @@ const ResumeRoute = (): JSX.Element => {
   }
 
   const cycleTemplate = (): void => {
-    const current = RESUME_TEMPLATES.findIndex(({ id }) => id === template)
+    const current = TEMPLATES_HERE.findIndex(({ id }) => id === template)
     const next =
-      RESUME_TEMPLATES[(current + 1) % RESUME_TEMPLATES.length] ??
+      TEMPLATES_HERE[(current + 1) % TEMPLATES_HERE.length] ??
       RESUME_TEMPLATES[0]
     selectTemplate(next.id)
   }
@@ -160,16 +171,18 @@ const ResumeRoute = (): JSX.Element => {
             <Layers3 />
             Next version
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            title="Switch to the next print layout (right-click for all layouts)"
-            onClick={cycleTemplate}
-          >
-            <LayoutTemplate />
-            Next layout
-          </Button>
+          {TEMPLATES_HERE.length > 1 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              title="Switch to the next print layout (right-click for all layouts)"
+              onClick={cycleTemplate}
+            >
+              <LayoutTemplate />
+              Next layout
+            </Button>
+          )}
           {/* Hidden in phone landscape, where the panel below already offers
               the download. */}
           {!touchLandscape && (
@@ -261,25 +274,31 @@ const ResumeRoute = (): JSX.Element => {
                   {option.label}
                 </button>
               ))}
-              <div className="bg-border my-1 h-px" role="separator" />
-              <p className="text-muted-foreground px-2 py-1 text-xs font-medium">
-                Print layout
-              </p>
-              {RESUME_TEMPLATES.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={option.id === template}
-                  className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm"
-                  onClick={() => selectTemplate(option.id)}
-                >
-                  <span className="mr-2 w-3">
-                    {option.id === template ? "✓" : ""}
-                  </span>
-                  {option.label}
-                </button>
-              ))}
+              {TEMPLATES_HERE.length > 1 && (
+                <>
+                  <div className="bg-border my-1 h-px" role="separator" />
+                  <p className="text-muted-foreground px-2 py-1 text-xs font-medium">
+                    Print layout
+                  </p>
+                </>
+              )}
+              {(TEMPLATES_HERE.length > 1 ? TEMPLATES_HERE : []).map(
+                (option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={option.id === template}
+                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm"
+                    onClick={() => selectTemplate(option.id)}
+                  >
+                    <span className="mr-2 w-3">
+                      {option.id === template ? "✓" : ""}
+                    </span>
+                    {option.label}
+                  </button>
+                )
+              )}
             </div>
           </>
         )}

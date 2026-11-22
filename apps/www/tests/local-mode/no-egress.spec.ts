@@ -62,7 +62,10 @@ function watch(context: BrowserContext): Array<string> {
   const urls: Array<string> = []
   context.on("request", (request) => {
     const url = request.url()
-    if (/^(data|blob|about):/.test(url)) return
+    // The browser's own pages (its PDF viewer, which the résumé's embed
+    // opens, loads chrome:// and chrome-extension:// files) never leave
+    // the machine.
+    if (/^(data|blob|about|chrome|chrome-extension):/.test(url)) return
     urls.push(`${request.method()} ${url}`)
   })
   return urls
@@ -312,14 +315,9 @@ test.describe("the Pages build", () => {
     await page.goto(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toBeVisible()
 
-    for (const route of [
-      "app",
-      "extensions",
-      "sessions",
-      "settings",
-      "settings/appearance",
-      "practice/settings",
-    ]) {
+    // The two pages the public site boots the app for (C1055); any other
+    // path loads the landing above.
+    for (const route of ["resume", "authorship"]) {
       await page.goto(`${app().origin}${BASE}${route}`)
       await page.waitForLoadState("networkidle")
       await expect(page.locator("#app")).not.toBeEmpty()

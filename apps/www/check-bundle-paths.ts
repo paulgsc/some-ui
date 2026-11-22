@@ -21,6 +21,7 @@ import {
 } from "@some-ui/vite-config/bundle-paths"
 
 import {
+  ALLOWLISTED_PROFILES,
   offPathPublicFiles,
   paths,
   profileBuildEnv,
@@ -111,7 +112,12 @@ try {
     failed ||= violations.length > 0
   }
   // Across the builds: whatever ships in some profiles only must say so.
-  const undeclared = checkExclusivity(builds, paths)
+  // A profile held whole by an allowlist is left out of the comparison
+  // (build.paths.ts, `ALLOWLISTED_PROFILES`).
+  const compared = new Map(
+    [...builds].filter(([profile]) => !ALLOWLISTED_PROFILES.includes(profile))
+  )
+  const undeclared = checkExclusivity(compared, paths)
   for (const violation of undeclared) {
     err(`[bundle-paths] ${describePathViolation(violation)}`)
   }

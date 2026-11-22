@@ -31,6 +31,14 @@ export function requireAudience(audience: Audience): () => void {
 export const MOBILE_APP = profile === "mobile"
 
 /**
+ * True in the public site's build (the `pages` profile, pages.yml), which is
+ * a CV: a static landing, the résumé and the videos' authorship record
+ * (C1055, #3401; `lib/app-surface`, `PAGES_SURFACE`). False in the capture
+ * build Snips Capture photographs, which keeps every viewer route.
+ */
+export const PAGES_SITE = import.meta.env.VITE_PAGES_SITE === "true"
+
+/**
  * Whether this build carries `audience`'s workspaces. What a link to a gated
  * route sits behind (A3, packages/some-vite-config/AUDIENCES.md).
  */

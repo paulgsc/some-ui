@@ -51,8 +51,9 @@ test.describe("the Pages app keeps nothing a viewer writes", () => {
     )
 
     // The app, not the landing at the site's root: the landing is static
-    // and keeps nothing (vite.config.ts, `landingPage`).
-    await page.goto(`${app}app`)
+    // and keeps nothing (vite.config.ts, `landingPage`). The résumé is one
+    // of the two pages the public site boots the app for (C1055).
+    await page.goto(`${app}resume`)
     await expect(page.locator("main").first()).toBeAttached()
     const storage = await page.evaluate(
       (key) => ({
