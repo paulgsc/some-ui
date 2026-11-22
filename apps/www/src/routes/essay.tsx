@@ -13,7 +13,7 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * `?week` naming the card), and otherwise the Rust Rounds essay. Standalone, so no
  * shell sits in the frame; `?week` names the essay by its week's id
  * ("sample" for the template's, as with none), `?scene` the scene, and
- * `?record` leaves out everything but the frame. A viewer of the Pages build
+ * `?record` leaves out everything but the frame. A viewer
  * gets the viewer strip above it. Web only: the stage comes through the web
  * surface's door.
  */

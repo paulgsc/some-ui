@@ -1,0 +1,110 @@
+name: Site Assets
+# The public site's media that CI can render (PAGES #3401, C1059): each job
+# renders one of the landing's slot assets on sample data and uploads it as
+# `site-assets-<kind>-<sha>`, laid out by its key (`stills/page-filter.png`,
+# `clips/extensions.mp4`). pages.yml fetches the newest of each kind into
+# the build at its next deploy; a kind with none keeps its drawn placeholder.
+# Snips Capture uploads the APK clip the same way. Nothing here is committed
+# (C1029), and nothing here reads the owner's records: Page Filter is shot on
+# a page of ours, the promo walks Suspender Ledger's sample.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/some-filter/**"
+      - "packages/video-motion/**"
+      - "packages/video-render/**"
+      - ".github/workflows/site-assets.yml"
+  workflow_dispatch:
+  # Twice a month, so while these runs succeed the newest of each kind
+  # outlives no 30 days even when nothing it is made from changes. A month
+  # of failed runs, or GitHub pausing an idle repository's schedules, lets
+  # it lapse: the landing then draws placeholders, and pages.yml's summary
+  # lists what it found.
+  schedule:
+    - cron: "41 5 3,17 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-assets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  page-filter:
+    name: Page Filter's gap still
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - name: Build Page Filter for Chromium
+        run: |
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-extension/filter^...' --concurrency=100%
+          nix develop .#ci --command pnpm --filter @some-extension/filter build:chromium
+      # A light page of ours with one widget in a closed shadow root, as it
+      # is and under Page Filter (extensions/some-filter/tests/stills).
+      - name: Photograph the gap
+        run: |
+          nix develop .#ci-playwright --command pnpm --filter @some-extension/filter \
+            still:gap "$RUNNER_TEMP/site-assets/stills/page-filter.png"
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, which waits on an approval and can come weeks after this
+      # push. 30 days outlives that gap; its family keeps one
+      # (packages/eslint/src/retention.ts). Once it is gone the landing
+      # draws the gap's placeholder until a push or a dispatch renders it
+      # again.
+      - name: Upload the still
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-page-filter-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets
+          if-no-files-found: error
+          retention-days: 30
+
+  extensions:
+    name: The extensions clip
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      # Suspender Ledger 0.3.1's promo (HYPER3), as pr.yml proves it: its
+      # release and sample from paulgsc/testing at a pinned commit, the
+      # popup walked in its sandbox on that sample, the sound kit made here.
+      - name: Render Suspender Ledger's promo
+        run: |
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/video-motion^...' --concurrency=100%
+          data="$RUNNER_TEMP/promo-data"
+          mkdir -p "$data"
+          for file in release sample; do
+            curl -fsSL -o "$data/$file.json" \
+              "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
+          done
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand"
+          mkdir -p "$RUNNER_TEMP/site-assets/clips"
+          cp "$RUNNER_TEMP/promo/video.mp4" "$RUNNER_TEMP/site-assets/clips/extensions.mp4"
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, which waits on an approval and can come weeks after this
+      # push. 30 days outlives that gap; its family keeps one. Once it is
+      # gone the landing draws the clip's title card until a push or a
+      # dispatch renders it again.
+      - name: Upload the clip
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-extensions-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets
+          if-no-files-found: error
+          retention-days: 30
