@@ -7,6 +7,7 @@
 import {
   artifactFamily,
   artifactLineage,
+  CACHE_FAMILIES,
   cacheFamily,
   cacheLineage,
   plan,
@@ -332,5 +333,18 @@ describe("cache families", () => {
     expect(cacheFamily("pnpm-Linux-1", [PNPM, NIX])).toBe(PNPM)
     expect(cacheFamily(`${NAR}-zgPN`, [PNPM, NIX])).toBe(NIX)
     expect(cacheFamily("buildkit-x", [PNPM, NIX])).toBeUndefined()
+  })
+
+  // The shape detsys-ts's cacheKey writes for nix-setup's two actions
+  // (#3381); the ETag at the end is a stand-in.
+  it("declares the keys the Determinate Systems actions write", () => {
+    for (const key of [
+      "determinatesystem-nix-installer-x86_64-linux-1a2b3c",
+      "determinatesystem-magic-nix-cache-X64-Linux-4d5e6f",
+    ]) {
+      expect(cacheFamily(key, CACHE_FAMILIES)?.label).toBe(
+        "Determinate Systems binaries"
+      )
+    }
   })
 })

@@ -1,0 +1,18 @@
+{
+  "id": "C1106",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    ".github/actions/nix-setup/action.yml",
+    "packages/eslint/src/retention.ts"
+  ],
+  "chose": "Take nix-installer-action v23's default of Determinate Nix (written out as `determinate: true`) rather than holding upstream Nix with `determinate: false`, which the action's README calls unsupported; and set magic-nix-cache-action's `use-flakehub: disabled`, since with determinate-nixd present it tries FlakeHub Cache first, fails to log in (this repo has no FlakeHub account) and leaves an error annotation on every nix job before falling back to the GitHub Actions cache it used before. The binaries both actions now cache under `determinatesystem-` get their own retention family, scope shared.",
+  "options": [
+    "Determinate Nix, FlakeHub off, the new cache keys declared (taken)",
+    "upstream Nix via `determinate: false`, as v14 installed",
+    "leave the bump out of the bucket"
+  ],
+  "gray": "Dependabot's bump silently changes which Nix distribution CI runs; #3381's own CI was green on it, and no check or earlier decision says which distribution the repo wants.",
+  "undo": "Set `determinate: false` on the installer (or revert the action pins to v14 and v8), drop `use-flakehub: disabled`, and remove the Determinate Systems binaries family.",
+  "refs": ["#3381"]
+}
