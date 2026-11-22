@@ -1,5 +1,11 @@
 # @some-ui/leetype-wasm
 
+## 0.0.16
+
+### Patch Changes
+
+- Update WASM source for leetype_wasm
+
 ## 0.0.15
 
 ### Patch Changes
