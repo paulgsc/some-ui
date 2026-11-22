@@ -1968,17 +1968,20 @@ function pictureRefusal(type: PictureType, bytes: Uint8Array): string | null {
   }
 }
 
-/** The bytes of a put, read up to the cap, or the refusal. */
-async function cappedBody(request: Request): Promise<Uint8Array | Response> {
+/** The bytes of a put, read up to `cap`, or the refusal. */
+async function cappedBody(
+  request: Request,
+  cap: number
+): Promise<Uint8Array | Response> {
   // The declared length refuses before a byte is read; the capped read below
   // covers a body that declares nothing or lies.
   const declared = request.headers.get("content-length")
-  if (declared !== null && Number(declared) > MAX_BODY_BYTES) {
+  if (declared !== null && Number(declared) > cap) {
     return refuse(413, "too_big")
   }
   let bytes: Uint8Array | null
   try {
-    bytes = await readCapped(request.body, MAX_BODY_BYTES)
+    bytes = await readCapped(request.body, cap)
   } catch {
     return refuse(422, "the body could not be read")
   }
@@ -2004,9 +2007,8 @@ async function bodyOf(
     if (mediaTypeOf(request.headers.get("content-type")) !== kind.picture) {
       return refuse(422, `the content type must be ${kind.picture}`)
     }
-    const bytes = await cappedBody(request)
+    const bytes = await cappedBody(request, PICTURE_MAX_BYTES)
     if (bytes instanceof Response) return bytes
-    if (bytes.byteLength > PICTURE_MAX_BYTES) return refuse(413, "too_big")
     const refusal = pictureRefusal(kind.picture, bytes)
     if (refusal !== null) return refuse(422, refusal)
     return {
@@ -2018,7 +2020,7 @@ async function bodyOf(
   if (!isJsonType(request.headers.get("content-type"))) {
     return refuse(422, "the content type must be application/json")
   }
-  const bytes = await cappedBody(request)
+  const bytes = await cappedBody(request, MAX_BODY_BYTES)
   if (bytes instanceof Response) return bytes
 
   const parsed = parseJson(bytes)

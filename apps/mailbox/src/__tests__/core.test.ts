@@ -3647,6 +3647,13 @@ function png(width = 1280, height = 720): Uint8Array {
   return bytes
 }
 
+/** An MP4 of `length` bytes: its `ftyp` box, then zeros. */
+function atLength(length: number): Uint8Array {
+  const bytes = new Uint8Array(length)
+  bytes.set(mp4())
+  return bytes
+}
+
 /** An MP4's head: its `ftyp` box. */
 function mp4(): Uint8Array {
   const bytes = new Uint8Array(64)
@@ -3728,7 +3735,7 @@ describe("the site's pictures (C1071, #3415)", () => {
         SERVER,
         {
           ...clip,
-          body: Uint8Array.from({ length: 786_433 }, (_, i) => mp4()[i] ?? 0),
+          body: atLength(786_433),
         },
         413,
         "too_big",
@@ -3742,6 +3749,15 @@ describe("the site's pictures (C1071, #3415)", () => {
     expect(
       (await send(d, "GET", "/v1/site-assets/items", { token: PAGES })).status
     ).toBe(200)
+    // At the bound exactly, a picture is taken.
+    expect(
+      (
+        await put(d, "site-assets", SERVER, {
+          ...clip,
+          body: atLength(786_432),
+        })
+      ).status
+    ).toBe(201)
   })
 
   it("the pages role reads the pictures and nothing else, and puts nothing", async () => {
