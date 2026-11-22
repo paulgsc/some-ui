@@ -5,6 +5,7 @@ export type {
   VisitEnding,
 } from "./lib/events"
 export {
+  ELSEWHERE,
   EVENT_FIELDS,
   EVENT_KINDS,
   SURFACES,
@@ -23,7 +24,12 @@ export type {
 } from "./lib/registry"
 export { findAffordance, findRegistryProblems } from "./lib/registry"
 export type { OpenPlace, PlaceOf, Places } from "./lib/places"
-export { createPlaces, stepPlace, watchPlaces } from "./lib/places"
+export {
+  createPlaces,
+  SCREEN_HANDOFF,
+  stepPlace,
+  watchPlaces,
+} from "./lib/places"
 export type { Offer, Visit, VisitPage } from "./lib/visit"
 export { createVisit, pageVisit, watchVisit } from "./lib/visit"
 export { EARLY_WAITING, engage, setEngagementSink } from "./lib/sink"

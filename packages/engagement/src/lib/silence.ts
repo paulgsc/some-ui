@@ -84,7 +84,16 @@ function isModuleOpens(m: unknown): m is ModuleOpens {
 }
 
 /** The aggregate's schema these modules are read from (`friction.ts`'s `FRICTION_SCHEMA`). */
-export const MODULE_OPENS_SCHEMA = "some-ui.friction/2"
+export const MODULE_OPENS_SCHEMA = "some-ui.friction/3"
+
+/**
+ * The versions whose `modules` read alike, so a render's `friction.json`
+ * kept under /2 reads.
+ */
+const MODULE_OPENS_READS: ReadonlyArray<unknown> = [
+  "some-ui.friction/2",
+  MODULE_OPENS_SCHEMA,
+]
 
 /**
  * The modules of a `friction.json` a walkthrough's render kept, or the index
@@ -99,7 +108,7 @@ export function readModuleOpens(
     typeof raw !== "object" ||
     raw === null ||
     !("schema" in raw) ||
-    raw.schema !== MODULE_OPENS_SCHEMA ||
+    !MODULE_OPENS_READS.includes(raw.schema) ||
     !("modules" in raw) ||
     !Array.isArray(raw.modules)
   )

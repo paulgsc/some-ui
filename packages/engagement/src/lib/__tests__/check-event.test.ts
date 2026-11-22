@@ -118,6 +118,42 @@ describe("checkEvent: what an event may carry", () => {
       expect(checked.problems.some((p) => p.includes(field))).toBe(true)
   })
 
+  it("takes a left's next: one of its places, or another screen of its pipeline (#3367)", () => {
+    const left = {
+      pipeline: "jobs",
+      affordance: "todays-pick",
+      surface: "apk",
+      at: AT,
+      kind: "left",
+      startedAt: EARLIER,
+      place: "read",
+    } as const
+    for (const next of [
+      "decide",
+      "today.today",
+      "todays-pick.read",
+      "elsewhere",
+    ]) {
+      const checked = checkEvent({ ...left, next }, PIPELINES)
+      expect(checked).toEqual({ ok: true, event: { ...left, next } })
+    }
+    expect(checkEvent(left, PIPELINES)).toEqual({ ok: true, event: left })
+    // Another kind's extra is no field of this one.
+    expect(
+      checkEvent({ ...base, kind: "taken", next: "decide" }, PIPELINES).ok
+    ).toBe(false)
+    for (const next of [
+      "today",
+      "topik.routine-lens",
+      "went back to Today",
+      ["decide"],
+    ]) {
+      const checked = checkEvent({ ...left, next }, PIPELINES)
+      expect(checked.ok).toBe(false)
+      if (!checked.ok) expect(checked.problems.join()).toContain("next:")
+    }
+  })
+
   it("refuses what is not an event at all", () => {
     expect(checkEvent(null, PIPELINES).ok).toBe(false)
     expect(checkEvent(["taken"], PIPELINES).ok).toBe(false)
@@ -131,6 +167,9 @@ describe("isEventShape: an event read back, with no registry", () => {
     expect(isEventShape({ ...taken, words: "said aloud" })).toBe(false)
     expect(isEventShape({ ...taken, affordance: "The lens" })).toBe(false)
     expect(isEventShape({ ...taken, surface: "ios" })).toBe(false)
+    const left = { ...base, kind: "left", startedAt: EARLIER, place: "quiz" }
+    expect(isEventShape(left)).toBe(true)
+    expect(isEventShape({ ...left, next: "today.today" })).toBe(true)
   })
 
   it("takes only instants that name a real time, as home does", () => {
