@@ -6,9 +6,10 @@
  * snips and `walk.json` are a function of the app's build and the sample, on
  * one machine.
  *
- * One runner, two stages (C860): the same steps and the same `walk.json`,
- * whether the app is a built web page in a sandbox (`./stage-sandbox`) or the
- * APK on an emulator (`./stage-apk`). A new stage is a new case of `StageSpec`
+ * One runner, three stages (C860, C1073): the same steps and the same
+ * `walk.json`, whether the app is a built web page in a sandbox
+ * (`./stage-sandbox`), the APK on an emulator (`./stage-apk`) or home's own
+ * Grafana (`./stage-grafana`). A new stage is a new case of `StageSpec`
  * and of `openStage`'s switch, never a second runner. What a step does is a
  * closed union too (`Action`), each case handled once here.
  */
@@ -23,6 +24,8 @@ import type { Microphone } from "./microphone"
 import { microphoneScript } from "./microphone"
 import type { ApkStageSpec } from "./stage-apk"
 import { openApkStage } from "./stage-apk"
+import type { GrafanaStageSpec } from "./stage-grafana"
+import { openGrafanaStage } from "./stage-grafana"
 import type { SandboxStageSpec } from "./stage-sandbox"
 import { openSandboxStage } from "./stage-sandbox"
 
@@ -36,6 +39,8 @@ type Action =
   | { readonly kind: "type"; readonly target: string; readonly text: string }
   /** Hold on the screen for a while of real time (a take recording), shown once it has passed. */
   | { readonly kind: "dwell"; readonly ms: number }
+  /** Go to another page of the stage's own origin, a path and query (a dashboard's next panel). */
+  | { readonly kind: "visit"; readonly path: string }
 
 /** One step: its action, then the screen it leaves, held `holdMs` on the walk's timeline. */
 export type Step = {
@@ -49,7 +54,7 @@ export type Step = {
 }
 
 /** Where the walk is played: a closed union, one case per stage. */
-type StageSpec = SandboxStageSpec | ApkStageSpec
+type StageSpec = SandboxStageSpec | ApkStageSpec | GrafanaStageSpec
 
 export type Walk = {
   readonly app: string
@@ -78,6 +83,8 @@ export type Stage = {
   readonly viewport: WalkViewport
   /** Where a point of the page (CSS px) is on the snip, in the viewport's units. */
   readonly place: (x: number, y: number) => { x: number; y: number }
+  /** The origin a `visit` goes to: the stage's own pages, never another's. */
+  readonly origin: string
   /** Opens the walk's first page, with `init` run before the page's own scripts. */
   readonly open: (init: ReadonlyArray<string>) => Promise<void>
   /** The page held still, ready to be taken. */
@@ -126,6 +133,23 @@ const TAP_LEAD_MS = 400
 /** How long a step may wait for what it is waiting for. */
 const UNTIL_MS = 20_000
 
+/** A made-up origin a visit's path is resolved against, to see it stays there. */
+const ANY_STAGE = "http://stage.invalid"
+
+/**
+ * A path of the stage's own origin, as the URL parser reads it: `//host`,
+ * `/\\host` and a tab or newline inside all leave the origin, so the parsed
+ * origin is what is checked, never the text.
+ */
+function onStage(path: string): boolean {
+  if (!path.startsWith("/")) return false
+  try {
+    return new URL(path, ANY_STAGE).origin === ANY_STAGE
+  } catch {
+    return false
+  }
+}
+
 /** Every reason `steps` can't be walked, before anything is opened. */
 export function stepProblems(
   steps: ReadonlyArray<Step>
@@ -141,6 +165,9 @@ export function stepProblems(
     if (step.action.kind === "dwell" && step.action.ms <= 0) {
       problems.push(`${step.label}: it dwells no time`)
     }
+    if (step.action.kind === "visit" && !onStage(step.action.path)) {
+      problems.push(`${step.label}: it visits a path of the stage, from /`)
+    }
   })
   return problems
 }
@@ -153,6 +180,9 @@ function openStage(spec: StageSpec, chrome: () => string): Promise<Stage> {
     }
     case "apk": {
       return openApkStage(spec)
+    }
+    case "grafana": {
+      return openGrafanaStage(spec, chrome())
     }
     default: {
       return assertNever(spec)
@@ -200,6 +230,16 @@ async function act(
       await page.waitForTimeout(action.ms)
       return null
     }
+    case "visit": {
+      // A path of the stage's own origin (`stepProblems` refused any other),
+      // resolved against the stage, never the page, which may have moved.
+      const to = new URL(action.path, stage.origin)
+      if (to.origin !== new URL(stage.origin).origin) {
+        throw new Error(`${label}: ${action.path} leaves the stage`)
+      }
+      await page.goto(to.toString())
+      return null
+    }
     default: {
       return assertNever(action)
     }
@@ -235,10 +275,18 @@ export async function runWalk(
   await mkdir(join(out, "snips"), { recursive: true })
   const stage = await openStage(walk.stage, chrome)
   try {
-    await stage.open(
-      walk.microphone === undefined ? [] : [microphoneScript(walk.microphone)]
-    )
-    await stage.settle()
+    // The first step's page: a failure opening it is that step's too.
+    const first = walk.steps[0]?.label ?? walk.app
+    try {
+      await stage.open(
+        walk.microphone === undefined ? [] : [microphoneScript(walk.microphone)]
+      )
+      await stage.settle()
+    } catch (e) {
+      await leftAt(stage, out, first)
+      const said = e instanceof Error ? e.message : String(e)
+      throw new Error(`${first}: ${said}`, { cause: e })
+    }
 
     const snips: Array<WalkFile["snips"][number]> = []
     const taps: Array<WalkFile["taps"][number]> = []
@@ -268,7 +316,11 @@ export async function runWalk(
         atMs += step.holdMs
       } catch (e) {
         await leftAt(stage, out, step.label)
-        throw e
+        // Every failure names its step, whichever part of it failed.
+        const said = e instanceof Error ? e.message : String(e)
+        throw said.startsWith(`${step.label}: `)
+          ? e
+          : new Error(`${step.label}: ${said}`, { cause: e })
       }
     }
     const made: WalkFile = {
