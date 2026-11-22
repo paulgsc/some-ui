@@ -210,7 +210,6 @@ const DEVICE_MODULES = [
   "apps/www/src/components/studio/template-preview.tsx",
   "apps/www/src/components/studio/cards-essay.tsx",
   "apps/www/src/components/studio/spoken.tsx",
-  "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
   "apps/www/src/components/device-sign-in-mark.tsx",
   "apps/www/src/components/pair-home-link.tsx",
@@ -384,9 +383,12 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the weekly call's template and its sample week, the model of its frame that pages a long scene (call-fit), the Rust Rounds essay's and the model of what its frame holds (essay-fit), both setting text as frame-text does, the phone's photographed cards the essay zooms into (screen), and the interview essay's, each with its sample essay, a cards essay's spoken card with its sample (spoken-card), with the opening's limits and word count, which the Rust Rounds essay and the spoken card both read (opening) and what each says over a take home couldn't make out (verdict), and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
-      modules: ["apps/www/src/lib/clipboard/**"],
-      profiles: [MOBILE_PROFILE],
-      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor. The web builds copy nothing through it",
+      modules: [
+        "apps/www/src/lib/clipboard/**",
+        "apps/www/src/components/copy-button.tsx",
+      ],
+      profiles: ["lan", MOBILE_PROFILE],
+      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor, and the home network's Asks page, whose receipt is copied for a session (C1096). The public site copies nothing",
     },
     {
       // Not viewer-storage.ts: main.tsx imports it first in every build that
