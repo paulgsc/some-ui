@@ -52,7 +52,8 @@ type Line = { action: string; branch: string; reason: string }
 function plan(head: string, env: Record<string, string> = {}): Array<Line> {
   const out = execFileSync(
     "bash",
-    [SCRIPT, "plan", head, "refs/remotes/origin/main"],
+    // As the workflow runs it: main just before the bucket merged.
+    [SCRIPT, "plan", head, "refs/remotes/origin/main^1"],
     // Only what the plan reads from its caller: a variable in the shell
     // running the tests must not change the result.
     {
@@ -124,6 +125,28 @@ describe("bucket-prune plan", () => {
       {
         action: "delete",
         branch: "claude/b",
+        reason: "its tip is a commit the bucket merged",
+      },
+    ])
+  })
+
+  it("reads a bucket GitHub merged with a merge commit, not a squash", () => {
+    git("checkout", "-q", "-b", "main")
+    const m1 = commit("m1")
+    git("checkout", "-q", "-b", "claude/a")
+    const a1 = commit("a1")
+    git("checkout", "-q", "-b", "claude/bucket-some-ui-1", m1)
+    git("merge", "-q", "--no-ff", "-m", "merge a", a1)
+    const head = git("rev-parse", "HEAD")
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--no-ff", "-m", "merge bucket 1", head)
+    // main now holds the whole bucket; the plan measures from before it.
+    remote("main", git("rev-parse", "HEAD"))
+    remote("claude/a", a1)
+    expect(plan(head)).toEqual([
+      {
+        action: "delete",
+        branch: "claude/a",
         reason: "its tip is a commit the bucket merged",
       },
     ])

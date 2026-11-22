@@ -29,6 +29,11 @@ shopt -s inherit_errexit
 # run goes red, naming it.
 #
 # Usage:
+# "Main" throughout is <main-rev>: main just before the bucket merged (the
+# merge commit's first parent, whether GitHub squashed or merged it). Main
+# as it is now will not do: after a merge commit it holds the whole bucket,
+# and every carried branch would read as already on main.
+#
 #   scripts/bucket-prune.sh plan <head-sha> <main-rev>
 #       prints one line per branch of the bucket's, tab-separated:
 #       delete|keep, branch, tip, reason. Reads branches from
@@ -101,6 +106,9 @@ plan() {
     fi
     # Not in the bucket: named only if it shares work the bucket took.
     shared=$(git merge-base "$tip" "$head") || continue
+    # The default branch, bots' and buckets' branches go unnamed: they
+    # move on by design (main itself, once it holds the merge).
+    never_deleted "$name" >/dev/null && continue
     if ! is_ancestor "$shared" "$base"; then
       printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "it has moved on since the bucket took it"
     fi
@@ -112,9 +120,9 @@ run() {
   local summary=${GITHUB_STEP_SUMMARY:-/dev/stdout}
   case $PR in '' | *[!0-9]*) echo "::error::PR must be a pull request number, got '$PR'" >&2; exit 1 ;; esac
 
-  local merged head_ref head_sha cross
-  read -r merged head_ref head_sha cross < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
-    --jq '"\(.merged) \(.head.ref) \(.head.sha) \(.head.repo.full_name != .base.repo.full_name)"')
+  local merged head_ref head_sha cross merge_sha
+  read -r merged head_ref head_sha cross merge_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
+    --jq '"\(.merged) \(.head.ref) \(.head.sha) \(.head.repo.full_name != .base.repo.full_name) \(.merge_commit_sha)"')
   if [ "$merged" != true ] || [ "$cross" != false ] || [[ $head_ref != claude/bucket-* ]]; then
     echo "::error::#$PR is not a merged bucket PR from this repository (merged=$merged, head=$head_ref)." >&2
     exit 1
@@ -142,7 +150,11 @@ run() {
   # A git error in the plan fails this step (errexit, inherited into the
   # substitution), as it fails `plan` run on its own.
   local planned
-  planned=$(plan "$head_sha" "refs/remotes/origin/$DEFAULT_BRANCH")
+  if ! is_ancestor "$merge_sha" "refs/remotes/origin/$DEFAULT_BRANCH"; then
+    echo "::error::#$PR's merge commit $merge_sha is not on $DEFAULT_BRANCH." >&2
+    exit 1
+  fi
+  planned=$(plan "$head_sha" "$merge_sha^1")
 
   local failed=0 action name tip why gone
   {
