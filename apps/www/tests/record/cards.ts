@@ -40,10 +40,12 @@
  * (`some-ui.snips-given/1`), the records of the snips the essay names by
  * each bundle's commit, with
  * each picture under it by its bundle name. `--clips <dir>` (`<key>.clips/`)
- * holds each Clips Library frame it names at `<clip>/<side>/<file>`. A screen
- * home didn't hand, a picture not the one its record names, or a frame that
- * isn't a PNG is refused before anything is drawn. With no screen it takes
- * neither.
+ * holds each Clips Library frame it names at `<clip>/<side>/<file>`, and
+ * `--pages <dir>` (`<key>.pages/`) holds `pages.json` (`some-ui.pages/1`)
+ * beside each public page's picture (`./pages.ts`). A screen
+ * home didn't hand, a picture not the one its record names, a page taken at
+ * another moment than the scene says, or a frame that isn't a PNG is
+ * refused before anything is drawn. With no screen it takes none of them.
  *
  * It takes the flags every home recorder takes (`CALL_OPTIONS`). Policy, the
  * step cache (which keeps each take by its words, voice and model) and
@@ -67,7 +69,10 @@ import {
   heardSpokenCard,
   isSpokenEssay,
   joinedTake,
+  PAGES_DIR,
+  pagesOf,
   parseCardsEssay,
+  parsePages,
   parseSnipsGiven,
   pngSize,
   QUIET,
@@ -84,6 +89,7 @@ import type {
   CutList,
   Handed,
   HeardSpokenCard,
+  Pages,
   PictureSize,
   Series,
   SnipsGiven,
@@ -118,6 +124,7 @@ const { values } = parseArgs({
     takes: { type: "string" },
     snips: { type: "string" },
     clips: { type: "string" },
+    pages: { type: "string" },
     ...CALL_OPTIONS,
   },
 })
@@ -331,22 +338,26 @@ type HandedScreens = {
   readonly handed: Handed
   readonly snipsDir: string | null
   readonly clipsDir: string | null
+  readonly pagesDir: string | null
 }
 
 /**
- * What home handed for `cut`'s screens of the app, checked before anything
- * is drawn: each snip's picture by its record's hash, bytes and size, each clip frame a PNG,
- * and every screen the essay names among them (`resolveScreens`). Null when
- * it names none.
+ * What home handed for `cut`'s screens, checked before anything is drawn:
+ * each snip's and page's picture by its record's hash, bytes and size, each
+ * clip frame a PNG, and every screen the essay names among them
+ * (`resolveScreens`). Null when it names none.
  */
 async function handedScreens(
   cut: CutList,
   snipsFlag: string | undefined,
-  clipsFlag: string | undefined
+  clipsFlag: string | undefined,
+  pagesFlag: string | undefined
 ): Promise<HandedScreens | null> {
   const snips = snipsOf(cut)
   const clips = clipFramesOf(cut)
-  if (snips.length === 0 && clips.length === 0) return null
+  const pages = pagesOf(cut)
+  if (snips.length === 0 && clips.length === 0 && pages.length === 0)
+    return null
   const problems: Array<string> = []
   if (snips.length > 0 && snipsFlag === undefined)
     problems.push(
@@ -356,8 +367,13 @@ async function handedScreens(
     problems.push(
       `it shows ${String(clips.length)} clip frames, and --clips names no folder home handed them in`
     )
+  if (pages.length > 0 && pagesFlag === undefined)
+    problems.push(
+      `it shows ${String(pages.length)} pages, and --pages names no folder home handed them in`
+    )
   if (problems.length > 0) fail(problems)
   const snipsDir = snipsFlag === undefined ? null : here(snipsFlag)
+  const pagesDir = pagesFlag === undefined ? null : here(pagesFlag)
   const clipsDir = clipsFlag === undefined ? null : here(clipsFlag)
   let given: SnipsGiven | null = null
   if (snipsDir !== null) {
@@ -400,11 +416,35 @@ async function handedScreens(
         problems.push(`${frame}: home handed a frame that isn't a PNG`)
       else frames.set(frame, size)
     }
+  let taken: Pages | null = null
+  if (pagesDir !== null) {
+    const read = await readFile(join(pagesDir, "pages.json"), "utf8").catch(
+      () => fail([`${pagesDir} holds no pages.json`])
+    )
+    const parsed = parsePages(jsonOr(read, `${pagesDir}/pages.json`))
+    if (!parsed.ok) fail([`${pagesDir}/pages.json:`, ...parsed.problems])
+    taken = parsed.value
+    for (const page of taken.pages) {
+      const { name } = page.image
+      const bytes = await readFile(join(pagesDir, name)).catch(() => null)
+      if (bytes === null) problems.push(`${name} is missing`)
+      else if (
+        bytes.length !== page.image.bytes ||
+        (await sha256Hex(new Uint8Array(bytes).buffer)) !== page.image.sha256
+      )
+        problems.push(`${name} is not the picture its record names`)
+      else {
+        const size = pngSize(bytes)
+        if (size?.width !== page.width || size.height !== page.height)
+          problems.push(`${name} isn't the size its record says`)
+      }
+    }
+  }
   if (problems.length > 0) fail(problems)
-  const handed = { snips: given, clips: frames }
+  const handed = { snips: given, clips: frames, pages: taken }
   const resolved = resolveScreens(cut, handed)
   if (!resolved.ok) fail(resolved.problems)
-  return { handed, snipsDir, clipsDir }
+  return { handed, snipsDir, clipsDir, pagesDir }
 }
 
 /**
@@ -437,6 +477,12 @@ async function withScreens(
       : [...(screens.handed.clips?.keys() ?? [])].map((frame) => ({
           from: join(screens.clipsDir ?? "", frame),
           to: join(root, CLIPS_DIR, frame),
+        }))),
+    ...(screens.pagesDir === null
+      ? []
+      : (screens.handed.pages?.pages ?? []).map(({ image }) => ({
+          from: join(screens.pagesDir ?? "", image.name),
+          to: join(root, PAGES_DIR, image.name),
         }))),
   ]
   for (const { from, to } of copies) {
@@ -473,7 +519,12 @@ async function main(): Promise<void> {
     ? cardsScenes(essay.value, heard, read.value.voices)
     : []
   refuseLong(scenes, policy)
-  const screens = await handedScreens(essay.value, values.snips, values.clips)
+  const screens = await handedScreens(
+    essay.value,
+    values.snips,
+    values.clips,
+    values.pages
+  )
   const root = join(here(values.out), key)
   await mkdir(root, { recursive: true })
   await writeFile(join(root, "essay.json"), written)

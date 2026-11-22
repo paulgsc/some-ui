@@ -1,0 +1,19 @@
+{
+  "id": "C1030",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "apps/www/tests/record/pages.ts",
+    "packages/video-render/src/page.ts",
+    "docs/snips.md"
+  ],
+  "chose": "A public page is taken in a browser that was never signed in, at one size (1440×900 at 2×, UTC, light, motion reduced, the snips' desktop size), refused when it doesn't load or lands elsewhere; its picture is named by host and path and its hash, leaving out the query; and how the pictures reach home is left open, since paulgsc/testing's guard refuses every picture.",
+  "options": [
+    "one fixed desktop size, logged out",
+    "a size per page, chosen by the essay",
+    "a full-page capture instead of the window"
+  ],
+  "gray": "No check or earlier decision says what size a page of someone else's site is taken at, or whether the window or the whole page is the picture. The snips' desktop size keeps the family alike; the window matches what a viewer sees on opening the address, and screen-zoom reaches anything below it only by a part the list names.",
+  "undo": "Take PAGE_VIEWPORT from the list per page, or screenshot with fullPage, and say so in docs/snips.md.",
+  "refs": ["#3387", "#2980"]
+}

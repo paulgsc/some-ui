@@ -9,7 +9,11 @@ import { defineConfig, loadEnv } from "vite"
 
 import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
-import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
+import {
+  buildAudiencePlugin,
+  MOBILE_PROFILE,
+  VIEWER_PROFILES,
+} from "./build.profiles.ts"
 import { moduleSideEffects } from "./build.treeshake.ts"
 import {
   describeTarget,
@@ -204,7 +208,8 @@ function pagesConnectPolicy(): Plugin {
     name: "pages-connect-policy",
     apply: "build",
     transformIndexHtml(): Array<HtmlTagDescriptor> {
-      if (process.env.SOME_UI_PROFILE !== "pages") return []
+      if (!VIEWER_PROFILES.includes(process.env.SOME_UI_PROFILE ?? ""))
+        return []
       return [
         {
           tag: "meta",

@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`, `flow`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`, `flow`, `bars`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -61,6 +61,9 @@ it is; each module's header does the same for its part:
 - `src/lib/flow.ts`: the flow card (CARDS5, #2470), design `flow-v1`: two
   to five steps joined by drawn arrows, side by side in the 16:9 video and
   stacked in the short.
+- `src/lib/bars.ts`: the chart card, design `bars-v1`: one to eight rows,
+  each a bar stacked from up to four parts in the dataviz palette's fixed
+  order, with a legend and an axis, a row at a time (#3387).
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 
