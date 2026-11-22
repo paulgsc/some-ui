@@ -3956,8 +3956,8 @@
             {
               "on": "2026-11-21",
               "change": "record:cards refuses a spoken essay's scene with no chapter line only when no scene before it opened a chapter: a chapter of several scenes says its chapter line at its first scene, and the rest say their narration alone (C1027). Before, every scene needed one.",
-              "why": "The owner ruled that chapter cards are silent, and a chapter spanning several cards was said and marked once per card. The owner agreed to C1027 on 2026-11-21, relayed by the coordinator of run some-ui#3361, for the open-question essay.",
-              "decision": "https://github.com/paulgsc/some-ui/issues/3387"
+              "why": "The owner ruled that chapter cards are silent, and a chapter spanning several cards was said and marked once per card. The owner agreed to C1027 on 2026-11-21 (\"yes, (b) for chapters\"), for the open-question essay.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3387#issuecomment-7071327345"
             }
           ]
         },
