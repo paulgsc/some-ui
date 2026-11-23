@@ -1159,8 +1159,9 @@ function interviewWeekRefusal(
  * An essay's script, named `<kind>-<week>.json` for the week it answers, and
  * `-r2` on for a correction: a Rust Rounds essay's (`rust-essay`,
  * `some-ui.rust-essay/1`) or an interview essay's (`interview-essay`,
- * `some-ui.interview-essay/1`, IW6), each by its `week.id` (`EssaySchema` and
- * `InterviewEssaySchema` in `@some-ui/video-render`).
+ * `some-ui.interview-essay/1`, IW6) or a Game Week essay's (`game-essay`,
+ * `some-ui.game-essay/1`, GWB), each by its `week.id` (`EssaySchema`,
+ * `InterviewEssaySchema` and `GameEssaySchema` in `@some-ui/video-render`).
  */
 const essayRefusal =
   (kind: string) =>
@@ -1353,6 +1354,16 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         name: /^interview-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
         schema: "some-ui.interview-essay/1",
         refuses: essayRefusal("interview-essay"),
+      },
+      // The script of the Game Week essay that answers a week's bites, for
+      // home to keep and render, as its siblings' (GWB, paulgsc/some-ui#2074;
+      // the essay replaces the render pack of the owner's Oct 26 decision 2,
+      // under D1; the folder waits on paulgsc/some-ui#3450).
+      {
+        folder: "brief",
+        name: /^game-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
+        schema: "some-ui.game-essay/1",
+        refuses: essayRefusal("game-essay"),
       },
     ],
   },

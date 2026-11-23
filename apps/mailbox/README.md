@@ -254,7 +254,10 @@ role, and it is the owner's call, so it is not built.
   be a kebab slug of at most 64 characters, once each in its list, and no question may be
   named `read`. `brief` also takes `interview-essay-YYYY-wNN.json` (MB2, IW6
   paulgsc/some-ui#2937), the script of the essay that answers a week of mock interview, named
-  as the Rust essay's is, with `-rN` for a correction.
+  as the Rust essay's is, with `-rN` for a correction. `brief` also takes `game-essay-YYYY-wNN.json` (MB2, GWB
+  paulgsc/some-ui#2074), the script of the Game Week essay that answers a week of game bites,
+  named as its siblings' are, with `-rN` for a correction; its folder waits on the owner's
+  answer to paulgsc/some-ui#3450.
   `site-assets` takes `server-YYYYMMDDTHHMMSSmmmZ.mp4` and `cores-YYYYMMDDTHHMMSSmmmZ.png`,
   named for the kind and when home put it, in UTC to the millisecond, so the greatest name of a
   kind is the newest.
@@ -863,6 +866,14 @@ how each was checked when this workspace landed.
   to `some-ui.interview-essay/1` and `essayRefusal("interview-essay")`, the Rust essay's check
   over its own name (an ISO week in `week.id`, the name's); `core.test.ts` pins that the routine
   puts one and home reads it, and that a misnamed essay and a non-week `week.id` are refused.
+  _Checked at the Game Week essay amendment (GWB, paulgsc/some-ui#2074: the owner's decision 2
+  of 2026-10-26, a routine-written folder for the render pack, which D1 of 2026-11-16 made the
+  essay's script; the folder waits on [paulgsc/some-ui#3450](https://github.com/paulgsc/some-ui/issues/3450)):_
+  `ROLES` is unchanged; `brief`'s `also` holds one kind more, the Game Week essay's script,
+  taken only as `game-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held to
+  `some-ui.game-essay/1` and `essayRefusal("game-essay")`; `core.test.ts` pins that the routine
+  puts one and home reads it and may not put it, and that a misnamed essay, a non-week
+  `week.id` and another schema are refused.
   _Checked at the snips amendment (SNIPS2, [paulgsc/some-ui#3116](https://github.com/paulgsc/some-ui/issues/3116);
   the owner's decision of 2026-11-17 on [paulgsc/some-ui#3114](https://github.com/paulgsc/some-ui/issues/3114),
   "the routine never sees images, only metadata", and the ruling of 2026-11-21 that home keeps
