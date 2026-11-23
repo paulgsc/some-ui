@@ -176,3 +176,12 @@ export const underWay = (board: Board): boolean => board.now !== null
 
 /** How often the page reads again while something is under way. */
 export const WHILE_UNDER_WAY_MS = 30_000
+
+/**
+ * When a page that shows home's work reads again on its own: every
+ * `WHILE_UNDER_WAY_MS` while something it shows is under way, never
+ * otherwise. Studio › Renders' board (`rendersAgainIn`) and an episode's
+ * files (`components/episode-files.tsx`) both read by it.
+ */
+export const againWhileUnderWay = (underWay: boolean): number | false =>
+  underWay ? WHILE_UNDER_WAY_MS : false

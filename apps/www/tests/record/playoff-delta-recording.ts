@@ -34,6 +34,7 @@ import { chapterSlides, hasCaptions } from "@some-ui/video-render"
 import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium } from "./command"
+import { playoffDeltaFacts } from "./thumbnail-facts"
 import {
   placeBed,
   POLICY_OPTIONS,
@@ -283,11 +284,7 @@ export async function recordPlayoffDelta(
       {
         preview: asked.preview,
         episode: "episode.mp4",
-        thumbnail: {
-          genre: "playoff-delta",
-          season: season.label,
-          week: kindOf(asked.week) === "legend" ? "legend" : asked.week,
-        },
+        thumbnail: playoffDeltaFacts(season.label, asked.week),
         marks: () => chapterSlides(scenes.filter((s) => s.kind === "chapter")),
         policy,
         browser,

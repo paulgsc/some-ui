@@ -13,6 +13,7 @@ import { join } from "node:path"
 import type { Browser } from "@playwright/test"
 import { fontFiles } from "@some-ui/video-motion/fonts"
 import type { Parsed } from "@some-ui/video-render"
+import { ASSET_FILE } from "@some-ui/video-render/assets"
 import {
   chooseTitleSize,
   THUMBNAIL,
@@ -24,9 +25,6 @@ import type {
   ThumbnailInput,
   TitleMeasure,
 } from "@some-ui/video-render/thumbnail"
-
-/** The thumbnail's file in an episode's folder, beside its video. */
-const THUMBNAIL_FILE = "thumbnail.png"
 
 /** video-motion's pinned Barlow Condensed, each as a `data:` URL. */
 async function thumbnailFonts(): Promise<ThumbnailFonts> {
@@ -95,7 +93,7 @@ export async function drawThumbnail(
  * fails leaves no thumbnail of an earlier run beside it.
  */
 export async function clearThumbnail(root: string): Promise<void> {
-  await rm(join(root, THUMBNAIL_FILE), { force: true })
+  await rm(join(root, ASSET_FILE.thumbnail), { force: true })
 }
 
 /**
@@ -108,7 +106,7 @@ export async function writeThumbnail(
   root: string,
   input: ThumbnailInput
 ): Promise<void> {
-  const file = join(root, THUMBNAIL_FILE)
+  const file = join(root, ASSET_FILE.thumbnail)
   await clearThumbnail(root)
   const drawn = await drawThumbnail(browser, input)
   if (!drawn.ok) {
