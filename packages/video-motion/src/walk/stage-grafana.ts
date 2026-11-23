@@ -94,6 +94,9 @@ async function interFaces(page: Page, origin: string): Promise<string> {
       const bytes = new Uint8Array(text.length)
       for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i)
       const face = new FontFace("Inter", bytes.buffer, { weight, style: "normal" })
+      // Made from bytes, a face is loaded at once or never: one that was
+      // not would leave the measure racing again, so it fails the walk.
+      if (face.status !== "loaded") throw new Error("Inter " + weight + " did not load")
       document.fonts.add(face)
     }
   })()`
