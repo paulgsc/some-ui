@@ -152,7 +152,8 @@ export const UsedBySchema = z
         ? read.data
         : {
             kind: "other",
-            key: `unread:${String(n)}`,
+            // No key home sends starts with NUL.
+            key: `\u0000unread:${String(n)}`,
             title: "",
             withdrawsOnDelete: null,
           }

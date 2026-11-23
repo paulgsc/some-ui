@@ -307,12 +307,22 @@ describe("home's word on what plays a take", () => {
     expect(UsedBySchema.parse(undefined)).toBeUndefined()
     // An entry it can't read is still a video that plays it.
     expect(UsedBySchema.parse([{ kind: "essay" }])).toEqual([
-      { kind: "other", key: "unread:0", title: "", withdrawsOnDelete: null },
+      {
+        kind: "other",
+        key: "\u0000unread:0",
+        title: "",
+        withdrawsOnDelete: null,
+      },
     ])
     // Present but not a list is still something home says plays it.
     for (const odd of [null, "odd", {}])
       expect(UsedBySchema.parse(odd)).toEqual([
-        { kind: "other", key: "unread:0", title: "", withdrawsOnDelete: null },
+        {
+          kind: "other",
+          key: "\u0000unread:0",
+          title: "",
+          withdrawsOnDelete: null,
+        },
       ])
   })
 

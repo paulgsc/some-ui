@@ -52,14 +52,19 @@ export function whatLoses(use: TakeUse): string {
       const { video } = use
       switch (video) {
         case "studio-video": {
-          return `${Name}, a Studio video home holds, has it. If home hasn't made it yet, it can't with this take gone.`
+          const holds =
+            quoted(use.title) === null
+              ? "A Studio video home holds has it."
+              : `${Name}, a Studio video home holds, has it.`
+          return `${holds} If home hasn't made it yet, it can't with this take gone.`
         }
-        case "essay": {
-          return `A version of ${name} you haven't given home yet has it. Any video home already made of it stays.`
+        case "feed-video": {
+          // Only a newer version, not made yet, plays it (server#1138).
+          return `A version of ${name} home hasn't made yet has it. The video home holds now stays, and home won't make that version with this take gone.`
         }
-        case "feed-video":
+        case "essay":
         case "other": {
-          return `${Name} on home plays it. Home keeps that video.`
+          return `${Name} on home has it. Home keeps that video.`
         }
         default: {
           return assertNever(video)
