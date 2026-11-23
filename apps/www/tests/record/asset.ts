@@ -19,7 +19,9 @@
  * no readable size fits) is one stderr line starting `asset refused: `
  * (`REFUSED_PREFIX`), which home's worker holds the ask on; any other exit 1
  * (a work folder in the episode's, a thumbnail already in `--out`, which it
- * never overwrites, or a crash) carries no such line, and home tries again.
+ * never overwrites, a flag this build doesn't know, which is how home asked
+ * and not the folder's answer, or a crash) carries no such line, and home
+ * tries again.
  */
 
 import { parseArgs } from "node:util"

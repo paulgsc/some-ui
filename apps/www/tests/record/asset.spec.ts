@@ -147,6 +147,9 @@ test("two makes into one work folder leave one whole thumbnail", async () => {
   ])
   expect([a.kind, b.kind].sort()).toEqual(["made", "notMade"])
   expect(await readdir(out)).toEqual(["thumbnail.png"])
+  const won = await readFile(madePath(out, "thumbnail"))
+  expect(won.subarray(1, 4).toString("ascii")).toBe("PNG")
+  expect(won.readUInt32BE(16)).toBe(1280)
 })
 
 test("refuses a folder it can't read, says why, and makes nothing", async () => {
@@ -157,7 +160,7 @@ test("refuses a folder it can't read, says why, and makes nothing", async () => 
   const made = await makeAsset(browser, "thumbnail", "cards-essay", bare, out)
   expect(made.kind).toBe("refused")
   if (made.kind === "refused")
-    expect(made.problems.join(" ")).toContain("cut-list.json")
+    expect(made.problems.join(" ")).toContain("cut-list.json isn't in")
   expect(await readdir(out)).toEqual([])
   const gone = await makeAsset(
     browser,

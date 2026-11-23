@@ -122,11 +122,22 @@ export async function keptJson(
   root: string,
   name: string
 ): Promise<Parsed<unknown>> {
+  let text: string
   try {
-    const value: unknown = JSON.parse(await readFile(join(root, name), "utf8"))
+    text = await readFile(join(root, name), "utf8")
+  } catch (error) {
+    // Only a file that isn't there is the folder's own answer; any other
+    // error of the drive (out of handles, I/O) is thrown, so home tries again.
+    const code = error instanceof Error && "code" in error ? error.code : null
+    if (code === "ENOENT" || code === "EISDIR" || code === "ENOTDIR")
+      return { ok: false, problems: [`${name} isn't in ${root}`] }
+    throw error
+  }
+  try {
+    const value: unknown = JSON.parse(text)
     return { ok: true, value }
   } catch {
-    return { ok: false, problems: [`${name} can't be read in ${root}`] }
+    return { ok: false, problems: [`${name} in ${root} isn't JSON`] }
   }
 }
 

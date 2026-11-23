@@ -92,7 +92,9 @@ const episode = (over: Partial<Episode>): Episode => ({
   ...over,
 })
 
-const showing = (shown: Episode): { rerender: (next: Episode) => void } => {
+const showing = (
+  shown: Episode
+): { client: QueryClient; rerender: (next: Episode) => void } => {
   const client = new QueryClient()
   const wrap = ({ children }: { children: ReactNode }): ReactNode => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -101,7 +103,10 @@ const showing = (shown: Episode): { rerender: (next: Episode) => void } => {
     wrapper: wrap,
   })
   return {
-    rerender: (next) => rerender(<EpisodeFiles feed="call" episode={next} />),
+    client,
+    rerender: (next: Episode): void => {
+      rerender(<EpisodeFiles feed="call" episode={next} />)
+    },
   }
 }
 
@@ -204,6 +209,14 @@ describe("EpisodeFiles", () => {
     expect(home.listed).toBe(1)
     await vi.advanceTimersByTimeAsync(WHILE_UNDER_WAY_MS)
     expect(home.listed).toBe(2)
+  })
+
+  it("leaves a drag down's read to the pull, never adding its own", async () => {
+    const { client } = showing(
+      episode({ assets: { thumbnail: step("thumbnail", "waiting") } })
+    )
+    await client.refetchQueries({ type: "active" })
+    expect(home.listed).toBe(0)
   })
 
   it("shows nothing of a file an older home neither serves nor lists", async () => {
