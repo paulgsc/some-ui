@@ -1,0 +1,21 @@
+{
+  "id": "C1420",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    ".github/workflows/public-pages-capture.yml",
+    "packages/eslint/src/retention.ts",
+    "packages/video-render/src/cut-list.ts",
+    "docs/snips.md"
+  ],
+  "chose": "Public pages reach home as the snips' third member, not a pipeline of their own: a dispatch-only Public Pages Capture uploads pages-bundle-<run> (pages.json, the pictures, SHA256SUMS) for one day, each scene names the run its picture came from as a snip names its commit, and home fetches the runs an essay names and keeps the pictures beside that essay until its video is made. The bundle is keyed by run, not commit, because a page is live and taken again is a new picture; so each run is its own retention lineage and no later capture supersedes one an essay still names.",
+  "options": [
+    "A sibling dispatch workflow keyed by run, with the run named per scene, one day, home holding the pictures for the essay's life (taken)",
+    "A pages job inside Snips Capture, its bundle keyed by commit like the snips' (a page isn't of a commit, and the capture would also photograph the whole app)",
+    "A longer artifact life (a week) so home may fetch late, at the cost of keeping pictures nothing reads",
+    "The run named once at the cut list's top rather than per scene (one essay could not show pages of two captures)"
+  ],
+  "gray": "Snips are deterministic, so their one-day bundle is a re-run away; a page is not, so how long its pictures live and where they are held after the day is a choice no earlier call settled (C1030 made the capture, C875 the snips' one-day path), and the owner would see it as an essay refused for a page gone.",
+  "undo": "Add a call that moves this one: name the bundle by commit or lengthen its retention-days in public-pages-capture.yml and its family in retention.ts, and drop run from the cut list's page reference.",
+  "refs": ["#3395", "#3387"]
+}

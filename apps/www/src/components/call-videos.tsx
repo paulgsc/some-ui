@@ -4,8 +4,8 @@
  * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
  * YouTube link is saved with the episode where its feed takes one
- * (`LINKED_FEEDS`), beside its chapters to copy into
- * the upload's description (SFEED4); once home's copy is let go (My data,
+ * (`LINKED_FEEDS`), beside the files its render left for the upload, its
+ * thumbnail and its chapters (`EpisodeFiles`, ASSETS-R; SFEED4); once home's copy is let go (My data,
  * `LET_GO_FEEDS`),
  * the link is how it is watched. Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
@@ -15,11 +15,9 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
-import { useQuery } from "@tanstack/react-query"
 
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
-  episodeChapters,
   episodeName,
   FEED_WORDS,
   feedVideos,
@@ -36,7 +34,7 @@ import type {
 import { homeBytes, listedEpisode, standing } from "@/lib/call-videos/model"
 import { isLinked } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
-import { CopyButton } from "@/components/copy-button"
+import { EpisodeFiles } from "@/components/episode-files"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
 import { VideoFetch } from "@/components/video-fetch"
 
@@ -189,36 +187,6 @@ const EpisodeRow = ({
   )
 }
 
-/** An episode's chapters with the way to copy them, once home has some. */
-const Chapters = ({
-  feed,
-  episodeKey,
-}: {
-  feed: Feed
-  episodeKey: string
-}): JSX.Element | null => {
-  // Read each time the page opens (the app's default is not to), so chapters
-  // home made since, or an answer home couldn't give before, show.
-  const { data } = useQuery({
-    queryKey: ["feeds", feed, "chapters", episodeKey],
-    queryFn: ({ signal }) =>
-      episodeChapters(feed, episodeKey, () => !signal.aborted),
-    refetchOnMount: "always",
-    retry: false,
-  })
-  if (data?.kind !== "lines") return null
-  return (
-    <section className="flex flex-col gap-2 rounded-lg border p-3">
-      <h2 className="text-sm font-medium">{WORDS.chapters}</h2>
-      <p className="text-muted-foreground text-xs">{WORDS.chaptersLine}</p>
-      <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs whitespace-pre-wrap">
-        {data.text}
-      </pre>
-      <CopyButton text={data.text} what={WORDS.chaptersWhat} />
-    </section>
-  )
-}
-
 /**
  * `feed`'s videos and their snapshot: the list is read on mount, and again on
  * a drag down while the caller is on screen.
@@ -356,7 +324,7 @@ export const EpisodeScreen = ({
                 startAt={startAt}
               />
             </ul>
-            <Chapters feed={feed} episodeKey={episode.key} />
+            <EpisodeFiles key={episode.key} feed={feed} episode={episode} />
           </>
         )}
       </EpisodesList>

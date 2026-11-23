@@ -6,25 +6,24 @@
  * load, so a video still coming in keeps coming when the screen is left.
  * Phone-only (`build.paths.ts`).
  */
+import type { AloneAsset } from "@some-ui/video-render/assets"
+
 import {
-  askDescription,
+  askAsset,
   askEpisodes,
   askVideoPart,
   sendLink,
+  sendProduce,
 } from "@/lib/home-link/call-videos"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
-import { shareUris } from "@/lib/share-files"
+import { shareFiles, shareUris } from "@/lib/share-files"
 
+import type { AssetRead, Produced, ShownAsset } from "./assets"
+import { readAsset, readProduced } from "./assets"
 import { DIR, videoFiles } from "./files"
-import type { ChaptersRead, Feed, ListState } from "./model"
-import {
-  FEEDS,
-  partOf,
-  readChapters,
-  readEpisodes,
-  readLinkSaved,
-} from "./model"
+import type { Feed, ListState } from "./model"
+import { FEEDS, partOf, readEpisodes, readLinkSaved } from "./model"
 import { PART_BYTES } from "./parts"
 import type { FeedVideos } from "./runtime"
 import { createFeedVideos } from "./runtime"
@@ -32,7 +31,7 @@ import { FEED_WORDS } from "./words"
 
 export type { Feed } from "./model"
 export type { FeedVideos } from "./runtime"
-export { episodeName, FEED_WORDS, VIDEOS_WORDS } from "./words"
+export { ASSET_WORDS, episodeName, FEED_WORDS, VIDEOS_WORDS } from "./words"
 
 /** A feed's runtime and its drag down, made together. */
 type Made = { readonly videos: FeedVideos; readonly refresher: Refresher }
@@ -105,19 +104,82 @@ export function videosRefresher(feed: Feed): Refresher {
 }
 
 /**
- * An episode's chapters (SFEED4, #2763), read once; home not answering reads
- * as none to show, since the page says where home is already. `wanted` stops
- * the asking once the page has gone. Never rejects.
+ * One of an episode's files beside its video (ASSETS-R; its chapters,
+ * SFEED4), read once; home not answering reads as nothing to show, since the
+ * page says where home is already. `wanted` stops the asking once the page
+ * has gone. Never rejects.
  */
-export async function episodeChapters(
+export async function episodeAsset<A extends ShownAsset>(
   feed: Feed,
   key: string,
+  asset: A,
   wanted: () => boolean
-): Promise<ChaptersRead> {
-  const asked = await askWhileBusy(() => askDescription(feed, key), wanted)
+): Promise<AssetRead<A>> {
+  const asked = await askWhileBusy(() => askAsset(feed, key, asset), wanted)
   return asked.kind === "answered"
-    ? readChapters(asked.answer)
-    : { kind: "none" }
+    ? readAsset(asset, asked.answer)
+    : { kind: "unreadable" }
+}
+
+/**
+ * Asks home, once, to make one of an episode's files it lacks, then reads
+ * `feed`'s list again once home took the ask, so the page says the file is
+ * coming; home not answering reads as `unreadable`, which the page says as
+ * not asked. Never rejects.
+ */
+export async function produceAsset(
+  feed: Feed,
+  key: string,
+  asset: AloneAsset
+): Promise<Produced> {
+  const asked = await sendProduce(feed, key, asset)
+  const produced: Produced =
+    asked.kind === "answered"
+      ? readProduced(asset, asked.answer)
+      : { kind: "unreadable" }
+  if (produced.kind === "step") void feedVideos(feed).open()
+  return produced
+}
+
+/**
+ * `feed`'s list read again, as a drag down reads it, for the episode page's
+ * read while a file is under way (`components/episode-files.tsx`); it keeps
+ * no answer of its own (`null`), since the list is the runtime's, which keeps
+ * the read asked last.
+ */
+export async function readListAgain(feed: Feed): Promise<null> {
+  await feedVideos(feed).open()
+  return null
+}
+
+/** The cache folder a thumbnail is shared from, apart from the videos'. */
+const THUMBNAIL_DIR = "episode-thumbnails"
+
+/** What handing a thumbnail to the share sheet came to. */
+export type ThumbnailSaved = "opened" | "failed" | "unavailable"
+
+/**
+ * Hands an episode's thumbnail (its PNG as base64) to the share sheet, so the
+ * owner keeps it where they choose before setting it in YouTube Studio
+ * (C1025): whether the sheet opened, didn't, or can't in this build, in
+ * which case the page withdraws Save. Never rejects.
+ */
+export async function saveThumbnail(
+  feed: Feed,
+  key: string,
+  base64: string
+): Promise<ThumbnailSaved> {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const shared = await shareFiles(THUMBNAIL_DIR, FEED_WORDS[feed].label(key), [
+    {
+      name: `${feed}-${key}-thumbnail.png`,
+      data: new Blob([bytes], { type: "image/png" }),
+    },
+  ])
+  if (shared.status === "succeeded") return "opened"
+  return shared.status === "failed" && shared.error.kind === "unavailable"
+    ? "unavailable"
+    : "failed"
 }
 
 /** Every feed's list, as one snapshot (`lib/episodes-feed`'s `FeedLists`). */

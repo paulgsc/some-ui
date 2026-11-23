@@ -8,7 +8,7 @@ import { queryOptions } from "@tanstack/react-query"
 
 import { phoneWasBusy } from "@/lib/phone-busy"
 
-import { underWay, WHILE_UNDER_WAY_MS } from "./model"
+import { againWhileUnderWay, underWay, WHILE_UNDER_WAY_MS } from "./model"
 import type { RendersOutcome } from "./read"
 import { readRenders, RendersUnanswered } from "./read"
 
@@ -30,9 +30,9 @@ export function rendersAgainIn(state: {
 }): number | false {
   if (state.error instanceof RendersUnanswered) return false
   if (phoneWasBusy(state.error)) return WHILE_UNDER_WAY_MS
-  return state.data?.kind === "read" && underWay(state.data.board)
-    ? WHILE_UNDER_WAY_MS
-    : false
+  return againWhileUnderWay(
+    state.data?.kind === "read" && underWay(state.data.board)
+  )
 }
 
 export const rendersQuery = queryOptions({

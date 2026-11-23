@@ -1,0 +1,22 @@
+{
+  "id": "C1300",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/assets.ts",
+    "apps/www/src/lib/call-videos/assets.ts",
+    "apps/www/src/components/episode-files.tsx",
+    "apps/www/tests/record/asset.ts",
+    "apps/www/tests/record/thumbnail-facts.ts"
+  ],
+  "chose": "An episode's rendered assets are one compile-time union, `video | thumbnail | description`, each made either by the render (the video, and the description, whose chapters sit at the scenes' real times) or alone from what the render kept (the thumbnail, from its genre's facts and `cut-list.json`). The episode page shows one block per file beside the video, with Save or Copy where home holds it and Generate where home can make it alone; Generate is one `POST /feeds/:feed/videos/:key/produce {asset}` shared with an essay's run again. `chapters` is not a fourth member: it is the description's one file today. A thumbnail made alone comes from `record:asset --asset thumbnail`, whose facts are read from the folder by the same per-genre functions the recorders now call.",
+  "options": [
+    "one asset union with a made-by table, one page block per member, one produce request (taken)",
+    "a thumbnail route, a thumbnail button and a thumbnail job of their own (the issue as filed, #3390 and #3391)",
+    "four members, chapters apart from the description",
+    "make a missing thumbnail by rendering the episode again"
+  ],
+  "gray": "The owner asked for a pattern for rendered assets and named the thumbnail; which files are members, which can be made without the video, and what the page offers for each are choices no check or earlier decision settles, and the owner sees them on the episode page.",
+  "undo": "Remove `EpisodeFiles` and restore the Chapters block on the episode page, drop `assets.ts` in video-render and www, `record:asset` and `thumbnail-facts.ts` (inlining each genre's facts back into its recorder), and the produce send.",
+  "refs": ["#3390", "#3391"]
+}

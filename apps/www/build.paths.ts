@@ -201,6 +201,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/call-videos.tsx",
+  "apps/www/src/components/episode-files.tsx",
   "apps/www/src/components/studio/episodes-by-week.tsx",
   "apps/www/src/components/studio/genre-thumbs.tsx",
   "apps/www/src/components/video-fetch.tsx",
@@ -359,6 +360,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["packages/video-render/src/pending.ts"],
       profiles: [MOBILE_PROFILE],
       why: "what the reflections routine files from Studio's takes (`toFile`, SFEED5): no build imports it since asks left the phone (C1097), and this keeps it off the web builds should one start to. The routine reads the same module from the repo, outside any build",
+    },
+    {
+      modules: ["packages/video-render/src/assets.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the files a render leaves beside an episode, and which home makes alone (ASSETS-R, C1300): only the Android app's episode page shows them and asks home for one (src/lib/call-videos, components/episode-files.tsx). home's worker reads the same module from the repo, outside any build, through `record:asset`",
     },
     {
       modules: ["packages/video-render/src/feedback.ts"],

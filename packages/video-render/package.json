@@ -18,6 +18,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./assets": "./src/assets.ts",
     "./cues": "./src/cues.ts",
     "./node": "./src/node.ts",
     "./snip": "./src/snip.ts",

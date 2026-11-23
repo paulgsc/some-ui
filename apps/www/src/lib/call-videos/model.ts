@@ -12,6 +12,8 @@ import { z } from "zod"
 import type { Feed } from "@/lib/feeds"
 import type { Asked } from "@/lib/home-link/while-busy"
 
+import { AssetsSchema } from "./assets"
+
 export { FEEDS, isFeed, type Feed } from "@/lib/feeds"
 
 const LinkSchema = z.object({
@@ -67,6 +69,12 @@ const EpisodeSchema = z.object({
    * part's video, else `null`; its own length for an episode of one (#906).
    */
   weekDurationMs: z.number().int().nonnegative().nullish(),
+  /**
+   * What each file a render leaves beside it is doing (ASSETS-R, C1300):
+   * there, not made, asked for, or tried and not made (`./assets`). Absent
+   * from a home before it, as is any file it doesn't say.
+   */
+  assets: AssetsSchema.optional(),
 })
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })
@@ -133,23 +141,6 @@ export function readPart(answer: HomeAnswer): PartRead {
   return answer.body === ""
     ? { kind: "unreadable" }
     : { kind: "bytes", base64: answer.body }
-}
-
-/**
- * An episode's chapters as home holds them (SFEED4): YouTube's chapter lines,
- * none (an episode with fewer than three, or rendered before chapters), or
- * an answer that doesn't read.
- */
-export type ChaptersRead =
-  | { readonly kind: "lines"; readonly text: string }
-  | { readonly kind: "none" }
-  | { readonly kind: "unreadable" }
-
-export function readChapters(answer: HomeAnswer): ChaptersRead {
-  if (answer.status === 404) return { kind: "none" }
-  if (answer.status !== 200) return { kind: "unreadable" }
-  const text = answer.body.trim()
-  return text === "" ? { kind: "none" } : { kind: "lines", text: `${text}\n` }
 }
 
 /** What saving a pasted link came to. */

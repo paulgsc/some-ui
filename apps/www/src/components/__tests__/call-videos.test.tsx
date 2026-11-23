@@ -13,12 +13,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as CallVideosModule from "@/lib/call-videos"
 import type { FeedVideos } from "@/lib/call-videos"
-import type {
-  ChaptersRead,
-  Episode,
-  Feed,
-  VideosState,
-} from "@/lib/call-videos/model"
+import type { AssetRead, ShownAsset } from "@/lib/call-videos/assets"
+import type { Episode, Feed, VideosState } from "@/lib/call-videos/model"
 import { INITIAL } from "@/lib/call-videos/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
@@ -67,7 +63,7 @@ vi.mock("@/lib/call-videos", async (importOriginal) => {
       what: "videos",
       checkAgain: (): Promise<void> => Promise.resolve(),
     }),
-    episodeChapters: (): Promise<ChaptersRead> =>
+    episodeAsset: (): Promise<AssetRead<ShownAsset>> =>
       Promise.resolve({ kind: "none" }),
   }
 })
