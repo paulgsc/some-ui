@@ -19,11 +19,21 @@ export type Said =
 export type AgainState =
   | { readonly kind: "idle" }
   /** `at`: when the tap was, Unix seconds, the run's start where home names none. */
-  | { readonly kind: "asking"; readonly at: number }
-  | { readonly kind: "said"; readonly said: Said; readonly at: number }
+  | { readonly kind: "asking"; readonly at: number; readonly target: Target }
+  | {
+      readonly kind: "said"
+      readonly said: Said
+      readonly at: number
+      readonly target: Target
+    }
 
 /** Which render a tap asks home to run again. */
-export type Target = { readonly feed: string; readonly key: string }
+export type Target = {
+  readonly feed: string
+  readonly key: string
+  /** When the failure it runs again was, as the board listed it. */
+  readonly stoppedAt?: number | undefined
+}
 
 export type AgainEvent =
   | { readonly type: "tap"; readonly target: Target; readonly at: number }
@@ -35,11 +45,13 @@ export const IDLE: AgainState = { kind: "idle" }
 export function step(state: AgainState, event: AgainEvent): AgainState {
   switch (event.type) {
     case "tap": {
-      return state.kind === "asking" ? state : { kind: "asking", at: event.at }
+      return state.kind === "asking"
+        ? state
+        : { kind: "asking", at: event.at, target: event.target }
     }
     case "answered": {
       return state.kind === "asking"
-        ? { kind: "said", said: event.said, at: state.at }
+        ? { kind: "said", said: event.said, at: state.at, target: state.target }
         : state
     }
     case "dismissed": {

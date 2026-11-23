@@ -289,7 +289,7 @@ const Again = ({
       onClick={() =>
         runtime.dispatch({
           type: "tap",
-          target: { feed: row.feed, key: row.key },
+          target: { feed: row.feed, key: row.key, stoppedAt: row.at },
         })
       }
     >
@@ -350,9 +350,12 @@ export const RunAgainPage = ({
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   const asked = stepOfSaid(state)
   const tappedAt = state.kind === "said" ? state.at : 0
+  const stoppedAt = state.kind === "said" ? state.target.stoppedAt : undefined
   /** Where the run is on `board`, once tapped. */
   const followed = (board: Board): Step | null =>
-    asked === null ? null : follow(asked, board, feed, rowKey, tappedAt)
+    asked === null
+      ? null
+      : follow(asked, board, feed, rowKey, tappedAt, stoppedAt)
   const query = {
     ...rendersQuery,
     // Followed while the run moves: the board is read every half minute
@@ -393,6 +396,11 @@ export const RunAgainPage = ({
                   {renderName({ feed, key: rowKey })}
                 </p>
                 <Conveyor step={step} now={readAt} />
+                {!settled(step) && readAt - tappedAt >= FOLLOW_FOR && (
+                  <p className="text-muted-foreground text-sm">
+                    {WORDS.stoppedFollowing}
+                  </p>
+                )}
                 {/* Stopped again: its steps and the tap once more. */}
                 {settled(step) &&
                   step.state !== "done" &&

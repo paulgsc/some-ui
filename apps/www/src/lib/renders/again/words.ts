@@ -342,6 +342,8 @@ export const AGAIN_WORDS = {
   unpaired: "Pair this phone with home to run it again.",
   gone: "This one isn't among those that couldn't finish any more: it's back in line, or made. Renders says which.",
   toRenders: "Back to Renders",
+  stoppedFollowing:
+    "This page stopped looking after two hours. Drag down to see where it is now.",
   /** Over Needs your attention, when it shows only an essay's takes. */
   only: (n: number, essay: string): string =>
     n === 1

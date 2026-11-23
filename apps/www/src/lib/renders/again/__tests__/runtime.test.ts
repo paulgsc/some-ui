@@ -31,12 +31,12 @@ const flush = (): Promise<void> =>
 describe("step", () => {
   it("takes one tap at a time, and an answer only while asking", () => {
     const asking = step(IDLE, { type: "tap", target: TARGET, at: 7 })
-    expect(asking).toEqual({ kind: "asking", at: 7 })
+    expect(asking).toEqual({ kind: "asking", at: 7, target: TARGET })
     expect(step(asking, { type: "tap", target: TARGET, at: 9 })).toBe(asking)
     const said = { kind: "away" } as const
     expect(step(IDLE, { type: "answered", said })).toBe(IDLE)
     const after = step(asking, { type: "answered", said })
-    expect(after).toEqual({ kind: "said", said, at: 7 })
+    expect(after).toEqual({ kind: "said", said, at: 7, target: TARGET })
     expect(step(after, { type: "dismissed" })).toBe(IDLE)
     expect(step(asking, { type: "dismissed" })).toBe(asking)
   })
@@ -79,10 +79,19 @@ describe("createAgain", () => {
     runtime.dispatch({ type: "tap", target: TARGET })
     expect(ask).toHaveBeenCalledTimes(1)
     expect(ask).toHaveBeenCalledWith(TARGET)
-    expect(runtime.getSnapshot()).toEqual({ kind: "asking", at: 42 })
+    expect(runtime.getSnapshot()).toEqual({
+      kind: "asking",
+      at: 42,
+      target: TARGET,
+    })
     asked.resolve(ASKED)
     await flush()
-    expect(runtime.getSnapshot()).toEqual({ kind: "said", said: ASKED, at: 42 })
+    expect(runtime.getSnapshot()).toEqual({
+      kind: "said",
+      said: ASKED,
+      at: 42,
+      target: TARGET,
+    })
     expect(readAgain).toHaveBeenCalledTimes(1)
   })
 

@@ -410,6 +410,17 @@ describe("follow", () => {
     expect(
       follow(unnamed, { ...empty, failed: [skewed] }, FEED, KEY, tapped)
     ).toMatchObject({ state: "failed" })
+    // The failure the tap ran again is never this run's, however close.
+    expect(
+      follow(
+        unnamed,
+        { ...empty, failed: [skewed] },
+        FEED,
+        KEY,
+        tapped,
+        skewed.at
+      )
+    ).toBe(unnamed)
   })
 
   it("never takes an earlier make of the episode for this run's", () => {

@@ -349,7 +349,8 @@ export function follow(
   board: Board,
   feed: string,
   key: string,
-  tappedAt: number
+  tappedAt: number,
+  stoppedAt?: number
 ): Step {
   const named = (row: { feed: string; key: string }): boolean =>
     row.feed === feed && row.key === key
@@ -373,7 +374,8 @@ export function follow(
   if (board.waiting.some(named))
     return step.state === "asked" ? { ...step, state: "waiting" } : step
   const failed = board.failed.find(named)
-  if (failed !== undefined && failed.at > from)
+  // Never the failure the tap ran again, however close the two clocks.
+  if (failed !== undefined && failed.at > from && failed.at !== stoppedAt)
     return {
       ...step,
       state: failed.reason === undefined ? "failed" : "blocked",
