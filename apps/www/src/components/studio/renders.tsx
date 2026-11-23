@@ -226,7 +226,7 @@ const ToAgain = ({ failed }: { failed: RenderFailed }): JSX.Element | null => {
   // Takes are counted as Run it again counts them, from the attention list.
   const attention = useQuery({
     ...againAttentionQuery,
-    enabled: stop.kind === "takes-unheard",
+    enabled: hasAudience("apk") && stop.kind === "takes-unheard",
   }).data
   const plan = planOf(stop, attention ?? { kind: "unread" }, failed.feed)
   // Each page is the phone's ("apk"), as this one is (A3).

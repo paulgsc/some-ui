@@ -405,6 +405,11 @@ describe("follow", () => {
       state: "failed",
       endedAt: tapped + 300,
     })
+    // A phone a minute ahead of home still sees the run's own end.
+    const skewed = { ...old, at: tapped - 60 }
+    expect(
+      follow(unnamed, { ...empty, failed: [skewed] }, FEED, KEY, tapped)
+    ).toMatchObject({ state: "failed" })
   })
 
   it("never takes an earlier make of the episode for this run's", () => {

@@ -320,6 +320,15 @@ export function readAgain(answer: HomeAnswer): AgainAnswer {
   return step === null ? { kind: "unreadable" } : { kind: "step", step }
 }
 
+/** How far apart home's clock and the phone's may be, in seconds. */
+export const SKEW = 120
+
+/**
+ * How long the page follows a run before it stops reading on its own: a
+ * render takes well under this, and a pull or Try again reads again.
+ */
+export const FOLLOW_FOR = 2 * 60 * 60
+
 /** Whether `step` is over: nothing more moves it without another tap. */
 export const settled = (step: Step): boolean =>
   step.state === "done" ||
@@ -345,8 +354,9 @@ export function follow(
   const named = (row: { feed: string; key: string }): boolean =>
     row.feed === feed && row.key === key
   // What the board lists from before the run started is the run it ran
-  // again; only what is later is this run's.
-  const from = step.askedAt ?? tappedAt
+  // again; only what is later is this run's. Without home's own time, the
+  // phone's tap is read with `SKEW` to spare, since the two clocks differ.
+  const from = step.askedAt ?? tappedAt - SKEW
   const done = board.done.find((row) => named(row) && row.at >= from)
   if (done !== undefined)
     return { ...step, state: "done", endedAt: step.endedAt ?? done.at }

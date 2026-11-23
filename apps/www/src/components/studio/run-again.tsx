@@ -37,6 +37,7 @@ import {
   createAgain,
   elsewhereLine,
   follow,
+  FOLLOW_FOR,
   planOf,
   runAgainHome,
   runLine,
@@ -266,10 +267,13 @@ const Again = ({
   row,
   runtime,
   state,
+  named = true,
 }: {
   row: RenderFailed
   runtime: Runtime
   state: AgainState
+  /** Whether it names the render: not under the conveyor, which does. */
+  named?: boolean
 }): JSX.Element => {
   const stop = stopOf(row)
   const attention = useQuery({
@@ -294,7 +298,7 @@ const Again = ({
   )
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm font-medium">{renderName(row)}</p>
+      {named && <p className="text-sm font-medium">{renderName(row)}</p>}
       <p className="text-sm">{stopLine(stop)}</p>
       {stop.kind === "policy" && (
         <p className="text-muted-foreground text-sm">{failedLine(row)}</p>
@@ -357,8 +361,10 @@ export const RunAgainPage = ({
       readonly state: Parameters<typeof rendersAgainIn>[0]
     }): number | false => {
       const data = read.state.data
-      const step = data?.kind === "read" ? followed(data.board) : asked
-      return step !== null && !settled(step)
+      // Only while home answers, and for at most FOLLOW_FOR after the tap.
+      const step = data?.kind === "read" ? followed(data.board) : null
+      const fresh = Date.now() / 1000 - tappedAt < FOLLOW_FOR
+      return step !== null && !settled(step) && fresh
         ? WHILE_UNDER_WAY_MS
         : rendersAgainIn(read.state)
     },
@@ -391,7 +397,12 @@ export const RunAgainPage = ({
                 {settled(step) &&
                   step.state !== "done" &&
                   row !== undefined && (
-                    <Again row={row} runtime={runtime} state={state} />
+                    <Again
+                      row={row}
+                      runtime={runtime}
+                      state={state}
+                      named={false}
+                    />
                   )}
               </div>
             )
