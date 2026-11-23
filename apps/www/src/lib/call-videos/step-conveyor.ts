@@ -67,6 +67,8 @@ const HELD: {
   "take-unheard": { aside: "counter", why: "missingInput" },
   "snip-missing": { aside: "counter", why: "missingInput" },
   "snip-gone": { aside: "counter", why: "missingInput" },
+  "page-missing": { aside: "counter", why: "missingInput" },
+  "page-gone": { aside: "counter", why: "missingInput" },
   "clip-missing": { aside: "counter", why: "missingInput" },
   recorder: { aside: "burnt", why: "couldNot" },
 }

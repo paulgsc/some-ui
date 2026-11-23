@@ -60,6 +60,8 @@ const STEP_REASONS = [
   "take-unheard",
   "snip-missing",
   "snip-gone",
+  "page-missing",
+  "page-gone",
   "clip-missing",
   "recorder",
 ] as const
