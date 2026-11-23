@@ -5,6 +5,7 @@
 import {
   ASK_SCHEMA,
   ASK_SCHEMA_V1,
+  ASK_SCHEMA_V2,
   askId,
   callOptionsOf,
   parseAskBody,
@@ -16,6 +17,9 @@ const ask = {
   kind: "decision",
   question: "Who answers between turns of a conversation?",
   whyYours: "It decides what the conversation is.",
+  waits: "claude",
+  call: "story",
+  unblocks: "the conversation's next stories",
   options: [
     { says: "A live model", unblocks: "TALK3, TALK6 and TALK9" },
     { says: "A scripted reply", unblocks: "TALK3 only" },
@@ -70,6 +74,8 @@ const checklist = {
   kind: "checklist",
   question: "Will you set up the key home's photographer reads Grafana with?",
   whyYours: "It is a credential only you can make.",
+  waits: "pipeline",
+  call: "environment",
   steps: [
     {
       says: "A Grafana key",
@@ -85,21 +91,78 @@ const checklist = {
   unblocks: "the server card's clip on the public site",
 }
 
-describe("an ask of each kind (C1095)", () => {
-  it("reads a decision filed before kinds as a decision", () => {
-    const { kind: _kind, ...v1 } = { ...ask, schema: ASK_SCHEMA_V1 }
-    const parsed = parseAskBody(body(v1))
+/** `ask` as `/2` filed it: no shared part. */
+const {
+  waits: _w,
+  call: _c,
+  unblocks: _u,
+  ...decisionV2
+} = {
+  ...ask,
+  schema: ASK_SCHEMA_V2,
+}
+/** `ask` as `/1` filed it: no kind either. */
+const { kind: _kind, ...decisionV1 } = { ...decisionV2, schema: ASK_SCHEMA_V1 }
+/** `checklist` as `/2` filed it: its own `unblocks`, no waits or call. */
+const {
+  waits: _cw,
+  call: _cc,
+  ...checklistV2
+} = {
+  ...checklist,
+  schema: ASK_SCHEMA_V2,
+}
+
+describe("an ask filed before /3 (C1200)", () => {
+  it("reads a /1 decision as a /3 one, with what it never said as null", () => {
+    const parsed = parseAskBody(body(decisionV1))
     expect(parsed.ok && parsed.value).toEqual({
       ...ask,
-      schema: ASK_SCHEMA,
-      kind: "decision",
+      waits: null,
+      call: null,
+      unblocks: null,
     })
   })
 
-  it("refuses a /1 block that names a kind, since /1 had none", () => {
-    expect(parseAskBody(body({ ...ask, schema: ASK_SCHEMA_V1 })).ok).toBe(false)
+  it("reads a /2 decision and checklist as /3, keeping a checklist's unblocks", () => {
+    const decided = parseAskBody(body(decisionV2))
+    expect(decided.ok && decided.value).toEqual({
+      ...ask,
+      waits: null,
+      call: null,
+      unblocks: null,
+    })
+    const listed = parseAskBody(body(checklistV2))
+    expect(listed.ok && listed.value).toEqual({
+      ...checklist,
+      refs: [],
+      waits: null,
+      call: null,
+    })
   })
 
+  it("refuses a /1 block that names a kind, and a /2 one with the shared part", () => {
+    expect(parseAskBody(body({ ...decisionV1, kind: "decision" })).ok).toBe(
+      false
+    )
+    expect(parseAskBody(body({ ...decisionV2, waits: "claude" })).ok).toBe(
+      false
+    )
+  })
+})
+
+describe("an ask's shared part (C1200)", () => {
+  it("is required of /3, from the owner's lists alone", () => {
+    const { waits: _x, ...noWaits } = ask
+    expect(parseAskBody(body(noWaits)).ok).toBe(false)
+    expect(parseAskBody(body({ ...ask, call: "vibes" })).ok).toBe(false)
+    expect(parseAskBody(body({ ...ask, waits: "owner" })).ok).toBe(false)
+    const { unblocks: _y, ...noUnblocks } = checklist
+    expect(parseAskBody(body(noUnblocks)).ok).toBe(false)
+  })
+})
+
+describe("an ask of each kind (C1095)", () => {
   it("reads a checklist's steps in order", () => {
     const parsed = parseAskBody(body(checklist))
     expect(parsed.ok && parsed.value.kind).toBe("checklist")
@@ -123,8 +186,7 @@ describe("an ask of each kind (C1095)", () => {
   })
 
   it("says why a /1 block is refused, as before kinds", () => {
-    const { kind: _kind, ...v1 } = { ...ask, schema: ASK_SCHEMA_V1 }
-    expect(parseAskBody(body({ ...v1, recommended: 5 }))).toEqual({
+    expect(parseAskBody(body({ ...decisionV1, recommended: 5 }))).toEqual({
       ok: false,
       problems: ["recommended: it recommends an option it doesn't list"],
     })

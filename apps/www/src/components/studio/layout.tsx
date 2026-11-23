@@ -6,16 +6,14 @@
  * `lib/studio-index/words`'.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Notice } from "@some-ui/shared"
 import type { QueryKey, UseQueryOptions } from "@tanstack/react-query"
-import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { phoneWasBusy } from "@/lib/phone-busy"
-import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
 import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import type { ReadWords } from "@/components/read-list"
+import { ReadList as SharedReadList } from "@/components/read-list"
 
 /**
  * The quiet way back to a kind's list, or to the index: Studio's pages are
@@ -90,63 +88,23 @@ export const Part = ({
   </section>
 )
 
-/** What a list read from elsewhere says while it reads, can't, or can't again. */
-type ReadWords = {
-  readonly reading: string
-  readonly away: string
-  readonly stale: string
-  /** What it says when this phone stayed busy with home (#3155), if it can be. */
-  readonly busy?: string
-  readonly busyStale?: string
-}
-
-/**
- * A list read from elsewhere (Asks, Clips), once read, or what stands in for
- * it until then. A refresh that failed keeps what was read before, and says so.
- */
-export function ReadList<T, K extends QueryKey>({
+/** A list read from elsewhere, in Studio's words (`ReadList`). */
+export const ReadList = <T, K extends QueryKey>({
   query,
   words,
   children,
 }: {
   query: UseQueryOptions<T, Error, T, K>
-  words: ReadWords
+  words: Omit<ReadWords, "tryAgain">
   children: (value: T) => ReactNode
-}): JSX.Element {
-  return matchQueryOutcome(queryOutcome(useQuery(query)), {
-    pending: () => (
-      <p className="text-muted-foreground text-sm">{words.reading}</p>
-    ),
-    failed: (error, retry) => (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm">
-          {(phoneWasBusy(error) ? words.busy : undefined) ?? words.away}
-        </p>
-        <Button size="sm" variant="outline" onClick={retry}>
-          {STUDIO_INDEX_WORDS.tryAgain}
-        </Button>
-      </div>
-    ),
-    ready: (value, refreshError) => (
-      <>
-        {refreshError !== undefined && (
-          <Notice
-            tone="warning"
-            dismissible
-            action={{
-              label: STUDIO_INDEX_WORDS.tryAgain,
-              onClick: refreshError.retry,
-            }}
-          >
-            {(phoneWasBusy(refreshError.error) ? words.busyStale : undefined) ??
-              words.stale}
-          </Notice>
-        )}
-        {children(value)}
-      </>
-    ),
-  })
-}
+}): JSX.Element => (
+  <SharedReadList
+    query={query}
+    words={{ ...words, tryAgain: STUDIO_INDEX_WORDS.tryAgain }}
+  >
+    {children}
+  </SharedReadList>
+)
 
 /** The way out to where an item lives, on GitHub. */
 export const OutLink = ({

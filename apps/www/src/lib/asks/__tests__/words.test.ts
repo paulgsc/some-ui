@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * The Asks page says everything in the owner's terms (CLAUDE.md, "State in
+ * The Asks pages say everything in the owner's terms (CLAUDE.md, "State in
  * the person's terms").
  */
 import { describe, expect, it } from "vitest"
@@ -19,16 +19,29 @@ function strings(value: unknown): Array<string> {
 const all = [
   ...strings(ASKS_WORDS),
   ASKS_WORDS.unblocks("the next story"),
-  ASKS_WORDS.whenDone("the clip on the public site"),
+  ASKS_WORDS.since("2026-11-20T09:00:00Z", null),
+  ASKS_WORDS.since("2026-11-20T09:00:00Z", "2026-11-22T09:00:00Z"),
+  ...[1, 2].map(ASKS_WORDS.unreadHere),
+  ...[1, 2].flatMap((n) => [
+    ASKS_WORDS.inCell.decision(n),
+    ASKS_WORDS.inCell.checklist(n),
+  ]),
   ASKS_WORDS.step(0, 3),
   ASKS_WORDS.where("Grafana on home"),
   ASKS_WORDS.stepsDone(1, 3),
   ...[1, 2].map(ASKS_WORDS.receiptHolds),
 ]
 
-describe("the Asks page's words", () => {
+describe("the Asks pages' words", () => {
   it("never name the machinery", () => {
     expect(all.filter((line) => MACHINERY.test(line))).toEqual([])
+  })
+
+  it("say since when an ask waits, or when it was answered", () => {
+    expect(ASKS_WORDS.since("2026-11-20T09:00:00Z", null)).toBe("Nov 20")
+    expect(
+      ASKS_WORDS.since("2026-11-20T09:00:00Z", "2026-11-22T09:00:00Z")
+    ).toBe("Answered Nov 22")
   })
 
   it("count steps from one", () => {
