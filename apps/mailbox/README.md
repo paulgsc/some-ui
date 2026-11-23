@@ -132,7 +132,8 @@ The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`
 `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup`, `picked`, `snips` and `site-assets`. `brief` also holds the
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
 routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
-(`rust-essay-…`), and the interview week's routine's weeks (`interview-week-…`), which home finds in the listing it makes of
+(`rust-essay-…`), the interview week's routine's weeks (`interview-week-…`) and their essays
+(`interview-essay-…`), and the Game Week essays (`game-essay-…`), which home finds in the listing it makes of
 `brief` every pass anyway, so they cost no listing of their own (MI6). Home's record of each
 final week goes back the same way, as the Rust Rounds routine's index in `index` (below), a
 folder home already puts to: no new folder and no new listing.
@@ -271,7 +272,7 @@ role, and it is the owner's call, so it is not built.
   to fit (C1072).
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1`, `some-ui.take-picked/1` or `some-ui.snips/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a snip list, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1`, `some-ui.take-picked/1` or `some-ui.snips/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script, `some-ui.game-essay/1` for a Game Week essay's). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a snip list, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -733,7 +734,9 @@ how each was checked when this workspace landed.
   IW4, [paulgsc/some-ui#2935](https://github.com/paulgsc/some-ui/issues/2935): "brief rules
   for `brief/interview-week-<id>.json` next to `rustWeekRefusal`"), and an interview essay's
   script (`interview-essay-…`, `essayRefusal`; IW6,
-  [paulgsc/some-ui#2937](https://github.com/paulgsc/some-ui/issues/2937)). Every request passes `authenticate` and then one of `serve`'s
+  [paulgsc/some-ui#2937](https://github.com/paulgsc/some-ui/issues/2937)), and a Game Week
+  essay's script (`game-essay-…`, `essayRefusal`; GWB, the owner's answer on
+  [paulgsc/some-ui#3450](https://github.com/paulgsc/some-ui/issues/3450)). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store, and
   `GET /v1/bell` passes `authenticate` and `listen`'s `grant.listen` check before anything
   reaches the bell.
@@ -749,7 +752,7 @@ how each was checked when this workspace landed.
   `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
-  loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` or `interview-essay` name or
+  loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay`, `interview-essay` or `game-essay` name or
   `essayRefusal`, loosens the `pickup` name or `pickupRefusal` (a key beyond `schema`,
   `note`, `ref`, `heard`, `labels`, `readyAt` and `seq`, a `comment` included, against `C296`),
   loosens the `picked` name or `pickedRefusal` (a key beyond `schema`, `note`, `seq` and
@@ -866,14 +869,6 @@ how each was checked when this workspace landed.
   to `some-ui.interview-essay/1` and `essayRefusal("interview-essay")`, the Rust essay's check
   over its own name (an ISO week in `week.id`, the name's); `core.test.ts` pins that the routine
   puts one and home reads it, and that a misnamed essay and a non-week `week.id` are refused.
-  _Checked at the Game Week essay amendment (GWB, paulgsc/some-ui#2074: the owner's decision 2
-  of 2026-10-26, a routine-written folder for the render pack, which D1 of 2026-11-16 made the
-  essay's script; the folder waits on [paulgsc/some-ui#3450](https://github.com/paulgsc/some-ui/issues/3450)):_
-  `ROLES` is unchanged; `brief`'s `also` holds one kind more, the Game Week essay's script,
-  taken only as `game-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held to
-  `some-ui.game-essay/1` and `essayRefusal("game-essay")`; `core.test.ts` pins that the routine
-  puts one and home reads it and may not put it, and that a misnamed essay, a non-week
-  `week.id` and another schema are refused.
   _Checked at the snips amendment (SNIPS2, [paulgsc/some-ui#3116](https://github.com/paulgsc/some-ui/issues/3116);
   the owner's decision of 2026-11-17 on [paulgsc/some-ui#3114](https://github.com/paulgsc/some-ui/issues/3114),
   "the routine never sees images, only metadata", and the ruling of 2026-11-21 that home keeps
@@ -898,6 +893,15 @@ how each was checked when this workspace landed.
   (`PICTURE_MAX_BYTES`, refused before more is read), is refused and one at the cap is taken;
   that home reads none back; that no role archives a picture, lists it as archived or asks it
   back; and that the pages role's bell is `403`.
+  _Checked at the Game Week essay amendment (GWB, paulgsc/some-ui#2074: the owner's decision 2
+  of 2026-10-26, a routine-written folder for the render pack, which D1 of 2026-11-16 made the
+  essay's script; whether it rides `brief` is the owner's, on
+  [paulgsc/some-ui#3450](https://github.com/paulgsc/some-ui/issues/3450)):_ `ROLES` is
+  unchanged; `brief`'s `also` holds six kinds, the sixth the Game Week essay's script, taken
+  only as `game-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held to
+  `some-ui.game-essay/1` and `essayRefusal("game-essay")` (an ISO week in `week.id`, the
+  name's); `core.test.ts` pins that the routine puts one and home reads it and may not put it,
+  and that a misnamed essay, a non-week `week.id` and another schema are refused.
 
 **MB3: No token reaches the repo or a log.**
 
