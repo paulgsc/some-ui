@@ -3,7 +3,7 @@
  * (`./asset-make`): a thumbnail made from an episode's folder is written only
  * to the work folder, whole, the same bytes each time; one already there is
  * never overwritten; a folder it can't read leaves nothing; and each genre's
- * folder name its recorder writes reads back as the same facts.
+ * folder, named by the key home puts it in place under, reads as its facts.
  *
  * Needs only the browser. The episode is the sample cards essay
  * (`nixos-upgrade`), as a cards essay's folder on home keeps it: its cut list
@@ -29,9 +29,9 @@ import { expect, test } from "@playwright/test"
 import { madePath, makeAsset } from "./asset-make"
 import { launchChromium } from "./command"
 import {
-  callPartFolder,
+  callPartOf,
   FACTS_FROM_FOLDER,
-  playoffDeltaFolder,
+  playoffDeltaKeyOf,
 } from "./thumbnail-facts"
 
 const SAMPLE = resolve(
@@ -161,14 +161,22 @@ test("makes nothing from a folder it can't read, and says why", async () => {
   expect(made.ok).toBe(false)
   if (!made.ok) expect(made.problems.join(" ")).toContain("cut-list.json")
   expect(await readdir(out)).toEqual([])
+  const gone = await makeAsset(
+    browser,
+    "thumbnail",
+    "cards-essay",
+    join(base, "renders", "never-there-2026-11-14"),
+    out
+  )
+  expect(gone.ok).toBe(false)
   const wrong = await makeAsset(browser, "thumbnail", "report", root, out)
   expect(wrong.ok).toBe(false)
   expect(await readdir(out)).toEqual([])
 })
 
-test("reads each genre's folder name, as its recorder writes it, back as its facts", async () => {
-  const pd = join(base, "renders", playoffDeltaFolder("2025", 7))
-  const legend = join(base, "renders", playoffDeltaFolder("2025", 0))
+test("reads each genre's folder, under the key home puts it in place by, as its facts", async () => {
+  const pd = join(base, "renders", "2025-SF-07")
+  const legend = join(base, "renders", "2025-SF-00")
   expect(await FACTS_FROM_FOLDER["playoff-delta"](pd)).toEqual({
     ok: true,
     value: { genre: "playoff-delta", season: "2025", week: 7 },
@@ -177,7 +185,11 @@ test("reads each genre's folder name, as its recorder writes it, back as its fac
     ok: true,
     value: { genre: "playoff-delta", season: "2025", week: "legend" },
   })
-  expect(callPartFolder(2)).toBe("part-2")
+  expect(playoffDeltaKeyOf("2025-SF-7")).toBeNull()
+  expect(playoffDeltaKeyOf("SF-07")).toBeNull()
+  expect(callPartOf("2026-11-06")).toBe(1)
+  expect(callPartOf("2026-11-06-p2")).toBe(2)
+  expect(callPartOf("part-2")).toBeNull()
   expect(await FACTS_FROM_FOLDER["cards-essay"](root)).toEqual({
     ok: true,
     value: {

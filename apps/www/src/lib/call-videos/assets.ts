@@ -45,7 +45,9 @@ export type StepState = (typeof STEP_STATES)[number]
 /**
  * Why home holds a step (`reason`): its render policy refused the video, a
  * cards essay's input isn't on home, there's no video yet, or the recorder
- * made nothing. A reason this phone doesn't know reads as made nothing.
+ * made nothing. A step reads by its reason, failed or held alike; with a
+ * reason this phone doesn't know, a failed step reads as made nothing and a
+ * held one as held until something changes (`./step-conveyor`).
  */
 export const STEP_REASONS = [
   "too-long",

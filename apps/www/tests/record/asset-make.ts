@@ -53,10 +53,20 @@ const partialPath = (out: string, asset: AloneAsset): string =>
   )
 
 /** Whether `inner` is `outer` or below it, both as the drive resolves them. */
-async function within(inner: string, outer: string): Promise<boolean> {
-  const [i, o] = await Promise.all([realpath(inner), realpath(outer)])
+async function within(inner: string, outer: string): Promise<Parsed<boolean>> {
+  const resolved = async (path: string): Promise<string | null> =>
+    realpath(path).catch(() => null)
+  const [i, o] = await Promise.all([resolved(inner), resolved(outer)])
+  if (i === null || o === null)
+    return {
+      ok: false,
+      problems: [`${i === null ? inner : outer} isn't a folder that is there`],
+    }
   const rel = relative(o, i)
-  return rel === "" || !(rel.startsWith("..") || isAbsolute(rel))
+  return {
+    ok: true,
+    value: rel === "" || !(rel.startsWith("..") || isAbsolute(rel)),
+  }
 }
 
 const exists = async (path: string): Promise<boolean> =>
@@ -96,7 +106,9 @@ export async function makeAsset(
   root: string,
   out: string
 ): Promise<Parsed<string>> {
-  if (await within(out, root))
+  const inRoot = await within(out, root)
+  if (!inRoot.ok) return inRoot
+  if (inRoot.value)
     return {
       ok: false,
       problems: [`${out} is in the episode's folder, which is only read`],

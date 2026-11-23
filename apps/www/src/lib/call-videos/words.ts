@@ -294,7 +294,7 @@ export const ASSET_WORDS = {
     alt: "The episode's thumbnail",
     missing:
       "Home made none with this episode. It can make one now from the episode, and the video stays as it is.",
-    line: "Home makes it from the episode, after what it's making now, and keeps it with the episode.",
+    line: "Home makes it from the episode, one thing at a time, and keeps it with the episode.",
   },
   description: {
     heading: "Its chapters",

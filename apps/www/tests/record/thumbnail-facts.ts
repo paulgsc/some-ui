@@ -8,11 +8,17 @@
  *
  * What each genre's folder keeps, and its facts are read from:
  *
- * - `call`: `week.json`, and the folder `part-<k>` for a week of parts;
+ * - `call`: `week.json`, and which part from the folder's name, the
+ *   episode's key on home (`<day>`, `<day>-p<k>`);
  * - `rust-essay`, `interview-essay`, `cards-essay`: `essay.json`, and for a
  *   cards essay the folder's name, its key;
  * - `report`: `report.json`;
- * - `playoff-delta`: the folder's name, `<season>-week-NN`.
+ * - `playoff-delta`: the folder's name, the episode's key on home
+ *   (`<season>-<TEAM>-<NN>`).
+ *
+ * A folder is read under the name home's worker gives it once the episode is
+ * in place (paulgsc/server `infra/render/render-calls.sh`), which is its key,
+ * not the name the recorder wrote it under.
  */
 
 import { readFile } from "node:fs/promises"
@@ -86,18 +92,30 @@ export const playoffDeltaFacts = (
   week: kindOf(week) === "legend" ? "legend" : week,
 })
 
-/** A Playoff Delta episode's folder: `<season>-week-NN`, as its recorder names it. */
-export const playoffDeltaFolder = (season: string, week: number): string =>
-  `${season}-week-${String(week).padStart(2, "0")}`
+/**
+ * Which part of its week a call's episode is, from its key on home
+ * (`<day>`, part 1; `<day>-p<k>`, part k: paulgsc/some-ui#2918), which names
+ * its folder once home's worker has put it in place; or `null`.
+ */
+export function callPartOf(key: string): number | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return 1
+  const later = /^\d{4}-\d{2}-\d{2}-p(\d+)$/.exec(key)
+  return later === null ? null : Number(later[1])
+}
 
-/** A call part's folder inside its week's, as its recorder names it. */
-export const callPartFolder = (part: number): string => `part-${String(part)}`
-
-/** `playoffDeltaFolder`, read back. */
-const PD_FOLDER = /^(.+)-week-(\d+)$/
-
-/** `callPartFolder`, read back. */
-const PART_FOLDER = /^part-(\d+)$/
+/**
+ * A Playoff Delta episode's season and week, from its key on home
+ * (`<season>-<TEAM>-<NN>`, `2026-SF-08`; week 0 is the legend), which names
+ * its folder once home's worker has put it in place; or `null`.
+ */
+export function playoffDeltaKeyOf(
+  key: string
+): { readonly season: string; readonly week: number } | null {
+  const named = /^(\d{4})-[A-Za-z]+-(\d{2})$/.exec(key)
+  if (named === null) return null
+  const [, season = "", week = ""] = named
+  return { season, week: Number(week) }
+}
 
 /** `root`'s `name` as JSON, or why it can't be read. */
 export async function keptJson(
@@ -126,15 +144,12 @@ export const FACTS_FROM_FOLDER: {
   call: async (root) =>
     thenOf(thenOf(await keptJson(root, "week.json"), parseCallWeek), (week) => {
       const of = callParts(week).length
-      const named = PART_FOLDER.exec(basename(root))
-      if (named === null && of > 1)
+      const part = callPartOf(basename(root))
+      if (part === null)
         return {
           ok: false,
-          problems: [
-            `${root} is a week of ${String(of)} parts: each part has a folder of its own`,
-          ],
+          problems: [`${root} isn't named for a call's episode`],
         }
-      const part = named === null ? 1 : Number(named[1])
       return part >= 1 && part <= of
         ? { ok: true, value: callFacts(week, part, of) }
         : {
@@ -167,14 +182,14 @@ export const FACTS_FROM_FOLDER: {
       (report) => ({ ok: true, value: reportFacts(report) })
     ),
   "playoff-delta": (root) => {
-    const named = PD_FOLDER.exec(basename(root))
+    const named = playoffDeltaKeyOf(basename(root))
     return Promise.resolve(
-      named?.[1] === undefined
+      named === null
         ? {
             ok: false,
-            problems: [`${root} isn't a Playoff Delta episode's folder`],
+            problems: [`${root} isn't named for a Playoff Delta episode`],
           }
-        : { ok: true, value: playoffDeltaFacts(named[1], Number(named[2])) }
+        : { ok: true, value: playoffDeltaFacts(named.season, named.week) }
     )
   },
 }

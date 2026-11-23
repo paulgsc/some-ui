@@ -96,6 +96,11 @@ describe("fileConveyor", () => {
         { aside: "counter", why: "held" },
       ],
       [step("blocked"), { aside: "counter", why: "held" }],
+      // A failed step reads by a reason it knows: a refused video's track.
+      [
+        step("failed", { reason: "too-long" }),
+        { aside: "tooBigForOven", why: "tooLong" },
+      ],
       [
         step("failed", { reason: "something-new" }),
         { aside: "burnt", why: "couldNot" },
