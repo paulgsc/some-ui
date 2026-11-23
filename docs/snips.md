@@ -252,10 +252,15 @@ page is live and a capture is never made again the same.
 3. **Home (paulgsc/server).** For an essay waiting on home that names page
    scenes, each mailbox pass:
 
-   - fetches each run's `pages-bundle-<run>` the essay names, from
-     `Public Pages Capture` runs only, by the same read-only token as the
-     snips (`SNIPS_GITHUB_TOKEN`, Actions: read), and checks `SHA256SUMS`
-     and the schema: a mismatch refuses the whole bundle;
+   - fetches each run's `pages-bundle-<run>` the essay names, by the same
+     read-only token as the snips (`SNIPS_GITHUB_TOKEN`, Actions: read),
+     only from a run whose workflow file is
+     `.github/workflows/public-pages-capture.yml`, dispatched on `main`, and
+     successful, and checks `SHA256SUMS` and the schema: a mismatch refuses
+     the whole bundle. A run attempted again keeps its id and uploads new
+     pictures under the same name, and retention keeps only the newest
+     attempt's; home takes that one, and the scene check below refuses an
+     essay naming an earlier attempt's files;
    - checks that each scene's file is in its run's `pages.json`, with the
      scene's address and moment;
    - hands, beside `<key>.json`, `<key>.pages/` with one `pages.json`

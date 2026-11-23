@@ -58,10 +58,10 @@ const ListSchema = z.strictObject({
     .max(20),
 })
 
-/** How long a page may take to settle, and how long it is given after. */
 /** A page that asks the visitor to sign in, by its title: never a picture. */
-const SIGN_IN = /^(sign in|log in|login)\b/i
+const SIGN_IN = /^(sign in|log in) to\b|^(sign in|log in|login)\s*([·|-]|$)/i
 
+/** How long a page may take to settle, and how long it is given after. */
 const LOAD_MS = 60_000
 const SETTLE_MS = 2_000
 
@@ -159,6 +159,14 @@ await runCommand(async () => {
           name,
           box: { x: box.x, y: box.y, width: box.width, height: box.height },
         })
+      }
+      // Asked again just before the picture: a page that sent itself
+      // elsewhere in script after it loaded (a client-side sign-in wall) is
+      // refused, never photographed under the address it left.
+      const now = new URL(page.url())
+      if (now.origin !== asked.origin || now.pathname !== asked.pathname) {
+        problems.push(`${url} sent the browser to ${page.url()}`)
+        continue
       }
       const capturedAt = new Date().toISOString()
       const bytes = await page.screenshot()
