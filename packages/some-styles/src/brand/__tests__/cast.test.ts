@@ -45,4 +45,11 @@ describe("the cast", () => {
       ).toHaveLength(1)
     }
   )
+
+  it("names the mochi's moving parts for a host to animate, and nothing else", () => {
+    const parts = walk(castNodes("mochi", (name) => name)).flatMap((n) =>
+      typeof n.attrs["data-part"] === "string" ? [n.attrs["data-part"]] : []
+    )
+    expect(parts).toEqual(["antenna-left", "antenna-right", "eyes"])
+  })
 })

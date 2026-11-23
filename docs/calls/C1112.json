@@ -1,0 +1,20 @@
+{
+  "id": "C1112",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/words.ts",
+    "apps/www/landing/index.html"
+  ],
+  "chose": "The showcase's three blocks are one family, a ring (render.ts, Ring): faces stood around an axis at the depth that makes the front face the block, turned on a schedule by keyframes drawn from the face count, with three faces or more. The copy block is a ring about Y of three faces of copy, resting nine seconds; each cube a ring about X over every project, resting six. Every cube carries every project, cube j starting j/2 of the way round and running half a face's time ahead, so the two never show one project at once, resting or turning, with three projects or more, and never turn together (a test runs the schedule); only the first is read out, and only it is laid flat. There are four projects: Page Filter, the extension the owner uses most, joins as a face by its still, which the gaps section shows too. Titles type a step a character in 1.1 seconds as their face comes round, and the copy's headline carries a slow sheen; each block breathes to 1.015, and the whole row holds still, titles and all, while the pointer is on it, so the cubes keep their places against each other. From the retired dice-card and slideshow cubes (34565137b^) it takes the per-ring axis, the autoplay schedule and pausing on hover (their WCAG 2.2.2 courtesy; with no control on a card there is nothing to focus, so no pause on focus), and drops the React hooks, the event bus and the six-face adjacency graph, which a CSS ring of N faces replaces; the page runs no script.",
+  "options": [
+    "one Ring type, three instances, every cube over every project offset",
+    "a cube written once in CSS per block",
+    "two cubes of two projects each, flipping back to back",
+    "restoring the retired dice-card workspace"
+  ],
+  "gray": "The owner set the blocks, their axes and the band, and left how many faces each turns through, their pace, what fills the fourth face, and how the old cube code is reused to the session; all show on the screen.",
+  "undo": "Change copyRing, cubeRing, CUBES or TYPE_S in apps/www/src/landing/render.ts, or drop Page Filter from LANDING_WORDS.projects (each cube becomes three-sided).",
+  "refs": ["#3401"]
+}

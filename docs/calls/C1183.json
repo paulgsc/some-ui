@@ -1,0 +1,21 @@
+{
+  "id": "C1183",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/scripts/show-faces.ts",
+    "apps/www/src/landing/show.ts",
+    ".github/workflows/snips-capture.yml",
+    ".github/workflows/site-assets.yml",
+    "extensions/some-filter/tests/stills/page-filter/run.ts"
+  ],
+  "chose": "The show's faces are made where their videos already are, as C1180 assigns them. Snips Capture's apk-clip job and Site Assets' extensions job each run apps/www/scripts/show-faces.ts on their render: every still the show names copied from the walk's snips, and every cut taken from the rendered video by shot id (shot-times.json), re-encoded silent and refused if a sound track remains. The Android faces are each chapter's stop (stop-1 to stop-4) beside a still from that chapter; the extensions' are the promo's hook and feature beside its walk's screens, and Page Filter's before and after halves, which the gap still's script now also writes. They go into the same site-assets-<kind> artifacts as before, so no new family; the whole-video clips (clips/apk.mp4, clips/extensions.mp4) are no longer made. The server's faces are stills of its Grafana panels (stills/server/NN.png, by the home-server walk's screen numbers): home's render worker already draws each panel, and sending them through the mailbox is paulgsc/server's part, to follow; until then those faces show their title cards.",
+  "options": [
+    "cut by shot from each producer's own render, in the producer's job",
+    "one extra workflow that downloads the renders and cuts them",
+    "cut in pages.yml at deploy"
+  ],
+  "gray": "Which shots and screens each face shows, and where the cutting runs, are on the screen and in the owner's CI minutes; no call settles them.",
+  "undo": "Restore the whole-clip steps in snips-capture.yml and site-assets.yml, drop show-faces.ts, and name faces by key in show.ts.",
+  "refs": ["#3401", "#3436", "#3423"]
+}
