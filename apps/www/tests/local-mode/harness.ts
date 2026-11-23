@@ -34,7 +34,7 @@ import { fileURLToPath } from "node:url"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /** Repo root, from `apps/www/tests/local-mode`. */
-const REPO_ROOT = resolve(__dirname, "../../../..")
+export const REPO_ROOT = resolve(__dirname, "../../../..")
 
 export const FILE_HOST_PORT = 3000
 
