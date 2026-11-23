@@ -14,8 +14,8 @@ import { assertNever } from "@some-ui/core-utils"
 import type { Aside, StationId } from "@/lib/renders/conveyor"
 import { CONVEYOR_WORDS, refusalAside, STATIONS } from "@/lib/renders/conveyor"
 
-import type { Step, StepReason } from "./assets"
-import { isStepReason } from "./assets"
+import type { HeldReason, Step } from "./assets"
+import { isHeldReason } from "./assets"
 
 /** A file's line: the render's, less Boxing. */
 type FileStation = Exclude<StationId, "boxing">
@@ -54,7 +54,7 @@ export type FileConveyor = {
 
 /** Each reason home gives for a held step, as a side track and why. */
 const HELD: {
-  readonly [R in StepReason]: {
+  readonly [R in HeldReason]: {
     readonly aside: Aside
     readonly why: StoppedWhy
   }
@@ -79,7 +79,7 @@ function stoppedOf(step: Step): {
   readonly why: StoppedWhy
 } {
   const { reason } = step
-  if (reason !== undefined && isStepReason(reason)) return HELD[reason]
+  if (reason !== undefined && isHeldReason(reason)) return HELD[reason]
   // A reason this phone doesn't know yet: tried and not made, or held until
   // something changes, as the state says.
   return step.state === "failed"

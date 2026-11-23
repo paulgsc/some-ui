@@ -27,6 +27,7 @@ import {
   interviewTakeOf,
   parseEssay,
   parseInterviewEssay,
+  sceneNames,
 } from "@some-ui/video-render"
 import type {
   ChapterMark,
@@ -80,6 +81,8 @@ type Said = {
   readonly section: (EssayScene | InterviewEssayScene)["section"]
   readonly speaker: Speaker
   readonly said: string
+  /** A chapter slide's title, which names the scenes after it (RETRY). */
+  readonly title?: string
 }
 
 /**
@@ -290,6 +293,10 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
             root,
           })
     const voices = essaySceneVoices(format.shape, scenes)
+    // Each scene by its chapter and place, said if it doesn't fit (RETRY).
+    const names = sceneNames(scenes, (scene) =>
+      scene.section === "chapter" ? scene.title : undefined
+    )
     const takes = await recordStills({
       page,
       root,
@@ -300,6 +307,7 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
           url: url(scene.id),
           said: scene.said,
           voice: voices[i] ?? fail([`${scene.id}: no voice for it`]),
+          name: names[i],
           ...(own ? { own } : {}),
         }
       }),

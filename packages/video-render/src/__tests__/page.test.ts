@@ -19,6 +19,8 @@ const SHA = "a1b2c3d4e5f6".padEnd(64, "0")
 const URL_3376 = "https://github.com/paulgsc/some-ui/actions/runs/44944305421"
 const AT = "2026-11-21T23:02:11.000Z"
 const FILE = pageFile(URL_3376, SHA)
+/** The Public Pages Capture run whose bundle held it (#3395). */
+const RUN = "45210000001"
 
 /** #3376's run graph, its jobs boxed, as the capture writes it. */
 const run = (): PageRecord => ({
@@ -46,6 +48,7 @@ type Of = {
   url: string
   capturedAt: string
   file: string
+  run?: string
   at?: Array<string>
 }
 
@@ -54,6 +57,7 @@ const page = (at?: Array<string>, over: Partial<Of> = {}): Of => ({
   url: URL_3376,
   capturedAt: AT,
   file: FILE,
+  run: RUN,
   ...(at ? { at } : {}),
   ...over,
 })
@@ -172,6 +176,23 @@ describe("a public page as a screen", () => {
     expect(drawn.ok ? "" : drawn.problems.join("\n")).toContain(
       `C1: the page ${FILE} names no logs`
     )
+  })
+
+  it("names the capture run whose bundle home fetches, and is refused without one", async () => {
+    const cut = await showing([page()])
+    expect(pagesOf(cut).map((of) => of.run)).toEqual([RUN])
+    const base = await showcase("rust-scratchpad")
+    for (const run of [undefined, "", "0123", "run-1", "4521e3"]) {
+      const { run: _named, ...rest } = page()
+      const of = run === undefined ? rest : { ...rest, run }
+      const raw = {
+        ...base,
+        shots: base.shots.map((shot, i) =>
+          i === 1 ? { ...shot, picture: { kind: "screen", of } } : shot
+        ),
+      }
+      expect(parseCardsEssay("rust-scratchpad-2026-11-14", raw).ok).toBe(false)
+    }
   })
 
   it("is refused in a cut list for an address that isn't public https", async () => {
