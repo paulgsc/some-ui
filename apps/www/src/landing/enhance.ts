@@ -191,6 +191,13 @@ function mountDeck(
     status.remove()
     if (focused) {
       show.tabIndex = -1
+      show.addEventListener(
+        "blur",
+        () => {
+          show.removeAttribute("tabindex")
+        },
+        { once: true }
+      )
       show.focus({ preventScroll: true })
     }
   }
@@ -296,9 +303,14 @@ function clips(): void {
       if (on && video.paused && !refused.has(video))
         video.play().catch((error: unknown) => {
           // Ignored: a clip that doesn't start keeps its preview, which is
-          // what the face shows in its place. Only a refusal is remembered;
-          // a play our own pause cut short (AbortError) is asked again.
-          if (error instanceof DOMException && error.name === "NotAllowedError")
+          // what the face shows in its place. A refusal, or a source that
+          // can't play, is remembered; a play our own pause cut short
+          // (AbortError) is asked again.
+          if (
+            error instanceof DOMException &&
+            (error.name === "NotAllowedError" ||
+              error.name === "NotSupportedError")
+          )
             refused.add(video)
         })
       if (!on) {
