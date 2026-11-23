@@ -6,6 +6,8 @@
  *
  * - **One run per confirm.** `confirm` while a delete is in flight does
  *   nothing (the step refuses it), so a second tap can't race the first.
+ * - **What uses them is read again at every confirm** (INUSE, TU1), before
+ *   anything is sent: a use the sheet didn't show asks again instead.
  * - **The phone lets go on home's receipt alone, whatever the sheet shows.**
  *   The let-go follows every receipt, even one whose answer the sheet no
  *   longer waits for: home has deleted the note, so this phone's copy goes
@@ -18,6 +20,7 @@
  * `run`, after `stepDeleting` accepted a `confirmed` from the sheet.
  */
 import type { DeleteAsked } from "@/lib/home-link/delete-note"
+import type { TakeUses } from "@/lib/take-uses/model"
 
 import type {
   DeletableKind,
@@ -46,6 +49,11 @@ export type DeletingPorts = {
   ) => Promise<boolean>
   /** Reads My data again while a page of it shows, so what went leaves it. */
   readonly reread: () => void
+  /**
+   * What uses each take, read now (`lib/take-uses`); never rejects, and a
+   * store it couldn't read is named unread (TU1).
+   */
+  readonly uses: () => Promise<TakeUses>
 }
 
 export type Deleting = {
@@ -105,12 +113,23 @@ export function createDeleting(ports: DeletingPorts): Deleting {
     },
     getSnapshot: () => state,
     ask(of, ids): void {
+      const before = state
       dispatch({ type: "asked", of, ids })
+      if (state === before) return
+      const { asks } = state
+      void ports.uses().then((uses) => {
+        dispatch({ type: "usesRead", asks, uses })
+      })
     },
     confirm(): void {
-      const before = state
-      dispatch({ type: "confirmed" })
-      if (state !== before) void run()
+      // The tap's numbers: a second tap, or one on a sheet since asked
+      // again, changes nothing once the first has moved the sheet.
+      const { seq, asks } = state
+      void ports.uses().then((uses) => {
+        const before = state
+        dispatch({ type: "confirmed", seq, asks, uses })
+        if (state !== before && state.sheet.kind === "deleting") void run()
+      })
     },
     close(): void {
       dispatch({ type: "closed" })

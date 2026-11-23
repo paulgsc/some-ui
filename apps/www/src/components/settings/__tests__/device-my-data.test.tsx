@@ -36,6 +36,8 @@ import {
   WHERE_WORDS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import type { TakeUse } from "@/lib/take-uses"
+import { NO_USES, USE_WORDS, whatLoses } from "@/lib/take-uses"
 import {
   DeviceMyData,
   DeviceMyDataKind,
@@ -136,7 +138,7 @@ const HOME: HomeReading = {
 }
 
 /** HOME, with its one take marked deletable, as home will once takes are switched on. */
-const DELETABLE: HomeReading = {
+const DELETABLE = {
   kind: "read",
   kept: {
     kinds: [],
@@ -157,7 +159,7 @@ const DELETABLE: HomeReading = {
       },
     ],
   },
-}
+} satisfies HomeReading
 
 const RECEIPT: Receipt = {
   id: "t1",
@@ -422,7 +424,7 @@ describe("deleting from a kind's list (MD3)", () => {
     const { rerender } = render(kind(DELETABLE))
     fireEvent.click(screen.getByText(DELETING.row))
     expect(onDelete).toHaveBeenCalledWith("studio", ["t1"])
-    const notes = DELETABLE.kept.notes ?? []
+    const notes = DELETABLE.kept.notes
     const two: HomeReading = {
       kind: "read",
       kept: {
@@ -486,6 +488,44 @@ describe("deleting from a kind's list (MD3)", () => {
     expect(screen.getAllByText(DELETING.row).length).toBeGreaterThan(0)
   })
 
+  it("badges each row something on the phone uses, and only those (INUSE)", () => {
+    const [note] = DELETABLE.kept.notes
+    const home: HomeReading = {
+      kind: "read",
+      kept: {
+        kinds: [],
+        weeks: [],
+        notes: [
+          note,
+          { ...note, id: "t2", recordedAt: "2026-10-27T10:00:00.000Z" },
+        ],
+      },
+    }
+    const view = kindOf("reflection", "reflection", home, [], NOW)
+    const first = view.items.find((item) => item.id === "t1")
+    if (first === undefined) throw new Error("t1's row")
+    const use: TakeUse = {
+      kind: "interview",
+      week: "2026-w47",
+      as: "answer",
+    }
+    render(
+      <MyDataKind
+        view={view}
+        playing={null}
+        unread={[]}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        uses={{
+          of: new Map([[first.id, [use, { ...use, as: "read" }]]]),
+          unread: [],
+        }}
+      />
+    )
+    expect(screen.getAllByText(USE_WORDS.badgeLine(use))).toHaveLength(1)
+    expect(screen.getByText(USE_WORDS.more(1))).toBeTruthy()
+  })
+
   it("offers Delete… on a take of another kind home marks deletable (HEARD5)", () => {
     const onDelete = vi.fn()
     render(
@@ -504,7 +544,91 @@ describe("deleting from a kind's list (MD3)", () => {
 })
 
 describe("the delete sheet (MD3)", () => {
-  const asking: DeleteSheet = { kind: "asking", of: "studio", ids: ["t1"] }
+  const asking: DeleteSheet = {
+    kind: "asking",
+    of: "studio",
+    ids: ["t1"],
+    uses: NO_USES,
+    changed: false,
+  }
+  const spoken: TakeUse = {
+    kind: "spoken",
+    card: "c1",
+    title: "Who I am",
+    part: 1,
+  }
+
+  it("says plainly when nothing picks it, and stays light", () => {
+    render(
+      <DeleteSheetView sheet={asking} onConfirm={vi.fn()} onClose={vi.fn()} />
+    )
+    expect(screen.getByText(USE_WORDS.unused(1))).toBeTruthy()
+    expect(screen.queryByText(USE_WORDS.inUseTitle)).toBeNull()
+  })
+
+  it("asks harder of a take in use: what uses it and what that loses, first (INUSE)", () => {
+    const onConfirm = vi.fn()
+    render(
+      <DeleteSheetView
+        sheet={{
+          ...asking,
+          ids: ["t1", "t2"],
+          uses: { of: new Map([["t1", [spoken]]]), unread: [] },
+        }}
+        onConfirm={onConfirm}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.getByText(USE_WORDS.title(2, 1))).toBeTruthy()
+    expect(screen.getByRole("alert").textContent).toContain(whatLoses(spoken))
+    expect(screen.queryByText(USE_WORDS.unused(2))).toBeNull()
+    const buttons = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent)
+    expect(buttons.indexOf(DELETING.keep(2))).toBeLessThan(
+      buttons.indexOf(USE_WORDS.confirm(2))
+    )
+    fireEvent.click(screen.getByText(USE_WORDS.confirm(2)))
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it("never says nothing picks it while checking, or with a store unread (TU1)", () => {
+    const { unmount } = render(
+      <DeleteSheetView
+        sheet={{ ...asking, uses: null }}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.getByText(USE_WORDS.checking)).toBeTruthy()
+    expect(screen.queryByText(USE_WORDS.unused(1))).toBeNull()
+    unmount()
+    render(
+      <DeleteSheetView
+        sheet={{ ...asking, uses: { of: new Map(), unread: ["videos"] } }}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.getByText(USE_WORDS.unread(["videos"]))).toBeTruthy()
+    expect(screen.getByText(USE_WORDS.uncheckedTitle)).toBeTruthy()
+    expect(screen.queryByText(USE_WORDS.unused(1))).toBeNull()
+  })
+
+  it("says something started using it when it asks again", () => {
+    render(
+      <DeleteSheetView
+        sheet={{
+          ...asking,
+          changed: true,
+          uses: { of: new Map([["t1", [spoken]]]), unread: [] },
+        }}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.getByText(USE_WORDS.changed)).toBeTruthy()
+  })
 
   it("says what goes and what stays, and asks once with Keep it first", () => {
     const onConfirm = vi.fn()
@@ -530,6 +654,7 @@ describe("the delete sheet (MD3)", () => {
       kind: "ended",
       of: "studio",
       ids: ["t1"],
+      uses: NO_USES,
       end: endOf({
         kind: "answered",
         answers: [
@@ -556,6 +681,7 @@ describe("the delete sheet (MD3)", () => {
       kind: "ended",
       of: "studio",
       ids: ["t1"],
+      uses: NO_USES,
       end: endOf(end),
     })
     render(

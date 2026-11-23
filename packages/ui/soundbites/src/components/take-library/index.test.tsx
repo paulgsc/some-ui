@@ -13,6 +13,7 @@ import type {
   LibraryOnPhone,
   LibraryPhone,
   LibraryStations,
+  LibraryUses,
   PhoneTake,
   TakesHome,
 } from "@soundbites/lib/library/runtime"
@@ -359,6 +360,21 @@ describe("Takes on home (ST32)", () => {
       expect(screen.getByText("“The middle drags”")).toBeTruthy()
       // Only the compartment's own takes.
       expect(screen.queryByText("“An aside”")).toBeNull()
+    })
+
+    it("badges a take the phone says something uses, and only that one (INUSE)", async () => {
+      const uses: LibraryUses = {
+        subscribe: () => () => undefined,
+        getSnapshot: () => 0,
+        inUse: (id) => (id === "n1" ? ["In use · part 1 of “Who I am”"] : []),
+      }
+      render(
+        <TakeLibrary ports={{ ...ports, uses }} pair={null} compartment="all" />
+      )
+      await settle()
+      expect(screen.getAllByText("In use · part 1 of “Who I am”")).toHaveLength(
+        1
+      )
     })
 
     it("filters by a chip in the top bar, each chip with its count, and folds the canned under the rest", async () => {

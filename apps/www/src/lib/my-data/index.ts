@@ -33,6 +33,7 @@ import {
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { studioKeeping } from "@/lib/studio-keeping"
+import { phoneTakeUses } from "@/lib/take-uses"
 
 import type { CallDeleting } from "./call-deleting-runtime"
 import { createCallDeleting } from "./call-deleting-runtime"
@@ -193,7 +194,9 @@ export function phoneDeleting(): Deleting {
     },
     reread: () => {
       phoneMyData().refreshShown()
+      phoneTakeUses().refresh()
     },
+    uses: () => phoneTakeUses().read(),
   })
   return deleting
 }

@@ -22,7 +22,13 @@ import {
   SheetTitle,
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import { CircleCheck, CircleMinus, CloudOff, ReceiptText } from "lucide-react"
+import {
+  CircleCheck,
+  CircleMinus,
+  CloudOff,
+  ReceiptText,
+  TriangleAlert,
+} from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { DeleteSheet, Receipt } from "@/lib/my-data"
@@ -34,6 +40,7 @@ import {
   receiptKind,
   receiptParts,
 } from "@/lib/my-data/words"
+import { USE_WORDS, usesAmong, whatLoses } from "@/lib/take-uses"
 
 /**
  * The delete sheet's snapshot, and its runtime: My data's page and Takes ›
@@ -82,6 +89,18 @@ const ReceiptFacts = ({ receipt }: { receipt: Receipt }): JSX.Element => {
   )
 }
 
+/** Each panel's fill, and its title's colour: what uses it reads first. */
+const PANEL = {
+  uses: "border-warning/60 border-2",
+  goes: "bg-destructive/10",
+  stays: "bg-card border",
+} as const
+const PANEL_TITLE = {
+  uses: "text-warning",
+  goes: "text-destructive",
+  stays: "text-muted-foreground",
+} as const
+
 const Lines = ({
   title,
   lines,
@@ -89,20 +108,26 @@ const Lines = ({
 }: {
   title: string
   lines: ReadonlyArray<string>
-  tone: "goes" | "stays"
+  tone: "uses" | "goes" | "stays"
 }): JSX.Element => (
   <div
-    className={`space-y-2.5 rounded-2xl p-4 text-sm ${tone === "goes" ? "bg-destructive/10" : "bg-card border"}`}
+    className={`space-y-2.5 rounded-2xl p-4 text-sm ${PANEL[tone]}`}
+    role={tone === "uses" ? "alert" : undefined}
   >
     <p
-      className={`text-xs font-bold tracking-wide uppercase ${tone === "goes" ? "text-destructive" : "text-muted-foreground"}`}
+      className={`text-xs font-bold tracking-wide uppercase ${PANEL_TITLE[tone]}`}
     >
       {title}
     </p>
     <ul className="space-y-2.5">
       {lines.map((line) => (
         <li key={line} className="flex items-start gap-2.5">
-          {tone === "goes" ? (
+          {tone === "uses" ? (
+            <TriangleAlert
+              className="text-warning mt-0.5 size-4 shrink-0"
+              aria-hidden
+            />
+          ) : tone === "goes" ? (
             <CircleMinus
               className="text-destructive mt-0.5 size-4 shrink-0"
               aria-hidden
@@ -212,6 +237,34 @@ export const DeleteSheetView = ({
   </MyDataSheet>
 )
 
+/** What the sheet says of what uses the notes it asks about (INUSE, TU1). */
+function usesPanel(
+  sheet: Extract<DeleteSheet, { kind: "asking" | "deleting" }>
+): {
+  readonly used: number
+  readonly title: string
+  readonly lines: ReadonlyArray<string>
+} | null {
+  if (sheet.uses === null)
+    return {
+      used: 0,
+      title: USE_WORDS.checkingTitle,
+      lines: [USE_WORDS.checking],
+    }
+  const among = usesAmong(sheet.uses, sheet.ids)
+  const used = new Set(among.map(({ take }) => take)).size
+  const lines = [
+    ...(sheet.kind === "asking" && sheet.changed ? [USE_WORDS.changed] : []),
+    ...among.map(({ use }) => whatLoses(use)),
+    ...(sheet.uses.unread.length > 0
+      ? [USE_WORDS.unread(sheet.uses.unread)]
+      : []),
+  ]
+  if (used > 0) return { used, title: USE_WORDS.inUseTitle, lines }
+  if (lines.length > 0) return { used, title: USE_WORDS.uncheckedTitle, lines }
+  return null
+}
+
 const Asking = ({
   sheet,
   onConfirm,
@@ -223,22 +276,27 @@ const Asking = ({
 }): JSX.Element => {
   const n = sheet.ids.length
   const deleting = sheet.kind === "deleting"
+  const uses = usesPanel(sheet)
+  const inUse = uses !== null && uses.used > 0
+  const stays =
+    uses === null
+      ? [USE_WORDS.unused(n), ...DELETING.stays(sheet.of, n)]
+      : DELETING.stays(sheet.of, n)
   return (
     <>
       <SheetHeader className="px-0 text-left">
         <SheetTitle className="text-xl">
-          {DELETING.title(sheet.of, n)}
+          {inUse ? USE_WORDS.title(n, uses.used) : DELETING.title(sheet.of, n)}
         </SheetTitle>
         <SheetDescription className="sr-only">
-          {DELETING.goesTitle}
+          {inUse ? USE_WORDS.inUseTitle : DELETING.goesTitle}
         </SheetDescription>
       </SheetHeader>
+      {uses === null ? null : (
+        <Lines title={uses.title} lines={uses.lines} tone="uses" />
+      )}
       <Lines title={DELETING.goesTitle} lines={DELETING.goes(n)} tone="goes" />
-      <Lines
-        title={DELETING.staysTitle}
-        lines={DELETING.stays(sheet.of, n)}
-        tone="stays"
-      />
+      <Lines title={DELETING.staysTitle} lines={stays} tone="stays" />
       <div className="flex flex-col gap-2.5">
         <Button size="lg" className={BIG} onClick={onClose} disabled={deleting}>
           {DELETING.keep(n)}
@@ -250,7 +308,11 @@ const Asking = ({
           onClick={onConfirm}
           disabled={deleting}
         >
-          {deleting ? DELETING.deleting : DELETING.confirm(n)}
+          {deleting
+            ? DELETING.deleting
+            : inUse
+              ? USE_WORDS.confirm(n)
+              : DELETING.confirm(n)}
         </Button>
       </div>
     </>

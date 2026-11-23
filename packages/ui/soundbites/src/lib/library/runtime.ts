@@ -102,6 +102,8 @@ export type LibraryPorts = {
   readonly stations?: LibraryStations | undefined
   /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
   readonly about?: LibraryAbout | undefined
+  /** What on the phone uses each take (INUSE); absent, none is said. */
+  readonly uses?: LibraryUses | undefined
   /** The phone's takes of every kind; absent, none but `phone`'s. */
   readonly onPhone?: LibraryOnPhone | undefined
   /** What the build can name that a ref only points at; absent, none. */
@@ -125,6 +127,19 @@ export type LibraryAbout = {
    * no ref.
    */
   readonly about: (id: string, ref: string | null) => TakeAbout | null
+}
+
+/**
+ * What uses each take (INUSE): the build's own words for each use, from the
+ * stores the phone keeps, said again on each change it tells of. A take it
+ * says nothing of is one it knows no use of, never one it calls unused.
+ */
+export type LibraryUses = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `inUse` says may have. */
+  readonly getSnapshot: () => unknown
+  /** Each use of take `id`, as its badge says it; empty for none known. */
+  readonly inUse: (id: string) => ReadonlyArray<string>
 }
 
 /**

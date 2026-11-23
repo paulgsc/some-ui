@@ -1,7 +1,7 @@
 /**
  * The ports Studio's Takes hands `TakeLibrary` (ST32, TAKES2, TAKES3): home
  * and a player, this phone's own takes with no scene, where each take stands
- * on the conveyor, and what each was said for, over the stores the route
+ * on the conveyor, what uses each (INUSE), and what each was said for, over the stores the route
  * hands in (`AboutStores`). Made once, for every page of Takes, in the
  * Android app alone (`build.paths.ts`); null elsewhere.
  */
@@ -14,6 +14,7 @@ import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import type { AboutStores } from "@/lib/take-about"
 import { takeAbout } from "@/lib/take-about"
 import { libraryStations } from "@/lib/take-conveyor"
+import { libraryUses } from "@/lib/take-uses"
 
 import { phoneOnlyTakes, takesHome } from "./index"
 
@@ -29,6 +30,7 @@ export function takePorts(stores: AboutStores): Ports {
     phone: libraryTakes(),
     stations: libraryStations(),
     about: takeAbout(stores),
+    uses: libraryUses(),
     onPhone: phoneOnlyTakes(),
     refresh: screenRefreshers.register,
   }

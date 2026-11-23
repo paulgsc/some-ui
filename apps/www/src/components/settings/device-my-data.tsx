@@ -87,6 +87,8 @@ import {
   WORD_SETS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import type { TakeUse, TakeUses } from "@/lib/take-uses"
+import { phoneTakeUses, USE_WORDS, usesOfTake } from "@/lib/take-uses"
 
 import {
   GrowthLine,
@@ -305,6 +307,32 @@ type RowDelete =
       readonly onToggle: () => void
     }
 
+/** A row's "In use" badge: its first use, and how many more (INUSE). */
+const InUse = ({
+  uses,
+}: {
+  uses: ReadonlyArray<TakeUse>
+}): JSX.Element | null => {
+  const first = uses.at(0)
+  const more = uses.slice(1)
+  if (first === undefined) return null
+  return (
+    <span className="mt-1 flex flex-wrap gap-1.5">
+      <span className="border-success/50 bg-success/10 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs">
+        <span className="bg-success size-2 shrink-0 rounded-full" aria-hidden />
+        <span className="min-w-0 break-words">
+          {USE_WORDS.badgeLine(first)}
+        </span>
+      </span>
+      {more.length > 0 ? (
+        <span className="border-border inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
+          {USE_WORDS.more(more.length)}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 const Item = ({
   item,
   playing,
@@ -312,8 +340,11 @@ const Item = ({
   onPlay,
   onStop,
   remove = { kind: "none" },
+  uses = [],
 }: {
   item: KindItem
+  /** What uses it, as this phone read it last (INUSE). */
+  uses?: ReadonlyArray<TakeUse>
   playing: boolean
   /** Its audio is being read, here or from home. */
   fetching?: boolean
@@ -398,6 +429,7 @@ const Item = ({
             )}
           </span>
         )}
+        <InUse uses={uses} />
         {item.plays === "none" &&
         item.wentAt === null &&
         remove.kind !== "select" ? (
@@ -430,8 +462,11 @@ export const MyDataKind = ({
   onStop,
   unread,
   onDelete,
+  uses = null,
 }: {
   view: KindView
+  /** What uses each take, as last read; null before a read lands (INUSE). */
+  uses?: TakeUses | null
   playing: string | null
   /** `playing`'s audio is being read, here or from home. */
   fetching?: boolean
@@ -541,6 +576,7 @@ export const MyDataKind = ({
               onPlay={onPlay}
               onStop={onStop}
               remove={removeOf(item)}
+              uses={uses === null ? [] : usesOfTake(uses, item.id)}
             />
           ))}
         </ul>
@@ -635,6 +671,8 @@ const KindList = ({
   const state = useMyData(of, note)
   const data = phoneMyData()
   const { sheet, deleting } = useDeleting()
+  const takeUses = phoneTakeUses()
+  const uses = useSyncExternalStore(takeUses.subscribe, takeUses.getSnapshot)
   const view = kindOf(
     of,
     state.of,
@@ -667,6 +705,7 @@ const KindList = ({
         onPlay={data.play}
         onStop={data.stop}
         onDelete={deleting.ask}
+        uses={uses}
       />
       <DeleteSheetView
         sheet={sheet}

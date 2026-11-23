@@ -10,6 +10,8 @@ import { describe, expect, it } from "vitest"
 import type { DeleteAsked } from "@/lib/home-link/delete-note"
 import type { DeletingPorts } from "@/lib/my-data/deleting-runtime"
 import { createDeleting } from "@/lib/my-data/deleting-runtime"
+import type { TakeUses } from "@/lib/take-uses/model"
+import { NO_USES } from "@/lib/take-uses/model"
 
 type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void }
 function deferred<T>(): Deferred<T> {
@@ -45,6 +47,8 @@ function ports(): {
   }>
   letGo: Array<{ ids: ReadonlyArray<string>; done: Deferred<boolean> }>
   reread: { count: number }
+  /** What the next read of uses finds. */
+  uses: { now: TakeUses }
   /** The let-go, the run's end and the reread, in the order they came. */
   order: Array<string>
 } {
@@ -57,6 +61,7 @@ function ports(): {
     done: Deferred<boolean>
   }> = []
   const reread = { count: 0 }
+  const uses = { now: NO_USES }
   const order: Array<string> = []
   /** Whether the delete's run holds the link, as `deleteNotes` keeps it. */
   let inRun = false
@@ -64,8 +69,10 @@ function ports(): {
     asked,
     letGo,
     reread,
+    uses,
     order,
     ports: {
+      uses: () => Promise.resolve(uses.now),
       deleteNotes: async (ids, settle): Promise<DeleteAsked> => {
         const answer = deferred<DeleteAsked>()
         asked.push({ ids, answer })
@@ -112,6 +119,7 @@ describe("My data's delete runtime", () => {
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1", "t2", "t3"])
     deleting.confirm()
+    await flush()
     asked[0]?.answer.resolve({
       kind: "answered",
       answers: [
@@ -149,6 +157,7 @@ describe("My data's delete runtime", () => {
       deleting.close()
       deleting.ask("studio", ["t1"])
       deleting.confirm()
+      await flush()
       asked.at(-1)?.answer.resolve(answer)
       await flush()
       expect(deleting.getSnapshot().sheet.kind).toBe("ended")
@@ -157,11 +166,38 @@ describe("My data's delete runtime", () => {
     expect(reread.count).toBe(0)
   })
 
+  it("sends nothing when a use appeared between the sheet opening and its confirm (INUSE, TU1)", async () => {
+    const { ports: p, asked, uses } = ports()
+    const deleting = createDeleting(p)
+    deleting.ask("studio", ["t1"])
+    await flush()
+    expect(deleting.getSnapshot().sheet).toMatchObject({ uses: NO_USES })
+    // Picked for a spoken card's part while the sheet stood open.
+    uses.now = {
+      of: new Map([
+        ["t1", [{ kind: "spoken", card: "c1", title: "T", part: 1 }]],
+      ]),
+      unread: [],
+    }
+    deleting.confirm()
+    await flush()
+    expect(asked).toHaveLength(0)
+    expect(deleting.getSnapshot().sheet).toMatchObject({
+      kind: "asking",
+      changed: true,
+      uses: uses.now,
+    })
+    deleting.confirm()
+    await flush()
+    expect(asked.map((each) => each.ids)).toEqual([["t1"]])
+  })
+
   it("still lets go after a stale let-go, which changes nothing on the sheet shown now", async () => {
     const { ports: p, asked, letGo } = ports()
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1"])
     deleting.confirm()
+    await flush()
     asked[0]?.answer.resolve({
       kind: "answered",
       answers: [{ id: "t1", answer: { status: 200, body: receipt("t1") } }],
@@ -171,12 +207,14 @@ describe("My data's delete runtime", () => {
     deleting.close()
     deleting.ask("studio", ["t2"])
     deleting.confirm()
+    await flush()
     letGo[0]?.done.resolve(false)
     await flush()
     expect(deleting.getSnapshot().sheet).toEqual({
       kind: "deleting",
       of: "studio",
       ids: ["t2"],
+      uses: NO_USES,
     })
     expect(letGo.map((each) => each.ids)).toEqual([["t1"]])
   })
@@ -186,6 +224,7 @@ describe("My data's delete runtime", () => {
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1", "t2"])
     deleting.confirm()
+    await flush()
     asked[0]?.answer.resolve({
       kind: "answered",
       answers: [
@@ -195,6 +234,7 @@ describe("My data's delete runtime", () => {
     })
     await flush()
     deleting.confirm()
+    await flush()
     asked[1]?.answer.resolve({
       kind: "answered",
       answers: [{ id: "t2", answer: { status: 409, body: "{}" } }],
@@ -210,6 +250,7 @@ describe("My data's delete runtime", () => {
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1"])
     deleting.confirm()
+    await flush()
     asked[0]?.answer.resolve({
       kind: "answered",
       answers: [{ id: "t1", answer: { status: 200, body: receipt("t1") } }],

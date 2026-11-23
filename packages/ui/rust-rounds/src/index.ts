@@ -73,6 +73,7 @@ export type {
 } from "./lib/week-play/opening"
 export { OPENING_UNKNOWN } from "./lib/week-play/opening"
 export { ticketLine, weekSendKey } from "./lib/week-play/spec"
+export { weeksSent } from "./lib/week-play/store"
 export { WEEK_WORDS } from "./lib/week-play/words"
 export { WEEK_TAKES_KEY } from "./lib/play/keys"
 export type { RoundsCounts, RoundsHomePort } from "./lib/home"
