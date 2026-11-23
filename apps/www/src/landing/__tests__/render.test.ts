@@ -81,7 +81,7 @@ describe("renderLanding", () => {
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
-  it("lets a reader send the mochi a hug, a button with no script, and drops it for a photo (C1187)", () => {
+  it("lets a reader send the mochi a hug, a button on a page with no script, moving only where the show moves, and drops it for a photo (C1187)", () => {
     const slot = page.slice(
       page.indexOf('<figure class="photo"'),
       page.indexOf("</figure>", page.indexOf('<figure class="photo"'))
@@ -90,7 +90,27 @@ describe("renderLanding", () => {
       `<button type="button" class="hug" aria-label="${LANDING_WORDS.hug}">`
     )
     expect(slot).toContain('<span class="hug-heart" aria-hidden="true"><svg')
-    expect(slot).not.toMatch(/<script|onclick|onpointer/i)
+    expect(page).not.toMatch(/<script|onclick|onpointer/i)
+    // The hug moves only where the show moves, and by the individual
+    // properties, never transform, which would stop the idle loops.
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    const wide = template.slice(
+      template.indexOf(`@media ${WIDE_MOTION} {`),
+      template.indexOf(
+        "@keyframes",
+        template.indexOf(`@media ${WIDE_MOTION} {`)
+      )
+    )
+    const pressed = [...template.matchAll(/\.hug:active[^{]*\{([^}]*)\}/g)]
+    expect(pressed.length).toBeGreaterThan(1)
+    for (const [rule, body] of pressed) {
+      expect(body, rule).not.toMatch(/(^|\s)transform:/)
+      if (/\b(scale|rotate|translate):/.test(body))
+        expect(wide, rule).toContain(rule)
+    }
     const withPhoto = renderLanding(
       resume,
       landingMochi(),

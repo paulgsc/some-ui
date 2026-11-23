@@ -87,9 +87,10 @@
         color: inherit;
         cursor: pointer;
       }
+      /* Inside the button: the photo's round mask clips anything outside. */
       .hug:focus-visible {
         outline: 2px solid var(--accent);
-        outline-offset: 3px;
+        outline-offset: -3px;
       }
       .hug-body {
         display: block;
@@ -420,7 +421,8 @@
         /* The mochi, alive (C1186): now and then it blinks and its
            antennas sway, and it leans a little as if in a room. Its parts
            are the cast's own (data-part, @some-ui/styles/brand/cast). */
-        .photo {
+        /* On the svg's own parent, which perspective reaches. */
+        .hug-body {
           perspective: 420px;
         }
         .photo .hug-body svg {
