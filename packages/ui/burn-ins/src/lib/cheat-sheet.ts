@@ -18,12 +18,14 @@
  * whole row; a row whose command can't sit beside its task there is
  * refused, naming it (CHEAT, C1400).
  *
- * CH1: up to `MOST_ROWS`, the schema's bound, a sheet is refused only for
- * a row, by its number, never for how many rows it has, in either frame,
- * for rows that sit side by side in a column of half the 16:9 body. Its
- * Tolerance: a row whose command can't sit beside its task there draws
- * only while its 16:9 sheet fits one column (`__tests__/cheat-sheet.test.ts`,
- * "CH1").
+ * CH1: up to `MOST_ROWS`, the schema's bound, a sheet whose rows each sit
+ * side by side in a column of half the 16:9 body, with room for their badge
+ * to spell itself out (`holdsInTwoColumns`), and that appear at their
+ * default times, is drawn, in either frame. Its Tolerance: in the 16:9
+ * frame any other row draws only while its sheet fits one column, and is
+ * refused, by its number, once the sheet takes two; and a sheet whose rows
+ * are given times out of order is outside it
+ * (`__tests__/cheat-sheet.test.ts`, "CH1").
  */
 
 import { z } from "zod"
@@ -276,6 +278,18 @@ function twoColumns(box: Box): ReadonlyArray<Box> | null {
         { ...box, width },
         { ...box, x: box.x + width + SHEET_GAP, width },
       ]
+}
+
+/**
+ * Whether `r` sits side by side in a column of the two `g`'s body holds,
+ * with room for its badge to spell itself out: CH1's rows. True where the
+ * body holds no two columns, since there the rows stay in one.
+ */
+export function holdsInTwoColumns(r: Row, g: Geometry): boolean {
+  const column = twoColumns(cardBody(g))?.[0]
+  if (column === undefined) return true
+  const reach = r.badge === undefined ? 0 : openWidth(r.badge, BADGE_PX)
+  return setRow(r, column.y, column, reach, "two") !== null
 }
 
 export function drawCheatSheet(

@@ -2,7 +2,11 @@
 import { BADGE_STATES } from "@burn-ins/lib/badge"
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { cardBody, ITEM } from "@burn-ins/lib/cards"
-import { MOST_ROWS, type CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
+import {
+  holdsInTwoColumns,
+  MOST_ROWS,
+  type CheatSheetFrame,
+} from "@burn-ins/lib/cheat-sheet"
 import {
   geometryOf,
   LANDSCAPE,
@@ -293,82 +297,85 @@ describe("the cheat-sheet card", () => {
     }
   })
 
-  // CH1: a row that sits side by side in a column of half the 16:9 body is
-  // never refused for its count. Every count the schema allows, in both
-  // frames, by rows of each length a row can be (task short to long, the
-  // command short or long, the note none, one line or two), each sheet both
-  // with every row alike and with its rows mixed, each badge new (spelling
-  // itself out) or already seen. An accepted sheet keeps every row inside
-  // the body and clear of the others at every moment of its rise.
-  //
-  // Its Tolerance: in the 16:9 frame a row whose command can't sit beside
-  // its task in half the body (`LONG`) draws only while its sheet fits one
-  // column, and is refused, by its number, once it takes two.
-  it("CH1: refuses a row, never a count, for every count and row length the schema allows", () => {
+  // CH1: a sheet whose rows each sit side by side in half the 16:9 body,
+  // with room for their badge to open (`holdsInTwoColumns`), is drawn, at
+  // every count the schema allows, in both frames. Rows of each length a
+  // row can be (task short to long; command short, in the gap where a badge
+  // opening decides, or long; note none, one line or two), each badge or
+  // none, new or already seen; every row alike, rows mixed from all, and
+  // rows mixed from those CH1 covers. An accepted sheet keeps every row
+  // inside the body and clear of the others at every moment of its rise.
+  // Outside CH1, the Tolerance: only a 16:9 sheet of more rows than one
+  // column holds refuses, and only the rows CH1 doesn't cover, by number.
+  it("CH1: draws every sheet of rows two columns hold, at every count and length the schema allows", () => {
     const LONG = "sudo systemctl start nixos-upgrade"
     const tasks = [
       "Go",
       "A file deleted by accident",
       "A dead disk, a box that won't boot",
     ]
-    const commands = ["survives", "does not survive", LONG]
+    const commands = [
+      "survives",
+      "does not survive",
+      "x".repeat(20),
+      "nix flake update --commit",
+      LONG,
+    ]
     const notes = [
       "",
       "Triggers refuse both on most record tables.",
       "Exit, roll back the image, the earlier migrations stay. Nothing to restore, and nothing to say.",
     ]
-    const variants = tasks.flatMap((task) =>
+    const rows = tasks.flatMap((task) =>
       commands.flatMap((command) =>
-        notes.map((note) => ({ task, command, note }))
+        notes.flatMap((note) =>
+          [undefined, ...BADGE_STATES].map((badge) =>
+            badge === undefined
+              ? { task, command, note }
+              : { task, command, note, badge }
+          )
+        )
       )
     )
-    const badges = [undefined, ...BADGE_STATES]
-    const named = /^the cheat-sheet burn-in \(sheet-v1\): row \d+ /
-    const sheets = (n: number): ReadonlyArray<ReadonlyArray<object>> => [
-      // Every row alike, one sheet per variant.
-      ...variants.map((v) =>
-        Array.from({ length: n }, (_, i) => ({
-          ...v,
-          badge: badges[i % badges.length],
-        }))
-      ),
-      // Rows mixed: row i of sheet k is variant (k + 7i) mod |variants|.
-      ...variants.map((_, k) =>
-        Array.from({ length: n }, (_, i) => ({
-          ...variants[(k + 7 * i) % variants.length],
-          badge: badges[(k + i) % badges.length],
-        }))
-      ),
-    ]
-    const seenOf = [[], [...BADGE_STATES]]
+    type Row = (typeof rows)[number]
+    const wide = geometryOf(LANDSCAPE)
+    const holds = (r: Row): boolean =>
+      holdsInTwoColumns({ ...r, atMs: undefined }, wide)
+    const covered = rows.filter(holds)
+    // Both kinds are tried, or the property proves nothing.
+    expect(covered.length).toBeGreaterThan(0)
+    expect(covered.length).toBeLessThan(rows.length)
+    const pick = (from: ReadonlyArray<Row>, k: number): Row =>
+      from[k % from.length] ?? rows[0]!
+    const sheets = (n: number): ReadonlyArray<ReadonlyArray<Row>> =>
+      Array.from({ length: 40 }, (_, k) => [
+        Array.from({ length: n }, () => pick(rows, k * 11)),
+        Array.from({ length: n }, (_, i) => pick(rows, k * 11 + 37 * i)),
+        Array.from({ length: n }, (_, i) => pick(covered, k * 5 + 13 * i)),
+      ]).flat()
+    const named = /^the cheat-sheet burn-in \(sheet-v1\): row (\d+) /
     for (const frame of [LANDSCAPE, PORTRAIT]) {
       const body = cardBody(geometryOf(frame))
       for (let n = 1; n <= MOST_ROWS; n++)
-        for (const rows of sheets(n))
-          for (const badgesSeen of seenOf) {
-            const params = {
-              title: "Rows",
-              badgesSeen,
-              rows: rows.map((r) =>
-                Object.fromEntries(
-                  Object.entries(r).filter(([, v]) => v !== undefined)
-                )
-              ),
-            }
-            const where = `${frame.width}x${frame.height}, ${n} rows, seen ${badgesSeen.length}: ${JSON.stringify(params.rows.map((r) => Object.values(r).join(" | ")))}`
+        for (const sheetRows of sheets(n))
+          for (const badgesSeen of [[], [...BADGE_STATES]]) {
+            const params = { title: "Rows", badgesSeen, rows: sheetRows }
+            const where = `${frame.width}x${frame.height}, ${n} rows, seen ${badgesSeen.length}: ${JSON.stringify(sheetRows)}`
             const p = sheet(params, frame)
             if (!p.ok) {
-              expect(
-                p.problems.filter((x) => !named.test(x)),
-                where
-              ).toEqual([])
-              expect(p.problems.every(isFitProblem), where).toBe(true)
-              // Only in the Tolerance: a long command, in two columns.
-              expect(frame, where).toBe(LANDSCAPE)
-              expect(
-                params.rows.some((r) => r.command === LONG),
-                where
-              ).toBe(true)
+              const inCH1 = frame === PORTRAIT || sheetRows.every(holds)
+              expect(inCH1, `${where}: ${p.problems.join("; ")}`).toBe(false)
+              // One column holds three rows of any of these.
+              expect(n, where).toBeGreaterThan(3)
+              for (const problem of p.problems) {
+                expect(isFitProblem(problem), where).toBe(true)
+                const row = Number(named.exec(problem)?.[1] ?? 0)
+                const r = sheetRows[row - 1]
+                expect(
+                  r !== undefined && !holds(r),
+                  `${where}: ${problem}`
+                ).toBe(true)
+              }
               continue
             }
             expect(at(params, END, frame).rows, where).toHaveLength(n)
