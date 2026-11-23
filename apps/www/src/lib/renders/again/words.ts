@@ -56,15 +56,10 @@ export function youLine(failed: RenderFailed): string {
         }
       }
     }
-    case "missing": {
-      return stop.what === "take"
-        ? "Nothing on this phone changes it: the essay has to name a take home keeps."
-        : "Nothing on this phone changes it: the essay has to name a clip home keeps."
-    }
+    // What to change, and that home then makes it, is `failedLine`'s.
+    case "missing":
     case "snips": {
-      return stop.gone
-        ? "Nothing on this phone changes it: run that Snips Capture again, and home makes it then."
-        : "Nothing on this phone changes it: the essay has to name a picture its capture holds."
+      return "Nothing on this phone changes it."
     }
     case "preview": {
       return "Ask for another on the template's page."

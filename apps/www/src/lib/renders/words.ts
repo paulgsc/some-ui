@@ -332,7 +332,7 @@ function refusalLine(
  */
 const ESSAY_REFUSAL_WORDS = {
   "take-missing": (n: number): string =>
-    `${n > 1 ? `${String(n)} spoken cards in it play recordings` : "A spoken card in it plays a recording"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "ones" : "one"} home keeps.`,
+    `${n > 1 ? `${String(n)} spoken cards in it play recordings` : "A spoken card in it plays a recording"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "recordings" : "one"} home keeps.`,
   "take-unheard": (n: number): string =>
     `Home couldn't make out ${n === 0 ? "recordings" : n === 1 ? "1 recording" : `${String(n)} recordings`} its spoken cards play, so it holds the essay until it can hear ${n === 1 ? "it" : "them"}.`,
   "snip-missing": (n: number): string =>
