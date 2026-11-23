@@ -1,0 +1,13 @@
+{
+  "id": "C1117",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/lib/cooking",
+    "apps/www/src/routes/_dashboard/_lan/cooking.tsx"
+  ],
+  "chose": "Of the second round, the departures take, with the one-train-at-a-time idea folded in. The owner, 2026-11-22: \"I like the first one, the departures, but I also actually want to fold the one train at a time concept … the trains are accordions … for the train, each stop or each node, when you click or when you press it on the mobile, that triggers the pop over a card … only one card is visible in that viewport … when I click on one, that train's accordion opens up with some sub-content that basically describes the motive, where this train goes … that card is shown at the top. And that card is actually a slideshow … if I have n stops, then it will be n slides … for all the trains, there's always an active stop, and that slideshow shows the active stop … It is paginated, and there is like a sort and filter. So you'll have nav chips at the top … the viewport only shows like some k railroads at a time\"; and \"we generally shouldn't have like more than 10 or 12 railroads, and otherwise it becomes like … a railroad we just fold, because we need to be aware, like, are we confusing a node with a new railroad?\". It moves C1116 only in its layout. C1116's goals as trains, each stop's holder and the answer to whether anything waits on the owner all stand.",
+  "undo": "Record a call that moves this one.",
+  "refs": ["#3425"],
+  "moves": "C1116"
+}

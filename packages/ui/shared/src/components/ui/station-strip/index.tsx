@@ -2,8 +2,9 @@
  * Where something stands on a conveyor: its stations in order, the ones it
  * has passed filled, the one it is at ringed, and, when it has stepped off
  * the line for a while, a side track named beside it. Display only: each
- * conveyor (Studio's renders, its takes) keeps its own stations and words
- * and says which one a thing is at; this only lays them out.
+ * conveyor (Studio's renders, its takes, the Cooking page's trains) keeps
+ * its own stations and words and says which one a thing is at; this only
+ * lays them out.
  */
 import type { JSX } from "react"
 
@@ -13,6 +14,8 @@ import { cn } from "../../../lib/utils"
 export type Station = {
   readonly id: string
   readonly name: string
+  /** Done already, though further down the line than where the thing is. */
+  readonly done?: boolean
 }
 
 /** A side track the thing sits on for now, and what that means. */
@@ -26,6 +29,10 @@ export const StationStrip = ({
   stations,
   at,
   aside = null,
+  tone,
+  picked,
+  onPick,
+  small = false,
   className,
 }: {
   /** What the strip is of, for a reader that can't see it. */
@@ -34,6 +41,14 @@ export const StationStrip = ({
   /** The station it is at; one not on the line marks none. */
   at: string
   aside?: StationAside | null
+  /** Classes for the current station's mark, in place of the default ring. */
+  tone?: string
+  /** The station the reader is looking at, ringed in the ink colour. */
+  picked?: string
+  /** Makes each station a button that picks it. */
+  onPick?: (id: string) => void
+  /** Marks only, each named for a reader that can't see it. */
+  small?: boolean
   className?: string
 }): JSX.Element => {
   const here = stations.findIndex((station) => station.id === at)
@@ -41,7 +56,10 @@ export const StationStrip = ({
     <div className={cn("flex flex-col gap-2", className)}>
       <ol aria-label={label} className="flex items-start">
         {stations.map((station, index) => {
-          const passed = here !== -1 && index < here
+          const reached = here !== -1 && index < here
+          // Only the line the thing has travelled is coloured.
+          const passed =
+            reached || (here !== -1 && index > here && station.done === true)
           const current = index === here
           return (
             <li
@@ -59,21 +77,38 @@ export const StationStrip = ({
                 <span
                   aria-hidden
                   className={cn(
-                    "absolute top-[7px] right-1/2 left-[-50%] h-0.5",
-                    passed || current ? "bg-primary" : "bg-border"
+                    "absolute right-1/2 left-[-50%] h-0.5",
+                    small ? "top-[5px]" : "top-[7px]",
+                    reached || current ? "bg-primary" : "bg-border"
                   )}
                 />
               )}
               <span
                 aria-hidden
                 className={cn(
-                  "bg-background relative z-10 size-4 rounded-full border-2",
+                  "bg-background relative z-10 rounded-full border-2",
+                  small ? "size-3" : "size-4",
                   passed && "bg-primary border-primary",
-                  current && "border-primary ring-primary/25 ring-4",
-                  !passed && !current && "border-border"
+                  current && (tone ?? "border-primary ring-primary/25 ring-4"),
+                  !passed && !current && "border-border",
+                  picked === station.id &&
+                    "ring-foreground ring-offset-background ring-2 ring-offset-2"
                 )}
               />
-              {station.name}
+              {small
+                ? onPick === undefined && (
+                    <span className="sr-only">{station.name}</span>
+                  )
+                : station.name}
+              {onPick !== undefined && (
+                <button
+                  type="button"
+                  aria-label={station.name}
+                  aria-pressed={picked === station.id}
+                  onClick={() => onPick(station.id)}
+                  className="focus-visible:ring-ring absolute inset-0 z-20 rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                />
+              )}
             </li>
           )
         })}

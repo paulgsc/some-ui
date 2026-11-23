@@ -41,10 +41,13 @@ export const DEFAULT_FILE_HOST_PORT = 3000
  */
 export const FILE_HOST_PROXY_PATH = "/api/file-host"
 
+/** The same-origin path home's API is served under. */
+export const FILE_HOST_API_PATH = `${FILE_HOST_PROXY_PATH}${API_V1_PREFIX}`
+
 function baseForCurrentHost(): string | undefined {
   if (typeof window === "undefined") return undefined
   const { hostname, protocol } = window.location
-  if (protocol === "https:") return `${FILE_HOST_PROXY_PATH}${API_V1_PREFIX}`
+  if (protocol === "https:") return FILE_HOST_API_PATH
   return `http://${hostname}:${DEFAULT_FILE_HOST_PORT}${API_V1_PREFIX}`
 }
 

@@ -1,0 +1,18 @@
+{
+  "id": "C1118",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/cooking",
+    "apps/www/src/routes/_dashboard/_lan/cooking.tsx"
+  ],
+  "chose": "The Cooking page's limits are policy in code: at most 12 trains at once (TRAINS_MAX) and 5 to a page (TRAINS_PER_PAGE). A 13th live goal never adds a line. The page says plainly that one train is probably a stop of another (the owner's \"are we confusing a node with a new railroad?\"), and the run record is where that is fixed.",
+  "options": [
+    "12 at most, 5 to a page, a 13th said and not drawn (taken)",
+    "10 at most, 5 to a page",
+    "12 at most, all on one page"
+  ],
+  "gray": "The owner gave \"10 or 12\" and \"some k railroads at a time\" without a k. How many trains a page holds, and what an extra train does, is a layout preference no check settles.",
+  "undo": "Record a call that moves this one, and change TRAINS_MAX or TRAINS_PER_PAGE.",
+  "refs": ["#3425"]
+}

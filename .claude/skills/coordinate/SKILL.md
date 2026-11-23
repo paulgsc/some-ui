@@ -44,6 +44,11 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
 - Open one `[ORCH]` record issue for the run, holding the scope, rules, roster, call-ID
   ranges, merge queue and where we are. It is the shared channel: never broadcast the same
   text to every worker (#2823, #2833).
+- Label it `orch` and keep one ` ```json run ` block in its body (`some-ui.run/1`,
+  `packages/video-render/src/run.ts`): the owner's live goals, the legs before each, the
+  workers and the steps the owner marked done. The desktop web's Cooking page reads the
+  newest open one and draws each goal as a train (#3425, C1162). Rewrite the block as things
+  move; a block the schema refuses leaves the page showing only a link to the issue.
 
 ### At spawn time
 
