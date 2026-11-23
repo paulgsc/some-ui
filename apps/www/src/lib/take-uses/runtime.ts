@@ -63,7 +63,7 @@ export type TakeUsesRuntime = {
   readonly refresh: () => void
   /**
    * Home's word on what uses each take it just listed (`usedBy`); a take it
-   * said nothing of keeps no word of home's.
+   * said nothing of, or nothing this build could read, keeps its last.
    */
   readonly told: (said: HomeSaid) => void
 }
@@ -103,7 +103,7 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
     } catch (error) {
       // Never a reading of none: every source unread (TU1).
       ports.failed("videos", error)
-      return ALL_UNREAD
+      return withHome(ALL_UNREAD, home)
     }
   }
 
@@ -175,7 +175,9 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
     told(said): void {
       let changed = false
       for (const { id, usedBy } of said) {
-        const next = usedBy === undefined ? [] : homeUses(usedBy)
+        // Unsaid keeps home's last word; only a list, empty or not, moves it.
+        if (usedBy === undefined) continue
+        const next = homeUses(usedBy)
         const before = home.get(id) ?? []
         if (JSON.stringify(before) === JSON.stringify(next)) continue
         changed = true

@@ -122,7 +122,7 @@ describe("reading what uses each take", () => {
     expect(runtime.getSnapshot()?.of.get("t1")).toHaveLength(1)
   })
 
-  it("adds what home said plays a take, and drops it once home says nothing", async () => {
+  it("adds what home said plays a take, keeps it through a word it can't read, and drops it once home says none", async () => {
     const runtime = createTakeUses(ports())
     const video = {
       kind: "studio-video" as const,
@@ -142,6 +142,8 @@ describe("reading what uses each take", () => {
       },
     ])
     runtime.told([{ id: "t1", usedBy: undefined }])
+    expect((await runtime.read()).of.get("t1")).toHaveLength(1)
+    runtime.told([{ id: "t1", usedBy: [] }])
     expect((await runtime.read()).of.get("t1")).toBeUndefined()
   })
 })

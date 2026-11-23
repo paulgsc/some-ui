@@ -44,10 +44,16 @@ export function whatLoses(use: TakeUse): string {
       return `It is how you answered a question of ${title}. That answer will have no recording until you say it again.`
     }
     case "home": {
-      const title = quoted(use.title) ?? HOME_VIDEO_NAMES[use.video]
-      return use.withdraws
-        ? `${title} on home plays it. Home withdraws that video once it's deleted; a copy you uploaded to YouTube is yours to take down.`
-        : `${title} on home plays it. That video stays, but home can't make it again with this take gone.`
+      const title =
+        use.video === "feed-video"
+          ? weekEssay(use.key)
+          : (quoted(use.title) ?? HOME_VIDEO_NAMES[use.video])
+      if (use.withdraws === true)
+        return `${title} on home plays it. Home withdraws that video once it's deleted; a copy you uploaded to YouTube is yours to take down.`
+      if (use.withdraws === null) return `${title} on home plays it.`
+      return use.video === "studio-video"
+        ? `${title}, queued for home to make, has it. Home keeps that video queued, but can't make it with this take gone.`
+        : `A version of ${title} home hasn't made yet has it. The video home holds now stays.`
     }
     case "interview": {
       return `It went home as ${use.as === "answer" ? "an answer" : "a read"} in your interview ${weekName(use.week)}. If home made that week's essay, the essay goes too.`
@@ -59,6 +65,12 @@ export function whatLoses(use: TakeUse): string {
       return assertNever(use)
     }
   }
+}
+
+/** A week's essay on home, by its week (`2026-w46`), in the owner's words. */
+const weekEssay = (week: string): string => {
+  const name = weekName(week)
+  return `The essay of ${name.startsWith("the ") ? name.slice(4) : name}`
 }
 
 /** A video home names with no title, by its kind. */

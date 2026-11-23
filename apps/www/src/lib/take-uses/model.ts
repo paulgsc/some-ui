@@ -91,14 +91,15 @@ export type TakeUse =
    * A video home holds plays it, as home last said: a week's essay
    * (`feed-video`), a cards essay (`essay`), a Studio video queued
    * (`studio-video`), or a kind this build doesn't know (`other`).
-   * `withdraws`: home withdraws the video once the take is deleted.
+   * `withdraws`: home withdraws the video once the take is deleted; null
+   * when home's word on it couldn't be read.
    */
   | {
       readonly kind: "home"
       readonly video: HomeVideo
       readonly key: string
       readonly title: string
-      readonly withdraws: boolean
+      readonly withdraws: boolean | null
     }
   /** It went home with Rust Rounds week `week`, as an answer or an opening. */
   | {
@@ -112,24 +113,42 @@ const HOME_VIDEOS = ["feed-video", "essay", "studio-video"] as const
 
 export type HomeVideo = (typeof HOME_VIDEOS)[number] | "other"
 
+const HomeEntrySchema = z.object({
+  kind: z
+    .string()
+    .transform(
+      (kind): HomeVideo => HOME_VIDEOS.find((each) => each === kind) ?? "other"
+    ),
+  key: z.string(),
+  title: z.string(),
+  at: z.string(),
+  withdrawsOnDelete: z.boolean(),
+})
+
+/** One video home names, as this build reads it. */
+export type HomeEntry = {
+  readonly kind: HomeVideo
+  readonly key: string
+  readonly title: string
+  /** Null for an entry this build couldn't read: a video plays it, no more. */
+  readonly withdrawsOnDelete: boolean | null
+}
+
 /**
  * What home says uses a take (`usedBy`): absent from a home before it, and
- * read as unsaid when it isn't what this build reads, never as none.
+ * unsaid (`undefined`) when it isn't a list. An entry of the list this
+ * build can't read is still a video that plays it (`other`), never dropped.
  */
 export const UsedBySchema = z
-  .array(
-    z.object({
-      kind: z
-        .string()
-        .transform(
-          (kind): HomeVideo =>
-            HOME_VIDEOS.find((each) => each === kind) ?? "other"
-        ),
-      key: z.string(),
-      title: z.string(),
-      at: z.string(),
-      withdrawsOnDelete: z.boolean(),
-    })
+  .array(z.unknown())
+  .transform(
+    (entries): ReadonlyArray<HomeEntry> =>
+      entries.map((entry): HomeEntry => {
+        const read = HomeEntrySchema.safeParse(entry)
+        return read.success
+          ? read.data
+          : { kind: "other", key: "", title: "", withdrawsOnDelete: null }
+      })
   )
   .optional()
   .catch(undefined)
@@ -142,7 +161,7 @@ export type HomeSaid = ReadonlyArray<{
 
 /** Home's word on a take, as uses. */
 export const homeUses = (
-  usedBy: NonNullable<z.infer<typeof UsedBySchema>>
+  usedBy: ReadonlyArray<HomeEntry>
 ): ReadonlyArray<TakeUse> =>
   usedBy.map(({ kind, key, title, withdrawsOnDelete }) => ({
     kind: "home",
@@ -223,7 +242,8 @@ export type UseSources = {
 /**
  * What uses each take, by its id; the sources that couldn't be read at all;
  * and, of those read, the text of each record set aside as unreadable, which
- * leaves in doubt only the takes it names (`unreadOf`).
+ * leaves in doubt only the takes it names (`unreadOf`): for as long as the
+ * copy is kept, which is for good, since nothing on this phone deletes it.
  */
 export type TakeUses = {
   readonly of: ReadonlyMap<string, ReadonlyArray<TakeUse>>
@@ -257,7 +277,12 @@ export function unreadOf(
       uses.unread.includes(source) ||
       uses.doubts.some(
         (doubt) =>
-          doubt.source === source && ids.some((id) => doubt.raw.includes(id))
+          doubt.source === source &&
+          ids.some(
+            (id) =>
+              doubt.raw.includes(id) ||
+              doubt.raw.includes(JSON.stringify(id).slice(1, -1))
+          )
       )
   )
 }
@@ -467,7 +492,10 @@ export function thingsIn(uses: ReadonlyArray<TakeUse>): number {
         return `idea:${use.idea}`
       }
       case "home": {
-        return `home:${use.video}:${use.key}`
+        // A queued Studio video home names by the video's own id.
+        return use.video === "studio-video"
+          ? `video:${use.key}`
+          : `home:${use.video}:${use.key}`
       }
       case "interview":
       case "rust": {
