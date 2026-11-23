@@ -354,7 +354,7 @@ function flat(
 
 /**
  * An episode's pool (#3473), for the enhancement to draw from: each snack's
- * copy and its two faces, rendered once into an inert template, so nothing
+ * copy, its two faces and their skeletons, rendered once into an inert template, so nothing
  * in it loads until a draw puts it on the page. With no script the page
  * shows the pool's first draw, which the stage and the list already hold.
  */
@@ -376,7 +376,9 @@ function pool(episode: ResolvedEpisode, media: LandingMedia): string {
             <div class="snack-face" data-slot="${face.slot}" data-asset="${e(face.key)}" data-label="${e(face.label)}" data-shape="${shape(shown(media, face.key) ?? PLACEHOLDER)}">${screen(face, media)}
             </div>`
               )
-              .join("")}
+              .join(
+                ""
+              )}${snack.faces.map((face) => skeletonSlot(face, media)).join("")}
           </div>`
           )
           .join("")}

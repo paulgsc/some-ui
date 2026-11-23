@@ -436,6 +436,20 @@ describe("an episode's pool", () => {
     expect(pages.drafts).toBe(1)
   })
 
+  it("turns a pool left with no more than it draws into fixed scenes, in its order", () => {
+    const show = showOf({
+      draw: 2,
+      pool: [snack("Draft", true), snack("Read", false), snack("Too", false)],
+    })
+    const pages = showFor(show, (): unknown => ({ fill: WALK }), false)
+    if (!pages.ok) throw new Error(pages.problems.join("; "))
+    expect(pages.episodes[0]?.scenes.map((s) => s.title)).toEqual([
+      "Read",
+      "Too",
+    ])
+    expect(pages.episodes[0]?.pool).toBeNull()
+  })
+
   it("draws `draw` snacks of a pool, each once, by their places in it", () => {
     // 0 1 2 3 4 → 0 1 4 3 2 → 3 1 4 0 2 → (2 stays) → 1 3 4 0 2.
     expect(drawSnacks(5, 3, randomOf([0.5, 0, 0.99, 0]))).toEqual([1, 3, 4])

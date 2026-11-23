@@ -9,7 +9,8 @@
 //
 // With a Snips Capture bundle (docs/snips.md), it also copies each route's
 // still the show names (a `screen` face, #3473) from the bundle's APK
-// pictures, the release build's where it has one.
+// pictures, the release build's where it has one. With no bundle there
+// (that half of the capture failed), it makes the rest and says so.
 //
 // Beside each face it writes the face's preview (`previewKey`): a still
 // itself, or a clip's middle frame (a cut opens on its fade in), 40 px on its long edge, as WebP, which the landing shows in the
@@ -20,7 +21,7 @@
 // run: the producer's own output, not the landing, is where that shows.
 
 import { execFileSync } from "node:child_process"
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { previewKey } from "@/landing/render"
 import type { EpisodeId } from "@/landing/show"
@@ -176,8 +177,18 @@ function apkPictures(bundle: string): ReadonlyArray<Picture> {
   })
 }
 
-if (screens.length > 0 && bundleDir !== undefined) {
-  const bundle = resolve(bundleDir)
+const bundle = bundleDir === undefined ? null : resolve(bundleDir)
+// No bundle (the web capture or the bundle failed in this run): the route
+// stills are left out, and the landing draws their faces' title cards.
+if (
+  screens.length > 0 &&
+  bundle !== null &&
+  !existsSync(join(bundle, "manifest.json"))
+)
+  process.stdout.write(
+    `[show-faces] no snips bundle at ${bundle}: no route stills\n`
+  )
+else if (screens.length > 0 && bundle !== null) {
   const pictures = apkPictures(bundle)
   for (const { route, key } of screens) {
     const found =

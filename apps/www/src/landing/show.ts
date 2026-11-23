@@ -14,6 +14,20 @@
  * video by shot, or an asset by key. Pure: `resolveShow` checks the script
  * against the chapters and gives what `render.ts` draws.
  */
+import type { FileRoutesByFullPath } from "@/routeTree.gen"
+
+/** A path with an index's trailing `/` dropped, as Snips Capture names a route (`pathOf`). */
+type Address<P extends string> = P extends `${infer Head}/`
+  ? Head extends ""
+    ? P
+    : Head
+  : P
+
+/**
+ * An app route, as the router knows it (the generated route tree's own
+ * union) and as the snips bundle records it: a typo fails to compile.
+ */
+type Route = Address<keyof FileRoutesByFullPath & `/${string}`>
 
 /** The episodes, by project. */
 export type EpisodeId = "extensions" | "android" | "server"
@@ -72,7 +86,8 @@ export type Face = FaceKinds[keyof FaceKinds]
 type FaceKinds = {
   readonly snip: { readonly snip: number; readonly label?: string }
   readonly cut: { readonly cut: string; readonly label: string }
-  readonly screen: { readonly screen: `/${string}`; readonly label: string }
+  /** A route by its path, as the router knows it: a typo fails to compile. */
+  readonly screen: { readonly screen: Route; readonly label: string }
   readonly media: {
     readonly media: `stills/${string}.png`
     readonly label: string
@@ -245,7 +260,7 @@ export const SHOW: Show = {
     {
       id: "android",
       kicker: "On my phone",
-      title: "The Android app I practise in",
+      title: "The Android app I built for myself",
       walkthrough: "jobs",
       // A pool (#3473): each visit draws four. The owner's why is growth
       // through engagement: friction is one reason a weak muscle goes
@@ -318,7 +333,7 @@ export const SHOW: Show = {
             copy: {
               title: "Korean, one press away",
               narration: [
-                "My Korean stopped for days because a lesson was nine presses away.",
+                "My Korean stopped for days. One reason: a lesson was nine presses away.",
                 "Now a lesson is a press or two from Practice Home, with three waiting unopened.",
               ],
               draft: true,
@@ -475,10 +490,10 @@ export const SHOW: Show = {
           },
           {
             copy: {
-              title: "Nothing fails quietly",
+              title: "Every limit, in Settings",
               narration: [
-                "Every limit that could refuse my data shows in Settings.",
-                "I learned why when my 51st word set was refused with no warning.",
+                "A limit that could refuse my data should show in Settings, so nothing fails quietly.",
+                "Word sets stopped at 50, and nothing said so until the 51st was refused.",
               ],
               draft: true,
             },
@@ -493,7 +508,7 @@ export const SHOW: Show = {
               title: "My data, and one way to delete",
               narration: [
                 "My data shows what I keep and where.",
-                "Deleting a record happens in one place, with a confirm and a receipt that stays.",
+                "Deleting a record for good goes one way, with a confirm and a receipt that stays.",
               ],
               draft: true,
             },
@@ -564,8 +579,7 @@ export const SHOW: Show = {
 const two = (n: number): string => String(n).padStart(2, "0")
 
 /** A route as a file's name: `/settings/data` is `settings~data`. */
-const routeSlug = (route: `/${string}`): string =>
-  route.slice(1).replaceAll("/", "~")
+const routeSlug = (route: Route): string => route.slice(1).replaceAll("/", "~")
 
 /** Where the build finds a face's asset (output.ts, `SITE_MEDIA_DIR`), by key. */
 export function faceKey(episode: EpisodeId, face: Face): string {
@@ -744,9 +758,12 @@ function publicEpisodes(
       return scenes.length === 0 ? [] : [{ ...episode, scenes }]
     }
     const pool = { ...episode.pool, snacks: read(episode.pool.snacks) }
-    return pool.snacks.length === 0
-      ? []
-      : [{ ...episode, scenes: firstDraw(pool), pool }]
+    if (pool.snacks.length === 0) return []
+    // A pool left with no more than it draws shows them all every visit,
+    // in their order: then they are its scenes, and nothing draws.
+    if (pool.snacks.length <= pool.draw)
+      return [{ ...episode, scenes: pool.snacks, pool: null }]
+    return [{ ...episode, scenes: firstDraw(pool), pool }]
   })
 }
 

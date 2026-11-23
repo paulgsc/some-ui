@@ -73,7 +73,8 @@ export type Timeline = {
 /**
  * The scenes the show's clock times (`timeline.ts`): an episode's own, or,
  * for a pool, each place timed for whichever snack a visit draws into it:
- * the pool's longest title, and its longest line at each place.
+ * the pool's longest title, its longest line at each place, and its
+ * longest label on each cube.
  */
 export function timedScenes(
   episode: ResolvedEpisode
@@ -87,7 +88,21 @@ export function timedScenes(
     longest(snacks.map((s) => s.narration[l] ?? ""))
   )
   const title = longest(snacks.map((s) => s.title))
-  return episode.scenes.map((scene) => ({ ...scene, title, narration }))
+  // Each band's label types in steps of its longest, so no draw's label
+  // has more letters than steps.
+  const label = (j: 0 | 1): string =>
+    longest(snacks.map((s) => s.faces[j].label))
+  // A snack shorter than its place's time holds its words on screen for
+  // the rest: a one-line snack is read longer, never cut short.
+  return episode.scenes.map((scene) => ({
+    ...scene,
+    title,
+    narration,
+    faces: [
+      { ...scene.faces[0], label: label(0) },
+      { ...scene.faces[1], label: label(1) },
+    ],
+  }))
 }
 
 /** A number for CSS, rounded to three places with no trailing zeros. */

@@ -420,6 +420,20 @@ function drawPools(): void {
           })
         )
       }
+      // The first place's faces are what the skeletons promise: their
+      // slots, glyphs and previews.
+      if (place === 0) {
+        const standing = [
+          ...document.querySelectorAll(
+            `.skeletons[data-episode="${episode}"] .skeleton`
+          ),
+        ]
+        const promised = [...snack.querySelectorAll(".skeleton")]
+        standing.forEach((old, j) => {
+          const next = promised.at(j)
+          if (next !== undefined) old.replaceWith(next.cloneNode(true))
+        })
+      }
       faces.forEach((face, j) => {
         const onCube = cubes.at(j)?.at(place)
         if (onCube instanceof HTMLElement)
@@ -430,20 +444,6 @@ function drawPools(): void {
         putFace(onCard, face, ".caption p")
         if (onCard != null)
           onCard.setAttribute("style", face.dataset["shape"] ?? "")
-        // The first place's faces are what the skeletons promise.
-        if (place === 0) {
-          const skeleton = [
-            ...document.querySelectorAll(
-              `.skeletons[data-episode="${episode}"] .skeleton-screen`
-            ),
-          ].at(j)
-          const preview = face
-            .querySelector(".preview img")
-            ?.getAttribute("src")
-          const shown = skeleton?.querySelector("img")
-          if (preview == null) shown?.remove()
-          else if (shown != null) shown.setAttribute("src", preview)
-        }
       })
     })
   }
