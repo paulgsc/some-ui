@@ -396,11 +396,6 @@ export const RunAgainPage = ({
                   {renderName({ feed, key: rowKey })}
                 </p>
                 <Conveyor step={step} now={readAt} />
-                {!settled(step) && readAt - tappedAt >= FOLLOW_FOR && (
-                  <p className="text-muted-foreground text-sm">
-                    {WORDS.stoppedFollowing}
-                  </p>
-                )}
                 {/* Stopped again: its steps and the tap once more. */}
                 {settled(step) &&
                   step.state !== "done" &&
