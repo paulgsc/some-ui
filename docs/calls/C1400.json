@@ -1,0 +1,21 @@
+{
+  "id": "C1400",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "packages/ui/burn-ins/src/lib/cheat-sheet.ts",
+    "packages/ui/burn-ins/src/lib/parsed.ts",
+    "packages/video-render/src/render.ts",
+    "apps/www/tests/record/burn-ins.ts"
+  ],
+  "chose": "The cheat sheet (sheet-v1) holds at most six rows, down from eight, and never refuses a sheet for its count: its rows run down one column while they fit, and otherwise, where the body is wide enough (the 16:9 frame, every cards essay's), in two columns of up to three, each row's command beside its task (a long task pushes its own command along) and its note under the whole row. Six is the most whose side-by-side rows with two-line notes fit three to a 16:9 column with the last one's rise; every sheet in paulgsc/testing's cards/ has three to six rows. What is left to refuse is a row on its own (words too long for its place), and a burn-in refused for not fitting is said with the overflow line and its scenes' ids, which home's render worker already holds (server #975) instead of retrying it hourly.",
+  "options": [
+    "two columns in the wide frame and a bound of six rows (taken)",
+    "keep one column and lower the bound to four, the most that fit with notes in the 16:9 body",
+    "shrink the sheet's type until its rows fit",
+    "keep eight rows and refuse what doesn't fit at record time, as before"
+  ],
+  "gray": "How a sheet that outgrows one column is drawn, and how many rows a sheet may hold, is a look and a writing limit the owner sees on screen; no check or earlier decision settles it. Four rows would refuse 18 of the 73 sheets already in cards/, and smaller type reads worse on a phone.",
+  "undo": "Record a call that moves this one; set MOST_ROWS back and drop layRows' second pass in cheat-sheet.ts, and the 16:9 frame refuses five or six rows with notes again.",
+  "refs": ["#2468"]
+}

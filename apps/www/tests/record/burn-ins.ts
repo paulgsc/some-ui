@@ -22,6 +22,8 @@ import { once } from "node:events"
 import { mkdir } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import type { Browser, Page } from "@playwright/test"
+import { isFitProblem } from "@some-ui/burn-ins"
+import { notDrawnLines } from "@some-ui/video-render"
 import type { BurnInRequest, Rendered } from "@some-ui/video-render"
 import { renderFolder } from "@some-ui/video-render/node"
 
@@ -133,7 +135,8 @@ function burnInChecker(
 
 /**
  * The renderer's `recordBurnIn` port over a page `openRecorder` opened, for
- * the video in `root`. Says why on `report` when a burn-in can't be drawn.
+ * the video in `root`. Says why on `report` when a burn-in can't be drawn,
+ * and, when it doesn't fit the frame, which scenes (`notDrawnLines`).
  */
 function burnInRecorder(
   page: Page,
@@ -144,7 +147,16 @@ function burnInRecorder(
     const name = `the ${r.kind} burn-in (${r.design})`
     const loaded = await load(page, r)
     if (!loaded.ok) {
-      for (const p of loaded.problems) report(p)
+      // One that doesn't fit its frame never will, drawn from the same
+      // bytes by the same image: said so, with its scenes, home holds it
+      // rather than trying it again every hour (CHEAT).
+      const { problems } = loaded
+      for (const line of notDrawnLines(
+        r.scenes,
+        problems,
+        problems.some(isFitProblem)
+      ))
+        report(line)
       return false
     }
     const size = { width: r.frame.width, height: r.frame.height }

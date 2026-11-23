@@ -55,7 +55,40 @@ export type BurnInRequest = BurnIn & {
   readonly frame: Series["frame"]
   /** Where the recording is to be written, relative to the video's folder. */
   readonly out: string
+  /** The ids of the scenes it is drawn over: one, or every scene for one over the whole video. */
+  readonly scenes: ReadonlyArray<string>
 }
+
+/**
+ * The line a recorder says before the ids of the scenes that don't fit the
+ * frame, one to a line (#975). Home's render worker holds a video refused
+ * with it as it holds one past the policy, and tries it again only once
+ * what it was refused for changes (paulgsc/server
+ * `infra/render/render-calls.sh`, `REFUSED_FIT`): the same bytes, drawn by
+ * the same image, never fit.
+ */
+export const SCENES_OVERFLOW =
+  "These scenes don't fit the frame, so the video would cut them off:"
+
+/** The lines that say `scenes` don't fit the frame (`SCENES_OVERFLOW`). */
+export const overflowLines = (
+  scenes: ReadonlyArray<string>
+): ReadonlyArray<string> => [SCENES_OVERFLOW, ...scenes]
+
+/**
+ * What a recorder says of a burn-in it couldn't draw over `scenes`, for
+ * `problems`: when it `overflows` (doesn't fit the frame), the overflow
+ * lines first, so home holds the video rather than trying it every hour;
+ * then each problem.
+ */
+export const notDrawnLines = (
+  scenes: ReadonlyArray<string>,
+  problems: ReadonlyArray<string>,
+  overflows: boolean
+): ReadonlyArray<string> => [
+  ...(overflows ? overflowLines(scenes) : []),
+  ...problems,
+]
 
 export type Ports = {
   /** Runs ffmpeg in the video's folder. */
@@ -552,6 +585,7 @@ function burnInRequests(
             frames: placement.totalFrames,
             frame: series.frame,
             out: `${work}/burn-in-${i}-${b.kind}.mov`,
+            scenes: cutList.shots.map((s) => s.id),
           },
         ]
   )
@@ -574,6 +608,7 @@ function burnInRequests(
       frames: framesUntilNext(placement, i),
       frame: series.frame,
       out: `${work}/burn-in-${s.id}-${k}-${b.kind}.mov`,
+      scenes: [s.id],
     }))
   })
   return [...whole, ...perShot]
@@ -609,6 +644,7 @@ function captionRequests(
           frames: framesUntilNext(placement, i),
           frame: series.frame,
           out: `${work}/burn-in-${id}-captions.mov`,
+          scenes: [id],
         },
       },
     ]

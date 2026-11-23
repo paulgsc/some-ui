@@ -1,13 +1,15 @@
 /** @vitest-environment node */
+import { BADGE_STATES } from "@burn-ins/lib/badge"
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { cardBody, ITEM } from "@burn-ins/lib/cards"
-import type { CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
+import { MOST_ROWS, type CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
 import {
   geometryOf,
   LANDSCAPE,
   PORTRAIT,
   type FrameSize,
 } from "@burn-ins/lib/geometry"
+import { isFitProblem } from "@burn-ins/lib/parsed"
 import { describe, expect, it } from "vitest"
 
 /** A card's params with the stamp the renderer gives every card. */
@@ -70,6 +72,86 @@ const BY_HAND = {
       task: "Reload tmux after a change",
       command: "tmux source-file ~/.config/tmux/tmux.conf",
       note: "prefix r reads ~/.tmux.conf, which home-manager does not write.",
+    },
+  ],
+}
+
+/**
+ * The database essay's "What it survives" sheet, as paulgsc/testing's
+ * `cards/home-database-safety-2026-11-21.json` gave it: five rows whose notes
+ * take two lines, which one column of the 16:9 body can't hold (CHEAT).
+ */
+const SURVIVES = {
+  kicker: "CHEAT SHEET · WHAT IT SURVIVES",
+  title: "Five failures, and what home has for each",
+  rows: [
+    {
+      badge: "main",
+      task: "A migration that errors",
+      command: "survives",
+      note: "Exit, roll back the image, the earlier migrations stay. Nothing to restore.",
+    },
+    {
+      badge: "you",
+      task: "A file deleted by accident",
+      command: "by hand",
+      note: "Refused at the next start. The newest copy, less the writes since.",
+    },
+    {
+      badge: "you",
+      task: "A corrupt database file",
+      command: "by hand",
+      note: "The newest copy, as old as the last schema change.",
+    },
+    {
+      badge: "gap",
+      task: "A dead disk, a box that won't boot",
+      command: "does not survive",
+      note: "The copies share the disk. The phone and Drive keep their part.",
+    },
+    {
+      badge: "you",
+      task: "A new box",
+      command: "by hand",
+      note: "Dotfiles and the server repo; secrets open with your admin key.",
+    },
+  ],
+}
+
+/** The same essay's "Writes" sheet: five rows, a note of one line each. */
+const WRITES = {
+  kicker: "CHEAT SHEET · WRITES",
+  title: "One writer, small writes, each whole or not at all",
+  rows: [
+    {
+      badge: "main",
+      task: "Readers and a writer",
+      command: "WAL mode",
+      note: "Many readers beside one writer; a lock waited on for up to 5 s.",
+    },
+    {
+      badge: "main",
+      task: "Connections",
+      command: "at most 5",
+      note: "None within 3 s: answered busy. Every request answered within 8 s.",
+    },
+    {
+      badge: "main",
+      task: "A write",
+      command: "one transaction",
+      note: "Whole or not at all; a crash leaves the database as it was.",
+    },
+    {
+      badge: "main",
+      task: "The record",
+      command: "no update, no delete",
+      note: "Triggers refuse both on most record tables.",
+    },
+    {
+      badge: "main",
+      task: "A power cut",
+      command: "last commits may go",
+      note: "The file stays consistent; the log checksums each frame.",
     },
   ],
 }
@@ -144,20 +226,44 @@ describe("the cheat-sheet card", () => {
       "the cheat-sheet burn-in (sheet-v1): row 1 gives TOKEN a value; a card shows a placeholder, never a value",
       `the cheat-sheet burn-in (sheet-v1): row 2's command has "→", which the card's type can't draw`,
     ])
-    const crowded = sheet({
-      title: "Crowded",
-      rows: ROWS(8),
+    // Neither is the frame's: what home holds as not fitting (CHEAT).
+    expect(p.ok ? [] : p.problems.filter(isFitProblem)).toEqual([])
+    expect(
+      sheet({ title: "Crowded", rows: ROWS(MOST_ROWS + 1) }).ok,
+      "more rows than the schema's bound"
+    ).toBe(false)
+  })
+
+  it("sets the database essay's sheets in two columns of the 16:9 body, the first half on the left", () => {
+    for (const params of [SURVIVES, WRITES]) {
+      const rows = at(params, END).rows
+      expect(rows.map((r) => r.command.text)).toEqual(
+        params.rows.map((r) => r.command)
+      )
+      const [first, , third, fourth] = rows
+      expect(third?.panel.x).toBe(first?.panel.x)
+      expect(fourth?.panel.x).toBeGreaterThan(
+        (first?.panel.x ?? 0) + (first?.panel.width ?? 0)
+      )
+      expect(fourth?.panel.y).toBe(first?.panel.y)
+    }
+    // In the 9:16 frame's taller body they run down one column.
+    const tall = at(SURVIVES, END, PORTRAIT).rows
+    expect(new Set(tall.map((r) => r.panel.x)).size).toBe(1)
+  })
+
+  it("refuses, by its number, a row of a two-column sheet whose command can't sit beside its task", () => {
+    const long = {
+      task: "Watch it",
+      command: "journalctl -fu nixos-upgrade -u home-manager-upgrade",
+      note: "A note under it, long enough to take a second line in a column.",
+    }
+    const p = sheet({
+      title: "Long",
+      rows: [...SURVIVES.rows.slice(0, 4), long],
     })
-    expect(crowded.ok ? [] : crowded.problems).toEqual([
-      "the cheat-sheet burn-in (sheet-v1): 8 rows don't fit",
-    ])
-    const crowdedAndWrong = sheet({
-      title: "Crowded",
-      rows: [{ task: "Go", command: "a → b" }, ...ROWS(7)],
-    })
-    expect(crowdedAndWrong.ok ? [] : crowdedAndWrong.problems).toEqual([
-      `the cheat-sheet burn-in (sheet-v1): row 1's command has "→", which the card's type can't draw`,
-      "the cheat-sheet burn-in (sheet-v1): the rows don't fit",
+    expect(p.ok ? [] : p.problems).toEqual([
+      "the cheat-sheet burn-in (sheet-v1): row 5 doesn't fit: 5 rows take two columns, and its command doesn't fit beside its task in one",
     ])
   })
 
@@ -165,7 +271,7 @@ describe("the cheat-sheet card", () => {
     for (const frame of [LANDSCAPE, PORTRAIT]) {
       const body = cardBody(geometryOf(frame))
       let accepted = 0
-      for (let n = 1; n <= 8; n++) {
+      for (let n = 1; n <= MOST_ROWS; n++) {
         // Laid out once per sheet: each step only reads the frame at t (#3065).
         const prepared = sheet({ title: "Rows", rows: ROWS(n) }, frame)
         if (!prepared.ok) continue
@@ -185,5 +291,81 @@ describe("the cheat-sheet card", () => {
       }
       expect(accepted).toBeGreaterThan(0)
     }
+  })
+
+  // CH1: a sheet is never refused for its count. Every count the schema
+  // allows, in both frames, by rows of every length a row can be: the task
+  // short to long, the command short to long, the note none, one line or
+  // two, each badge new (so spelling itself out) or none. A refusal always
+  // names a row, and the longest rows that sit side by side are accepted at
+  // every count.
+  it("CH1: refuses a row, never a count, for every count and row length the schema allows", () => {
+    const tasks = [
+      "Go",
+      "A file deleted by accident",
+      "A dead disk, a box that won't boot",
+    ]
+    const commands = [
+      "survives",
+      "does not survive",
+      "sudo systemctl start nixos-upgrade",
+    ]
+    const notes = [
+      "",
+      "Triggers refuse both on most record tables.",
+      "Exit, roll back the image, the earlier migrations stay. Nothing to restore, and nothing to say.",
+    ]
+    const badges = [undefined, ...BADGE_STATES]
+    const named = /^the cheat-sheet burn-in \(sheet-v1\): row \d+ /
+    for (const frame of [LANDSCAPE, PORTRAIT])
+      for (let n = 1; n <= MOST_ROWS; n++)
+        for (const task of tasks)
+          for (const command of commands)
+            for (const note of notes) {
+              const rows = Array.from({ length: n }, (_, i) => ({
+                task,
+                command,
+                note,
+                ...(badges[i % badges.length] === undefined
+                  ? {}
+                  : { badge: badges[i % badges.length] }),
+              }))
+              const p = sheet({ title: "Rows", rows }, frame)
+              const where = `${frame.width}x${frame.height}, ${n} × ${task} | ${command} | ${note}`
+              if (!p.ok) {
+                expect(
+                  p.problems.filter((x) => !named.test(x)),
+                  where
+                ).toEqual([])
+                // Only a command too long to sit beside its task is refused.
+                expect(command, where).toBe(commands[2])
+                expect(p.problems.every(isFitProblem), where).toBe(true)
+                continue
+              }
+              const body = cardBody(geometryOf(frame))
+              const panels = at({ title: "Rows", rows }, END, frame).rows.map(
+                (r) => r.panel
+              )
+              expect(panels, where).toHaveLength(n)
+              for (const [i, a] of panels.entries()) {
+                expect(
+                  a.x >= body.x && a.x + a.width <= body.x + body.width,
+                  where
+                ).toBe(true)
+                expect(
+                  a.y >= body.y &&
+                    a.y + a.height + ITEM.risePx <= body.y + body.height,
+                  where
+                ).toBe(true)
+                for (const b of panels.slice(i + 1))
+                  expect(
+                    a.x + a.width <= b.x ||
+                      b.x + b.width <= a.x ||
+                      a.y + a.height <= b.y ||
+                      b.y + b.height <= a.y,
+                    `${where}: rows overlap`
+                  ).toBe(true)
+              }
+            }
   })
 })
