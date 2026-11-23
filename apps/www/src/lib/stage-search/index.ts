@@ -1,7 +1,7 @@
 /**
  * The search a recording stage's route takes (`/call`, `/essay`, `/report`):
  * `week` names what it plays, `kind` which of a stage's templates (the
- * essay's: `interview`), `part` which video of a series (the call's,
+ * essay's: `interview`, `game` or `spoken`), `part` which video of a series (the call's,
  * #2918), `scene` the scene, `ticket` a Rust Rounds ticket (`/rust-screen`,
  * RR31), and `record` leaves out everything but the
  * frame. An empty or non-text value is left out, and a part that is no

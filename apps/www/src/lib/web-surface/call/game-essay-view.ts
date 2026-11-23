@@ -110,14 +110,22 @@ export function gameEssayAt(
  * own goal line (0 to 100), so the field is drawn with the offense going
  * left to right; null without a spot or the team with the ball.
  */
-export function fieldOf(
-  still: Still
-): { readonly ball: number; readonly gain: number | null } | null {
+export function fieldOf(still: Still): {
+  readonly ball: number
+  readonly gain: number | null
+  /** Who has the ball, and the spot as the still words it. */
+  readonly team: string
+  readonly side: string
+  readonly yard: number
+} | null {
   const { spot, possession, distance } = still
   if (spot === undefined || possession === undefined) return null
   const ball = spot.side === possession ? spot.yard : 100 - spot.yard
   return {
     ball,
     gain: distance === undefined ? null : Math.min(100, ball + distance),
+    team: possession,
+    side: spot.side,
+    yard: spot.yard,
   }
 }

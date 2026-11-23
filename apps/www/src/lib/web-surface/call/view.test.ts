@@ -33,7 +33,9 @@ import { Call, CastProvider } from "./essay-parts"
 import { EssaySceneFrame } from "./essay-stage"
 import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW } from "./essay-words"
+import { Screen as GameScreen } from "./game-essay-stage"
 import { fieldOf, gameEssayAt } from "./game-essay-view"
+import { GAME_ESSAY_WORDS as GW } from "./game-essay-words"
 import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
 import { screenStageOf } from "./rust-screen-view"
@@ -551,27 +553,72 @@ describe("a Game Week essay's stage (GWB)", () => {
     expect(gameEssayAt(essay(), "no-such-scene").scene.id).toBe("intro")
   })
 
-  it("draws the field with the offense going left to right", () => {
-    // NE has the ball at the CHI 45: 55 yards from its own goal, 5 to gain.
+  const still = (
+    change: Partial<Parameters<typeof fieldOf>[0]>
+  ): Parameters<typeof fieldOf>[0] => ({
+    period: 1,
+    clock: "11:35",
+    possession: "NE",
+    down: 4,
+    distance: 5,
+    spot: { side: "CHI", yard: 45 },
+    score: { away: 0, home: 0 },
+    ...change,
+  })
+
+  it("draws the field with the offense going left to right, on either side of the 50", () => {
+    // NE at the CHI 45: 55 yards from its own goal, 5 to gain.
+    expect(fieldOf(still({}))).toMatchObject({ ball: 55, gain: 60 })
+    // NE at its own 20.
     expect(
-      fieldOf({
-        period: 1,
-        clock: "11:35",
-        possession: "NE",
-        down: 4,
-        distance: 5,
-        spot: { side: "CHI", yard: 45 },
-        score: { away: 0, home: 0 },
-      })
-    ).toEqual({ ball: 55, gain: 60 })
+      fieldOf(still({ spot: { side: "NE", yard: 20 }, distance: 10 }))
+    ).toMatchObject({ ball: 20, gain: 30 })
+    // Goal to go at the CHI 3: the line to gain is the goal line.
     expect(
-      fieldOf({
-        period: 1,
-        clock: "1:00",
-        spot: { side: "NE", yard: 20 },
-        score: { away: 0, home: 0 },
-      })
-    ).toBeNull()
+      fieldOf(still({ spot: { side: "CHI", yard: 3 }, distance: 3, down: 1 }))
+    ).toMatchObject({ ball: 97, gain: 100 })
+    expect(
+      fieldOf(still({ spot: { side: "CHI", yard: 3 }, distance: 10 }))?.gain
+    ).toBe(100)
+    // A kick: a spot, no down or distance.
+    expect(
+      fieldOf(still({ down: undefined, distance: undefined }))
+    ).toMatchObject({ ball: 55, gain: null })
+    expect(fieldOf(still({ possession: undefined }))).toBeNull()
+  })
+
+  const drawn = (id: string, of: GameEssay = essay()): string => {
+    const at = gameEssayAt(of, id)
+    return renderToStaticMarkup(
+      CastProvider({ cast: undefined, children: GameScreen({ essay: of, at }) })
+    )
+  }
+
+  it("never shows a play's text, and draws a matched bite's field (section 0)", () => {
+    const of = essay()
+    const texts = of.games.flatMap((game) =>
+      game.halves.flatMap((half) =>
+        half.bites.flatMap((bite) =>
+          bite.play === null ? [] : [bite.play.text]
+        )
+      )
+    )
+    for (const scene of gameEssayAt(of, undefined).scenes)
+      for (const text of texts) expect(drawn(scene.id, of)).not.toContain(text)
+    expect(drawn("setup-1")).toContain('data-field="true"')
+    expect(drawn("setup-1")).toContain("4th &amp; 5")
+  })
+
+  it("tags a bite read aloud as the owner's words, and one in their voice as theirs (D6)", () => {
+    expect(drawn("bite-2")).toContain(GW.readAloud)
+    expect(drawn("bite-1")).toContain(GW.yourVoice)
+  })
+
+  it("draws an unmatched bite with its stamp and no field (D12)", () => {
+    const markup = drawn("bite-3")
+    expect(markup).toContain(GW.noPlay)
+    expect(markup).toContain("Said at ")
+    expect(markup).not.toContain('data-field="true"')
   })
 })
 

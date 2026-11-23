@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, pacificClock } from "@some-ui/core-utils"
 import {
   gameEssayFormat,
   gameScenarioName,
@@ -51,7 +51,7 @@ const SAMPLE = sampleGameEssay()
 type Game = GameEssay["games"][number]
 type Bite = Game["halves"][number]["bites"][number]
 
-const labelOf = (scene: GameEssayScene): string => {
+const labelOf = (essay: GameEssay, scene: GameEssayScene): string => {
   switch (scene.section) {
     case "intro": {
       return SW.whoMadeThis
@@ -75,7 +75,8 @@ const labelOf = (scene: GameEssayScene): string => {
     case "bite":
     case "happened":
     case "answer": {
-      return `${scene.game ?? ""} · ${NAMES[scene.section] ?? ""}`
+      const game = essay.games.find((g) => g.id === scene.game)
+      return `${game === undefined ? "" : W.game(game.away, game.home)} · ${NAMES[scene.section] ?? ""}`
     }
     default: {
       return assertNever(scene)
@@ -119,14 +120,11 @@ const FieldStill = ({
   const x = (yards: number): number => 10 + yards
   return (
     <svg
+      data-field="true"
       viewBox="0 0 120 30"
       className="text-muted-foreground w-full"
       role="img"
-      aria-label={
-        still.possession !== undefined && still.spot !== undefined
-          ? `${still.possession} at ${W.at(still.spot.side, still.spot.yard)}`
-          : ""
-      }
+      aria-label={W.ball(at.team, W.at(at.side, at.yard))}
     >
       <rect
         x="0"
@@ -137,15 +135,15 @@ const FieldStill = ({
         stroke="currentColor"
         strokeWidth="0.5"
       />
-      {Array.from({ length: 9 }, (_, i) => (
+      {Array.from({ length: 11 }, (_, i) => (
         <line
           key={i}
-          x1={x((i + 1) * 10)}
-          x2={x((i + 1) * 10)}
+          x1={x(i * 10)}
+          x2={x(i * 10)}
           y1="2"
           y2="28"
           stroke="currentColor"
-          strokeWidth="0.25"
+          strokeWidth={i === 0 || i === 10 ? "0.75" : "0.25"}
         />
       ))}
       <line
@@ -176,14 +174,18 @@ const FieldStill = ({
 /** A bite's one still (section 0, D12): its play's moment, or none. */
 const Still = ({ game, bite }: { game: Game; bite: Bite }): JSX.Element => {
   if (bite.play === null)
-    return <p className="text-muted-foreground text-[0.8em]">{W.noPlay}</p>
+    return (
+      <p className="text-muted-foreground text-[0.8em]">
+        {W.saidAt(pacificClock(bite.saidAt))} · {W.noPlay}
+      </p>
+    )
   const { still } = bite.play
   return (
     <div className="space-y-[0.4em]">
       <ScoreBug game={game} still={still} />
       {still.down !== undefined && still.distance !== undefined && (
         <p className="text-[0.85em]">
-          {W.downs(still.down, still.distance)}
+          {W.downs(still.down, still.distance, fieldOf(still)?.gain === 100)}
           {still.spot !== undefined &&
             ` · ${W.at(still.spot.side, still.spot.yard)}`}
         </p>
@@ -193,7 +195,8 @@ const Still = ({ game, bite }: { game: Game; bite: Bite }): JSX.Element => {
   )
 }
 
-const Screen = ({
+/** One scene's picture, as the frame draws it: exported for its tests. */
+export const Screen = ({
   essay,
   at,
 }: {
@@ -235,15 +238,15 @@ const Screen = ({
       const { game } = view
       return (
         <Call speaker={at.speaker} tag={NAMES.game}>
-          <Title>{`${game.away} at ${game.home}`}</Title>
+          <Title>{W.game(game.away, game.home)}</Title>
           <p className="text-[0.9em] leading-snug">{game.game.said}</p>
         </Call>
       )
     }
     case "halftime": {
       return (
-        <Call speaker={at.speaker} tag={W.halftime}>
-          <Title>{`${view.game.away} at ${view.game.home}`}</Title>
+        <Call speaker={at.speaker} tag={NAMES.halftime}>
+          <Title>{W.game(view.game.away, view.game.home)}</Title>
           <p className="text-[0.9em] leading-snug">{at.scene.said}</p>
         </Call>
       )
@@ -316,7 +319,7 @@ export const GameEssayStagePage = ({
   const { essay, voicing } = state
   const at = gameEssayAt(essay, scene, voicing)
   const format = gameEssayFormat(essay.template.version)
-  const where = whereOf(at, () => labelOf(at.scene))
+  const where = whereOf(at, () => labelOf(essay, at.scene))
   return (
     <StageFrame
       record={record}
@@ -332,7 +335,10 @@ export const GameEssayStagePage = ({
         onScene === undefined
           ? undefined
           : {
-              scenes: at.scenes.map((s) => ({ id: s.id, label: labelOf(s) })),
+              scenes: at.scenes.map((s) => ({
+                id: s.id,
+                label: labelOf(essay, s),
+              })),
               onScene,
             }
       }

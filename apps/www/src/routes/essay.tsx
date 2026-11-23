@@ -9,7 +9,7 @@ import { ViewerStrip } from "@/components/provenance-strip"
 /**
  * The essays' stage (RR15, #2690): one scene of an essay at a time, as
  * `/call` plays the weekly call's. `?kind=interview` plays the interview
- * essay (IW6, #2937), `?kind=spoken` a cards essay's spoken card (WALK7,
+ * essay (IW6, #2937), `?kind=game` the Game Week essay (GWB, #2074), `?kind=spoken` a cards essay's spoken card (WALK7,
  * `?week` naming the card), and otherwise the Rust Rounds essay. Standalone, so no
  * shell sits in the frame; `?week` names the essay by its week's id
  * ("sample" for the template's, as with none), `?scene` the scene, and

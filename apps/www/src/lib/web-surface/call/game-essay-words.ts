@@ -13,14 +13,18 @@ export const GAME_ESSAY_WORDS = {
   saidFirst: "Said first",
   /** A bite home matched to no play: its stamp and scenario, no field (D12). */
   noPlay: "No play matched",
-  halftime: "Halftime",
   quarter: (period: number): string => (period > 4 ? "OT" : `Q${period}`),
-  downs: (down: number, distance: number): string =>
-    `${["1st", "2nd", "3rd", "4th"][down - 1] ?? ""} & ${distance}`,
+  /** Down and distance: "4th & 5", or "1st & Goal" when the line to gain is the goal line. */
+  downs: (down: number, distance: number, goal: boolean): string =>
+    `${["1st", "2nd", "3rd", "4th"][down - 1] ?? ""} & ${goal ? "Goal" : String(distance)}`,
+  /** A game, its visitors first: "NE at CHI". */
+  game: (away: string, home: string): string => `${away} at ${home}`,
+  /** Who has the ball, and where. */
+  ball: (team: string, where: string): string => `${team} at ${where}`,
+  /** When an unmatched bite was said, on the owner's clock (D12's stamp). */
+  saidAt: (clock: string): string => `Said at ${clock}`,
   at: (side: string, yard: number): string =>
     yard === 50 ? "the 50" : `the ${side} ${yard}`,
-  /** How the game ended for the team it is read for. */
-  final: "Final",
   stance: {
     decision: "The decision",
     umbrage: "Umbrage",
