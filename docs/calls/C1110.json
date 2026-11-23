@@ -1,0 +1,14 @@
+{
+  "id": "C1110",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/words.ts",
+    "apps/www/landing/index.html"
+  ],
+  "chose": "On a wide screen, \"What I built and use every day\" is one pane of up to three turning blocks, and the phone keeps its stacked cards: at the left a rectangle of copy, with its own type and animation, turning about Y; at its right two square cubes turning about X, each face playing its silent clip with a small band at the bottom for its title and a line; on a schedule each turns to its next face; the titles type in; every block has a slight, undistracting expansion. The owner (2026-11-22), on the live site: \"what happened to the android app, hyperframe footage? why this blur?\", and: \"extensions in webapp is completely covered by the text blob? can we actually for this case utilize the rotating cube ui. so that it's one artifact in that pane for what I build everyday, and the faces rotate, that way we can showcase multiple things.\" Then: \"you know in that pane, and this is for webapp only, mobile stays as is, I think it can be 1-3 cubes in that pane. meaning we can have like left most be some text copy, then to the right two cube faces with a small band at the bottom for description/title. and each play the silent video, and then on a schedule we rotate, to next face with new video content, the two video cards rotate along the x-axis as they need a square aspect ratio. and the left most container rotates along the y-axis as it will be a rectangle. and the title text also changes periodically in a typwriter stream, and the text container on the left also has text theme and animation effects and the containers all have slight 'expansion' effect I forget the taiwlind css for it, nothing too distracing just subtle.\" On the earlier cube code: \"feel free to completely rewrite/delete that, and replace with a more efficent, better designed algorithm if it sees the value in it, or not, as it is now, it works more as a floor showcasing the intent.\"",
+  "undo": "Draw the projects as the row of cards again in apps/www/src/landing/render.ts and landing/index.html (as at C1064), and drop the showcase's rings from the head.",
+  "refs": ["#3401"],
+  "moves": "C1064"
+}

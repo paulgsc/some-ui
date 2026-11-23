@@ -7,25 +7,17 @@
  *
  * A clip or a picture is a build-time asset of the Pages build (C1055): each
  * slot names its asset by key, and until that asset exists the slot draws the
- * placeholder this table describes.
+ * placeholder this table describes. The show's words (its episodes and
+ * scenes) are `show.ts`'s, beside the script they belong to.
  */
-
-/** One project card: what it is, its stack, and where to read it. */
-export type ProjectWords = {
-  readonly id: "extensions" | "android" | "server"
-  readonly title: string
-  readonly stack: string
-  readonly line: string
-  /** The clip the slot will hold, by asset key. */
-  readonly clip: string
-}
 
 /** One gap card: one visual and one line on why. */
 export type GapWords = {
   readonly id: "page-filter" | "cores"
   readonly title: string
   readonly line: string
-  readonly visual: string
+  /** A still, always: a gap shows a picture, not a clip. */
+  readonly visual: `stills/${string}.png`
   /** What the drawn visual is, said on it. */
   readonly visualNote: string
 }
@@ -38,6 +30,8 @@ export type LandingWords = {
   readonly resume: string
   readonly lede: string
   readonly photoAlt: string
+  /** The mochi's button, which sends it a hug (C1187). */
+  readonly hug: string
   readonly projectsTitle: string
   readonly gapsTitle: string
   readonly experienceTitle: string
@@ -46,7 +40,9 @@ export type LandingWords = {
   readonly independentNote: string
   readonly skills: string
   readonly footerKeeps: string
-  readonly projects: ReadonlyArray<ProjectWords>
+  /** The theme picker's name, and its first choice: the device's own theme (C1184). */
+  readonly theme: string
+  readonly themeDevice: string
   readonly gaps: ReadonlyArray<GapWords>
 }
 
@@ -56,8 +52,9 @@ export const LANDING_WORDS: LandingWords = {
     "Paul Gathondu, software engineer in Rust and TypeScript: what I built and use every day, the gaps I'm working through, experience, résumé and contact.",
   role: "Software engineer · Rust and TypeScript",
   resume: "Résumé (PDF)",
-  lede: "I build web services in Rust and apps in TypeScript and React. These three are my own work, public, and I use them every day.",
+  lede: "I build web services in Rust and apps in TypeScript and React. These are my own work, public, and I use them every day.",
   photoAlt: "Paul Gathondu",
+  hug: "Send Mochi a hug",
   projectsTitle: "What I built and use every day",
   gapsTitle: "Gaps I'm working through",
   experienceTitle: "Experience",
@@ -68,29 +65,8 @@ export const LANDING_WORDS: LandingWords = {
   skills:
     "Rust, TypeScript, React, Node.js, SQL, Python, Axum, Tokio, Redis, NATS, Docker, GitHub Actions, Grafana, Prometheus, Vitest, Playwright",
   footerKeeps: "This page keeps nothing about you.",
-  projects: [
-    {
-      id: "extensions",
-      title: "Browser extensions",
-      stack: "TypeScript · Firefox and Chromium MV3",
-      line: "Suspender Ledger keeps a site awake, then suspends a tab. Signed and reviewed by Mozilla (unlisted).",
-      clip: "clips/extensions.mp4",
-    },
-    {
-      id: "android",
-      title: "The Android app",
-      stack: "TypeScript · React · Capacitor · Rust → WebAssembly",
-      line: "Study sessions, Rust practice rounds, a job search desk and a video studio, in one app.",
-      clip: "clips/apk.mp4",
-    },
-    {
-      id: "server",
-      title: "file_host: the server behind them",
-      stack: "Rust · Axum · Tokio · SQLite · Redis · NATS · Grafana",
-      line: "It runs on my home server, under its own dashboard: whether it's answering, how long it has been up, and what the rate limiter turns away.",
-      clip: "clips/server.mp4",
-    },
-  ],
+  theme: "Theme",
+  themeDevice: "As your device is set",
   gaps: [
     {
       id: "page-filter",

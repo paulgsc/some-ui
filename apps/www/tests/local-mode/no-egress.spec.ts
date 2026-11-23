@@ -19,11 +19,32 @@
  * policy is shown to block a real request.
  */
 
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import type { ResolvedEpisode } from "@/landing/show"
+import { SHOW, showFor } from "@/landing/show"
 import { expect, test } from "@playwright/test"
 import type { BrowserContext, Page } from "@playwright/test"
 
-import { builtApp, FILE_HOST_PORT, serveBuild, startFileHost } from "./harness"
+import {
+  builtApp,
+  FILE_HOST_PORT,
+  REPO_ROOT,
+  serveBuild,
+  startFileHost,
+} from "./harness"
 import type { BuildName, Listening, Received } from "./harness"
+
+/** The episodes Pages shows, as its build works them out (`showFor`). */
+function shownEpisodes(): ReadonlyArray<ResolvedEpisode> {
+  const show = showFor(
+    SHOW,
+    (path): unknown => JSON.parse(readFileSync(join(REPO_ROOT, path), "utf8")),
+    false
+  )
+  if (!show.ok) throw new Error(show.problems.join("; "))
+  return show.episodes
+}
 
 /** Every route a learner on the device can open without an account. */
 const LOCAL_ROUTES = [
@@ -295,6 +316,7 @@ test.describe("the Pages build", () => {
   })
 
   test("reaches no other origin, and its policy is enforced", async ({
+    browser,
     context,
     page,
   }) => {
@@ -323,9 +345,12 @@ test.describe("the Pages build", () => {
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)
-    await expect(page.locator('article[data-slot="clip"] .ground')).toHaveCount(
-      3
-    )
+    // Every face of the show draws its title card (C1113), and only the
+    // scenes Pages shows: none the owner hasn't read (C1181).
+    const faces = shownEpisodes().reduce((n, e) => n + e.scenes.length * 2, 0)
+    await expect(
+      page.locator(".stage .face[data-asset] .title-card")
+    ).toHaveCount(faces)
     await expect(
       page.locator('article[data-slot="still"] .drawing')
     ).toHaveCount(2)
@@ -333,9 +358,8 @@ test.describe("the Pages build", () => {
     await expect(
       page.locator("article[data-slot] a, article[data-slot] button")
     ).toHaveCount(0)
-    // A clip is the card's background, never a player (C1064): none has
-    // controls or speaks to a screen reader, and a reader who prefers less
-    // motion sees the placeholder instead.
+    // A clip is never a player (C1064), and is hidden from a reader who
+    // prefers less motion.
     await expect(
       page.locator("video[controls], video:not([aria-hidden=true])")
     ).toHaveCount(0)
@@ -356,6 +380,72 @@ test.describe("the Pages build", () => {
         )
       )
     ).toBe(true)
+    // On a wide screen the show plays on its one clock (C1182): each
+    // episode is read out once, by the copy block, and every track runs
+    // over the same cycle.
+    await page.setViewportSize({ width: 1280, height: 800 })
+    for (const episode of shownEpisodes())
+      await expect(
+        page.getByRole("heading", { level: 3, name: episode.title })
+      ).toHaveCount(1)
+    const durations = await page.evaluate(() =>
+      document
+        .getAnimations()
+        .filter(
+          (a) => a instanceof CSSAnimation && a.animationName.startsWith("s-")
+        )
+        .map((a) => a.effect?.getTiming().duration)
+    )
+    expect(durations.length).toBeGreaterThan(shownEpisodes().length * 3)
+    expect(new Set(durations).size).toBe(1)
+    // For a reader who prefers less motion nothing turns, types or breathes.
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+    await page.emulateMedia({ reducedMotion: null })
+    // The theme picker (C1184), with no script: the palette opens it, and
+    // a click outside it, Escape, or picking a theme closes it; focus in it
+    // goes back to the palette.
+    const palette = page.locator(".themes-toggle")
+    const panel = page.locator(".themes-panel")
+    await expect(panel).toBeHidden()
+    await palette.click()
+    await expect(panel).toBeVisible()
+    await page.mouse.click(5, 790)
+    await expect(panel).toBeHidden()
+    await palette.click()
+    await expect(panel).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(panel).toBeHidden()
+    await palette.click()
+    await page.locator('label[for="theme-rose-night"]').click()
+    await expect(panel).toBeHidden()
+    await expect(page.locator("#theme-rose-night")).toBeChecked()
+    await palette.focus()
+    await page.keyboard.press("Enter")
+    await page.keyboard.press("Tab")
+    await expect(page.locator("#theme-rose-night")).toBeFocused()
+    await page.keyboard.press("Escape")
+    await expect(panel).toBeHidden()
+    await expect(palette).toBeFocused()
+    await palette.click()
+    await page.locator('label[for="theme-device"]').click()
+    await expect(panel).toBeHidden()
+    // A tap on a phone: its click follows the pointerup that closes the
+    // picker, so the row must still be there to take it.
+    const phone = await browser.newContext({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 390, height: 844 },
+    })
+    const tapped = await phone.newPage()
+    await tapped.goto(`${app().origin}${BASE}`)
+    await tapped.locator(".themes-toggle").tap()
+    await expect(tapped.locator(".themes-panel")).toBeVisible()
+    await tapped.locator('label[for="theme-mochi-night"]').tap()
+    await expect(tapped.locator("#theme-mochi-night")).toBeChecked()
+    await expect(tapped.locator(".themes-panel")).toBeHidden()
+    expect(tapped.url()).toBe(`${app().origin}${BASE}`)
+    await phone.close()
     await collect()
 
     // The résumé is static too (C1055): every version's page is there whole,
