@@ -5,12 +5,13 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import { isFeed } from "@/lib/feeds"
 import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
 import type { RenderFailed } from "@/lib/renders/model"
 import { roughly } from "@/lib/renders/words"
 
 import type { AgainAnswer, Plan, Step } from "./model"
-import { produces, stopOf } from "./model"
+import { stopOf } from "./model"
 
 const count = (n: number, one: string, many: string): string =>
   n === 1 ? `1 ${one}` : `${String(n)} ${many}`
@@ -33,7 +34,7 @@ export function youLine(failed: RenderFailed): string {
   const stop = stopOf(failed)
   switch (stop.kind) {
     case "burnt": {
-      return produces(failed.feed)
+      return isFeed(failed.feed)
         ? "You can send it back in line now with Run it again."
         : "Nothing on this phone changes it; home's own try is the way."
     }

@@ -276,12 +276,9 @@ const KEEPERS = new Set([
 /** LA8, #2843: whether home works with this build, its one ask through `look`. */
 const COMPAT_READ = "lib/home-link/compat-read.ts"
 
-/** SFEED13: Studio › Renders' read and run again (RETRY), and the requests they may send. */
+/** SFEED13: Studio › Renders' read, and the one request it may send. */
 const RENDERS_READ = "lib/home-link/renders.ts"
-const RENDERS_SENDS = [
-  ['"GET"', '"/renders"'],
-  ['"POST"', "producePath(feed, key)", 'JSON.stringify({ asset: "video" })'],
-]
+const RENDERS_SENDS = [['"GET"', '"/renders"']]
 
 /** GWB14 D15: a game's moment log, and the one request it may send. */
 const MOMENTS_READ = "lib/home-link/game-moments.ts"
@@ -1012,7 +1009,11 @@ describe("LA8: the phone reaches home through one module", () => {
           read(f)
         )
       )
-    expect(readers).toEqual(["lib/call-videos/index.ts"])
+    expect(readers).toEqual([
+      "lib/call-videos/index.ts",
+      // RETRY: Run it again asks home's produce request for an episode's video.
+      "lib/renders/again/ask.ts",
+    ])
   })
 
   it("sends nothing from Studio's Feedback page but one GET of a feed's notes, and only the page's read asks it (SFEED6)", () => {
@@ -1027,14 +1028,14 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/episode-feedback/home-read.ts"])
   })
 
-  it("sends nothing from Studio › Renders but one GET of /renders and a run again's POST, and only Studio › Renders asks them (SFEED13, RETRY)", () => {
+  it("sends nothing from Studio › Renders but one GET of /renders, and only Studio › Renders asks it (SFEED13)", () => {
     expect(sendCalls(RENDERS_READ, read(RENDERS_READ))).toEqual(RENDERS_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>
         /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
       )
-    expect(readers).toEqual(["lib/renders/again/ask.ts", "lib/renders/read.ts"])
+    expect(readers).toEqual(["lib/renders/read.ts"])
   })
 
   it("sends nothing from a game's moments but one GET of its log, and only Takes' read of it asks it (GWB14 D15)", () => {

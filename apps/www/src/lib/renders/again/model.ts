@@ -20,6 +20,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import type { AttentionRead } from "@some-ui/soundbites"
 import { z } from "zod"
 
+import { isFeed } from "@/lib/feeds"
 import type { Board, Refusal, RenderFailed } from "@/lib/renders/model"
 import { refusalOf } from "@/lib/renders/model"
 
@@ -122,23 +123,6 @@ export type Plan =
   | { readonly kind: "preview" }
 
 /**
- * The feeds whose episodes home makes again on ask (paulgsc/server
- * `routes::feed_videos`' produce): every feed but none of the board's own
- * rows (a preview, a clip's walk).
- */
-const PRODUCES = [
-  "call",
-  "playoff-delta",
-  "rust-essay",
-  "interview-essay",
-  "cards-essay",
-  "report",
-] as const
-
-export const produces = (feed: string): boolean =>
-  PRODUCES.some((each) => each === feed)
-
-/**
  * What the takes needing attention hold, as the Run it again page read them:
  * the ids still waiting on the owner, or not read yet.
  */
@@ -184,7 +168,9 @@ function stillWaiting(
 export function planOf(stop: Stop, attention: Attention, feed: string): Plan {
   switch (stop.kind) {
     case "burnt": {
-      return produces(feed) ? { kind: "ready" } : { kind: "byItself" }
+      // Home makes a feed's episode again on ask (its produce request), none
+      // of the board's own rows (a preview, a clip's walk).
+      return isFeed(feed) ? { kind: "ready" } : { kind: "byItself" }
     }
     case "takes-unheard": {
       return {
