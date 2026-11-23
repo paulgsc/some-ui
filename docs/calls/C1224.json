@@ -1,0 +1,20 @@
+{
+  "id": "C1224",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/render.ts",
+    "apps/www/tests/record/voiced.ts",
+    "apps/www/tests/record/cards.ts",
+    "apps/www/tests/record/essay-recording.ts"
+  ],
+  "chose": "The recorder names each scene too full for its frame after every id, one line each, exactly `scene <id> is named: <name>` (whitespace folded, at most 120 characters, none for a scene with no name), so home's render worker, which reads ids up to the first line not of an id's shape, reads the ids as before, and REDO-S's follow-up server PR carries the names to the board as `sceneNames`. A scene's name is \"<chapter>, scene <n>\" (its chapter from a cards essay's marks or an essay's chapter slides, its place in the video from 1), else \"scene <n>\" by its place among the scenes the recorder draws.",
+  "options": [
+    "names after the ids, one line each, from the chapter and place the recorder already holds (taken)",
+    "name on the same line as its id",
+    "home derives names from the ids and the essay it holds"
+  ],
+  "gray": "The owner asked for a failure to name its scene, not an id; only the recorder knows each scene's human name, and the line shape is a contract between the recorder and home's worker that no check or earlier decision settles. Agreed with REDO-S, paulgsc/server#1140's worker.",
+  "undo": "Return `overflowLines` to ids only and drop `sceneNames` and `Shot.name`; home's board then counts the scenes.",
+  "refs": ["#3445", "server#1140"]
+}

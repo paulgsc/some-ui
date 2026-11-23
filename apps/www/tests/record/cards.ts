@@ -76,6 +76,7 @@ import {
   parseSnipsGiven,
   pngSize,
   resolveScreens,
+  sceneNames,
   SNIPS_DIR,
   snipsOf,
   spokenCardsOf,
@@ -287,6 +288,10 @@ async function spokenStills({
     scene.spoken === undefined ? [] : [{ scene, spoken: scene.spoken }]
   )
   const stage = new Map(spoken.map((s) => [s.scene.id, s.spoken.scene.id]))
+  // Each scene by its chapter and place in the whole video, said if it
+  // doesn't fit (RETRY).
+  const names = sceneNames(scenes, (scene) => scene.mark)
+  const nameOf = new Map(scenes.map((scene, i) => [scene.id, names[i]]))
   const takes = await recordStills({
     page,
     root,
@@ -297,9 +302,11 @@ async function spokenStills({
       // answer is never said by the speaker in its place.
       if (on.take !== undefined && own === undefined)
         fail([`${scene.id}: home handed no take ${on.take}`])
+      const name = nameOf.get(scene.id)
       return {
         id: scene.id,
         file: scene.file,
+        ...(name === undefined ? {} : { name }),
         url: `${origin}/essay?${new URLSearchParams({
           kind: "spoken",
           week: card,
