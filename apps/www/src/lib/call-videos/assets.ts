@@ -89,6 +89,12 @@ export const StepSchema = z.object({
 
 export type Step = z.infer<typeof StepSchema>
 
+/** Whether a step is on the line and can still move: asked, waiting or being made. */
+export const stepUnderWay = (step: Step | undefined): boolean =>
+  step?.state === "asked" ||
+  step?.state === "waiting" ||
+  step?.state === "rendering"
+
 /**
  * Each file's step, as far as home's list says: absent from an older home. A
  * step this phone can't read (a state home learned since) is dropped alone,

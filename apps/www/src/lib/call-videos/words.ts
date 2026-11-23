@@ -319,8 +319,6 @@ export const ASSET_WORDS = {
       "Home tried and couldn't make it from this episode, and trying again would come out the same.",
     held: "Home is holding it until something it needs changes; it moves on by itself.",
   } satisfies Record<StoppedWhy, string>,
-  /** Under a step still on the line: the page doesn't watch it move. */
-  checkAgain: "Drag down to see where it is now.",
   when: {
     asked: (at: number, timeZone?: string): string =>
       `Asked for ${clockOf(at, timeZone)}.`,

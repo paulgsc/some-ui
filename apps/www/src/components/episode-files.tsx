@@ -19,7 +19,9 @@ import type { Feed } from "@/lib/call-videos"
 import {
   ASSET_WORDS,
   episodeAsset,
+  listAgainIn,
   produceAsset,
+  readListAgain,
   saveThumbnail,
 } from "@/lib/call-videos"
 import type {
@@ -28,11 +30,17 @@ import type {
   ShownAsset,
   Step,
 } from "@/lib/call-videos/assets"
-import { assetView, latestStep, SHOWN_ASSETS } from "@/lib/call-videos/assets"
+import {
+  assetView,
+  latestStep,
+  SHOWN_ASSETS,
+  stepUnderWay,
+} from "@/lib/call-videos/assets"
 import type { Episode } from "@/lib/call-videos/model"
 import { FILE_STRIP, fileConveyor } from "@/lib/call-videos/step-conveyor"
 import { useAsyncIntent } from "@/lib/intent"
 import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
+import { WHILE_UNDER_WAY_MS } from "@/lib/renders/model"
 import { CopyButton } from "@/components/copy-button"
 
 /**
@@ -130,11 +138,6 @@ const OnTheLine = ({
         </p>
       )}
       {said !== null && <p className="text-xs">{said}</p>}
-      {aside === null && at !== "ready" && (
-        <p className="text-muted-foreground text-xs">
-          {ASSET_WORDS.checkAgain}
-        </p>
-      )}
     </>
   )
 }
@@ -243,10 +246,27 @@ export const EpisodeFiles = ({
 }: {
   feed: Feed
   episode: Episode
-}): JSX.Element => (
-  <>
-    {SHOWN_ASSETS.map((asset) => (
-      <AssetBlock key={asset} feed={feed} episode={episode} asset={asset} />
-    ))}
-  </>
-)
+}): JSX.Element => {
+  // The conveyor moves on its own while a file is on the line (the owner,
+  // 2026-11-22): the list is read again as Studio › Renders reads its board,
+  // not at once (the page has just read it), and not while hidden.
+  const underWay = SHOWN_ASSETS.some((asset) =>
+    stepUnderWay(episode.assets?.[asset])
+  )
+  useQuery({
+    queryKey: ["feeds", feed, "under-way", episode.key],
+    queryFn: () => readListAgain(feed),
+    initialData: null,
+    staleTime: WHILE_UNDER_WAY_MS,
+    enabled: underWay,
+    refetchInterval: listAgainIn(underWay),
+    retry: false,
+  })
+  return (
+    <>
+      {SHOWN_ASSETS.map((asset) => (
+        <AssetBlock key={asset} feed={feed} episode={episode} asset={asset} />
+      ))}
+    </>
+  )
+}

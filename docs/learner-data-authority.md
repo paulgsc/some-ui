@@ -486,7 +486,10 @@ declared (checked by reading every call site and by the tests named).
   the weekly call's and Playoff Delta's (`lib/call-videos`, through
   `lib/home-link/call-videos`' `keep`: one `GET /feeds/:feed/videos` each
   time a feed's screen opens, on a drag down, on Try again, once after a
-  Save home kept and once after a Generate home took; on Watch, one
+  Save home kept, once after a Generate home took, and every
+  `WHILE_UNDER_WAY_MS` while a file an episode's page shows is under way
+  there and the page is shown (`listAgainIn`, as Studio › Renders
+  reads its board); on Watch, one
   `GET /feeds/:feed/videos/:key/video` per part
   of the episode's video, each a range of at most `PART_BYTES`, into the
   phone's cache; when an episode's page opens, and again when the list says
@@ -686,7 +689,9 @@ declared (checked by reading every call site and by the tests named).
   Generate, lets
   anything but `lib/call-videos` call it, or has `lib/call-videos` read the
   list but on the screen opening, a drag down, Try again, once after a
-  Save home kept or once after a Generate home took, fetch a video but
+  Save home kept, once after a Generate home took or every
+  `WHILE_UNDER_WAY_MS` while a file its episode's page shows is under way
+  and the page is shown, fetch a video but
   on Watch, read a file beside it but on its page opening or its step
   moving, send a link but on Save and once it reads as a `YouTube`
   video (`youtubeLink` (`@some-ui/core-utils`)), or ask for a file but on

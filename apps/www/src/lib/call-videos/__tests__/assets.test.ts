@@ -17,6 +17,7 @@ import {
   readProduced,
   SHOWN_ASSETS,
   STEP_STATES,
+  stepUnderWay,
 } from "@/lib/call-videos/assets"
 
 const step = (state: StepState, over: Partial<Step> = {}): Step => ({
@@ -139,6 +140,16 @@ describe("latestStep", () => {
     expect(
       latestStep(step("rendering", { startedAt: 1795388820 }), asked)?.startedAt
     ).toBe(1795388820)
+  })
+})
+
+describe("stepUnderWay", () => {
+  it("is a step that can still move on the line, and no other", () => {
+    expect(stepUnderWay(undefined)).toBe(false)
+    for (const state of STEP_STATES)
+      expect(stepUnderWay(step(state))).toBe(
+        state === "asked" || state === "waiting" || state === "rendering"
+      )
   })
 })
 

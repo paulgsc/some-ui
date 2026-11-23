@@ -45,7 +45,8 @@ const home = vi.hoisted(
     reads: Map<string, AssetRead<ShownAsset>>
     produced: Array<string>
     read: Array<string>
-  } => ({ reads: new Map(), produced: [], read: [] })
+    underWay: Array<boolean>
+  } => ({ reads: new Map(), produced: [], read: [], underWay: [] })
 )
 
 vi.mock("@/lib/call-videos", async (importOriginal) => {
@@ -72,6 +73,10 @@ vi.mock("@/lib/call-videos", async (importOriginal) => {
       })
     },
     saveThumbnail: (): Promise<string> => Promise.resolve("opened"),
+    listAgainIn: (underWay: boolean): number | false => {
+      home.underWay.push(underWay)
+      return false
+    },
   }
 })
 
@@ -108,6 +113,7 @@ afterEach(() => {
   home.reads.clear()
   home.produced.length = 0
   home.read.length = 0
+  home.underWay.length = 0
 })
 
 describe("EpisodeFiles", () => {
@@ -176,6 +182,21 @@ describe("EpisodeFiles", () => {
     ).toBe("step")
     expect(screen.getByText(ASSET_WORDS.why.couldNot)).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
+  })
+
+  it("reads the list again on its own only while a file is on the line", () => {
+    show(episode({ assets: { thumbnail: step("thumbnail", "waiting") } }))
+    expect(home.underWay.at(-1)).toBe(true)
+    cleanup()
+    show(
+      episode({
+        assets: {
+          thumbnail: step("thumbnail", "failed"),
+          description: step("description", "missing"),
+        },
+      })
+    )
+    expect(home.underWay.at(-1)).toBe(false)
   })
 
   it("shows nothing of a file an older home neither serves nor lists", async () => {
