@@ -594,6 +594,15 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
       /^It shows a picture of the app that home couldn't get from its capture/
     )
     expect(failedLine(row("clip-missing", 2))).toMatch(/^It shows 2 clips/)
+    expect(failedLine(row("page-missing", 2))).toMatch(
+      /^It shows 2 pages from the web .*names pages/
+    )
+    expect(failedLine(row("page-gone", 1))).toMatch(
+      /^It shows a page from the web .*that picture as the essay names it\. Take the page again/
+    )
+    expect(failedLine(row("page-gone", 3))).toMatch(
+      /^It shows 3 pages .*those pictures as the essay names them\. Take the pages again/
+    )
     // Named, where home names every take (itemNames): never by id.
     const named = {
       ...row("take-unheard", 2),
@@ -646,10 +655,22 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))
     const clipMissing = failedLine(row("clip-missing"))
+    const pageMissing = failedLine(row("page-missing"))
+    const pageGone = failedLine(row("page-gone"))
     expect(snipMissing).toMatch(/names a picture its capture holds/)
     expect(snipGone).toMatch(/Re-run that Snips Capture/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)
-    const lines = [missing, unheard, snipMissing, snipGone, clipMissing]
+    expect(pageMissing).toMatch(/home couldn't get, or that no capture made/)
+    expect(pageGone).toMatch(/Take the pages? again with Public Pages Capture/)
+    const lines = [
+      missing,
+      unheard,
+      snipMissing,
+      snipGone,
+      clipMissing,
+      pageMissing,
+      pageGone,
+    ]
     expect(new Set(lines).size).toBe(lines.length)
     for (const line of lines) expect(line, line).not.toMatch(MACHINERY)
     // Only a cards essay's: another feed's unknown reason reads as before.

@@ -322,8 +322,8 @@ function refusalLine(
 
 /**
  * Why home set a cards essay aside before making it (WALK7,
- * paulgsc/server#1052; SNIPS2, server#1076), by home's word for each: its
- * `essay_media` refusals, a closed set. A take home hasn't finished listening
+ * paulgsc/server#1052; SNIPS2, server#1076; public pages, server#1144), by
+ * home's word for each: its `essay_media` refusals, a closed set. A take home hasn't finished listening
  * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
  * waits for its takes. A take the owner deleted is no refusal either: home
  * withdraws the essay for good, its video included, and it leaves every list
@@ -342,6 +342,12 @@ const ESSAY_REFUSAL_WORDS = {
   // C875: home never captures pictures itself; the owner runs it again.
   "snip-gone": (n: number): string =>
     `It shows ${n > 1 ? `${String(n)} pictures` : n === 1 ? "a picture" : "pictures"} of the app that home couldn't get from ${n === 1 ? "its" : "their"} capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.`,
+  "page-missing": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} pages` : "a page"} from the web that home couldn't get, or that no capture made. Home holds it, and makes it by itself once the essay names ${n > 1 ? "pages" : "a page"} its capture holds and home can fetch.`,
+  // #3395: a page is live, so a lost capture is taken again, never re-run;
+  // home never captures pages itself.
+  "page-gone": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} pages` : n === 1 ? "a page" : "pages"} from the web that home couldn't get from the capture the essay names: the capture may be over a day old, may have failed, or may not hold ${n === 1 ? "that picture" : "those pictures"} as the essay names ${n === 1 ? "it" : "them"}. Take ${n === 1 ? "the page" : "the pages"} again with Public Pages Capture, and name only the new pictures in the essay.`,
   "clip-missing": (n: number): string =>
     `It shows ${n > 1 ? `${String(n)} clips` : "a clip"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "clips" : "one"} home keeps.`,
 } as const
