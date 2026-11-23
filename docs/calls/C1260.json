@@ -1,0 +1,18 @@
+{
+  "id": "C1260",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:crates/game_scenarios/src/lib.rs",
+    "server:crates/game_scenarios/testdata/catalog.v3.json"
+  ],
+  "chose": "Catalog v3 adds the claim algebra (#3041, D24-D26) as a `claims` dimension: eight measures (pass-rush, third-down, red-zone, fourth-down-go, two-minute, timeouts-at-half, takeaways, explosives-allowed), each with its unit and which way is `better` (higher, lower, or null for a style); four shapes whose sides are the direction of the measure's value (rank: highest/lowest, vs-league and vs-team: above/below, trend: rising/falling); three deadlines; six verdicts with `withdrawn`. Challenges won, the prototype's ninth measure, waits for a later version: it needs a reader of ESPN's challenge text, and home's recorded replay holds one challenge.",
+  "options": [
+    "Sides as the value's direction, `better` per measure saying which is good (chosen): a claim on a style (fourth-down go rate, better null) has the same sides as any other, and 'worst at pass rush' is lowest on a higher measure.",
+    "Sides as good or bad (best/worst, better/worse), as first proposed: a style has no good direction, so its vs-league and vs-team claims would have no sides that mean anything.",
+    "Ship all nine measures, challenges won read from ESPN's text: a measure offered before any code computing it is proven on real games is one the ledger can't keep its word on."
+  ],
+  "gray": "Whether the owner reads 'lowest' or 'worst' is the phone's words, not the catalog's; which eight measures home can compute is a judgement on what the plays it keeps support, short of the verdict pass being built.",
+  "undo": "Before any bite records catalog version 3: delete testdata/catalog.v3.json and the `claims` types, and set CATALOG_VERSION back to 2. After, a v4 changes them.",
+  "refs": ["#3041", "#2074"]
+}

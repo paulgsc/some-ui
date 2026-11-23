@@ -23,7 +23,7 @@
   ],
   "home": [
     {
-      "catalogVersion": 2,
+      "catalogVersion": 3,
       "engineVersion": 8,
       "following": true,
       "games": [
@@ -130,7 +130,7 @@
       "v": 1
     },
     {
-      "catalogVersion": 2,
+      "catalogVersion": 3,
       "engineVersion": 8,
       "following": true,
       "games": [
@@ -191,7 +191,7 @@
       "v": 1
     },
     {
-      "catalogVersion": 2,
+      "catalogVersion": 3,
       "engineVersion": 8,
       "following": false,
       "games": [],
