@@ -1,0 +1,20 @@
+{
+  "id": "C1113",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/words.ts",
+    "apps/www/landing/index.html"
+  ],
+  "chose": "Every card's words are below its picture, never over it, on every screen, the gaps' cards included, so no scrim covers footage. On a cube's square face a clip sits whole inside its screen on the screen's dark (object-fit: contain), so a vertical clip shows narrow there, the cost of the square the owner asked for; laid flat (a phone, or a reader who prefers less motion) the cards sit in C1064's justified rows, each picture in its own shape, filling its card. A face whose asset the build lacks shows the project's title card, never an empty box. The phone shows no copy block, and its cards keep C1064's rows and shapes; what changes there is that the words sit below each picture, Page Filter is a fourth card and the extensions card is titled Suspender Ledger. On a wide screen the first cube's captions stay in the page for a screen reader, out of sight, so each project is read once. A reader who prefers less motion sees the copy and the cards laid flat, nothing turning, typing or breathing, and each clip's title card in place of the clip. The copy block's three faces (browser, phone, home) and each project's short band line are new words in words.ts.",
+  "options": [
+    "words below every picture; contain on the square faces; own shape laid flat",
+    "words over the picture on a scrim, as C1064",
+    "each clip cropped to fill its square face"
+  ],
+  "gray": "The owner asked for square faces and complained of the scrim; how a vertical clip fits a square, where words sit on the phone, and what shows without media or motion are on the screen and no call settles them. The owner said \"mobile stays as is\"; the coordinator carried the earlier no-text-over-footage rule to every screen, so the phone's three changes above are put to the owner for agreement.",
+  "undo": "In landing/index.html set .media's object-fit to cover, or lay .caption over .screen; drop the title card from projectFace in render.ts.",
+  "refs": ["#3401"],
+  "moves": "C1064"
+}

@@ -20,11 +20,13 @@ import { lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { createElement } from "react"
 import { resumeData, ResumeDocument } from "@some-ui/resume"
+import { SESSION_THEMES } from "@some-ui/styles/theme/registry"
+import { sessionColours } from "@some-ui/styles/theme/sources"
 import { renderToStaticMarkup } from "react-dom/server"
 
 import type { MediaSize } from "./src/landing/media.ts"
 import { mp4HasSound, mp4Size, pngSize } from "./src/landing/media.ts"
-import { mochiSvg } from "./src/landing/mochi.ts"
+import { landingMochi } from "./src/landing/mochi.ts"
 import type { RenderedSite, SitePage } from "./src/landing/output.ts"
 import { SITE_FILE, SITE_MEDIA_DIR } from "./src/landing/output.ts"
 import type { ResumeVersion } from "./src/landing/pages.ts"
@@ -36,6 +38,10 @@ import {
   renderLanding,
   renderLandingHead,
 } from "./src/landing/render.ts"
+import { SHOW, showFor } from "./src/landing/show.ts"
+import { THEME_ICONS } from "./src/landing/theme-icons.ts"
+import type { ThemePicker } from "./src/landing/themes.ts"
+import { landingThemes } from "./src/landing/themes.ts"
 import type { ResumeComposition } from "./src/lib/resume-files.ts"
 import {
   DEFAULT_RESUME_COMPOSITION,
@@ -81,8 +87,37 @@ function mediaFor(key: string): MediaSize | null | undefined {
   return undefined
 }
 
+// Scenes the owner hasn't read yet show only in a preview on their machine
+// (preview-pages.sh sets SITE_SHOW_DRAFTS); Pages never shows them (C1181).
+const withDrafts = process.env["SITE_SHOW_DRAFTS"] === "1"
+const show = showFor(
+  SHOW,
+  (path): unknown =>
+    JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "../..", path), "utf8")
+    ),
+  withDrafts
+)
+if (!show.ok) {
+  throw new Error(`the landing's show: ${show.problems.join("; ")}`)
+}
+const { episodes, drafts } = show
+if (drafts > 0) {
+  process.stdout.write(
+    withDrafts
+      ? `[www] showing the show's ${String(drafts)} draft scenes, for the owner to read\n`
+      : `[www] leaving out the show's ${String(drafts)} draft scenes (SITE_SHOW_DRAFTS=1 shows them)\n`
+  )
+}
+
+// Every session theme the repo offers, its colours read from
+// @some-ui/styles' own CSS (C1184), so the landing keeps no palette.
+const themes = landingThemes(SESSION_THEMES, sessionColours)
+// The picker wears the app's own theme switcher's icons (theme-icons.ts).
+const picker: ThemePicker = { themes, icons: THEME_ICONS }
+
 const media: LandingMedia = new Map(
-  landingMediaKeys().flatMap((key) => {
+  landingMediaKeys(undefined, episodes).flatMap((key) => {
     const found = mediaFor(key)
     return found === undefined ? [] : [[key, found] as const]
   })
@@ -92,8 +127,15 @@ const pages: ReadonlyArray<SitePage> = [
   {
     file: "index.html",
     template: "landing",
-    head: renderLandingHead(),
-    body: renderLanding(resumeData.fullstack, mochiSvg(), undefined, media),
+    head: renderLandingHead(undefined, episodes, themes),
+    body: renderLanding(
+      resumeData.fullstack,
+      landingMochi(),
+      undefined,
+      media,
+      episodes,
+      picker
+    ),
   },
   ...renderResumePages(versions),
   { file: "authorship/index.html", template: "authorship", head: "", body: "" },
@@ -107,5 +149,5 @@ writeFileSync(
   JSON.stringify({ pages, media: [...media.keys()] } satisfies RenderedSite)
 )
 process.stdout.write(
-  `[www] rendered the public site's ${pages.length} pages, with ${media.size} of its ${landingMediaKeys().length} media, into ${SITE_FILE}\n`
+  `[www] rendered the public site's ${pages.length} pages, with ${media.size} of its ${landingMediaKeys(undefined, episodes).length} media, into ${SITE_FILE}\n`
 )

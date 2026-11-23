@@ -1,0 +1,20 @@
+{
+  "id": "C1111",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/scripts/preview-pages.sh",
+    "apps/www/scripts/fetch-site-media.sh",
+    "apps/www/package.json",
+    ".github/workflows/pages.yml"
+  ],
+  "chose": "The owner previews the public site from a branch on their own machine with one command, `pnpm --filter www preview:pages`: it fetches the newest site media from main's producer runs with gh, builds www with the Pages build's environment through turbo as pages.yml does, and serves apps/www/dist with vite preview at http://localhost:4173/some-ui/. pages.yml's media step moved into apps/www/scripts/fetch-site-media.sh, which both run, so there is one copy. What it takes and refuses is unchanged; it now fetches beside the media folder and swaps in what it found, so a local fetch that finds nothing (gh signed out) leaves an earlier preview's media. Two known differences: a Pages rollback to a commit older than the script finds no script and ships every slot's placeholder, since the step runs from the checked-out tree; and vite preview answers an unknown path with the landing where Pages answers 404.html. The owner (2026-11-22): \"so we don't pay for the expensive github page release build nonesense, I can actually run the build on that branch on my machine so I can approve how it looks before merging to main.\"",
+  "options": [
+    "one command that fetches main's media with gh, builds as Pages does and serves at the base path, sharing pages.yml's fetch script",
+    "a Pages preview build per pull request, uploaded as an artifact",
+    "a static build with no media, every slot drawing its placeholder"
+  ],
+  "gray": "How the owner sees a branch's landing before merging is theirs to notice in how they work: a CI preview costs the Actions minutes they want to save, and one without media shows a page unlike the deploy.",
+  "undo": "Remove preview:pages and scripts/preview-pages.sh from apps/www, and move fetch-site-media.sh's body back into pages.yml's \"Fetch the site's media\" step.",
+  "refs": ["#3401"]
+}

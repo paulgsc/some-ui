@@ -1,11 +1,11 @@
 /**
  * The landing (PAGES, #3401): what the public site's front page says, read
- * from `renderLanding` on the résumé's real data, so a change to either shows
- * here.
+ * from `renderLanding` on the résumé's real data and the show resolved
+ * against its real walkthroughs, so a change to any of them shows here.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { mochiSvg } from "@/landing/mochi"
+import { landingMochi, mochiSvg } from "@/landing/mochi"
 import { SITE_BASE } from "@/landing/output"
 import type { LandingMedia } from "@/landing/render"
 import {
@@ -14,21 +14,56 @@ import {
   PHOTO,
   renderLanding,
   renderLandingHead,
+  WIDE_MOTION,
 } from "@/landing/render"
+import type { ResolvedEpisode } from "@/landing/show"
+import { SHOW, showFor } from "@/landing/show"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
 import { MOCHI_BODY } from "@some-ui/styles/brand/mark"
 import { describe, expect, it } from "vitest"
 
-const resume = resumeData.fullstack
-const page = renderLanding(resume, mochiSvg())
+const ROOT = join(import.meta.dirname, "../../../../..")
 
-/** A build given a vertical clip for the first project, the first gap's still and the photo. */
+// The whole show, drafts included, as the owner's preview draws it.
+const resolved = showFor(
+  SHOW,
+  (path): unknown => JSON.parse(readFileSync(join(ROOT, path), "utf8")),
+  true
+)
+if (!resolved.ok) throw new Error(resolved.problems.join("; "))
+const EPISODES: ReadonlyArray<ResolvedEpisode> = resolved.episodes
+
+const resume = resumeData.fullstack
+const page = renderLanding(
+  resume,
+  landingMochi(),
+  LANDING_WORDS,
+  new Map(),
+  EPISODES
+)
+
+/** The show's first scene with a clip on its left face and a still on its right. */
+const clipScene = EPISODES.flatMap((e) => e.scenes).find(
+  (s) => s.faces[0].key.endsWith(".mp4") && s.faces[1].key.endsWith(".png")
+)
+if (clipScene === undefined)
+  throw new Error("no scene shows a clip beside a still")
+const firstFaces = clipScene.faces
+/** A build given that scene's two faces, the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
-  [LANDING_WORDS.projects[0].clip, { width: 1080, height: 1920 }],
+  [firstFaces[0].key, { width: 1080, height: 1920 }],
+  [firstFaces[1].key, { width: 800, height: 600 }],
   [LANDING_WORDS.gaps[0].visual, { width: 800, height: 600 }],
   [PHOTO, null],
 ])
+const withMedia = renderLanding(
+  resume,
+  landingMochi(),
+  LANDING_WORDS,
+  MEDIA,
+  EPISODES
+)
 
 describe("renderLanding", () => {
   it("says who, what, and how to reach them before anything else", () => {
@@ -46,16 +81,80 @@ describe("renderLanding", () => {
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
-  it("shows each project and each gap under its own title, with a slot each", () => {
+  it("lets a reader send the mochi a hug, a button on a page with no script, moving only where the show moves, and drops it for a photo (C1187)", () => {
+    const slot = page.slice(
+      page.indexOf('<figure class="photo"'),
+      page.indexOf("</figure>", page.indexOf('<figure class="photo"'))
+    )
+    expect(slot).toContain(
+      `<button type="button" class="hug" aria-label="${LANDING_WORDS.hug}">`
+    )
+    expect(slot).toContain('<span class="hug-heart" aria-hidden="true"><svg')
+    expect(page).not.toMatch(/<script|onclick|onpointer/i)
+    // The hug moves only where the show moves, and by the individual
+    // properties, never transform, which would stop the idle loops.
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    // The wide block, to its own closing brace.
+    const open = template.indexOf(`@media ${WIDE_MOTION} {`)
+    let depth = 0
+    let close = open
+    for (let i = template.indexOf("{", open); i < template.length; i++) {
+      if (template[i] === "{") depth++
+      else if (template[i] === "}" && --depth === 0) {
+        close = i
+        break
+      }
+    }
+    const wide = template.slice(open, close)
+    const pressed = [...template.matchAll(/\.hug:active[^{]*\{([^}]*)\}/g)]
+    expect(pressed.length).toBeGreaterThan(1)
+    for (const [rule, body] of pressed) {
+      expect(body, rule).not.toMatch(/(^|[\s;{])transform\s*:/)
+      if (/\b(scale|rotate|translate):/.test(body))
+        expect(wide, rule).toContain(rule)
+    }
+    const withPhoto = renderLanding(
+      resume,
+      landingMochi(),
+      LANDING_WORDS,
+      new Map([[PHOTO, { width: 400, height: 400 }]])
+    )
+    expect(withPhoto).not.toContain('class="hug"')
+    expect(withPhoto).toContain(
+      `role="img" aria-label="${LANDING_WORDS.photoAlt}"`
+    )
+  })
+
+  it("moves only the mochi's own named parts (C1186)", () => {
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    const moved = [
+      ...new Set(
+        [...template.matchAll(/\[data-part="([a-z-]+)"\]/g)].map((m) => m[1])
+      ),
+    ]
+    expect(moved.length).toBeGreaterThan(0)
+    for (const part of moved)
+      expect(mochiSvg()).toContain(`data-part="${part}"`)
+  })
+
+  it("shows the show, then each gap under its own title, with a slot each", () => {
     const projects = page.indexOf(escapeHtml(LANDING_WORDS.projectsTitle))
     const gaps = page.indexOf(escapeHtml(LANDING_WORDS.gapsTitle))
     expect(projects).toBeGreaterThan(-1)
     expect(gaps).toBeGreaterThan(projects)
-    for (const p of LANDING_WORDS.projects) {
-      const at = page.indexOf(escapeHtml(p.title))
+    for (const episode of EPISODES) {
+      const at = page.indexOf(escapeHtml(episode.title))
       expect(at).toBeGreaterThan(projects)
       expect(at).toBeLessThan(gaps)
-      expect(page).toContain(`data-asset="${p.clip}"`)
+      for (const scene of episode.scenes)
+        for (const face of scene.faces)
+          expect(page).toContain(`data-asset="${face.key}"`)
     }
     for (const g of LANDING_WORDS.gaps) {
       expect(page.indexOf(escapeHtml(g.title))).toBeGreaterThan(gaps)
@@ -64,26 +163,134 @@ describe("renderLanding", () => {
     }
   })
 
-  it("shows each slot's asset when the build carries it, and only then", () => {
-    const [clip, ...rest] = LANDING_WORDS.projects
-    const [still] = LANDING_WORDS.gaps
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    expect(shown).toContain(`src="${SITE_BASE}media/${clip.clip}"`)
-    expect(shown).toContain(
-      `<img class="media" src="${SITE_BASE}media/${still.visual}"`
+  /** The stage: everything from its opening to the flat show. */
+  const stageOf = (html: string): string =>
+    html.slice(
+      html.indexOf('<div class="stage">'),
+      html.indexOf('<div class="flat">')
     )
-    expect(shown).toContain(`<img src="${SITE_BASE}media/${PHOTO}"`)
-    expect(shown).not.toContain(`d="${MOCHI_BODY}"`)
-    expect(shown).not.toContain(escapeHtml(still.visualNote))
-    for (const p of rest) expect(shown).toContain(`ground--${p.id}`)
+
+  it("stages every episode as a copy face, and a pair of four-faced cubes (C1180)", () => {
+    const stage = stageOf(page)
+    const copyFaces = stage.match(/<section class="face copy"/g) ?? []
+    expect(copyFaces).toHaveLength(EPISODES.length)
+    const pairs = [
+      ...stage.matchAll(
+        /<div class="pair tk [^"]+" data-episode="([^"]+)" aria-hidden="true">/g
+      ),
+    ]
+    expect(pairs.map((m) => m[1])).toEqual(EPISODES.map((e) => e.id))
+    // Each pair is two cubes of four faces, the episode's scenes first.
+    expect(stage.match(/<div class="block block--cube">/g)).toHaveLength(
+      EPISODES.length * 2
+    )
+    for (const episode of EPISODES) {
+      const pair = stage.slice(stage.indexOf(`data-episode="${episode.id}"`))
+      const cube = pair.slice(
+        0,
+        pair.indexOf(
+          '<div class="block block--cube">',
+          pair.indexOf('<div class="block block--cube">') + 1
+        )
+      )
+      expect(cube.match(/<div class="face"/g)).toHaveLength(4)
+      episode.scenes.forEach((scene, s) =>
+        expect(cube).toContain(
+          `data-asset="${scene.faces[0].key}" style="--i: ${String(s)}"`
+        )
+      )
+    }
+  })
+
+  it("streams each scene's copy in the copy block, a line at a time", () => {
+    const stage = stageOf(page)
+    const streamed = [
+      ...stage.matchAll(/<p class="line tk s-\d+">([^<]*)<\/p>/g),
+    ].map((m) => m[1])
+    for (const episode of EPISODES)
+      for (const scene of episode.scenes) {
+        expect(stage).toContain(`${escapeHtml(scene.title)}</span></p>`)
+        for (const line of scene.narration)
+          expect(streamed).toContain(escapeHtml(line))
+      }
+  })
+
+  it("stands a skeleton where each episode's first faces will come, telling a clip from a still", () => {
+    const blocks = [
+      ...stageOf(page).matchAll(
+        /<div class="skeletons tk s-\d+" data-episode="([a-z]+)" aria-hidden="true">([\s\S]*?)<div class="pair /g
+      ),
+    ]
+    expect(blocks.map((b) => b[1])).toEqual(EPISODES.map((e) => e.id))
+    for (const [k, episode] of EPISODES.entries()) {
+      const block = blocks[k]?.[2] ?? ""
+      const kinds = [...block.matchAll(/data-skeleton="([a-z]+)"/g)].map(
+        (m) => m[1]
+      )
+      expect(kinds, episode.id).toEqual(
+        episode.scenes[0]?.faces.map((f) => f.slot)
+      )
+      // A glyph each, and no words to take for content.
+      expect(block.match(/<svg /g)).toHaveLength(2)
+      const text = [...block.matchAll(/>([^<]*)</g)].map((m) => m[1].trim())
+      expect(text.filter((t) => t !== "")).toEqual([])
+    }
+  })
+
+  it("lays every scene flat for a phone and less motion: its copy, then its two faces", () => {
+    const flat = page.slice(page.indexOf('<div class="flat">'))
+    for (const episode of EPISODES)
+      for (const scene of episode.scenes) {
+        const at = flat.indexOf(`<h4>${escapeHtml(scene.title)}</h4>`)
+        expect(at).toBeGreaterThan(-1)
+        const block = flat.slice(
+          at,
+          flat.indexOf("</div>\n          </div>", at)
+        )
+        for (const face of scene.faces) {
+          expect(block).toContain(`data-asset="${face.key}"`)
+          expect(block).toContain(
+            `<div class="caption"><p>${escapeHtml(face.label)}</p></div>`
+          )
+        }
+      }
+  })
+
+  it("shows each slot's asset when the build carries it, and only then", () => {
+    const [clip, still] = firstFaces
+    expect(withMedia).toContain(
+      `<video class="media" src="${SITE_BASE}media/${clip.key}"`
+    )
+    expect(withMedia).toContain(
+      `<img class="media" src="${SITE_BASE}media/${still.key}"`
+    )
+    expect(withMedia).toContain(`<img src="${SITE_BASE}media/${PHOTO}"`)
+    expect(withMedia).not.toContain(`d="${MOCHI_BODY}"`)
+    expect(withMedia).not.toContain(
+      escapeHtml(LANDING_WORDS.gaps[0].visualNote)
+    )
     expect(page).not.toMatch(/<video|<img/)
   })
 
-  it("lays a clip under the card's words as its background, never a player (C1064)", () => {
-    const [clip] = LANDING_WORDS.projects
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    const videos = [...shown.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
-    expect(videos).toHaveLength(1)
+  it("gives a face whose asset the build lacks its title card, its label on it", () => {
+    for (const episode of EPISODES)
+      for (const scene of episode.scenes)
+        for (const face of scene.faces) {
+          const at = page.indexOf(`data-asset="${face.key}"`)
+          const card = page.slice(
+            at,
+            page.indexOf("</div>", page.indexOf("title-card", at))
+          )
+          expect(card).toContain(
+            `<div class="title-card" aria-hidden="true"><span>${escapeHtml(face.label)}</span>`
+          )
+        }
+  })
+
+  it("lays a clip in its face as a background, never a player (C1064)", () => {
+    const videos = [...withMedia.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
+    // The stage's face and the flat card's.
+    expect(videos).toHaveLength(2)
     for (const video of videos) {
       for (const attribute of [
         "autoplay",
@@ -96,58 +303,85 @@ describe("renderLanding", () => {
         expect(video).toContain(attribute)
       expect(video).not.toMatch(/\bcontrols\b|tabindex|aria-label/)
     }
-    // Ground, then the clip, then the card's own words over both.
-    const card = shown.slice(shown.indexOf(`data-asset="${clip.clip}"`))
-    const ground = card.indexOf(`ground--${clip.id}`)
-    const video = card.indexOf("<video")
-    const words = card.indexOf(`<h3>${escapeHtml(clip.title)}</h3>`)
-    expect(ground).toBeGreaterThan(-1)
-    expect(video).toBeGreaterThan(ground)
-    expect(words).toBeGreaterThan(video)
-    expect(shown).toMatch(
-      /<img class="media" src="[^"]+" alt="" aria-hidden="true" \/>/
-    )
   })
 
-  it("gives each card its picture's own shape, and its placeholder's without one", () => {
-    const [clip, other] = LANDING_WORDS.projects
-    const [still] = LANDING_WORDS.gaps
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    const style = (key: string): string =>
-      new RegExp(`data-asset="${key}" style="([^"]+)"`).exec(shown)?.[1] ?? ""
-    expect(style(clip.clip)).toBe("--ar: 1080 / 1920; --r: 0.5625")
-    expect(style(still.visual)).toBe("--ar: 800 / 600; --r: 1.3333")
-    expect(style(other.clip)).toBe("--ar: 4 / 3; --r: 1.3333")
+  it("gives each card laid flat its picture's own shape, and its placeholder's without one", () => {
+    const styles = new Map(
+      [
+        ...withMedia.matchAll(
+          /class="card" data-slot="[a-z]+" data-asset="([^"]+)" style="([^"]+)"/g
+        ),
+      ].map((m) => [m[1], m[2]])
+    )
+    const style = (key: string): string => styles.get(key) ?? ""
+    expect(style(firstFaces[0].key)).toBe("--ar: 1080 / 1920; --r: 0.5625")
+    expect(style(firstFaces[1].key)).toBe("--ar: 800 / 600; --r: 1.3333")
+    expect(style(LANDING_WORDS.gaps[1].visual)).toBe("--ar: 4 / 3; --r: 1.3333")
   })
 
   it("puts no link or control on a card: the page's header leads to the code", () => {
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    const cards = [...shown.matchAll(/<article\b[\s\S]*?<\/article>/g)]
-    expect(cards).toHaveLength(
-      LANDING_WORDS.projects.length + LANDING_WORDS.gaps.length
-    )
+    const cards = [...withMedia.matchAll(/<article\b[\s\S]*?<\/article>/g)]
+    expect(cards.length).toBeGreaterThan(0)
     for (const [card] of cards)
       expect(card).not.toMatch(/<a\b|<button|controls/)
   })
 
-  it("hides every moving clip and the words' entrance from a reader who prefers less motion", () => {
+  it("names every track only where the show moves, on the show's one clock", () => {
+    const head = renderLandingHead(LANDING_WORDS, EPISODES)
+    const names = [...head.matchAll(/@keyframes (s-\d+) /g)].map((m) => m[1])
+    expect(names.length).toBeGreaterThan(EPISODES.length * 3)
+    expect(new Set(names).size).toBe(names.length)
+    const wide = head.slice(head.indexOf(`@media ${WIDE_MOTION} {`))
+    const classLists = [...page.matchAll(/class="([^"]*)"/g)].map((m) =>
+      m[1].split(" ")
+    )
+    for (const name of names) {
+      expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
+      // Every element a track moves names it, beside the one clock's class.
+      expect(classLists).toContainEqual(expect.arrayContaining(["tk", name]))
+    }
+    const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
+    expect(outside).not.toMatch(/animation-name\s*:/)
+    expect(outside).toMatch(
+      /\.show \{ --show: [\d.]+s; --show-start: -[\d.]+s; \}/
+    )
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
     expect(template).toMatch(
-      /@media \(prefers-reduced-motion: reduce\)\s*\{\s*video\.media\s*\{\s*display:\s*none;/
+      /\.tk \{\s*animation-delay: var\(--show-start\);\s*animation-duration: var\(--show\);/
     )
-    expect(template).toMatch(
-      /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.rise\s*\{\s*animation:\s*none;/
+  })
+
+  it("moves only on a wide screen with motion allowed", () => {
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
     )
-    expect(template).toMatch(/\.media\s*\{[^}]*pointer-events:\s*none;/)
+    const css = template.slice(template.indexOf("<style>"))
+    const start = css.indexOf(`@media ${WIDE_MOTION} {`)
+    expect(start).toBeGreaterThan(-1)
+    // The block ends where the next top-level rule starts.
+    const end = css.indexOf("\n      }\n", start)
+    const outside = css.slice(0, start) + css.slice(end)
+    // Outside the wide block nothing is set moving or turned: transforms
+    // live only in keyframes, which only the wide block runs.
+    const keyframes = /@keyframes [a-z-]+ \{(?:[^{}]*\{[^{}]*\})*\s*\}/g
+    const rules = outside.replace(keyframes, "")
+    expect(outside.match(keyframes)?.length).toBeGreaterThan(0)
+    expect(rules).not.toMatch(/\banimation(-name)?:/)
+    expect(rules).not.toMatch(/(^|\s)transform:/m)
+    // A slot's clip or still is never cropped and never something to click.
+    expect(css).toMatch(
+      /\.media\s*\{[^}]*object-fit:\s*contain;[^}]*pointer-events:\s*none;/
+    )
   })
 
   it("names every slot's asset among the keys the build looks for", () => {
-    const keys = landingMediaKeys()
-    expect(new Set(keys).size).toBe(keys.length)
+    const keys = landingMediaKeys(LANDING_WORDS, EPISODES)
     for (const key of keys) expect(page).toContain(`data-asset="${key}"`)
+    expect(keys).toContain(PHOTO)
   })
 
   it("lists every role the résumé holds, with its dates", () => {
@@ -180,7 +414,7 @@ describe("renderLanding", () => {
       ...LANDING_WORDS,
       lede: '<img src=x onerror="alert(1)">',
     }
-    expect(renderLanding(resume, "", words)).toContain(
+    expect(renderLanding(resume, landingMochi(), words)).toContain(
       "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"
     )
   })

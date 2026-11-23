@@ -14,6 +14,11 @@
  *
  * Every gradient and clip is named through `id`, which a host makes unique
  * per drawing, so two bubbles on one page never share one.
+ *
+ * The mochi's moving parts are grouped and named (`data-part`: its eyes,
+ * each antenna), so a host that wants it alive can move them with its own
+ * CSS (the public site's photo slot blinks and sways it, C1186). A name
+ * draws nothing: a drawing that doesn't move them is the same picture.
  */
 
 import { MOCHI_BODY, MOCHI_CHEEK } from "./mark"
@@ -178,25 +183,27 @@ const mochi = (id: IdOf): Array<CastNode> => [
   el("ellipse", { cx: 38, cy: 83, rx: 6, ry: 3.2, fill: "#c27622" }),
   el("ellipse", { cx: 58, cy: 83, rx: 6, ry: 3.2, fill: "#c27622" }),
   ...[
-    { d: "M40 27C38 20 34 15 29 13", tip: 28.5 },
-    { d: "M56 27C58 20 62 15 67 13", tip: 67.5 },
-  ].flatMap(({ d, tip }) => [
-    el("path", {
-      d,
-      fill: "none",
-      stroke: "#6b432a",
-      "stroke-width": 2,
-      "stroke-linecap": "round",
-    }),
-    el("circle", { cx: tip, cy: 12.5, r: 3.2, fill: "#f5b75b" }),
-    el("circle", {
-      cx: tip - 0.9,
-      cy: 11.4,
-      r: 1.1,
-      fill: "#ffffff",
-      opacity: 0.8,
-    }),
-  ]),
+    { d: "M40 27C38 20 34 15 29 13", tip: 28.5, part: "antenna-left" },
+    { d: "M56 27C58 20 62 15 67 13", tip: 67.5, part: "antenna-right" },
+  ].map(({ d, tip, part }) =>
+    el("g", { "data-part": part }, [
+      el("path", {
+        d,
+        fill: "none",
+        stroke: "#6b432a",
+        "stroke-width": 2,
+        "stroke-linecap": "round",
+      }),
+      el("circle", { cx: tip, cy: 12.5, r: 3.2, fill: "#f5b75b" }),
+      el("circle", {
+        cx: tip - 0.9,
+        cy: 11.4,
+        r: 1.1,
+        fill: "#ffffff",
+        opacity: 0.8,
+      }),
+    ])
+  ),
   el("path", { d: MOCHI_BODY, transform: MOCHI_AT, fill: url(id("body")) }),
   el("ellipse", {
     cx: 52,
@@ -229,8 +236,10 @@ const mochi = (id: IdOf): Array<CastNode> => [
     fill: MOCHI_CHEEK,
     opacity: 0.7,
   }),
-  ...eye(39.5, 55, 3.6, 4, url(id("eye"))),
-  ...eye(56.5, 55, 3.6, 4, url(id("eye"))),
+  el("g", { "data-part": "eyes" }, [
+    ...eye(39.5, 55, 3.6, 4, url(id("eye"))),
+    ...eye(56.5, 55, 3.6, 4, url(id("eye"))),
+  ]),
   el("path", {
     d: "M43.6 62.2Q48 68.6 52.4 62.2Q48 64.4 43.6 62.2Z",
     fill: "#472b1b",
