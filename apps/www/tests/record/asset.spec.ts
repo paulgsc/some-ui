@@ -169,6 +169,7 @@ test("makes nothing from a folder it can't read, and says why", async () => {
     out
   )
   expect(gone.ok).toBe(false)
+  if (!gone.ok) expect(gone.problems.join(" ")).toContain("can't be reached")
   const wrong = await makeAsset(browser, "thumbnail", "report", root, out)
   expect(wrong.ok).toBe(false)
   expect(await readdir(out)).toEqual([])

@@ -60,7 +60,7 @@ async function within(inner: string, outer: string): Promise<Parsed<boolean>> {
   if (i === null || o === null)
     return {
       ok: false,
-      problems: [`${i === null ? inner : outer} isn't a folder that is there`],
+      problems: [`${i === null ? inner : outer} can't be reached`],
     }
   const rel = relative(o, i)
   return {
