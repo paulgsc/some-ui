@@ -47,11 +47,11 @@ export type StoppedWhy =
 export type FileConveyor = {
   readonly at: FileStation
   readonly aside: { readonly aside: Aside; readonly why: StoppedWhy } | null
-  /** When it was asked for, started on, or ended, where home says. */
+  /** When it was asked for, started on, or ended, in Unix seconds, where home says. */
   readonly when:
-    | { readonly kind: "asked"; readonly at: string }
-    | { readonly kind: "started"; readonly at: string }
-    | { readonly kind: "ended"; readonly at: string }
+    | { readonly kind: "asked"; readonly at: number }
+    | { readonly kind: "started"; readonly at: number }
+    | { readonly kind: "ended"; readonly at: number }
     | null
 }
 

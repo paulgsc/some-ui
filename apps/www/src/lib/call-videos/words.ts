@@ -270,16 +270,14 @@ export const VIDEOS_WORDS = {
   onYouTube: "Watch on YouTube",
 } as const
 
-/** A moment home stamped, on the clock: "Mon 2:05 PM". */
-function clockOf(iso: string, timeZone?: string): string | null {
-  const at = Date.parse(iso)
-  if (Number.isNaN(at)) return null
+/** A moment home stamped, in Unix seconds, on the clock: "Mon 2:05 PM". */
+function clockOf(unixSeconds: number, timeZone?: string): string {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     hour: "numeric",
     minute: "2-digit",
     ...(timeZone === undefined ? {} : { timeZone }),
-  }).format(new Date(at))
+  }).format(new Date(unixSeconds * 1000))
 }
 
 /**
@@ -324,18 +322,12 @@ export const ASSET_WORDS = {
   /** Under a step still on the line: the page doesn't watch it move. */
   checkAgain: "Drag down to see where it is now.",
   when: {
-    asked: (at: string, timeZone?: string): string | null => {
-      const clock = clockOf(at, timeZone)
-      return clock === null ? null : `Asked for ${clock}.`
-    },
-    started: (at: string, timeZone?: string): string | null => {
-      const clock = clockOf(at, timeZone)
-      return clock === null ? null : `In the oven since ${clock}.`
-    },
-    ended: (at: string, timeZone?: string): string | null => {
-      const clock = clockOf(at, timeZone)
-      return clock === null ? null : `Off the line ${clock}.`
-    },
+    asked: (at: number, timeZone?: string): string =>
+      `Asked for ${clockOf(at, timeZone)}.`,
+    started: (at: number, timeZone?: string): string =>
+      `In the oven since ${clockOf(at, timeZone)}.`,
+    ended: (at: number, timeZone?: string): string =>
+      `Off the line ${clockOf(at, timeZone)}.`,
   },
   generate: "Generate",
   asking: "Asking home…",

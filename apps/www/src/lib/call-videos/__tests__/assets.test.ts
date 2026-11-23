@@ -116,7 +116,7 @@ describe("assetView", () => {
 
 describe("latestStep", () => {
   it("takes the answer to Generate until the list has moved past not made", () => {
-    const asked = step("asked", { askedAt: "2026-11-22T23:05:00Z" })
+    const asked = step("asked", { askedAt: 1795388700 })
     expect(latestStep(undefined, null)).toBeUndefined()
     expect(latestStep(undefined, asked)).toEqual(asked)
     expect(latestStep(step("missing"), asked)).toEqual(asked)
@@ -125,25 +125,20 @@ describe("latestStep", () => {
 
   it("keeps a time only the earlier step carries", () => {
     const asked = step("waiting", {
-      askedAt: "2026-11-22T23:05:00Z",
-      startedAt: "2026-11-22T23:06:00Z",
+      askedAt: 1795388700,
+      startedAt: 1795388760,
     })
-    expect(
-      latestStep(step("done", { endedAt: "2026-11-22T23:08:00Z" }), asked)
-    ).toEqual(
+    expect(latestStep(step("done", { endedAt: 1795388880 }), asked)).toEqual(
       step("done", {
-        askedAt: "2026-11-22T23:05:00Z",
-        startedAt: "2026-11-22T23:06:00Z",
-        endedAt: "2026-11-22T23:08:00Z",
+        askedAt: 1795388700,
+        startedAt: 1795388760,
+        endedAt: 1795388880,
       })
     )
     // The list's own time wins over the earlier answer's.
     expect(
-      latestStep(
-        step("rendering", { startedAt: "2026-11-22T23:07:00Z" }),
-        asked
-      )?.startedAt
-    ).toBe("2026-11-22T23:07:00Z")
+      latestStep(step("rendering", { startedAt: 1795388820 }), asked)?.startedAt
+    ).toBe(1795388820)
   })
 })
 
@@ -159,7 +154,11 @@ describe("AssetsSchema", () => {
     expect(AssetsSchema.safeParse({}).success).toBe(true)
     expect(
       AssetsSchema.safeParse({
-        thumbnail: { asset: "thumbnail", state: "waiting", askedAt: "x" },
+        thumbnail: {
+          asset: "thumbnail",
+          state: "waiting",
+          askedAt: 1795388700,
+        },
         video: { asset: "video", state: "done" },
       }).success
     ).toBe(true)
@@ -179,7 +178,7 @@ describe("readProduced", () => {
 
   it("reads home's step on taking the ask, having the file, or stopping", () => {
     for (const [status, s] of [
-      [202, step("waiting", { askedAt: "2026-11-22T23:05:00Z" })],
+      [202, step("waiting", { askedAt: 1795388700 })],
       [200, step("done")],
       [409, step("failed", { reason: "recorder" })],
     ] as const)

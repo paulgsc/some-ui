@@ -19,7 +19,8 @@ import { ASSET_WORDS } from "@/lib/call-videos/words"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { STATIONS } from "@/lib/renders/conveyor"
 
-const AT = "2026-11-22T23:05:00Z"
+/** 2026-11-22T23:05:00Z, in Unix seconds, as home gives it. */
+const AT = 1795388700
 
 const step = (state: StepState, over: Partial<Step> = {}): Step => ({
   asset: "thumbnail",
@@ -109,13 +110,12 @@ describe("fileConveyor", () => {
 })
 
 describe("ASSET_WORDS' conveyor lines", () => {
-  it("say each time on the clock, and nothing for a time that doesn't read", () => {
+  it("say each time home gives, in Unix seconds, on the clock", () => {
     expect(ASSET_WORDS.when.asked(AT, "UTC")).toBe("Asked for Sun 11:05 PM.")
     expect(ASSET_WORDS.when.started(AT, "UTC")).toBe(
       "In the oven since Sun 11:05 PM."
     )
     expect(ASSET_WORDS.when.ended(AT, "UTC")).toBe("Off the line Sun 11:05 PM.")
-    expect(ASSET_WORDS.when.asked("soon", "UTC")).toBeNull()
   })
 
   it("name no machinery", () => {

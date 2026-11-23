@@ -66,7 +66,8 @@ export const isStepReason = (value: string): value is StepReason =>
   STEP_REASONS.some((reason) => reason === value)
 
 /**
- * One file's step. Its times are home's, from what is on its drive: when it
+ * One file's step. Its times are home's, in Unix seconds as the renders
+ * board gives them, from what is on its drive: when it
  * was asked for and when home started on it only while it is under way,
  * when it ended once it has.
  */
@@ -77,9 +78,9 @@ export const StepSchema = z.object({
     "description",
   ] satisfies ReadonlyArray<EpisodeAsset>),
   state: z.enum(STEP_STATES),
-  askedAt: z.string().min(1).optional(),
-  startedAt: z.string().min(1).optional(),
-  endedAt: z.string().min(1).optional(),
+  askedAt: z.number().int().nonnegative().optional(),
+  startedAt: z.number().int().nonnegative().optional(),
+  endedAt: z.number().int().nonnegative().optional(),
   reason: z.string().min(1).optional(),
   itemCount: z.number().int().nonnegative().optional(),
 })

@@ -31,7 +31,8 @@ import type { Episode } from "@/lib/call-videos/model"
 import { ASSET_WORDS } from "@/lib/call-videos/words"
 import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
 
-const ASKED_AT = "2026-11-22T23:05:00Z"
+/** 2026-11-22T23:05:00Z, in Unix seconds, as home gives it. */
+const ASKED_AT = 1795388700
 
 const step = (
   asset: Step["asset"],
