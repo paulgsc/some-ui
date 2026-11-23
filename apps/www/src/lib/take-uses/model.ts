@@ -135,23 +135,30 @@ export type HomeEntry = {
 }
 
 /**
- * What home says uses a take (`usedBy`): absent from a home before it, and
- * unsaid (`undefined`) when it isn't a list. An entry of the list this
- * build can't read is still a video that plays it (`other`), never dropped.
+ * What home says uses a take (`usedBy`): unsaid (`undefined`) only when
+ * absent, from a home before it. An entry this build can't read, or a
+ * value that isn't a list, is still a video that plays it (`other`).
  */
 export const UsedBySchema = z
-  .array(z.unknown())
-  .transform(
-    (entries): ReadonlyArray<HomeEntry> =>
-      entries.map((entry): HomeEntry => {
-        const read = HomeEntrySchema.safeParse(entry)
-        return read.success
-          ? read.data
-          : { kind: "other", key: "", title: "", withdrawsOnDelete: null }
-      })
-  )
+  .unknown()
+  .transform((said): ReadonlyArray<HomeEntry> | undefined => {
+    if (said === undefined) return undefined
+    // Present but not a list: home said something this build can't read,
+    // which is a video that may play it, never none (TU1).
+    const entries: ReadonlyArray<unknown> = Array.isArray(said) ? said : [null]
+    return entries.map((entry, n): HomeEntry => {
+      const read = HomeEntrySchema.safeParse(entry)
+      return read.success
+        ? read.data
+        : {
+            kind: "other",
+            key: `unread:${String(n)}`,
+            title: "",
+            withdrawsOnDelete: null,
+          }
+    })
+  })
   .optional()
-  .catch(undefined)
 
 /** What home said uses each take it listed; `undefined`: it said nothing. */
 export type HomeSaid = ReadonlyArray<{

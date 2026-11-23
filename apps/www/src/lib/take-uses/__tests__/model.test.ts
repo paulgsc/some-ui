@@ -285,7 +285,7 @@ describe("what the sheet didn't show", () => {
 })
 
 describe("home's word on what plays a take", () => {
-  it("reads each video, a kind or an entry it doesn't know as another, and what isn't a list as unsaid", () => {
+  it("reads each video, and a kind, an entry or a value it doesn't know as another video, unsaid only when absent", () => {
     expect(
       UsedBySchema.parse([
         {
@@ -307,9 +307,13 @@ describe("home's word on what plays a take", () => {
     expect(UsedBySchema.parse(undefined)).toBeUndefined()
     // An entry it can't read is still a video that plays it.
     expect(UsedBySchema.parse([{ kind: "essay" }])).toEqual([
-      { kind: "other", key: "", title: "", withdrawsOnDelete: null },
+      { kind: "other", key: "unread:0", title: "", withdrawsOnDelete: null },
     ])
-    expect(UsedBySchema.parse("odd")).toBeUndefined()
+    // Present but not a list is still something home says plays it.
+    for (const odd of [null, "odd", {}])
+      expect(UsedBySchema.parse(odd)).toEqual([
+        { kind: "other", key: "unread:0", title: "", withdrawsOnDelete: null },
+      ])
   })
 
   it("adds home's word to what the phone read, never in its place", () => {

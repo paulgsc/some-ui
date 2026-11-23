@@ -51,8 +51,8 @@ describe("a take's uses, in words", () => {
     expect(whatLoses(EVERY_USE[8])).toMatch(
       /^“Who I am” on home plays it\. Home withdraws/u
     )
-    expect(whatLoses(EVERY_USE[9])).toMatch(
-      /^A Studio video, queued for home to make, has it\. Home keeps/u
+    expect(whatLoses(EVERY_USE[9])).toBe(
+      "A Studio video, a Studio video home holds, has it. If home hasn't made it yet, it can't with this take gone."
     )
     expect(whatLoses(EVERY_USE[4])).toBe(
       "Version 2 of “Pager”, which you finished for home to make, has it as scene 3's take. If home hasn't made that version yet, it can't with this take gone."
