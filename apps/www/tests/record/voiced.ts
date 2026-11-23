@@ -24,6 +24,7 @@ import {
   estimatedMs,
   FEWEST_CHAPTERS,
   MB,
+  overflowLines,
   overLength,
   previewOf,
   QUIET,
@@ -298,11 +299,7 @@ export async function recordStills({
     )
     console.log(`recorded ${file}`)
   }
-  if (overflowing.length > 0)
-    fail([
-      "These scenes don't fit the frame, so the video would cut them off:",
-      ...overflowing,
-    ])
+  if (overflowing.length > 0) fail(overflowLines(overflowing))
   return takes
 }
 
