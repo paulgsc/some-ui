@@ -55,6 +55,8 @@ export type DeckEvent =
   | { readonly type: "frame"; readonly now: number }
   /** A new touch came down: a settle under way lands now. */
   | { readonly type: "touch" }
+  /** A dot was pressed: straight to scene `at`, a settle under way landing first. */
+  | { readonly type: "goto"; readonly at: number }
 
 /** What a step asks of the page beyond drawing. */
 type DeckEffect =
@@ -161,6 +163,13 @@ export function step(
     }
     case "touch": {
       return state.kind === "settle" ? land(state, n) : [state, []]
+    }
+    case "goto": {
+      const [base, effects] =
+        state.kind === "settle" ? land(state, n) : [state, []]
+      const at = wrap(event.at, n)
+      if (base.at === at) return [restAt(at), effects]
+      return [restAt(at), [...effects, { kind: "landed", at }]]
     }
     default: {
       return assertNever(event)

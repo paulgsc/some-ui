@@ -33,26 +33,48 @@ const ROUND = {
   held: false,
 } as const
 
-/** Runs the deck over `flat` while the window is narrow; returns its teardown. */
-function mountDeck(show: HTMLElement, flat: HTMLElement): () => void {
+/**
+ * Runs the deck over `flat` while the window is narrow, from scene `from`,
+ * telling `kept` each scene it lands on (so a turn of the phone that crosses
+ * 900 px and back comes back to it); returns its teardown.
+ */
+function mountDeck(
+  show: HTMLElement,
+  flat: HTMLElement,
+  from: number,
+  kept: (at: number) => void
+): () => void {
   const scenes = [...flat.querySelectorAll<HTMLElement>(".scene-flat")]
   const n = scenes.length
   if (n < 2) return () => undefined
   const words = LANDING_WORDS.deck
-  let state: DeckState = restAt(0)
+  let state: DeckState = restAt(Math.min(from, n - 1))
   let frame = 0
 
   const title = (at: number): string =>
     scenes[at]?.querySelector("h4")?.textContent ?? ""
 
-  // What a screen reader hears once a turn lands, and the dots that say where.
+  // What a screen reader hears once a turn lands, and the dots that say
+  // where: each a button to its scene, so a reader with no swipe and no
+  // arrow keys (TalkBack, switch access) reaches every scene too.
   const status = document.createElement("p")
   status.className = "deck-status"
   status.setAttribute("aria-live", "polite")
   const dots = document.createElement("div")
   dots.className = "deck-dots"
-  dots.setAttribute("aria-hidden", "true")
-  dots.append(...scenes.map(() => document.createElement("span")))
+  dots.setAttribute("role", "group")
+  dots.setAttribute("aria-label", words.label)
+  dots.append(
+    ...scenes.map((_, i) => {
+      const dot = document.createElement("button")
+      dot.type = "button"
+      dot.setAttribute("aria-label", words.landed(title(i), i + 1, n))
+      dot.addEventListener("click", () => {
+        run({ type: "goto", at: i })
+      })
+      return dot
+    })
+  )
   const hint = document.createElement("p")
   hint.className = "deck-hint"
   hint.id = "deck-hint"
@@ -80,7 +102,8 @@ function mountDeck(show: HTMLElement, flat: HTMLElement): () => void {
     flat.style.setProperty("--side", String(view.side))
     flat.dataset["moving"] = state.kind === "rest" ? "" : "true"
     ;[...dots.children].forEach((dot, i) => {
-      dot.classList.toggle("on", i === view.at)
+      if (i === view.at) dot.setAttribute("aria-current", "true")
+      else dot.removeAttribute("aria-current")
     })
   }
 
@@ -89,6 +112,7 @@ function mountDeck(show: HTMLElement, flat: HTMLElement): () => void {
     state = next
     for (const effect of effects) {
       status.textContent = words.landed(title(effect.at), effect.at + 1, n)
+      kept(effect.at)
     }
     draw()
     if (state.kind === "settle" && frame === 0)
@@ -127,6 +151,8 @@ function mountDeck(show: HTMLElement, flat: HTMLElement): () => void {
 
   const onKey = (event: KeyboardEvent): void => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return
+    // Alt+Left is the browser's Back, and the rest are someone else's too.
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
     event.preventDefault()
     turn(event.key === "ArrowRight" ? "next" : "prev")
   }
@@ -151,6 +177,9 @@ function mountDeck(show: HTMLElement, flat: HTMLElement): () => void {
       "data-moving",
     ])
       flat.removeAttribute(name)
+    // Focus on the deck as it goes stays where it was, out of the tab order,
+    // rather than falling to the page's start.
+    if (flat === document.activeElement) flat.tabIndex = -1
     flat.style.removeProperty("--p")
     flat.style.removeProperty("--side")
     delete show.dataset["deck"]
@@ -167,8 +196,12 @@ function deck(): void {
   if (show == null || flat == null) return
   const narrow = matchMedia(DECK_QUERY)
   let teardown: (() => void) | null = null
+  let at = 0
   const fit = (): void => {
-    if (narrow.matches && teardown === null) teardown = mountDeck(show, flat)
+    if (narrow.matches && teardown === null)
+      teardown = mountDeck(show, flat, at, (landed) => {
+        at = landed
+      })
     if (!narrow.matches && teardown !== null) {
       teardown()
       teardown = null
@@ -195,8 +228,9 @@ function reveal(aperture: HTMLElement): void {
     const decoded = (): void => {
       media.decode().then(ready, failed)
     }
+    // Already painted before the script ran: shown as it is, no flicker.
     if (media.complete)
-      if (media.naturalWidth > 0) decoded()
+      if (media.naturalWidth > 0) aperture.dataset["state"] = "ready"
       else failed()
     else media.addEventListener("load", decoded, { once: true })
   } else if (media instanceof HTMLVideoElement) {
@@ -231,6 +265,9 @@ function clips(): void {
   const videos = [...document.querySelectorAll<HTMLVideoElement>("video.media")]
   if (videos.length === 0) return
   const seen = new Set<HTMLVideoElement>()
+  // Clips the browser refused to start: not asked again until they leave
+  // view and come back.
+  const refused = new Set<HTMLVideoElement>()
   // The script plays them now: none starts because a copy of it in the
   // other layout was told to.
   for (const video of videos) {
@@ -251,11 +288,12 @@ function clips(): void {
         seen.has(video) &&
         (face === null ||
           (t !== null && faceOn(face.dataset["on"] ?? "", t, cycle)))
-      if (on && video.paused)
+      if (on && video.paused && !refused.has(video))
         video.play().catch(() => {
+          refused.add(video)
           // Ignored: a clip the browser won't start (autoplay refused, or
           // paused again before it began) keeps its preview, which is what
-          // the face shows in its place; the next check tries again.
+          // the face shows in its place; it is asked again once back in view.
         })
       if (!on && !video.paused) video.pause()
     }
@@ -264,7 +302,10 @@ function clips(): void {
     for (const entry of entries) {
       if (!(entry.target instanceof HTMLVideoElement)) continue
       if (entry.isIntersecting) seen.add(entry.target)
-      else seen.delete(entry.target)
+      else {
+        seen.delete(entry.target)
+        refused.delete(entry.target)
+      }
     }
     check()
   })

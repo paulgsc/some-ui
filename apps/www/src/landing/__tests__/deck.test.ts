@@ -125,6 +125,17 @@ describe("the deck", () => {
     expect(landed).toEqual([1, 2, 1])
   })
 
+  it("goes straight to a scene a dot names, landing a turn under way first", () => {
+    const { state, landed } = run([
+      { type: "turn", to: "next", now: 0 },
+      { type: "goto", at: 3 },
+    ])
+    expect(state).toEqual(restAt(3))
+    expect(landed).toEqual([1, 3])
+    // The scene already on show: nothing to say.
+    expect(run([{ type: "goto", at: 0 }]).landed).toEqual([])
+  })
+
   it("stays still with nothing touching it", () => {
     const { state, landed } = run([
       { type: "frame", now: 1000 },

@@ -545,10 +545,30 @@
         .deck-dots {
           display: flex;
           justify-content: center;
-          gap: 6px;
-          margin: 16px 0 0;
+          gap: 2px;
+          margin: 10px 0 0;
         }
-        .deck-dots span {
+        /* A turning block reaches past the page's edges: clipped there, a
+           gutter's width out, so the page never widens mid-turn. */
+        .show[data-deck] {
+          overflow: clip;
+          overflow-clip-margin: 20px;
+        }
+        /* Each dot a button to its scene, its mark small and its target
+           a finger's width. */
+        .deck-dots button {
+          display: grid;
+          place-items: center;
+          min-width: 24px;
+          height: 32px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: none;
+          cursor: pointer;
+        }
+        .deck-dots button::before {
+          content: "";
           width: 6px;
           height: 6px;
           border-radius: 999px;
@@ -557,9 +577,13 @@
             width 200ms ease-out,
             background-color 200ms ease-out;
         }
-        .deck-dots span.on {
+        .deck-dots button[aria-current="true"]::before {
           width: 18px;
           background: var(--accent);
+        }
+        .deck-dots button:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: -2px;
         }
         .deck-hint {
           margin: 6px 0 0;
@@ -588,7 +612,7 @@
           display: none;
         }
         .stage {
-          padding-block: 28px 20px;
+          padding-block: 28px 44px;
           display: grid;
           grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
           gap: 20px;
@@ -785,6 +809,11 @@
            (the camera, C1422), so the next face's edge and one end
            show at rest and through every turn. Its perspective is about
            three and a half of its edges. */
+        /* The cube's own width is what its perspective counts in (cqi on
+           .ring--cube itself reads the nearest container above it). */
+        .block--cube {
+          container-type: inline-size;
+        }
         .ring--cube {
           --faces: 4;
           --depth: calc(50cqi * var(--tall));

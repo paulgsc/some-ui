@@ -393,10 +393,35 @@ test.describe("the Pages build", () => {
       // Left alone, it stays where it is.
       await page.waitForTimeout(1500)
       await expect(title).toHaveText(scenes[0]?.title ?? "")
-      // The keys turn it too.
+      // The keys turn it too, and each dot is a button to its scene.
       await deck.focus()
       await page.keyboard.press("ArrowRight")
       await expect(title).toHaveText(scenes[1]?.title ?? "")
+      await page
+        .getByRole("button", {
+          name: `${scenes.at(-1)?.title ?? ""}, scene ${String(scenes.length)} of ${String(scenes.length)}`,
+        })
+        .click()
+      await expect(title).toHaveText(scenes.at(-1)?.title ?? "")
+      // Mid-turn, the page never widens.
+      const box = await current.locator(".scene-copy").boundingBox()
+      if (box === null) throw new Error("no copy")
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: 300, y: box.y + 30 }],
+      })
+      for (const x of [260, 220, 180])
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x, y: box.y + 30 }],
+        })
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth)
+      ).toBe(390)
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchCancel",
+        touchPoints: [],
+      })
       // At 900 px the stage takes over and the deck is gone, whole.
       await page.setViewportSize({ width: 900, height: 844 })
       await expect(page.locator(".show[data-deck]")).toHaveCount(0)
