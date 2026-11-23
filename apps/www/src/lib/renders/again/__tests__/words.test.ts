@@ -77,6 +77,7 @@ const STEPS: ReadonlyArray<Step> = [
     "snip-gone",
     "snip-missing",
     "clip-missing",
+    "settling",
     "something-new",
   ].map(
     (reason): Step => ({
@@ -148,6 +149,12 @@ describe("Run it again's words", () => {
         .title
     ).toBe("Both recordings are answered")
     expect(elsewhereLine({ kind: "burnt", by: "recorder" })).toBeNull()
+  })
+
+  it("says a step home is still settling is worth a second try", () => {
+    expect(stepLine({ ...STEP, state: "blocked", reason: "settling" })).toBe(
+      "Home is still getting this essay ready for the worker. Try again in a minute."
+    )
   })
 
   it("lays every step on the conveyor, and says how long each took", () => {

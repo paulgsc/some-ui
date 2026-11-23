@@ -223,6 +223,8 @@ const BLOCKED_WORDS = {
   "take-missing": "A spoken card in it plays a recording home doesn't keep.",
   "clip-missing": "It shows a clip home doesn't keep.",
   "snip-missing": "It shows a picture of the app that home couldn't get.",
+  settling:
+    "Home is still getting this essay ready for the worker. Try again in a minute.",
   other: "Home set it aside, and running it again would end the same way.",
 } as const
 
@@ -234,6 +236,7 @@ const BLOCKED_AS: Record<string, keyof typeof BLOCKED_WORDS> = {
   "clip-missing": "clip-missing",
   "snip-missing": "snip-missing",
   "snip-gone": "snip-missing",
+  settling: "settling",
 }
 
 function blockedLine(step: Step): string {

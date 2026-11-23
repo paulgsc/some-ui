@@ -1,0 +1,21 @@
+{
+  "id": "C1320",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/renders_again.rs",
+    "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+    "server:apps/servers/file_host/src/cards_essays.rs",
+    "server:infra/render/render-calls.sh"
+  ],
+  "chose": "One request for the family 'ask home to make part of a render again': POST /feeds/:feed/videos/:key/produce {asset}, beside the existing /video and /description, with GET .../thumbnail. A closed union Asset { Video, Thumbnail, Description } is matched once in renders_again, every path is derived by one pure function Again::place(feed, key, asset), and every answer and listed episode carries a Step conveyor (asked, waiting, rendering, done, failed, blocked) whose times are read from the ask, job.state and the made or failed file, with no second store. A burnt video's failed.log moves to <key>.again.log; a policy refusal is 409 (home-compute invariant 7); a cards essay home refused is re-checked read-only and the cards pass poked only when it now clears. A thumbnail is made alone by the worker's new asset job from one empty ask per (feed, key, asset), drawn into its work folder and linked into place so it never replaces a file; a description is made only with its video (422 beside one).",
+  "options": [
+    "one route under feed_videos and one closed Asset union (taken)",
+    "POST /renders/:shelf/:key/again on the board's module (REDO-S's first draft)",
+    "a route per case (RETRY's again, ASSETS-R's produce)",
+    "delete the failed.log rather than move it aside"
+  ],
+  "gray": "RETRY proposed /renders/:feed/:key/again and ASSETS-R /feeds/:feed/videos/:key/produce; the coordinator gave the server worker the call. The serving routes already live under feed_videos, so the request went there, and one closed union was preferred to two routes. Moving the log aside keeps the failure's words for the owner until the next attempt ends, the same life failed.log has.",
+  "undo": "Remove the produce and thumbnail routes and renders_again, the cards Recheck and its poke branch, the worker's asset job and its rm of <key>.again.log, and lower CONTRACT_EPOCH and RENDER_FOLDERS_EPOCH back.",
+  "refs": ["#3390", "#3391", "#3443", "#3445"]
+}
