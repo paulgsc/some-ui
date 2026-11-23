@@ -1,0 +1,95 @@
+name: Public Pages Capture
+
+# Photographs public pages for an essay (#3395, #3387): a pull request's
+# checks, a run's job graph, a page of GitHub's docs, each as anyone sees it
+# logged out. The pictures go to one bundle, which home fetches for the essay
+# that names its run, checks and hands to the render as `<key>.pages/`.
+# The third member of the snips' trip (snips-capture.yml, SNIPS1 and SNIPS2):
+# pictures reach home this way because paulgsc/testing's guard refuses every
+# picture. docs/snips.md ("Public pages") is the bundle's contract.
+#
+# Dispatch only: never on a pull request, not in pr.yml, and CI Gate does not
+# need it. Its one input is the list record:pages takes
+# (apps/www/tests/record/pages.ts):
+#   {"pages": [{"url": "https://…", "parts": {"<name>": "<CSS selector>"}}]}
+#
+# Unlike a snip, a page is live: the same list taken again is new pictures
+# with new names and moments. So the bundle is named by the run, not a
+# commit, and an essay names the run its pages came from.
+on:
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: 'The pages to take, as record:pages reads them: {"pages": [{"url": "https://…", "parts": {}}]}'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: The pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      # What record:pages imports from the workspace, built: a fresh checkout
+      # has no dist/. @some-ui/video-render has no build of its own (tsx reads
+      # its src); naming it builds what it imports.
+      - name: Build what the capture imports
+        run: nix develop .#ci --command pnpm turbo build --filter=@some-ui/core-utils --filter=@some-ui/video-render
+      # The list reaches the script through the environment and a file, never
+      # into the shell's own text. record:pages refuses, before writing
+      # anything, an address that isn't public https, a page that doesn't
+      # load, answers an error, sends the browser elsewhere or asks to sign
+      # in, and a part its selector doesn't find on the window.
+      - name: Photograph each page, logged out
+        env:
+          PAGES_LIST: ${{ inputs.pages }}
+        run: |
+          printf '%s' "$PAGES_LIST" > "$RUNNER_TEMP/pages-list.json"
+          nix develop .#ci-playwright --command pnpm --filter www record:pages \
+            --pages-file "$RUNNER_TEMP/pages-list.json" --out "$GITHUB_WORKSPACE/pages-bundle"
+      # The bundle holds pages.json, each picture it names and SHA256SUMS over
+      # them all, and nothing else.
+      - name: Check every file and write the checksums
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          cd pages-bundle
+          jq -r '.pages[].image.name' pages.json | sort > "$RUNNER_TEMP/named"
+          find . -type f ! -name pages.json -printf '%P\n' | sort > "$RUNNER_TEMP/held"
+          if ! diff -u "$RUNNER_TEMP/named" "$RUNNER_TEMP/held"; then
+            echo "::error::The bundle holds a file pages.json doesn't name, or lacks one it does."
+            exit 1
+          fi
+          { echo pages.json; cat "$RUNNER_TEMP/named"; } | xargs sha256sum > SHA256SUMS
+          sha256sum -c SHA256SUMS --quiet
+          {
+            echo "## Public pages: run \`$RUN_ID\`"
+            echo
+            echo "Each scene that shows one names it as below. Home fetches this run's bundle within a day."
+            echo
+            jq -r --arg run "$RUN_ID" '.pages[] | "- \(.title)\n\n  ```json\n  {\"from\": \"pages\", \"url\": \(.url | tojson), \"capturedAt\": \(.capturedAt | tojson), \"file\": \(.image.name | tojson), \"run\": \($run | tojson)}\n  ```"' pages.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      # Retention: one day. Home fetches the bundle an essay names on its next
+      # mailbox pass and keeps the pictures beside that essay until its video
+      # is made (docs/snips.md, "Public pages"), so nothing reads it after the
+      # day. Each run is its own lineage (the name holds the run's id, never a
+      # commit), so a later capture never supersedes one an essay still names
+      # (packages/eslint/src/retention.ts). The path that breaks is an essay
+      # that names a run home didn't fetch within the day: the recovery is a
+      # new dispatch of the same list and a cut list naming the new run, since
+      # a page taken again is a new picture.
+      - name: Upload the bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pages-bundle-${{ github.run_id }}
+          path: pages-bundle
+          if-no-files-found: error
+          retention-days: 1

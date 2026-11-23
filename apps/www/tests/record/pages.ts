@@ -18,7 +18,8 @@
  *
  * Refused, before anything is written: an address that isn't public https
  * or carries a user or password, a page that doesn't load, answers an
- * error or sends the browser elsewhere (a sign-in wall), and a part its
+ * error, sends the browser elsewhere or is titled as a sign-in page (a
+ * sign-in wall), and a part its
  * selector doesn't find wholly on the window.
  */
 import { createHash } from "node:crypto"
@@ -58,6 +59,9 @@ const ListSchema = z.strictObject({
 })
 
 /** How long a page may take to settle, and how long it is given after. */
+/** A page that asks the visitor to sign in, by its title: never a picture. */
+const SIGN_IN = /^(sign in|log in|login)\b/i
+
 const LOAD_MS = 60_000
 const SETTLE_MS = 2_000
 
@@ -121,6 +125,13 @@ await runCommand(async () => {
         continue
       }
       await page.waitForTimeout(SETTLE_MS)
+      // A sign-in wall served at the address itself, with no redirect, is
+      // refused too: its title is GitHub's sign-in page's.
+      const title = await page.title()
+      if (SIGN_IN.test(title)) {
+        problems.push(`${url} asks to sign in ("${title}")`)
+        continue
+      }
       const regions: PageRecord["regions"] = []
       for (const [name, selector] of Object.entries(parts)) {
         const box = await page
@@ -161,7 +172,7 @@ await runCommand(async () => {
       records.push({
         url,
         capturedAt,
-        title: await page.title(),
+        title,
         width: size.width,
         height: size.height,
         scale: PAGE_VIEWPORT.scale,

@@ -133,6 +133,17 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 1,
     ttlDays: 1,
   },
+  // public-pages-capture.yml (#3395, docs/snips.md "Public pages"): the
+  // pictures home fetches for the essay that names the run. Each run is its
+  // own lineage (no commit in the name), so a later capture never
+  // supersedes a bundle an essay still names; each lives out its day.
+  {
+    kind: "artifact",
+    name: "pages-bundle-${{ github.run_id }}",
+    workflows: ["Public Pages Capture"],
+    keep: 1,
+    ttlDays: 1,
+  },
   // The public site's media (PAGES #3401, C1059): pages.yml fetches the
   // newest of each kind at its next deploy, which waits on an approval, so
   // one is kept for 30 days; a kind with none shows its drawn placeholder.

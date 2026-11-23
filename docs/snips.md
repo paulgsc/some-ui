@@ -218,10 +218,61 @@ owner's one step. The workflow holds no mailbox secret.
   and `record:cards --pages <dir>` checks each picture's hash and size, and
   refuses a scene whose page was taken at another address or moment than it
   says. Nothing on a GitHub page holds still, so the same page taken twice
-  is two pictures, each named by its own hash. How the pictures reach home
-  is not settled: paulgsc/testing's guard refuses every picture, so they
-  can't sit beside the essay there. The snips' path, a capture run whose
-  bundle home fetches, is the likely one.
+  is two pictures, each named by its own hash. paulgsc/testing's guard
+  refuses every picture, so they reach home the snips' way (#3395), below.
+  A scene also names `"run"`, the capture run whose bundle holds its
+  picture, as a snip names its commit.
+
+## How public pages reach home (#3395)
+
+The same trip as a snip's, with the run in place of the commit, because a
+page is live and a capture is never made again the same.
+
+1. **The capture.** `Public Pages Capture`
+   (`.github/workflows/public-pages-capture.yml`) runs only when dispatched.
+   Its one input is the list `record:pages` takes. It photographs each page
+   logged out, refusing what `record:pages` refuses (an address that isn't
+   public https, a page that doesn't load, answers an error, sends the
+   browser elsewhere or is titled as a sign-in page, a part not wholly on
+   the window), and uploads `pages-bundle-<run>`:
+
+   ```
+   pages.json     some-ui.pages/1
+   SHA256SUMS     sha256sum -c form, over pages.json and every picture
+   <slug>-<hash12>.png
+   ```
+
+   and nothing else. The run's summary prints each page's scene reference,
+   `{"from": "pages", "url", "capturedAt", "file", "run"}`, ready to paste
+   into a cut list.
+
+2. **The cut list** names, in each page scene, the run its picture came
+   from. `cards-check` and `record:cards` refuse a page scene with no run.
+
+3. **Home (paulgsc/server).** For an essay waiting on home that names page
+   scenes, each mailbox pass:
+
+   - fetches each run's `pages-bundle-<run>` the essay names, from
+     `Public Pages Capture` runs only, by the same read-only token as the
+     snips (`SNIPS_GITHUB_TOKEN`, Actions: read), and checks `SHA256SUMS`
+     and the schema: a mismatch refuses the whole bundle;
+   - checks that each scene's file is in its run's `pages.json`, with the
+     scene's address and moment;
+   - hands, beside `<key>.json`, `<key>.pages/` with one `pages.json`
+     holding only the records the essay names, from every run it names, and
+     each picture (the render's `--pages`);
+   - keeps those pictures beside the essay until its video is made, then
+     drops them, as it drops takes. Unlike a snip, a page can't be made again,
+     so the copy is held for the essay's life on home, never longer.
+
+   **When a bundle can't be had.** A bundle lives one day, each run its own
+   (the name holds the run, so no later capture supersedes it). An essay
+   naming a run whose bundle has expired, or was refused, is refused
+   (`page-gone`), naming the run. The recovery is a new
+   dispatch of the same list and a cut list naming the new run's pictures:
+   home never starts a run, and never hands a picture other than the one
+   the scene names by its hash. Not yet: home's half is the server pair of
+   #3395.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are
