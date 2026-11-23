@@ -1,0 +1,15 @@
+{
+  "id": "C1402",
+  "made": "2026-11-23",
+  "by": "claude",
+  "agreed": "2026-11-23",
+  "paths": ["packages/assurance/src/ledger.json"],
+  "chose": "The hold C1401 gave the cards essay covers every job that shares the recorder: the weekly call (CW5), Playoff Delta (PK5) and the Rust Rounds and interview essays (EV2) hold a video whose scenes or burn-ins don't fit the frame until what it is made with changes; every other failure keeps the hourly retry. The owner, asked whether \"A\" covers them, answered: \"yes\".",
+  "options": [
+    "Every job that shares the recorder holds an overflow refusal (taken)",
+    "Only the cards essay holds it; give the other jobs their own refusal path"
+  ],
+  "gray": "C1401 was put to the owner for cards essays; the shared recorder already held the same refusal for the other jobs, so their promises needed the owner's word to say so.",
+  "undo": "Add an amendment to CW5, PK5 and EV2 that restores the hourly retry for overflow, and give their recorders a refusal of their own.",
+  "refs": ["#3451", "#3452", "server#977"]
+}
