@@ -112,6 +112,18 @@ describe("parseCatalog", () => {
         ),
       })
     ).toThrow("unknown sides of trend: up")
+    expect(() => with_({ shapes: claims.shapes.slice(1) })).toThrow(
+      /^claim shape: vs-league/
+    )
+    expect(() =>
+      with_({
+        shapes: claims.shapes.map((shape) =>
+          shape.id === "rank"
+            ? { id: "rank", sides: ["lowest", "highest"] }
+            : shape
+        ),
+      })
+    ).toThrow("sides of rank: lowest, highest is not highest, lowest")
     expect(() => with_({ deadlines: ["by-week", "season-end"] })).toThrow(
       "deadline: by-week, season-end is not after-games, by-week, season-end"
     )
