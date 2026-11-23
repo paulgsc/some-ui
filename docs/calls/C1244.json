@@ -1,0 +1,19 @@
+{
+  "id": "C1244",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "packages/some-styles/src/brand/genres.ts",
+    "packages/video-render/src/thumbnail.ts"
+  ],
+  "chose": "The Game Week essay is a genre of its own, `game-essay`, by the genres' rules (C410, C1026): one hue, crimson (#e2525f) on a dark wine ground (#2a1216), apart from the six taken and from sky and leaf, which the status dots use; and one shape drawn only in paths and rects, a gridiron from goal line to goal line with its line of scrimmage lit and the line to gain beside it, over a waveform as every essay that holds the owner's voice has. Its thumbnail is titled \"Week <n>: <first game>\" (\"Week 48: NE at CHI\") and named \"Game Week\".",
+  "options": [
+    "Crimson, and a gridiron with a voice's waveform (chosen): a warm red no genre has, and the one image the essay draws, a still of the field at a moment.",
+    "Teal: between sky and leaf, so a colour-blind eye can take it for a status dot.",
+    "Turf green, the field's own colour: leaf, which C410 keeps for the dots.",
+    "A football: a team's ball reads as sport but says nothing of the essay, and is near a logo."
+  ],
+  "gray": "A genre's colour and shape are what the owner sees on every thumbnail and in Studio's row; no decision gives this one's, and the owner may move it.",
+  "undo": "Change `game-essay`'s entry in GENRE_PAINT, or its `game` shape, in packages/some-styles/src/brand/genres.ts; its title in packages/video-render/src/thumbnail.ts.",
+  "refs": ["#2074"]
+}

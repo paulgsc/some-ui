@@ -85,6 +85,8 @@ type FactsByGenre = {
   }
   /** A cards essay's own title, from its cut list. */
   readonly "cards-essay": { readonly title: string }
+  /** The essay's week (`2026-w48`), and its first game: "NE at CHI". */
+  readonly "game-essay": { readonly week: string; readonly firstGame: string }
   /** The role the interview week was for. */
   readonly "interview-essay": { readonly role: string }
   /** The season's label ("2025"), and the week, or the legend. */
@@ -145,6 +147,8 @@ const TITLES: {
     return `The week of ${range}${of > 1 ? `, part ${String(part)} of ${String(of)}` : ""}`
   },
   "cards-essay": ({ title }) => title,
+  "game-essay": ({ week, firstGame }) =>
+    `Week ${String(weekNumber(week))}: ${firstGame}`,
   "interview-essay": ({ role }) => role,
   "playoff-delta": ({ season, week }) =>
     week === "legend"
@@ -289,6 +293,7 @@ export type ThumbnailFonts = {
 const GENRE_NAMES: Readonly<Record<Genre, string>> = {
   call: "The weekly call",
   "cards-essay": "Cards essay",
+  "game-essay": "Game Week",
   "interview-essay": "Interview essay",
   "playoff-delta": "Playoff Delta",
   report: "Engagement report",

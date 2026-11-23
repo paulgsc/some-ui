@@ -17,6 +17,13 @@ import {
   essaySceneVoices,
   essayTakeFiles,
   essayTakeOf,
+  GAME_ESSAY_SCHEMA,
+  gameEssayChapterMarks,
+  gameEssayCutList,
+  gameEssayFormat,
+  gameEssayScenes,
+  gameEssayTakeFiles,
+  gameTakeOf,
   hasCaptions,
   INTERVIEW_ESSAY_SCHEMA,
   interviewEssayChapterMarks,
@@ -26,6 +33,7 @@ import {
   interviewEssayTakeFiles,
   interviewTakeOf,
   parseEssay,
+  parseGameEssay,
   parseInterviewEssay,
 } from "@some-ui/video-render"
 import type {
@@ -34,6 +42,8 @@ import type {
   Essay,
   EssayScene,
   Format,
+  GameEssay,
+  GameEssayScene,
   InterviewEssay,
   InterviewEssayScene,
   Parsed,
@@ -76,14 +86,18 @@ export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
  */
 type Said = {
   readonly id: string
-  readonly section: (EssayScene | InterviewEssayScene)["section"]
+  readonly section: (
+    | EssayScene
+    | InterviewEssayScene
+    | GameEssayScene
+  )["section"]
   readonly speaker: Speaker
   readonly said: string
 }
 
 /**
  * One kind of essay the recorder plays, all it needs of it: the Rust Rounds
- * essay (RR16) and the interview essay (IW6). Each kind's file names itself
+ * essay (RR16), the interview essay (IW6) and the Game Week essay (GWB). Each kind's file names itself
  * by its `schema`, so `record:essay` takes either.
  */
 type EssayKind<E extends { readonly week: { readonly id: string } }> = {
@@ -162,6 +176,32 @@ const INTERVIEW: EssayKind<InterviewEssay> = {
   screens: false,
 }
 
+const GAME: EssayKind<GameEssay> = {
+  name: "a Game Week essay",
+  thumbnail: (essay) => {
+    // An essay holds one game at least (`GameEssaySchema`).
+    const [first] = essay.games
+    return {
+      genre: "game-essay",
+      week: essay.week.id,
+      firstGame: `${first.away} at ${first.home}`,
+    }
+  },
+  read: /\/game-essays\/[^/?#]+\.json$/,
+  stage: "game",
+  parse: parseGameEssay,
+  takeFiles: gameEssayTakeFiles,
+  scenes: (essay, voicing) =>
+    gameEssayScenes(essay, voicing).map((scene) => ({
+      ...scene,
+      take: gameTakeOf(essay, scene),
+    })),
+  format: (essay) => gameEssayFormat(essay.template.version),
+  cutList: gameEssayCutList,
+  marks: gameEssayChapterMarks,
+  screens: false,
+}
+
 /** An essay as home keeps it: its file's bytes, and its data. */
 type Kept<E> = { readonly bytes: Buffer; readonly essay: E }
 
@@ -215,8 +255,10 @@ export async function recordEssay(
     return recordKind(RUST, { path, bytes, raw }, values, policy, false)
   if (schema === INTERVIEW_ESSAY_SCHEMA)
     return recordKind(INTERVIEW, { path, bytes, raw }, values, policy, false)
+  if (schema === GAME_ESSAY_SCHEMA)
+    return recordKind(GAME, { path, bytes, raw }, values, policy, false)
   fail([
-    `${path} is no essay: its schema is neither ${ESSAY_SCHEMA} nor ${INTERVIEW_ESSAY_SCHEMA}`,
+    `${path} is no essay: its schema is none of ${ESSAY_SCHEMA}, ${INTERVIEW_ESSAY_SCHEMA} and ${GAME_ESSAY_SCHEMA}`,
   ])
 }
 

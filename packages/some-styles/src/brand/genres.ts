@@ -19,6 +19,7 @@ import type { CastNode } from "./cast"
 export const GENRES = [
   "call",
   "cards-essay",
+  "game-essay",
   "interview-essay",
   "playoff-delta",
   "report",
@@ -30,10 +31,11 @@ export type Genre = (typeof GENRES)[number]
 /** A genre's hue, and the ground it sits on. */
 type Paint = { readonly hue: string; readonly ground: string }
 
-/** Each genre's hue on its ground: honey, sand, lavender, lime, coral and rose. */
+/** Each genre's hue on its ground: honey, sand, crimson, lavender, lime, coral and rose. */
 export const GENRE_PAINT = {
   call: { hue: "#e8a93c", ground: "#2e2416" },
   "cards-essay": { hue: "#e3d2ab", ground: "#29241a" },
+  "game-essay": { hue: "#e2525f", ground: "#2a1216" },
   "interview-essay": { hue: "#b5a6ec", ground: "#201b33" },
   "playoff-delta": { hue: "#c9d46a", ground: "#252914" },
   report: { hue: "#ef8a6b", ground: "#2e1a14" },
@@ -199,6 +201,12 @@ const report = ({ hue, dim }: Colours): Array<CastNode> => [
   ]),
 ]
 
+const GAME_BARS = [12, 26, 18, 36, 22, 30, 14].map((h, i) => ({
+  h,
+  x: 232 + i * 9,
+  lit: i % 3 === 0,
+}))
+
 const RUST_BARS = [14, 30, 22, 44, 34, 52, 28, 40, 18, 32, 12].map((h, i) => ({
   h,
   x: 194 + i * 9,
@@ -226,6 +234,23 @@ const rust = ({ hue, dim, ground }: Colours): Array<CastNode> => [
   ),
 ]
 
+/**
+ * A gridiron from end zone to end zone, its line of scrimmage lit and the
+ * line to gain beside it, over a waveform: every essay holds your voice,
+ * and the game is only ever one still of a moment.
+ */
+const game = ({ hue, dim }: Colours): Array<CastNode> => [
+  rect(48, 52, 168, 76, 6, "none", { stroke: hue, "stroke-width": 3 }),
+  ...Array.from({ length: 11 }, (_, i) =>
+    rect(62 + i * 14, 54, 1.6, 72, 0.8, i === 0 || i === 10 ? hue : dim)
+  ),
+  rect(117, 48, 5, 84, 2.5, hue),
+  rect(145, 48, 3, 84, 1.5, hue, { opacity: 0.6 }),
+  ...GAME_BARS.map(({ h, x, lit }) =>
+    rect(x, 90 - h / 2, 5, h, 2.5, lit ? hue : dim)
+  ),
+]
+
 type Colours = {
   readonly hue: string
   readonly dim: string
@@ -235,6 +260,7 @@ type Colours = {
 const SHAPES: Readonly<Record<Genre, (c: Colours) => Array<CastNode>>> = {
   call,
   "cards-essay": cards,
+  "game-essay": game,
   "interview-essay": interview,
   "playoff-delta": delta,
   report,

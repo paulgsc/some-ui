@@ -1,7 +1,8 @@
 /**
- * Records and renders one essay, a Rust Rounds essay (RR16, #2691) or an
- * interview essay (IW6, #2937), whichever the file's `schema` names
- * (`some-ui.rust-essay/1` or `some-ui.interview-essay/1`): a still of each
+ * Records and renders one essay, a Rust Rounds essay (RR16, #2691), an
+ * interview essay (IW6, #2937) or a Game Week essay (GWB, #2074), whichever
+ * the file's `schema` names (`some-ui.rust-essay/1`,
+ * `some-ui.interview-essay/1` or `some-ui.game-essay/1`): a still of each
  * scene from the built app's `/essay?record`, the tutor's words said by
  * home's Kokoro speaker in the voice its version gives each chapter
  * (`essaySceneVoices`, C840), each answer the owner's
@@ -24,7 +25,11 @@
  * `[{ text, startMs, endMs }]`); with none, the
  * captions spread the transcript over the take. An interview essay's folder
  * holds the same for each answered question, `<question>.<ext>`, and each
- * answered read, `read.<card>.<ext>` (`interviewEssayTakeFiles`). A take
+ * answered read, `read.<card>.<ext>` (`interviewEssayTakeFiles`). A Game
+ * Week essay's holds each bite in the owner's own voice, `<take>.<ext>`
+ * under home's note id (`gameEssayTakeFiles`); a bite read aloud plays no
+ * take, so its file, if handed over, is set aside. Its stage is
+ * `/essay?kind=game`, reading `/game-essays/<week>.json`. A take
  * missing, two for one answer, or one for an answer left silent is refused
  * before anything is drawn (`essayTakeFiles`).
  *
