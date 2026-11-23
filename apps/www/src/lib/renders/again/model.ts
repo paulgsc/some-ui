@@ -126,7 +126,7 @@ export type Plan =
  * `routes::feed_videos`' produce): every feed but none of the board's own
  * rows (a preview, a clip's walk).
  */
-export const PRODUCES = [
+const PRODUCES = [
   "call",
   "playoff-delta",
   "rust-essay",
@@ -135,7 +135,7 @@ export const PRODUCES = [
   "report",
 ] as const
 
-export const produces = (feed: string): boolean =>
+const produces = (feed: string): boolean =>
   PRODUCES.some((each) => each === feed)
 
 /**
@@ -240,7 +240,7 @@ export function canRun(plan: Plan): boolean {
  * Unix seconds; home keeps only those of a step in flight, so a later read
  * may drop one an earlier said (`follow` keeps it).
  */
-export type StepState =
+type StepState =
   | "missing"
   | "asked"
   | "waiting"
@@ -321,7 +321,7 @@ export function readAgain(answer: HomeAnswer): AgainAnswer {
 }
 
 /** How far apart home's clock and the phone's may be, in seconds. */
-export const SKEW = 120
+const SKEW = 120
 
 /**
  * How long the page follows a run before it stops reading on its own: a
