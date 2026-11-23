@@ -31,7 +31,14 @@ const LABEL_S = 0.9
 /** One element's moves: its name (its class and its keyframes') and its keyframes. */
 export type Track = { readonly name: string; readonly keyframes: string }
 
-type SceneTracks = {
+export type SceneTracks = {
+  /**
+   * Seconds into the cycle when the scene's faces are in view: from their
+   * turn in until they have turned away or their pair has gone. The end
+   * passes the cycle's when the last episode's last faces linger into the
+   * next round. The enhancement plays a face's clip only then (C1422).
+   */
+  readonly on: readonly [number, number]
   /** The scene's copy, shown from its start until the next scene's. */
   readonly block: Track
   readonly title: Track
@@ -41,6 +48,8 @@ type SceneTracks = {
 }
 
 type EpisodeTracks = {
+  /** Seconds into the cycle the copy block begins its turn to the episode. */
+  readonly start: number
   /**
    * Where the episode's pair will be, as skeletons (C1185): standing from
    * halfway through the copy block's turn to the episode (once the last
@@ -275,7 +284,12 @@ export function showTimeline(
           ]),
         }
       }
+      const next = e.scenes.at(i + 1)
       return {
+        on: [
+          s.arrive - TURN_S,
+          next?.arrive ?? (isLast ? cycleS : e.end) + gone,
+        ],
         block: {
           name: blockName,
           keyframes: keyframes(blockName, cycleS, [
@@ -317,7 +331,7 @@ export function showTimeline(
         labels: [label(0), label(1)],
       }
     })
-    return { skeleton, pair, cubes, scenes }
+    return { start: e.start, skeleton, pair, cubes, scenes }
   })
   return { cycleS, copy, episodes: episodeTracks }
 }
@@ -333,4 +347,14 @@ export function tracksOf(timeline: Timeline): ReadonlyArray<Track> {
       ...e.scenes.flatMap((s) => [s.block, s.title, ...s.lines, ...s.labels]),
     ]),
   ]
+}
+
+/**
+ * Whether a stage face whose scene is up over `on` ("from to", seconds, as
+ * `SceneTracks.on` is written into the page) is up at `t` seconds into a
+ * cycle of `cycle`: an end past the cycle's reaches into the next round.
+ */
+export function faceOn(on: string, t: number, cycle: number): boolean {
+  const [from = Number.NaN, to = Number.NaN] = on.split(" ").map(Number)
+  return (t >= from && t < to) || (t + cycle >= from && t + cycle < to)
 }

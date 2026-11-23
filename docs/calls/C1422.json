@@ -1,0 +1,25 @@
+{
+  "id": "C1422",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/landing/enhance.ts",
+    "apps/www/src/landing/deck.ts",
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/timeline.ts",
+    "apps/www/src/landing/words.ts",
+    "apps/www/landing/index.html",
+    "apps/www/render-public-site.ts",
+    "apps/www/scripts/show-faces.ts",
+    "packages/ui/shared/src/index.ts"
+  ],
+  "chose": "The landing carries one small script, src/landing/enhance.ts, which only enhances its show. The page still reads whole without it, as the flat list every reader got before. The owner asked for a finger-linked, cyclical swipe on the phone and said a small, scoped progressive-enhancement script for this section is their story (#3470, correction 4). Pages stays static pages with no app (C1055): the script draws nothing a reader needs and keeps nothing. It does three things. (1) Below 900 px it turns the show's scenes one at a time: the narration and the two faces turn together about Y with the finger, ease about 260 ms into the next face, and wrap last to first and first to last. There are no Previous/Next buttons (the owner, correction 2): dots say where you are, the arrow keys turn it, and a screen reader hears the scene once it lands. The finger is read by the phone's own pager, createPager from @some-ui/shared (GES5), now exported for it, rather than a second swipe of the landing's own. So the landing turns on the APK's thresholds (a 10 px direction lock, a 60 px turn), not the spec's suggested quarter width plus a velocity, and a swipe never also clicks. The state (one scene index, one progress, a settle that lands exactly once) is a pure step in deck.ts. (2) Each face's media sits in an aperture of its own shape over a preview: the producer's 40 px WebP frame (show-faces.ts), served within 2 KiB each and 24 KiB a page, or else broad theme shapes, with one still grain and the slot's mark. The script crossfades the media in once it can be shown (a still decoded, a clip's first frame) and shows the title card if it fails. Without the script the media simply paints over the preview. (3) Clips stay ambient on every screen (autoplay, muted, loop, inline, no controls; C1064, the owner's correction 1). With the script, a clip plays only while its face is in view: on screen, and on the desktop stage only while the show's clock has its scene up (data-on, from timeline.ts). On desktop the cubes are a closed, rounded prism with end caps, seen a little from below and aside, as tall as the episode's narrowest picture needs within bounds (#3470 §2, §5). On a phone the mochi is inset in its frame (#3470 §1).",
+  "options": [
+    "a small scoped script over the pager, with the static list as its no-script fallback",
+    "a script-free scroll-snap deck (#3469), which can neither follow the finger in 3D nor wrap",
+    "a landing-local Pointer Events controller with its own thresholds"
+  ],
+  "gray": "Pages had no script on its landing (C1055 and the landing's README), and how the deck turns, where its thresholds come from, and what shows while media loads are all on the screen. The owner asked for the swipe, the wrap and a scoped script, but no check or earlier call settles the shape.",
+  "undo": "Drop the script tag from landing/index.html and the enhance.ts and deck.ts modules: the page falls back to the flat list, with every clip autoplaying as before. Un-export createPager and offsetOf from @some-ui/shared if nothing else uses them.",
+  "refs": ["#3470", "#3469", "#3401", "#2524"]
+}

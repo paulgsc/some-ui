@@ -33,6 +33,15 @@ export type LandingWords = {
   /** The mochi's button, which sends it a hug (C1187). */
   readonly hug: string
   readonly projectsTitle: string
+  /**
+   * The phone's deck of the show's scenes (C1422): its name, how a reader
+   * turns it, and the line a screen reader hears once a turn has landed.
+   */
+  readonly deck: {
+    readonly label: string
+    readonly hint: string
+    readonly landed: (scene: string, at: number, of: number) => string
+  }
   readonly gapsTitle: string
   readonly experienceTitle: string
   readonly skillsTitle: string
@@ -56,6 +65,11 @@ export const LANDING_WORDS: LandingWords = {
   photoAlt: "Paul Gathondu",
   hug: "Send Mochi a hug",
   projectsTitle: "What I built and use every day",
+  deck: {
+    label: "What I built, a scene at a time",
+    hint: "Swipe, or use the arrow keys, to turn to the next or the last scene",
+    landed: (scene, at, of) => `${scene}, scene ${String(at)} of ${String(of)}`,
+  },
   gapsTitle: "Gaps I'm working through",
   experienceTitle: "Experience",
   skillsTitle: "Skills",

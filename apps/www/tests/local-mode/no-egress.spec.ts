@@ -315,6 +315,98 @@ test.describe("the Pages build", () => {
     await stub?.close()
   })
 
+  test("turns the phone's deck by a swipe on any of its blocks, round and round, and only there (C1422)", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 390, height: 844 },
+    })
+    try {
+      const page = await context.newPage()
+      await page.goto(`${app().origin}${BASE}`)
+      const scenes = shownEpisodes().flatMap((e) => e.scenes)
+      const deck = page.locator(".show[data-deck] .flat")
+      await expect(deck).toBeVisible()
+      const current = deck.locator('.scene-flat[data-face="current"]')
+      const title = current.locator("h4")
+      // One scene in the reading flow, the first.
+      await expect(deck.locator(".scene-flat:visible")).toHaveCount(1)
+      await expect(title).toHaveText(scenes[0]?.title ?? "")
+      const cdp = await context.newCDPSession(page)
+      const swipe = async (
+        block: string,
+        dx: number,
+        dy = 0
+      ): Promise<void> => {
+        await current.locator(block).first().scrollIntoViewIfNeeded()
+        const box = await current.locator(block).first().boundingBox()
+        if (box === null) throw new Error(`no ${block}`)
+        const x = box.x + box.width / 2
+        const y = box.y + Math.min(40, box.height / 2)
+        const at = (k: number): { x: number; y: number } => ({
+          x: x + (dx * k) / 6,
+          y: y + (dy * k) / 6,
+        })
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [at(0)],
+        })
+        for (let k = 1; k <= 6; k++)
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [at(k)],
+          })
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchEnd",
+          touchPoints: [],
+        })
+        await page.waitForTimeout(400)
+      }
+      // A swipe on each of the three blocks turns all three to the next.
+      for (const [k, block] of [
+        ".scene-copy",
+        ".card >> nth=0",
+        ".card >> nth=1",
+      ].entries()) {
+        await swipe(block, -160)
+        await expect(title).toHaveText(scenes[k + 1]?.title ?? "")
+        for (const face of scenes[k + 1]?.faces ?? [])
+          await expect(
+            current.locator(`[data-asset="${face.key}"]`)
+          ).toHaveCount(1)
+      }
+      // A short drag, and an upright one, turn nothing.
+      await swipe(".scene-copy", -30)
+      await swipe(".scene-copy", -40, 160)
+      await expect(title).toHaveText(scenes[3]?.title ?? "")
+      // Back past the first scene is the last.
+      for (let k = 0; k < 4; k++) await swipe(".scene-copy", 160)
+      await expect(title).toHaveText(scenes.at(-1)?.title ?? "")
+      await expect(page.locator(".deck-status")).toContainText(
+        `${String(scenes.length)} of ${String(scenes.length)}`
+      )
+      // And on past the last is the first again.
+      await swipe(".scene-copy", -160)
+      await expect(title).toHaveText(scenes[0]?.title ?? "")
+      // Left alone, it stays where it is.
+      await page.waitForTimeout(1500)
+      await expect(title).toHaveText(scenes[0]?.title ?? "")
+      // The keys turn it too.
+      await deck.focus()
+      await page.keyboard.press("ArrowRight")
+      await expect(title).toHaveText(scenes[1]?.title ?? "")
+      // At 900 px the stage takes over and the deck is gone, whole.
+      await page.setViewportSize({ width: 900, height: 844 })
+      await expect(page.locator(".show[data-deck]")).toHaveCount(0)
+      await expect(page.locator(".deck-dots, .deck-status")).toHaveCount(0)
+      await expect(page.locator(".stage")).toBeVisible()
+    } finally {
+      await context.close()
+    }
+  })
+
   test("reaches no other origin, and its policy is enforced", async ({
     browser,
     context,
@@ -337,11 +429,13 @@ test.describe("the Pages build", () => {
     // Anything that runs: a script element that is not JSON-LD data.
     const scripts = page.locator('script:not([type="application/ld+json"])')
 
-    // The landing at the root is static: it loads, runs nothing, and asks
-    // nothing of another origin either (`seen`, below).
+    // The landing at the root is static: it loads, runs only its one
+    // script, the show's enhancement (C1422), and asks nothing of another
+    // origin either (`seen`, below).
     await page.goto(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toBeVisible()
-    await expect(scripts).toHaveCount(0)
+    await expect(scripts).toHaveCount(1)
+    await expect(scripts).toHaveAttribute("type", "module")
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)

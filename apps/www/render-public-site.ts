@@ -31,10 +31,12 @@ import type { RenderedSite, SitePage } from "./src/landing/output.ts"
 import { SITE_FILE, SITE_MEDIA_DIR } from "./src/landing/output.ts"
 import type { ResumeVersion } from "./src/landing/pages.ts"
 import { renderNotFound, renderResumePages } from "./src/landing/pages.ts"
-import type { LandingMedia } from "./src/landing/render.ts"
+import type { LandingAsset, LandingMedia } from "./src/landing/render.ts"
 import {
   landingMediaKeys,
   PHOTO,
+  PREVIEW_BUDGET,
+  previewKey,
   renderLanding,
   renderLandingHead,
 } from "./src/landing/render.ts"
@@ -116,11 +118,43 @@ const themes = landingThemes(SESSION_THEMES, sessionColours)
 // The picker wears the app's own theme switcher's icons (theme-icons.ts).
 const picker: ThemePicker = { themes, icons: THEME_ICONS }
 
+/**
+ * A slot's preview, when the producer wrote one (show-faces.ts) and the
+ * page can still afford it (PREVIEW_BUDGET): its size in bytes, else
+ * undefined, and the slot shows the themed screen instead.
+ */
+let previewLeft: number = PREVIEW_BUDGET.page
+function previewFor(key: string): number | undefined {
+  const file = resolve(import.meta.dirname, SITE_MEDIA_DIR, previewKey(key))
+  const stat = lstatSync(file, { throwIfNoEntry: false })
+  if (stat?.isFile() !== true || stat.size === 0) return undefined
+  if (stat.size > Math.min(PREVIEW_BUDGET.each, previewLeft)) {
+    process.stdout.write(
+      `[www] no preview for ${key}: its ${String(stat.size)} bytes are over the budget\n`
+    )
+    return undefined
+  }
+  previewLeft -= stat.size
+  return stat.size
+}
+
 const media: LandingMedia = new Map(
-  landingMediaKeys(undefined, episodes).flatMap((key) => {
-    const found = mediaFor(key)
-    return found === undefined ? [] : [[key, found] as const]
-  })
+  landingMediaKeys(undefined, episodes).flatMap(
+    (key): ReadonlyArray<readonly [string, LandingAsset | null]> => {
+      const found = mediaFor(key)
+      if (found === undefined) return []
+      if (found === null) return [[key, null] as const]
+      const asset: LandingAsset =
+        previewFor(key) === undefined
+          ? found
+          : { ...found, preview: previewKey(key) }
+      return [[key, asset] as const]
+    }
+  )
+)
+// Each preview the page shows ships beside its asset.
+const previews = [...media.values()].flatMap((asset) =>
+  asset?.preview === undefined ? [] : [asset.preview]
 )
 
 const pages: ReadonlyArray<SitePage> = [
@@ -146,7 +180,10 @@ const out = resolve(import.meta.dirname, SITE_FILE)
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(
   out,
-  JSON.stringify({ pages, media: [...media.keys()] } satisfies RenderedSite)
+  JSON.stringify({
+    pages,
+    media: [...media.keys(), ...previews],
+  } satisfies RenderedSite)
 )
 process.stdout.write(
   `[www] rendered the public site's ${pages.length} pages, with ${media.size} of its ${landingMediaKeys(undefined, episodes).length} media, into ${SITE_FILE}\n`

@@ -11,9 +11,12 @@ import type { LandingMedia } from "@/landing/render"
 import {
   escapeHtml,
   landingMediaKeys,
+  pairTall,
   PHOTO,
+  previewKey,
   renderLanding,
   renderLandingHead,
+  TALL,
   WIDE_MOTION,
 } from "@/landing/render"
 import type { ResolvedEpisode } from "@/landing/show"
@@ -176,7 +179,7 @@ describe("renderLanding", () => {
     expect(copyFaces).toHaveLength(EPISODES.length)
     const pairs = [
       ...stage.matchAll(
-        /<div class="pair tk [^"]+" data-episode="([^"]+)" aria-hidden="true">/g
+        /<div class="pair tk [^"]+" data-episode="([^"]+)" aria-hidden="true" style="--tall: [\d.]+">/g
       ),
     ]
     expect(pairs.map((m) => m[1])).toEqual(EPISODES.map((e) => e.id))
@@ -193,11 +196,11 @@ describe("renderLanding", () => {
           pair.indexOf('<div class="block block--cube">') + 1
         )
       )
-      expect(cube.match(/<div class="face"/g)).toHaveLength(4)
-      episode.scenes.forEach((scene, s) =>
-        expect(cube).toContain(
-          `data-asset="${scene.faces[0].key}" style="--i: ${String(s)}"`
-        )
+      expect(cube.match(/<div class="face[ "]/g)).toHaveLength(4)
+      for (const scene of episode.scenes)
+        expect(cube).toContain(`data-asset="${scene.faces[0].key}" data-on="`)
+      episode.scenes.forEach((_, s) =>
+        expect(cube).toContain(`style="--i: ${String(s)}"`)
       )
     }
   })
@@ -218,7 +221,7 @@ describe("renderLanding", () => {
   it("stands a skeleton where each episode's first faces will come, telling a clip from a still", () => {
     const blocks = [
       ...stageOf(page).matchAll(
-        /<div class="skeletons tk s-\d+" data-episode="([a-z]+)" aria-hidden="true">([\s\S]*?)<div class="pair /g
+        /<div class="skeletons tk s-\d+" data-episode="([a-z]+)" aria-hidden="true" style="[^"]*">([\s\S]*?)<div class="pair /g
       ),
     ]
     expect(blocks.map((b) => b[1])).toEqual(EPISODES.map((e) => e.id))
@@ -270,6 +273,54 @@ describe("renderLanding", () => {
       escapeHtml(LANDING_WORDS.gaps[0].visualNote)
     )
     expect(page).not.toMatch(/<video|<img/)
+  })
+
+  it("sets a face's media in an aperture of its own shape, over its preview, its title card kept for a failure (C1422)", () => {
+    const [clip, still] = firstFaces
+    const withPreview = renderLanding(
+      resume,
+      landingMochi(),
+      LANDING_WORDS,
+      new Map([
+        [
+          clip.key,
+          { width: 1080, height: 1920, preview: previewKey(clip.key) },
+        ],
+        [still.key, { width: 800, height: 600 }],
+      ]),
+      EPISODES
+    )
+    const apertureOf = (key: string): string => {
+      const at = withPreview.indexOf(`data-asset="${key}"`)
+      const from = withPreview.indexOf('<div class="aperture"', at)
+      return withPreview.slice(from, withPreview.indexOf('class="media"', from))
+    }
+    const clipped = apertureOf(clip.key)
+    expect(clipped).toContain('style="--ar: 1080 / 1920; --r: 0.5625"')
+    expect(clipped).toContain(
+      `<img src="${SITE_BASE}media/${previewKey(clip.key)}" alt=""`
+    )
+    expect(clipped).toContain(
+      'title-card title-card--failed" aria-hidden="true"'
+    )
+    expect(clipped).toMatch(/<div class="preview" aria-hidden="true">/)
+    // Without a preview: the themed screen and the still's mark alone.
+    const plain = apertureOf(still.key)
+    expect(plain).toContain('style="--ar: 800 / 600; --r: 1.3333"')
+    expect(plain).toMatch(
+      /<div class="preview" aria-hidden="true"><span class="mark"><svg /
+    )
+  })
+
+  it("stands an episode's cubes as tall as its narrowest picture needs, within bounds", () => {
+    const episode = EPISODES.find((e) => e.scenes.includes(clipScene))
+    if (episode === undefined) throw new Error("no episode")
+    // A title card is 4:3, and its band below it.
+    expect(pairTall(episode, new Map())).toBeCloseTo(0.75 + 0.16)
+    // A 9:16 clip asks more than the bound gives.
+    expect(pairTall(episode, MEDIA)).toBe(TALL.max)
+    const square = new Map([[firstFaces[0].key, { width: 1000, height: 1000 }]])
+    expect(pairTall(episode, square)).toBeCloseTo(1.16)
   })
 
   it("gives a face whose asset the build lacks its title card, its label on it", () => {
@@ -365,10 +416,24 @@ describe("renderLanding", () => {
     // The block ends where the next top-level rule starts.
     const end = css.indexOf("\n      }\n", start)
     const outside = css.slice(0, start) + css.slice(end)
-    // Outside the wide block nothing is set moving or turned: transforms
-    // live only in keyframes, which only the wide block runs.
+    // Outside it, two things move, each in a block of its own: the phone's
+    // deck, which turns only under the reader's finger (C1422), and a
+    // preview's sheen, only where motion is allowed. Nothing else is set
+    // moving or turned: transforms live only in keyframes.
+    const blockAt = (query: string): string => {
+      const from = outside.indexOf(`@media ${query} {`)
+      expect(from, query).toBeGreaterThan(-1)
+      return outside.slice(from, outside.indexOf("\n      }\n", from))
+    }
+    const deck = blockAt("(width < 900px)")
+    const sheen = blockAt("(prefers-reduced-motion: no-preference)")
+    expect(deck).toMatch(/\.show\[data-deck\] [^{]*\{[^}]*transform:/)
+    expect(sheen).toMatch(/\.preview::after \{\s*animation: pass [^;]* 2;/)
     const keyframes = /@keyframes [a-z-]+ \{(?:[^{}]*\{[^{}]*\})*\s*\}/g
-    const rules = outside.replace(keyframes, "")
+    const rules = outside
+      .replace(deck, "")
+      .replace(sheen, "")
+      .replace(keyframes, "")
     expect(outside.match(keyframes)?.length).toBeGreaterThan(0)
     expect(rules).not.toMatch(/\banimation(-name)?:/)
     expect(rules).not.toMatch(/(^|\s)transform:/m)
@@ -397,9 +462,16 @@ describe("renderLanding", () => {
     }
   })
 
-  it("carries no script and links nowhere but GitHub, mail and its own PDF", () => {
+  it("renders no script of its own (the template's one enhancement aside, C1422) and links nowhere but GitHub, mail and its own PDF", () => {
     const html = page + renderLandingHead()
     expect(html).not.toMatch(/<script/i)
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    expect(
+      [...template.matchAll(/<script\b[^>]*>/gi)].map((m) => m[0])
+    ).toEqual(['<script type="module" src="/src/landing/enhance.ts">'])
     const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1])
     expect(hrefs.length).toBeGreaterThan(0)
     for (const href of hrefs) {

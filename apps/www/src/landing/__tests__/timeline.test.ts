@@ -6,6 +6,7 @@
 import type { ResolvedEpisode, ResolvedFace } from "@/landing/show"
 import {
   EPISODE_TURN_S,
+  faceOn,
   HOLD_S,
   showTimeline,
   STREAM_CPS,
@@ -48,6 +49,33 @@ describe("showTimeline", () => {
   // A scene: its title, then 3 s of copy, the turn, the hold.
   const scene = TITLE_S + 114 / STREAM_CPS + TURN_S + HOLD_S
   const episode = EPISODE_TURN_S + 2 * scene
+
+  it("has each scene's faces up from their turn in until they turn away, the last lingering into the next round (C1422)", () => {
+    const scenes = timeline.episodes.flatMap((e) => e.scenes)
+    // Every moment of the cycle has exactly two scenes up at most, and
+    // the first scene's faces are up once its pair turns in.
+    const first = scenes[0]
+    expect(first.on[0]).toBeCloseTo(EPISODE_TURN_S + TITLE_S + 114 / STREAM_CPS)
+    // A scene is up until the next has turned in over it.
+    for (const [k, e] of timeline.episodes.entries()) {
+      const [a, b] = e.scenes
+      expect(a.on[1]).toBeCloseTo(b.on[0] + TURN_S)
+      // The episode's last faces stay up while its pair fades.
+      const end =
+        k === timeline.episodes.length - 1
+          ? timeline.cycleS
+          : (timeline.episodes[k + 1]?.start ?? 0)
+      expect(b.on[1]).toBeCloseTo(end + EPISODE_TURN_S / 2)
+    }
+    const last = scenes.at(-1)
+    const on = `${String(last?.on[0])} ${String(last?.on[1])}`
+    // The last episode's last faces are up at the cycle's start too.
+    expect(faceOn(on, 0.1, timeline.cycleS)).toBe(true)
+    expect(faceOn(on, EPISODE_TURN_S, timeline.cycleS)).toBe(false)
+    expect(faceOn(on, timeline.cycleS - 0.1, timeline.cycleS)).toBe(true)
+    // A window the page didn't write is never up.
+    expect(faceOn("", 1, timeline.cycleS)).toBe(false)
+  })
 
   it("plays every episode in turn, in one cycle", () => {
     expect(timeline.cycleS).toBeCloseTo(3 * episode, 6)

@@ -48,7 +48,8 @@ What follows from them:
   once. The public Pages site is a curriculum vitae (owner, C1055): who the owner is, what
   they do, the résumé and how to reach them, with each project shown by its clip playing
   behind its words, and the code one link away at the top of the page (owner, C1065). It is
-  static pages with no app (#3401): a landing, the résumé, and
+  static pages with no app (#3401): a landing, whose one small script only enhances its
+  show and without which it reads whole (C1422), the résumé, and
   `/authorship`, the record every published video's end card links, whose one script draws
   it. The extensions comb and the apps on sample data stay on `lan` and in the capture build
   Snips photographs.

@@ -7,12 +7,18 @@
 //
 //   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder>
 //
+// Beside each face it writes the face's preview (`previewKey`): a still
+// itself, or a clip's middle frame (a cut opens on its fade in), 40 px on its long edge, as WebP, which the landing shows in the
+// face's aperture until the face's own media can be (#3470 §4; the build
+// serves it within PREVIEW_BUDGET).
+//
 // Needs ffmpeg and ffprobe on the path. A face the render lacks fails the
 // run: the producer's own output, not the landing, is where that shows.
 
 import { execFileSync } from "node:child_process"
 import { copyFileSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
+import { previewKey } from "@/landing/render"
 import type { EpisodeId } from "@/landing/show"
 import { facesToMake, SHOW } from "@/landing/show"
 
@@ -29,6 +35,28 @@ const render = resolve(renderDir)
 const out = resolve(outDir)
 const { stills, cuts } = facesToMake(SHOW, known)
 
+/** A face's preview beside it: its frame at `atS` seconds, 40 px on the long edge. */
+function makePreview(file: string, key: string, atS = 0): void {
+  execFileSync("ffmpeg", [
+    "-loglevel",
+    "error",
+    "-y",
+    "-ss",
+    String(atS),
+    "-i",
+    file,
+    "-frames:v",
+    "1",
+    "-vf",
+    "scale=40:40:force_original_aspect_ratio=decrease:flags=area",
+    "-c:v",
+    "libwebp",
+    "-quality",
+    "50",
+    join(out, previewKey(key)),
+  ])
+}
+
 for (const { snip, key } of stills) {
   const target = join(out, key)
   mkdirSync(dirname(target), { recursive: true })
@@ -36,6 +64,7 @@ for (const { snip, key } of stills) {
     join(render, "snips", `${String(snip).padStart(2, "0")}.png`),
     target
   )
+  makePreview(target, key)
   process.stdout.write(`[show-faces] ${key}: still ${String(snip)}\n`)
 }
 
@@ -105,5 +134,6 @@ for (const { shot, key } of cuts) {
     .toString()
     .trim()
   if (sound !== "") throw new Error(`${key} still has a sound track`)
+  makePreview(target, key, durationMs / 2000)
   process.stdout.write(`[show-faces] ${key}: shot ${shot}\n`)
 }
