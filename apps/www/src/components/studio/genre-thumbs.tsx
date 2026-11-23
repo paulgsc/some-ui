@@ -14,7 +14,7 @@ import { drawNodes } from "@/lib/brand/draw-nodes"
 import type { Feed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index"
 
-/** Every feed is a genre the brand draws, and every genre a feed. */
+/** Every feed is a genre the brand draws; a genre may come before its feed (the Game Week essay's). */
 const genreOf = (feed: Feed): Genre => feed
 
 /** `feed`'s stock thumbnail, 16:9, filling its box. */

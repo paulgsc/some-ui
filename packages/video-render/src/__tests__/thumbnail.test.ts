@@ -48,6 +48,10 @@ describe("thumbnailTitle", () => {
       "NixOS: how this machine upgrades itself",
     ],
     [
+      { genre: "game-essay", week: "2026-w48", firstGame: "NE at CHI" },
+      "Week 48: NE at CHI",
+    ],
+    [
       { genre: "interview-essay", role: "Full-stack engineer, driver tools" },
       "Full-stack engineer, driver tools",
     ],

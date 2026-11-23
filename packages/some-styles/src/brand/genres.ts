@@ -1,5 +1,5 @@
 /**
- * The genres: each feed home makes videos of, its paint and its shape
+ * The genres: each kind of video home makes, its paint and its shape
  * (EPISODES1's prototype, #3030), as data in the cast's form (`./cast`), so
  * Studio's genre row (`apps/www/src/components/studio/genre-thumbs.tsx`)
  * draws it with React and an episode's thumbnail (`@some-ui/video-render`'s
@@ -35,7 +35,7 @@ type Paint = { readonly hue: string; readonly ground: string }
 export const GENRE_PAINT = {
   call: { hue: "#e8a93c", ground: "#2e2416" },
   "cards-essay": { hue: "#e3d2ab", ground: "#29241a" },
-  "game-essay": { hue: "#e2525f", ground: "#2a1216" },
+  "game-essay": { hue: "#c42b3f", ground: "#1d0e14" },
   "interview-essay": { hue: "#b5a6ec", ground: "#201b33" },
   "playoff-delta": { hue: "#c9d46a", ground: "#252914" },
   report: { hue: "#ef8a6b", ground: "#2e1a14" },
@@ -236,7 +236,7 @@ const rust = ({ hue, dim, ground }: Colours): Array<CastNode> => [
 
 /**
  * A gridiron from end zone to end zone, its line of scrimmage lit and the
- * line to gain beside it, over a waveform: every essay holds your voice,
+ * line to gain beside it, beside a waveform: every essay holds your voice,
  * and the game is only ever one still of a moment.
  */
 const game = ({ hue, dim }: Colours): Array<CastNode> => [

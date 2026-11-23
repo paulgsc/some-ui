@@ -97,8 +97,9 @@ type Said = {
 
 /**
  * One kind of essay the recorder plays, all it needs of it: the Rust Rounds
- * essay (RR16), the interview essay (IW6) and the Game Week essay (GWB). Each kind's file names itself
- * by its `schema`, so `record:essay` takes either.
+ * essay (RR16), the interview essay (IW6) and the Game Week essay (GWB).
+ * Each kind's file names itself by its `schema`, so `record:essay` takes any
+ * of them.
  */
 type EssayKind<E extends { readonly week: { readonly id: string } }> = {
   readonly name: string
@@ -227,7 +228,7 @@ async function takesIn<E extends { readonly week: { readonly id: string } }>(
 }
 
 /**
- * Records and renders the essay of `values`, of either kind, into
+ * Records and renders the essay of `values`, of any kind, into
  * `<out>/<week>/essay.mp4`; with `preview`, the Rust Rounds essay's sample
  * (`Voicing`), cut to its preview into `<out>/preview.mp4`.
  */
