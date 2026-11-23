@@ -250,8 +250,29 @@ const KINDS: Readonly<Record<VideoKind, Case>> = {
     pairs: false,
     held: ["you"],
     lines: () => {
-      const essay = unwrap(sampleGameEssay())
-      expect(essay.template.version).toBe(GAME_ESSAY_VERSION)
+      const one = unwrap(sampleGameEssay())
+      expect(one.template.version).toBe(GAME_ESSAY_VERSION)
+      // A second game, so the owner's stand-in speaks in two chapters and
+      // the test sees it hold one voice across them.
+      const [game] = one.games
+      if (game === undefined) throw new Error("the sample has a game")
+      const essay = {
+        ...one,
+        games: [
+          game,
+          {
+            ...game,
+            id: "401873011",
+            halves: game.halves.map((half) => ({
+              ...half,
+              bites: half.bites.map((bite) => ({
+                ...bite,
+                take: `${bite.take}-b`,
+              })),
+            })),
+          },
+        ],
+      }
       const scenes = gameEssayScenes(essay, "sample")
       const shape = gameEssayFormat(essay.template.version).shape
       return Promise.resolve(

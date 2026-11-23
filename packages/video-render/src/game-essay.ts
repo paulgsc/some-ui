@@ -667,7 +667,7 @@ export function gameEssayIntro(
         : aloud === 0
           ? "The host's voice is synthetic; every bite is the owner's own."
           : "The host's voice is synthetic; each bite is the owner's own voice, or the owner's words read by a second synthetic voice where marked.",
-      "Each game is shown only where a bite was said about it, as one still of the play home matched it to.",
+      "A game is shown only where a bite was said about it: one still of the play home matched each bite to, and none for a bite it matched to no play.",
       sample ? `It covers ${of}.` : `The owner said ${of}.`,
     ].join(" "),
   }

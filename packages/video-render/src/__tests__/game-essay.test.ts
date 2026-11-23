@@ -6,6 +6,7 @@
  * bite read aloud included, while one in the owner's own voice is not); and an essay that contradicts itself is
  * refused with every reason.
  */
+import { chaptersOf } from "@video-render/chapters"
 import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import {
@@ -27,6 +28,7 @@ import {
   weekDaysOf,
 } from "@video-render/game-essay"
 import type { GameEssay } from "@video-render/game-essay"
+import type { ShotTime } from "@video-render/timing"
 import { describe, expect, it } from "vitest"
 
 function sample(): GameEssay {
@@ -539,5 +541,57 @@ describe("the game essay's scenes and cut list", () => {
     expect(intro.rows.find((row) => row.label === "Voices")?.says).toMatch(
       /1 of 3 bites are the owner's words read by a second synthetic voice/
     )
+  })
+})
+
+describe("the game essay's chapters, as a render times them (SFEED4)", () => {
+  // Each scene timed as its words read, as the cut list holds it with no take.
+  const timed = (essay: GameEssay): Array<ShotTime> => {
+    const cut = gameEssayCutList(
+      essay,
+      gameEssayScenes(essay).map(() => null)
+    )
+    let at = 0
+    return cut.shots.map((shot) => {
+      const time = {
+        id: shot.id,
+        cut: null,
+        startMs: at,
+        durationMs: shot.durationMs,
+      }
+      at += shot.durationMs
+      return time
+    })
+  }
+
+  it("gives a one-game week three chapters: the opening, the game and the close", () => {
+    const essay = sample()
+    expect(
+      chaptersOf(timed(essay), gameEssayChapterMarks(essay)).map((c) => c.title)
+    ).toHaveLength(3)
+  })
+
+  it("gives none when a one-game week's close runs under ten seconds, as C1243 says", () => {
+    const essay = { ...sample(), close: { said: "That was the week." } }
+    expect(chaptersOf(timed(essay), gameEssayChapterMarks(essay))).toEqual([])
+  })
+
+  it("counts a single bite as one", () => {
+    const essay = sample()
+    const [game] = essay.games
+    const [first] = game?.halves ?? []
+    if (game === undefined || first === undefined)
+      throw new Error("the sample has a first half")
+    const one = {
+      ...essay,
+      games: [
+        {
+          ...game,
+          halves: [{ ...first, bites: first.bites.slice(0, 1) }],
+          halftime: undefined,
+        },
+      ],
+    }
+    expect(gameEssayIntro(one).said).toMatch(/1 bite on 1 game/)
   })
 })
