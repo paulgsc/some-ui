@@ -58,13 +58,13 @@ export function youLine(failed: RenderFailed): string {
     }
     case "missing": {
       return stop.what === "take"
-        ? "Nothing on this phone changes it: the essay has to name a take home keeps, and home makes it by itself then."
-        : "Nothing on this phone changes it: the essay has to name a clip home keeps, and home makes it by itself then."
+        ? "Nothing on this phone changes it: the essay has to name a take home keeps."
+        : "Nothing on this phone changes it: the essay has to name a clip home keeps."
     }
     case "snips": {
       return stop.gone
         ? "Nothing on this phone changes it: run that Snips Capture again, and home makes it then."
-        : "Nothing on this phone changes it: the essay has to name a picture its capture holds, and home makes it by itself then."
+        : "Nothing on this phone changes it: the essay has to name a picture its capture holds."
     }
     case "preview": {
       return "Ask for another on the template's page."

@@ -218,9 +218,9 @@ const RowTile = ({
 
 /**
  * Under a row that couldn't finish, the way to its Run it again page, and
- * what waits on the owner there (RETRY). A preview has none (it is asked
- * for again on its template's page), nor a row home makes again only by
- * itself, within the hour (a clip's walk).
+ * what waits on the owner there (RETRY). A preview (asked for again on its
+ * template's page) and a row home makes again only by itself (a clip's walk)
+ * have no page: what the owner can do is said there instead (`youLine`).
  */
 const ToAgain = ({ failed }: { failed: RenderFailed }): JSX.Element | null => {
   const stop = stopOf(failed)

@@ -555,6 +555,45 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(failedLine(refusedRow)).toMatch(/^Too long to make/)
   })
 
+  it("counts what a refused cards essay names, in the right number (RETRY)", () => {
+    const row = (reason: string, n: number): RenderFailed => ({
+      feed: "cards-essay",
+      key: "k-2026-11-20",
+      at: 0,
+      by: "recorder",
+      exit: 1,
+      reason,
+      items: Array.from({ length: n }, (_, i) => `id-${String(i)}`),
+    })
+    expect(failedLine(row("take-unheard", 2))).toMatch(
+      /^Home couldn't make out 2 recordings .* hear them\.$/
+    )
+    expect(failedLine(row("take-unheard", 1))).toMatch(
+      /^Home couldn't make out 1 recording .* hear it\.$/
+    )
+    expect(failedLine(row("take-missing", 3))).toMatch(
+      /^3 spoken cards in it play recordings/
+    )
+    expect(failedLine(row("snip-missing", 1))).toMatch(
+      /a picture of the app.*names a picture/
+    )
+    expect(failedLine(row("snip-missing", 2))).toMatch(
+      /2 pictures of the app.*names pictures/
+    )
+    expect(failedLine(row("snip-gone", 1))).toMatch(
+      /^It shows a picture of the app that home couldn't get from its capture/
+    )
+    expect(failedLine(row("clip-missing", 2))).toMatch(/^It shows 2 clips/)
+    for (const reason of [
+      "take-unheard",
+      "take-missing",
+      "snip-missing",
+      "snip-gone",
+      "clip-missing",
+    ])
+      expect(failedLine(row(reason, 2))).not.toMatch(/id-/)
+  })
+
   it("says why a cards essay was set aside over a recording, a picture or a clip (WALK7, SNIPS2)", () => {
     const row = (reason: string): RenderFailed => ({
       feed: "cards-essay",
@@ -574,7 +613,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))
     const clipMissing = failedLine(row("clip-missing"))
-    expect(snipMissing).toMatch(/names pictures its capture holds/)
+    expect(snipMissing).toMatch(/names a picture its capture holds/)
     expect(snipGone).toMatch(/Re-run that Snips Capture/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)
     const lines = [missing, unheard, snipMissing, snipGone, clipMissing]
