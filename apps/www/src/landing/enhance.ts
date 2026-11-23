@@ -10,6 +10,9 @@
  * - **The media**: each face's clip or still crossfades in over its preview
  *   once it can be shown (a still decoded, a clip's first frame), and gives
  *   way to its title card should it fail.
+ * - **The draw** (#3473): an episode with a pool shows a fresh draw of its
+ *   snacks each visit (`drawSnacks`), put in the places of the first draw
+ *   the page was built with, before anything else here reads them.
  * - **The clips** stay ambient (no controls, muted, looping, inline), but
  *   play only while their face is in view: on screen, and on the stage only
  *   while the show's clock has their scene up (`data-on`, timeline.ts).
@@ -19,6 +22,7 @@ import { createPager, offsetOf } from "@some-ui/shared"
 
 import type { DeckEvent, DeckState } from "./deck.ts"
 import { DECK_QUERY, restAt, step, viewOf } from "./deck.ts"
+import { drawSnacks } from "./draw.ts"
 import { faceOn } from "./timeline.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -333,7 +337,120 @@ function clips(): void {
   }, CLIP_CHECK_MS)
 }
 
+/** A face's place takes a snack's face: its asset, its label, and its picture. */
+function putFace(
+  place: HTMLElement | null | undefined,
+  face: HTMLElement,
+  label: string
+): void {
+  if (place == null) return
+  const screen = place.querySelector(".screen")
+  if (screen === null) return
+  for (const name of ["slot", "asset"])
+    place.dataset[name] = face.dataset[name] ?? ""
+  screen.replaceChildren(...[...face.childNodes].map((n) => n.cloneNode(true)))
+  const band = place.querySelector(label)
+  if (band !== null) band.textContent = face.dataset["label"] ?? ""
+}
+
+/** Each of a place's lines takes the snack's line at its place. */
+function putLines(
+  old: ReadonlyArray<Element>,
+  texts: ReadonlyArray<string>
+): void {
+  // The stage's places keep their lines, each on the show's clock; a line
+  // the snack lacks stays empty (render.ts, `timedScenes`).
+  old.forEach((line, l) => {
+    line.textContent = texts[l] ?? ""
+  })
+}
+
+/**
+ * Each pool's draw (#3473): its snacks, drawn fresh, put in its places on
+ * the stage (copy and both cubes) and in the list, in place of the first
+ * draw the page was built with.
+ */
+function drawPools(): void {
+  for (const template of document.querySelectorAll<HTMLTemplateElement>(
+    "template.pool"
+  )) {
+    const episode = template.dataset["episode"] ?? ""
+    const snacks = [...template.content.querySelectorAll<HTMLElement>(".snack")]
+    const drawn = drawSnacks(
+      snacks.length,
+      Number(template.dataset["draw"]),
+      Math.random
+    )
+    const copy = document.querySelector(`.copy[data-copy="${episode}"]`)
+    const places = [...(copy?.querySelectorAll(".scene") ?? [])]
+    const cubes = [
+      ...document.querySelectorAll(
+        `.pair[data-episode="${episode}"] .ring-turn`
+      ),
+    ].map((turn) => [...turn.children].filter((c) => c.matches(".face")))
+    const flat = [
+      ...document.querySelectorAll<HTMLElement>(
+        `.episode[data-episode="${episode}"] .scene-flat`
+      ),
+    ]
+    drawn.forEach((at, place) => {
+      const snack = snacks.at(at)
+      if (snack === undefined) return
+      const title = snack.querySelector(".snack-title")?.textContent ?? ""
+      const lines = [...snack.querySelectorAll(".snack-line")].map(
+        (l) => l.textContent
+      )
+      const faces = [...snack.querySelectorAll<HTMLElement>(".snack-face")]
+      const scene = places.at(place)
+      const heading = scene?.querySelector(".scene-title span")
+      if (heading != null) heading.textContent = title
+      putLines([...(scene?.querySelectorAll(".line") ?? [])], lines)
+      const card = flat.at(place)
+      const h4 = card?.querySelector("h4")
+      if (h4 != null) {
+        h4.textContent = title
+        // The list's scene holds just the snack's lines.
+        for (const old of card?.querySelectorAll(".scene-copy > h4 ~ p") ?? [])
+          old.remove()
+        h4.after(
+          ...lines.map((text) => {
+            const p = document.createElement("p")
+            p.textContent = text
+            return p
+          })
+        )
+      }
+      faces.forEach((face, j) => {
+        const onCube = cubes.at(j)?.at(place)
+        if (onCube instanceof HTMLElement)
+          putFace(onCube, face, ".band-title span")
+        const onCard = [
+          ...(card?.querySelectorAll<HTMLElement>(".card") ?? []),
+        ].at(j)
+        putFace(onCard, face, ".caption p")
+        if (onCard != null)
+          onCard.setAttribute("style", face.dataset["shape"] ?? "")
+        // The first place's faces are what the skeletons promise.
+        if (place === 0) {
+          const skeleton = [
+            ...document.querySelectorAll(
+              `.skeletons[data-episode="${episode}"] .skeleton-screen`
+            ),
+          ].at(j)
+          const preview = face
+            .querySelector(".preview img")
+            ?.getAttribute("src")
+          const shown = skeleton?.querySelector("img")
+          if (preview == null) shown?.remove()
+          else if (shown != null) shown.setAttribute("src", preview)
+        }
+      })
+    })
+  }
+}
+
 document.documentElement.classList.add("enhanced")
+drawPools()
 for (const aperture of document.querySelectorAll<HTMLElement>(".aperture"))
   reveal(aperture)
 clips()

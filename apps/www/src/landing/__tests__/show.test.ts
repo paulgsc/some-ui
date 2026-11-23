@@ -3,8 +3,9 @@
  * walkthroughs it reads, the keys its faces are found by, and what each
  * producer makes for it.
  */
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { drawSnacks, shuffle } from "@/landing/draw"
 import type { Show, WalkthroughCopy } from "@/landing/show"
 import {
   faceKey,
@@ -16,6 +17,7 @@ import {
   slotOf,
   WALKTHROUGH_FILES,
 } from "@/landing/show"
+import { timedScenes } from "@/landing/timeline"
 import { describe, expect, it } from "vitest"
 
 /** A file in the repo, parsed, as the build reads a walkthrough. */
@@ -85,6 +87,7 @@ describe("resolveShow", () => {
           ],
         },
       ],
+      pool: null,
     })
   })
 
@@ -149,13 +152,14 @@ describe("resolveShow", () => {
     expect(got.ok && got.episodes[0]?.scenes[0]?.draft).toBe(true)
   })
 
-  it("resolves the landing's own show, its drafts the scenes with no walkthrough chapter", () => {
-    const drafts = SHOW.episodes.flatMap((e) =>
-      e.scenes.flatMap((s, i) =>
-        "chapter" in s.copy ? [] : [`${e.id} ${String(i + 1)}`]
-      )
-    )
-    expect(drafts).toEqual(["extensions 1", "extensions 2", "extensions 3"])
+  it("resolves the landing's own show, its drafts the scenes and snacks with no walkthrough chapter", () => {
+    for (const e of SHOW.episodes) {
+      const scenes = "pool" in e.scenes ? e.scenes.pool : e.scenes
+      for (const s of scenes)
+        expect("chapter" in s.copy ? false : s.copy.draft).toBe(
+          !("chapter" in s.copy)
+        )
+    }
   })
 })
 
@@ -179,7 +183,14 @@ describe("the landing's own show", () => {
       "android",
       "server",
     ])
-    expect(pages.drafts).toBe(3)
+    // The extensions' three scenes, and every snack of the Android pool
+    // written for the landing rather than taken from its walkthrough.
+    const android = SHOW.episodes.find((e) => e.id === "android")?.scenes
+    const own =
+      android !== undefined && "pool" in android
+        ? android.pool.filter((s) => !("chapter" in s.copy)).length
+        : 0
+    expect(pages.drafts).toBe(3 + own)
   })
 })
 
@@ -280,17 +291,23 @@ describe("faceKey and facesToMake", () => {
     expect(faceKey("server", { media: "stills/cores.png", label: "x" })).toBe(
       "stills/cores.png"
     )
+    expect(faceKey("android", { screen: "/settings/data", label: "x" })).toBe(
+      "stills/android/screens/settings~data.png"
+    )
   })
 
   it("lists the stills and cuts each producer makes, and nothing named by key", () => {
     const android = facesToMake(SHOW, "android")
-    expect(android.cuts.map((c) => c.shot)).toEqual([
+    expect(android.cuts.map((c) => c.shot).sort()).toEqual([
       "stop-1",
       "stop-2",
       "stop-3",
       "stop-4",
     ])
-    expect(android.stills.map((s) => s.snip)).toEqual([2, 4, 9, 15])
+    expect(android.stills.map((s) => s.snip)).toEqual([
+      7, 8, 9, 11, 13, 2, 4, 15,
+    ])
+    expect(android.screens.map((s) => s.route)).toContain("/rust-rounds")
     const extensions = facesToMake(SHOW, "extensions")
     expect(extensions.cuts.map((c) => c.shot)).toEqual(["hook", "feature"])
     expect(extensions.stills.map((s) => s.key)).toEqual([
@@ -299,5 +316,189 @@ describe("faceKey and facesToMake", () => {
     ])
     // The server's stills come from home (the mailbox), not a producer here.
     expect(facesToMake(SHOW, "server").cuts).toEqual([])
+  })
+})
+
+/** A random source that gives `values` in turn, then 0. */
+const randomOf = (values: ReadonlyArray<number>): (() => number) => {
+  let at = 0
+  return () => values[at++] ?? 0
+}
+
+describe("shuffle", () => {
+  it("swaps each place with one drawn at or below it (Fisher-Yates)", () => {
+    // i = 3 swaps with j = floor(0.5 * 4) = 2 (a b d c); i = 2 with 0
+    // (d b a c); i = 1 with floor(0.99 * 2) = 1, itself.
+    expect(shuffle(["a", "b", "c", "d"], randomOf([0.5, 0, 0.99]))).toEqual([
+      "d",
+      "b",
+      "a",
+      "c",
+    ])
+  })
+
+  it("keeps every item once, and leaves its input as it was", () => {
+    const items = Array.from({ length: 20 }, (_, i) => i)
+    const got = shuffle(items, Math.random)
+    expect([...got].sort((a, b) => a - b)).toEqual(items)
+    expect(items).toEqual(Array.from({ length: 20 }, (_, i) => i))
+  })
+
+  it("stays inside the array when the random source gives 1", () => {
+    expect(shuffle(["a", "b", "c"], () => 1)).toEqual(["a", "b", "c"])
+  })
+
+  it("draws every order of three about equally often", () => {
+    // A seeded source (a linear congruential generator), so the count is the same every run.
+    let seed = 7
+    const seeded = (): number => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2 ** 31
+      return seed / 2 ** 31
+    }
+    const counts = new Map<string, number>()
+    for (let n = 0; n < 6000; n++) {
+      const order = shuffle(["a", "b", "c"], seeded).join("")
+      counts.set(order, (counts.get(order) ?? 0) + 1)
+    }
+    expect(counts.size).toBe(6)
+    for (const count of counts.values()) {
+      expect(count).toBeGreaterThan(850)
+      expect(count).toBeLessThan(1150)
+    }
+  })
+})
+
+describe("an episode's pool", () => {
+  const snack = (title: string, draft: boolean) =>
+    ({
+      copy: { title, narration: [`${title}, said.`], draft },
+      faces: [{ snip: 1 }, { snip: 2 }],
+      from: ["#3473"],
+    }) as const
+
+  it("shows its first draw with no script, and keeps every snack to draw from", () => {
+    const got = resolveShow(
+      showOf({
+        draw: 2,
+        pool: [snack("A", false), snack("B", false), snack("C", false)],
+      }),
+      walks
+    )
+    if (!got.ok) throw new Error(got.problems.join("; "))
+    const android = got.episodes.at(0)
+    expect(android?.scenes.map((s) => s.title)).toEqual(["A", "B"])
+    expect(android?.pool?.snacks.map((s) => s.title)).toEqual(["A", "B", "C"])
+    expect(android?.pool?.draw).toBe(2)
+  })
+
+  it("refuses a pool with no more snacks than it draws", () => {
+    const got = resolveShow(
+      showOf({ draw: 2, pool: [snack("A", false), snack("B", false)] }),
+      walks
+    )
+    expect(got.ok ? [] : got.problems).toEqual([
+      "android draws 2 from a pool of 2: a pool needs more snacks than it draws",
+    ])
+  })
+
+  it("refuses a picture labelled two ways", () => {
+    const got = resolveShow(
+      showOf({
+        draw: 1,
+        pool: [
+          { ...snack("A", false), faces: [{ snip: 1 }, { snip: 2 }] },
+          {
+            ...snack("B", false),
+            faces: [{ snip: 1, label: "Else" }, { snip: 2 }],
+          },
+        ],
+      }),
+      walks
+    )
+    expect(got.ok ? [] : got.problems).toEqual([
+      'stills/android/01.png is labelled both "One two" and "Else"',
+    ])
+  })
+
+  it("leaves a draft snack off the public site, the first draw taken from the rest", () => {
+    const show = showOf({
+      draw: 1,
+      pool: [snack("Draft", true), snack("Read", false), snack("Too", false)],
+    })
+    const read = (): unknown => ({ fill: WALK })
+    const pages = showFor(show, read, false)
+    if (!pages.ok) throw new Error(pages.problems.join("; "))
+    expect(pages.episodes[0]?.scenes.map((s) => s.title)).toEqual(["Read"])
+    expect(pages.episodes[0]?.pool?.snacks.map((s) => s.title)).toEqual([
+      "Read",
+      "Too",
+    ])
+    expect(pages.drafts).toBe(1)
+  })
+
+  it("draws `draw` snacks of a pool, each once, by their places in it", () => {
+    // 0 1 2 3 4 → 0 1 4 3 2 → 3 1 4 0 2 → (2 stays) → 1 3 4 0 2.
+    expect(drawSnacks(5, 3, randomOf([0.5, 0, 0.99, 0]))).toEqual([1, 3, 4])
+    for (let n = 0; n < 50; n++) {
+      const drawn = drawSnacks(5, 3, Math.random)
+      expect(drawn).toHaveLength(3)
+      expect(new Set(drawn).size).toBe(3)
+    }
+  })
+
+  it("rests every snack of the landing's own pools on the record: each file it names exists", () => {
+    for (const e of SHOW.episodes) {
+      if (!("pool" in e.scenes)) continue
+      expect(e.scenes.pool.length).toBeGreaterThan(e.scenes.draw)
+      for (const s of e.scenes.pool)
+        for (const source of s.from)
+          if (source.includes("/") || source.endsWith(".md"))
+            expect(
+              existsSync(join(import.meta.dirname, "../../../../..", source)),
+              source
+            ).toBe(true)
+    }
+  })
+})
+
+describe("timedScenes", () => {
+  it("times each place of a pool for its longest title and its longest line at each place", () => {
+    const got = resolveShow(
+      showOf({
+        draw: 2,
+        pool: [
+          {
+            copy: { title: "Short", narration: ["a"], draft: false },
+            faces: [{ snip: 1 }, { snip: 2 }],
+            from: ["#3473"],
+          },
+          {
+            copy: {
+              title: "The longest",
+              narration: ["bb", "a second line"],
+              draft: false,
+            },
+            faces: [{ snip: 1 }, { snip: 2 }],
+            from: ["#3473"],
+          },
+          {
+            copy: { title: "Mid", narration: ["ccc"], draft: false },
+            faces: [{ snip: 1 }, { snip: 2 }],
+            from: ["#3473"],
+          },
+        ],
+      }),
+      walks
+    )
+    if (!got.ok) throw new Error(got.problems.join("; "))
+    const android = got.episodes.at(0)
+    const server = got.episodes.at(1)
+    if (android === undefined || server === undefined) throw new Error("none")
+    const timed = timedScenes(android)
+    expect(timed.map((s) => [s.title, s.narration])).toEqual([
+      ["The longest", ["ccc", "a second line"]],
+      ["The longest", ["ccc", "a second line"]],
+    ])
+    expect(timedScenes(server)).toBe(server.scenes)
   })
 })

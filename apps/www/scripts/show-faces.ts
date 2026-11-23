@@ -5,7 +5,11 @@
 // (apps/www/src/landing/show.ts, `faceKey`). Run by Snips Capture's apk-clip
 // job (android) and Site Assets' extensions job (extensions).
 //
-//   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder>
+//   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>]
+//
+// With a Snips Capture bundle (docs/snips.md), it also copies each route's
+// still the show names (a `screen` face, #3473) from the bundle's APK
+// pictures, the release build's where it has one.
 //
 // Beside each face it writes the face's preview (`previewKey`): a still
 // itself, or a clip's middle frame (a cut opens on its fade in), 40 px on its long edge, as WebP, which the landing shows in the
@@ -24,16 +28,21 @@ import { facesToMake, SHOW } from "@/landing/show"
 
 const EPISODES: ReadonlyArray<EpisodeId> = ["extensions", "android", "server"]
 const args = process.argv.slice(2)
-const [episode, renderDir, outDir] = [args.at(0), args.at(1), args.at(2)]
+const [episode, renderDir, outDir, bundleDir] = [
+  args.at(0),
+  args.at(1),
+  args.at(2),
+  args.at(3),
+]
 const known = EPISODES.find((id) => id === episode)
 if (known === undefined || renderDir === undefined || outDir === undefined) {
   throw new Error(
-    "usage: tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder>"
+    "usage: tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>]"
   )
 }
 const render = resolve(renderDir)
 const out = resolve(outDir)
-const { stills, cuts } = facesToMake(SHOW, known)
+const { stills, cuts, screens } = facesToMake(SHOW, known)
 
 /** A face's preview beside it: its frame at `atS` seconds, 40 px on the long edge. */
 function makePreview(file: string, key: string, atS = 0): void {
@@ -136,4 +145,54 @@ for (const { shot, key } of cuts) {
   if (sound !== "") throw new Error(`${key} still has a sound track`)
   makePreview(target, key, durationMs / 2000)
   process.stdout.write(`[show-faces] ${key}: shot ${shot}\n`)
+}
+
+/** A record of the bundle's manifest, as far as this script reads it. */
+type Picture = {
+  readonly route: string
+  readonly build: string
+  readonly name: string
+}
+
+/** The bundle's APK pictures, by route, from its manifest (docs/snips.md). */
+function apkPictures(bundle: string): ReadonlyArray<Picture> {
+  const manifest: unknown = JSON.parse(
+    readFileSync(join(bundle, "manifest.json"), "utf8")
+  )
+  const snips =
+    typeof manifest === "object" && manifest !== null && "snips" in manifest
+      ? manifest.snips
+      : undefined
+  if (!Array.isArray(snips)) throw new Error(`${bundle} has no snips`)
+  return snips.flatMap((snip: unknown): ReadonlyArray<Picture> => {
+    if (typeof snip !== "object" || snip === null) return []
+    if (!("surface" in snip) || snip.surface !== "apk") return []
+    if (!("route" in snip) || typeof snip.route !== "string") return []
+    if (!("build" in snip) || typeof snip.build !== "string") return []
+    const image = "image" in snip ? snip.image : undefined
+    if (typeof image !== "object" || image === null) return []
+    if (!("name" in image) || typeof image.name !== "string") return []
+    return [{ route: snip.route, build: snip.build, name: image.name }]
+  })
+}
+
+if (screens.length > 0 && bundleDir !== undefined) {
+  const bundle = resolve(bundleDir)
+  const pictures = apkPictures(bundle)
+  for (const { route, key } of screens) {
+    const found =
+      pictures.find((p) => p.route === route && p.build === "release") ??
+      pictures.find((p) => p.route === route)
+    // A route the capture couldn't show is the capture's to say (its
+    // `unreached`); the landing draws the face's title card.
+    if (found === undefined) {
+      process.stdout.write(`[show-faces] ${key}: no picture of ${route}\n`)
+      continue
+    }
+    const target = join(out, key)
+    mkdirSync(dirname(target), { recursive: true })
+    copyFileSync(join(bundle, found.name), target)
+    makePreview(target, key)
+    process.stdout.write(`[show-faces] ${key}: ${route} (${found.build})\n`)
+  }
 }

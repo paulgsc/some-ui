@@ -33,6 +33,7 @@ const EPISODES: ReadonlyArray<ResolvedEpisode> = (
     draft: false,
     faces: [face(`a${String(n)}`), face(`b${String(n)}`)] as const,
   })),
+  pool: null,
 }))
 
 /** Each keyframe's percentage and its declarations, in order. */
@@ -239,6 +240,7 @@ describe("showTimeline over any shape", () => {
         draft: false,
         faces: [face("a"), face("b")] as const,
       })),
+      pool: null,
     }))
 
   it("keeps every track's keyframes in order, none at the same moment", () => {

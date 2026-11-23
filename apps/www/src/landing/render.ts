@@ -20,7 +20,7 @@ import type { MediaSize } from "./media.ts"
 import type { LandingMochi } from "./mochi.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
 import type { ResolvedEpisode, ResolvedFace, SlotKind } from "./show.ts"
-import { showMediaKeys } from "./show.ts"
+import { everyScene, showMediaKeys } from "./show.ts"
 import type { LandingTheme, ThemePicker } from "./themes.ts"
 import { themeCss, themePicker } from "./themes.ts"
 import type { SceneTracks, Timeline } from "./timeline.ts"
@@ -198,7 +198,7 @@ export function pairTall(
   episode: ResolvedEpisode,
   media: LandingMedia
 ): number {
-  const needs = episode.scenes.flatMap((scene) =>
+  const needs = everyScene(episode).flatMap((scene) =>
     scene.faces.map((face) => {
       const size = shown(media, face.key) ?? PLACEHOLDER
       return size.height / size.width + BAND
@@ -227,17 +227,20 @@ function stage(
           if (t === undefined) return ""
           return `
                 <div class="scene tk ${t.block.name}">
-                  <p class="scene-title"><span class="tk ${t.title.name}">${e(scene.title)}</span></p>${scene.narration
+                  <p class="scene-title"><span class="tk ${t.title.name}">${e(scene.title)}</span></p>${t.lines
                     .map(
+                      // A pool's place holds a line for each its snacks
+                      // may say (`timedScenes`); a line its draw lacks is
+                      // left empty.
                       (line, l) => `
-                  <p class="line tk ${t.lines.at(l)?.name ?? ""}">${e(line)}</p>`
+                  <p class="line tk ${line.name}">${e(scene.narration[l] ?? "")}</p>`
                     )
                     .join("")}
                 </div>`
         })
         .join("")
       return `
-            <section class="face copy" style="--i: ${String(k)}">
+            <section class="face copy" data-copy="${episode.id}" style="--i: ${String(k)}">
               <p class="kicker">${e(episode.kicker)}</p>
               <h3 class="headline">${e(episode.title)}</h3>
               <div class="scenes">${scenes}
@@ -349,6 +352,37 @@ function flat(
     .join("")
 }
 
+/**
+ * An episode's pool (#3473), for the enhancement to draw from: each snack's
+ * copy and its two faces, rendered once into an inert template, so nothing
+ * in it loads until a draw puts it on the page. With no script the page
+ * shows the pool's first draw, which the stage and the list already hold.
+ */
+function pool(episode: ResolvedEpisode, media: LandingMedia): string {
+  if (episode.pool === null) return ""
+  return `
+        <template class="pool" data-episode="${episode.id}" data-draw="${String(episode.pool.draw)}">${episode.pool.snacks
+          .map(
+            (snack) => `
+          <div class="snack">
+            <p class="snack-title">${e(snack.title)}</p>${snack.narration
+              .map(
+                (line) => `
+            <p class="snack-line">${e(line)}</p>`
+              )
+              .join("")}${snack.faces
+              .map(
+                (face) => `
+            <div class="snack-face" data-slot="${face.slot}" data-asset="${e(face.key)}" data-label="${e(face.label)}" data-shape="${shape(shown(media, face.key) ?? PLACEHOLDER)}">${screen(face, media)}
+            </div>`
+              )
+              .join("")}
+          </div>`
+          )
+          .join("")}
+        </template>`
+}
+
 /** The show: its stage where it moves, laid flat everywhere else. */
 function show(
   episodes: ReadonlyArray<ResolvedEpisode>,
@@ -358,7 +392,7 @@ function show(
   return `
       <div class="show">${stage(episodes, showTimeline(episodes), media)}
         <div class="flat">${flat(episodes, media)}
-        </div>
+        </div>${episodes.map((episode) => pool(episode, media)).join("")}
       </div>`
 }
 

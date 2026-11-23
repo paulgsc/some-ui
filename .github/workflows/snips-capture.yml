@@ -202,7 +202,8 @@ jobs:
 
   apk-clip:
     name: The APK faces for the public site
-    needs: apk
+    # The bundle, for the stills of the app's routes the show names (#3473).
+    needs: [apk, bundle]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -215,13 +216,19 @@ jobs:
         with:
           name: walks-${{ github.run_id }}
           path: walks
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snips-bundle-${{ github.sha }}
+          path: snips-bundle
       # The Jobs walk this run made on the emulator, on its seeded sample
       # (apps/www/tests/walk/jobs-week.json), rendered as its walkthrough
       # with no voice, then cut into the landing show's Android faces
       # (PAGES #3401, C1059, C1183): each chapter's stop as a silent clip,
-      # and the stills the show names, by apps/www/scripts/show-faces.ts. A
-      # walk that failed (only a warning to the capture) leaves no walk.json:
-      # then there are no faces, and pages.yml keeps the newest earlier ones.
+      # and the stills the show names, by apps/www/scripts/show-faces.ts,
+      # which also copies the stills of the app's routes the show names from
+      # this run's snips bundle (#3473). A walk that failed (only a warning
+      # to the capture) leaves no walk.json: then there are no faces, and
+      # pages.yml keeps the newest earlier ones, all of a piece.
       - name: Render the Jobs walkthrough
         id: clip
         run: |
@@ -243,7 +250,8 @@ jobs:
           # track, and the script refuses one that still has one.
           nix develop .#ci-playwright --command \
             pnpm --filter www exec tsx scripts/show-faces.ts android \
-            "$RUNNER_TEMP/walkthrough" "$RUNNER_TEMP/site-assets"
+            "$RUNNER_TEMP/walkthrough" "$RUNNER_TEMP/site-assets" \
+            "$GITHUB_WORKSPACE/snips-bundle"
           echo "made=true" >> "$GITHUB_OUTPUT"
       # Retention: pages.yml reads the newest of this family at the next
       # deploy, and this workflow runs only when dispatched, so the gap can be

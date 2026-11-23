@@ -54,6 +54,10 @@ const clipScene = EPISODES.flatMap((e) => e.scenes).find(
 if (clipScene === undefined)
   throw new Error("no scene shows a clip beside a still")
 const firstFaces = clipScene.faces
+/** The pools' snacks that show that scene's clip: each is in its pool's template too. */
+const POOLED = EPISODES.flatMap((e) => e.pool?.snacks ?? []).filter(
+  (s) => s.faces[0].key === firstFaces[0].key
+).length
 /** A build given that scene's two faces, the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
   [firstFaces[0].key, { width: 1080, height: 1920 }],
@@ -341,8 +345,9 @@ describe("renderLanding", () => {
 
   it("lays a clip in its face as a background, never a player (C1064)", () => {
     const videos = [...withMedia.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
-    // The stage's face and the flat card's.
-    expect(videos).toHaveLength(2)
+    // The stage's face and the flat card's, and its snack's in the pool's
+    // template (#3473), which a draw may put on the page.
+    expect(videos).toHaveLength(2 + POOLED)
     for (const video of videos) {
       for (const attribute of [
         "autoplay",
