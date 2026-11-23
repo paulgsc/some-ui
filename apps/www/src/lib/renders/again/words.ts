@@ -43,13 +43,13 @@ export function youLine(failed: RenderFailed): string {
     case "policy": {
       switch (stop.refusal.kind) {
         case "too-long": {
-          return "Nothing on this phone changes it: the essay itself has to be shorter."
+          return "Nothing on this phone changes it: what it's made from has to make a shorter video."
         }
         case "too-large": {
-          return "Nothing on this phone changes it: the essay itself has to make a smaller video."
+          return "Nothing on this phone changes it: what it's made from has to make a smaller video."
         }
         case "overflow": {
-          return "Nothing on this phone changes it: the words or pictures of those scenes have to be shorter."
+          return "Nothing on this phone changes it: what those scenes hold has to fit their frame. Home makes it by itself once it does."
         }
         default: {
           return assertNever(stop.refusal)
@@ -58,13 +58,13 @@ export function youLine(failed: RenderFailed): string {
     }
     case "missing": {
       return stop.what === "take"
-        ? "Nothing on this phone changes it: the essay has to name a take home keeps."
-        : "Nothing on this phone changes it: the essay has to name a clip home keeps."
+        ? "Nothing on this phone changes it: the essay has to name a take home keeps, and home makes it by itself then."
+        : "Nothing on this phone changes it: the essay has to name a clip home keeps, and home makes it by itself then."
     }
     case "snips": {
       return stop.gone
         ? "Nothing on this phone changes it: run that Snips Capture again, and home makes it then."
-        : "Nothing on this phone changes it: the essay has to name a picture its capture holds."
+        : "Nothing on this phone changes it: the essay has to name a picture its capture holds, and home makes it by itself then."
     }
     case "preview": {
       return "Ask for another on the template's page."

@@ -331,17 +331,17 @@ function refusalLine(
  * one deleted while no account is linked to resolve it (paulgsc/server#1064).
  */
 const ESSAY_REFUSAL_WORDS = {
-  "take-missing":
-    "A spoken card in it plays a recording home doesn't have. It isn't made until the essay names one home keeps.",
-  "take-unheard":
-    "Home couldn't make out recordings its spoken cards play, so it holds the essay until it can hear them.",
-  "snip-missing":
-    "It shows a picture of the app that home couldn't get. It isn't made until the essay names a picture its capture holds, and home can fetch it.",
+  "take-missing": (n: number): string =>
+    `${n > 1 ? `${String(n)} spoken cards in it play recordings` : "A spoken card in it plays a recording"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "ones" : "one"} home keeps.`,
+  "take-unheard": (n: number): string =>
+    `Home couldn't make out ${n === 0 ? "recordings" : n === 1 ? "1 recording" : `${String(n)} recordings`} its spoken cards play, so it holds the essay until it can hear ${n === 1 ? "it" : "them"}.`,
+  "snip-missing": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} pictures` : "a picture"} of the app that home couldn't get. Home holds it, and makes it by itself once the essay names pictures its capture holds and home can fetch.`,
   // C875: home never captures pictures itself; the owner runs it again.
-  "snip-gone":
-    "It shows pictures of the app that home couldn't get from their capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.",
-  "clip-missing":
-    "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
+  "snip-gone": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} pictures` : "pictures"} of the app that home couldn't get from their capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.`,
+  "clip-missing": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} clips` : "a clip"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "clips" : "one"} home keeps.`,
 } as const
 
 type EssayRefusal = keyof typeof ESSAY_REFUSAL_WORDS
@@ -361,7 +361,8 @@ export function failedLine(failed: RenderFailed): string {
     failed.reason !== undefined &&
     isEssayRefusal(failed.reason)
   )
-    return ESSAY_REFUSAL_WORDS[failed.reason]
+    // Counted, never named: home names them only by their ids.
+    return ESSAY_REFUSAL_WORDS[failed.reason](failed.items?.length ?? 0)
   const refusal = refusalOf(failed)
   if (refusal !== null)
     return refusalLine(failed.feed, refusal, failed.sceneNames ?? [])

@@ -46,6 +46,7 @@ import {
   againAttentionQuery,
   planOf,
   stopOf,
+  youLine,
 } from "@/lib/renders/again"
 
 import { Part, ReadList, StudioPage } from "./layout"
@@ -230,12 +231,14 @@ const ToAgain = ({ failed }: { failed: RenderFailed }): JSX.Element | null => {
   }).data
   const plan = planOf(stop, attention ?? { kind: "unread" }, failed.feed)
   // Each page is the phone's ("apk"), as this one is (A3).
-  if (
-    !hasAudience("apk") ||
-    plan.kind === "preview" ||
-    plan.kind === "byItself"
-  )
-    return null
+  if (!hasAudience("apk")) return null
+  // Nothing to run from here: what the owner can do is said on the row.
+  if (plan.kind === "preview" || plan.kind === "byItself")
+    return (
+      <p className="text-muted-foreground px-4 py-1 text-sm">
+        {youLine(failed)}
+      </p>
+    )
   return (
     <Link
       to="/journal/renders/$feed/$key"

@@ -574,7 +574,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))
     const clipMissing = failedLine(row("clip-missing"))
-    expect(snipMissing).toMatch(/names a picture its capture holds/)
+    expect(snipMissing).toMatch(/names pictures its capture holds/)
     expect(snipGone).toMatch(/Re-run that Snips Capture/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)
     const lines = [missing, unheard, snipMissing, snipGone, clipMissing]

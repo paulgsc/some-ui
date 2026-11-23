@@ -176,7 +176,7 @@ describe("Run it again's words", () => {
       // What home does about it: tries again, or holds it.
       if (row.feed !== "preview")
         expect(line, JSON.stringify(row)).toMatch(
-          /[Hh]ome (tries|doesn't try|makes it then)|It tries again|it holds|isn't made until/
+          /[Hh]ome (tries|doesn't try|holds|makes it then)|It tries again|it holds/
         )
       // What the owner can do, or that nothing on the phone changes it.
       expect(you, JSON.stringify(row)).toMatch(
