@@ -557,7 +557,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(snipMissing).toMatch(/names a picture its capture holds/)
     expect(snipGone).toMatch(/Re-run that Snips Capture/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)
-    expect(pageMissing).toMatch(/a page from the web that no capture made/)
+    expect(pageMissing).toMatch(/home couldn't get, or that no capture made/)
     expect(pageGone).toMatch(/Take the page again with Public Pages Capture/)
     const lines = [
       missing,

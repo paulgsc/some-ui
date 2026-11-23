@@ -306,8 +306,8 @@ function refusalLine(feed: string, refusal: Refusal): string {
 
 /**
  * Why home set a cards essay aside before making it (WALK7,
- * paulgsc/server#1052; SNIPS2, server#1076; public pages, server#1144), by home's word for each: its
- * `essay_media` refusals, a closed set. A take home hasn't finished listening
+ * paulgsc/server#1052; SNIPS2, server#1076; public pages, server#1144), by
+ * home's word for each: its `essay_media` refusals, a closed set. A take home hasn't finished listening
  * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
  * waits for its takes. A take the owner deleted is no refusal either: home
  * withdraws the essay for good, its video included, and it leaves every list
@@ -325,11 +325,11 @@ const ESSAY_REFUSAL_WORDS = {
   "snip-gone":
     "It shows pictures of the app that home couldn't get from their capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.",
   "page-missing":
-    "It shows a page from the web that no capture made. It isn't made until the essay names a page its capture holds, and home can fetch it.",
+    "It shows a page from the web that home couldn't get, or that no capture made. It isn't made until the essay names a page its capture holds, and home can fetch it.",
   // #3395: a page is live, so a lost capture is taken again, never re-run;
   // home never captures pages itself.
   "page-gone":
-    "It shows a page from the web that home couldn't get from its capture: the capture is over a day old, failed, or doesn't hold that picture. Take the page again with Public Pages Capture, and name the new pictures in the essay.",
+    "It shows a page from the web that home couldn't get from the capture it names: the capture may be over a day old, may have failed, or may not hold that picture as the essay names it. Take the page again with Public Pages Capture, and name only the new pictures in the essay.",
   "clip-missing":
     "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
 } as const
