@@ -61,7 +61,11 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
   },
   {
     route: "/journal/renders",
-    why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
+    why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on but the way to run one that couldn't finish again.",
+  },
+  {
+    route: "/journal/renders/$feed/$key",
+    why: "Running a render that couldn't finish again (RETRY): its steps, and a tap that sends it back in line. Nothing is offered back.",
   },
   ...[
     "/journal/spoken",

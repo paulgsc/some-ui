@@ -207,6 +207,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/video-fetch.tsx",
   "apps/www/src/components/studio/clip-frames.tsx",
   "apps/www/src/components/studio/renders.tsx",
+  "apps/www/src/components/studio/run-again.tsx",
   "apps/www/src/components/studio/take-conveyor.tsx",
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/studio/template-preview.tsx",

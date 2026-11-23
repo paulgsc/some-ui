@@ -14,6 +14,6 @@ const Page: () => JSX.Element | null =
     ? RendersPage
     : (): null => null
 
-export const Route = createFileRoute("/_dashboard/_apk/journal/renders")({
+export const Route = createFileRoute("/_dashboard/_apk/journal/renders/")({
   component: Page,
 })

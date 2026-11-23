@@ -276,18 +276,34 @@ const REFUSAL_WORDS = {
   },
   tooLarge: (mb: number, capMb: number): string =>
     `Too large to keep: it came out ${largerSaid(mb, capMb)} home keeps a video. Home doesn't try it again as it is.`,
-  /** Scenes too full for their frame, by name, the rest counted. */
-  overflow: (scenes: ReadonlyArray<string>, sceneCount: number): string => {
-    const more = sceneCount - scenes.length
-    if (more <= 0 && scenes.length === 1)
-      return `${scenes.join("")} doesn't fit the frame. Home doesn't try it again as it is.`
+  /**
+   * Scenes too full for their frame, by the names home gives (`sceneNames`),
+   * the rest counted; by count alone where home names none, never by the
+   * recorder's ids (the owner, 2026-11-23: "which scene, by its name").
+   */
+  overflow: (names: ReadonlyArray<string>, sceneCount: number): string => {
+    const quoted = names.map((name) => `“${name}”`)
+    const more = sceneCount - quoted.length
+    const held = "Home doesn't try it again as it is."
+    if (quoted.length === 0)
+      return sceneCount === 1
+        ? `One scene is too full for its frame, so the video would cut it off. ${held}`
+        : `${String(sceneCount)} scenes are too full for their frame, so the video would cut them off. ${held}`
+    if (more <= 0 && quoted.length === 1)
+      return `The scene ${quoted.join("")} is too full for its frame, so the video would cut it off. ${held}`
     const named =
-      more > 0 ? `${scenes.join(", ")} and ${more} more` : scenes.join(", ")
-    return `Some scenes don't fit the frame: ${named}. Home doesn't try it again as it is.`
+      more > 0
+        ? `${quoted.join(", ")} and ${String(more)} more`
+        : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1) ?? ""}`
+    return `The scenes ${named} are too full for their frame, so the video would cut them off. ${held}`
   },
 } as const
 
-function refusalLine(feed: string, refusal: Refusal): string {
+function refusalLine(
+  feed: string,
+  refusal: Refusal,
+  names: ReadonlyArray<string>
+): string {
   switch (refusal.kind) {
     case "too-long": {
       return REFUSAL_WORDS.tooLong(feed, refusal.minutes, refusal.capMinutes)
@@ -296,7 +312,7 @@ function refusalLine(feed: string, refusal: Refusal): string {
       return REFUSAL_WORDS.tooLarge(refusal.mb, refusal.capMb)
     }
     case "overflow": {
-      return REFUSAL_WORDS.overflow(refusal.scenes, refusal.sceneCount)
+      return REFUSAL_WORDS.overflow(names, refusal.sceneCount)
     }
     default: {
       return assertNever(refusal)
@@ -315,23 +331,45 @@ function refusalLine(feed: string, refusal: Refusal): string {
  * one deleted while no account is linked to resolve it (paulgsc/server#1064).
  */
 const ESSAY_REFUSAL_WORDS = {
-  "take-missing":
-    "A spoken card in it plays a recording home doesn't have. It isn't made until the essay names one home keeps.",
-  "take-unheard":
-    "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
-  "snip-missing":
-    "It shows a picture of the app that home couldn't get. It isn't made until the essay names a picture its capture holds, and home can fetch it.",
+  "take-missing": (n: number): string =>
+    `${n > 1 ? `${String(n)} spoken cards in it play recordings` : "A spoken card in it plays a recording"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "recordings" : "one"} home keeps.`,
+  "take-unheard": (n: number): string =>
+    `Home couldn't make out ${n === 0 ? "recordings" : n === 1 ? "1 recording" : `${String(n)} recordings`} its spoken cards play, so it holds the essay until it can hear ${n === 1 ? "it" : "them"}.`,
+  "snip-missing": (n: number): string =>
+    n > 1
+      ? `It shows ${String(n)} pictures of the app that home couldn't get. Home holds it, and makes it by itself once the essay names pictures its capture holds and home can fetch.`
+      : "It shows a picture of the app that home couldn't get. Home holds it, and makes it by itself once the essay names a picture its capture holds and home can fetch.",
   // C875: home never captures pictures itself; the owner runs it again.
-  "snip-gone":
-    "It shows pictures of the app that home couldn't get from their capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.",
-  "clip-missing":
-    "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
+  "snip-gone": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} pictures` : n === 1 ? "a picture" : "pictures"} of the app that home couldn't get from ${n === 1 ? "its" : "their"} capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.`,
+  "clip-missing": (n: number): string =>
+    `It shows ${n > 1 ? `${String(n)} clips` : "a clip"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "clips" : "one"} home keeps.`,
 } as const
 
 type EssayRefusal = keyof typeof ESSAY_REFUSAL_WORDS
 
 const isEssayRefusal = (reason: string): reason is EssayRefusal =>
   Object.hasOwn(ESSAY_REFUSAL_WORDS, reason)
+
+/**
+ * Names home gives a refusal's items, when it names every one of them (home
+ * names a list whole or not at all); null otherwise.
+ */
+function namesOf(
+  items: ReadonlyArray<string> | undefined,
+  names: ReadonlyArray<string> | undefined
+): ReadonlyArray<string> | null {
+  if (items === undefined || names === undefined) return null
+  return names.length === items.length && names.length > 0 ? names : null
+}
+
+/** Names as a person reads a list: "“A”", "“A” and “B”", "“A”, “B” and “C”". */
+function namesSaid(names: ReadonlyArray<string>): string {
+  const quoted = names.map((name) => `“${name}”`)
+  return quoted.length <= 1
+    ? quoted.join("")
+    : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1) ?? ""}`
+}
 
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
@@ -344,10 +382,24 @@ export function failedLine(failed: RenderFailed): string {
     failed.feed === "cards-essay" &&
     failed.reason !== undefined &&
     isEssayRefusal(failed.reason)
-  )
-    return ESSAY_REFUSAL_WORDS[failed.reason]
+  ) {
+    // The takes by the names home gives (`itemNames`), else counted: never
+    // by their ids.
+    const names = namesOf(failed.items, failed.itemNames)
+    if (names !== null && failed.reason === "take-unheard")
+      return `Home couldn't make out the ${names.length === 1 ? "take" : "takes"} for ${namesSaid(names)}, so it holds the essay until it can hear ${names.length === 1 ? "it" : "them"}.`
+    if (names !== null && failed.reason === "take-missing")
+      return `Home doesn't have the ${names.length === 1 ? "take" : "takes"} for ${namesSaid(names)}. Home holds it, and makes it by itself once the essay names ${names.length === 1 ? "one" : "recordings"} home keeps.`
+    return ESSAY_REFUSAL_WORDS[failed.reason](failed.items?.length ?? 0)
+  }
   const refusal = refusalOf(failed)
-  if (refusal !== null) return refusalLine(failed.feed, refusal)
+  if (refusal !== null)
+    return refusalLine(
+      failed.feed,
+      refusal,
+      // Whole or not at all: a name is never said against another scene.
+      namesOf(failed.scenes, failed.sceneNames) ?? []
+    )
   return failed.by === "home"
     ? "Home couldn't keep its files. It tries again in an hour."
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."

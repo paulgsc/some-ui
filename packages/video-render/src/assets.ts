@@ -40,6 +40,14 @@ export type AloneAsset = {
     : never
 }[EpisodeAsset]
 
+/**
+ * What home can be asked to make (`POST …/produce`): an asset made on its
+ * own, or the video, which home makes by rendering the episode again (an
+ * episode that couldn't finish, run again from Studio › Renders, RETRY). The
+ * description is never asked for alone: it comes with its video.
+ */
+export type ProducedAsset = AloneAsset | "video"
+
 /** The assets made on their own, as a list a command can check a flag by. */
 export const ALONE_ASSETS: ReadonlyArray<AloneAsset> = EPISODE_ASSETS.filter(
   (asset): asset is AloneAsset => ASSET_MADE[asset] === "alone"

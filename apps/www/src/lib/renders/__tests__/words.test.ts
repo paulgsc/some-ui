@@ -478,16 +478,48 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
           ...row,
         })
       )
+    // Never by the recorder's ids (the owner, 2026-11-23): counted, or by
+    // the names home gives.
     expect(
       line({ scenes: ["dive-2", "beside-2", "dive-3"], sceneCount: 5 })
     ).toBe(
-      "Some scenes don't fit the frame: dive-2, beside-2, dive-3 and 2 more. Home doesn't try it again as it is."
+      "5 scenes are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
     )
-    expect(line({ scenes: ["dive-2", "beside-2"], sceneCount: 2 })).toBe(
-      "Some scenes don't fit the frame: dive-2, beside-2. Home doesn't try it again as it is."
+    expect(
+      line({
+        scenes: ["dive-2", "beside-2", "dive-3"],
+        sceneCount: 5,
+        sceneNames: ["The dive", "Beside it", "The second dive"],
+      })
+    ).toBe(
+      "The scenes “The dive”, “Beside it”, “The second dive” and 2 more are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
+    )
+    expect(
+      line({
+        scenes: ["dive-2", "beside-2"],
+        sceneCount: 2,
+        sceneNames: ["The dive", "Beside it"],
+      })
+    ).toBe(
+      "The scenes “The dive” and “Beside it” are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
+    )
+    expect(
+      line({ scenes: ["dive-2"], sceneCount: 1, sceneNames: ["The dive"] })
+    ).toBe(
+      "The scene “The dive” is too full for its frame, so the video would cut it off. Home doesn't try it again as it is."
+    )
+    // A list named only in part is counted, so no name lands on another scene.
+    expect(
+      line({
+        scenes: ["dive-2", "beside-2", "dive-3"],
+        sceneCount: 3,
+        sceneNames: ["The dive", "Beside it"],
+      })
+    ).toBe(
+      "3 scenes are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
     )
     expect(line({ scenes: ["dive-2"], sceneCount: 1 })).toBe(
-      "dive-2 doesn't fit the frame. Home doesn't try it again as it is."
+      "One scene is too full for its frame, so the video would cut it off. Home doesn't try it again as it is."
     )
     // No scene named is no refusal it can say.
     expect(line({ scenes: [], sceneCount: 3 })).toBe(
@@ -533,6 +565,68 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(failedLine(refusedRow)).toMatch(/^Too long to make/)
   })
 
+  it("counts what a refused cards essay names, in the right number (RETRY)", () => {
+    const row = (reason: string, n: number): RenderFailed => ({
+      feed: "cards-essay",
+      key: "k-2026-11-20",
+      at: 0,
+      by: "recorder",
+      exit: 1,
+      reason,
+      items: Array.from({ length: n }, (_, i) => `id-${String(i)}`),
+    })
+    expect(failedLine(row("take-unheard", 2))).toMatch(
+      /^Home couldn't make out 2 recordings .* hear them\.$/
+    )
+    expect(failedLine(row("take-unheard", 1))).toMatch(
+      /^Home couldn't make out 1 recording .* hear it\.$/
+    )
+    expect(failedLine(row("take-missing", 3))).toMatch(
+      /^3 spoken cards in it play recordings/
+    )
+    expect(failedLine(row("snip-missing", 1))).toMatch(
+      /a picture of the app.*names a picture/
+    )
+    expect(failedLine(row("snip-missing", 2))).toMatch(
+      /2 pictures of the app.*names pictures/
+    )
+    expect(failedLine(row("snip-gone", 1))).toMatch(
+      /^It shows a picture of the app that home couldn't get from its capture/
+    )
+    expect(failedLine(row("clip-missing", 2))).toMatch(/^It shows 2 clips/)
+    // Named, where home names every take (itemNames): never by id.
+    const named = {
+      ...row("take-unheard", 2),
+      itemNames: [
+        "How a round opens, exchange 1, your answer",
+        "exchange 2, your question",
+      ],
+    }
+    expect(failedLine(named)).toBe(
+      "Home couldn't make out the takes for “How a round opens, exchange 1, your answer” and “exchange 2, your question”, so it holds the essay until it can hear them."
+    )
+    expect(
+      failedLine({
+        ...row("take-missing", 1),
+        itemNames: ["exchange 3, your answer"],
+      })
+    ).toBe(
+      "Home doesn't have the take for “exchange 3, your answer”. Home holds it, and makes it by itself once the essay names one home keeps."
+    )
+    // A list named in part is counted, as home never sends one.
+    expect(
+      failedLine({ ...row("take-unheard", 2), itemNames: ["only one"] })
+    ).toMatch(/^Home couldn't make out 2 recordings/)
+    for (const reason of [
+      "take-unheard",
+      "take-missing",
+      "snip-missing",
+      "snip-gone",
+      "clip-missing",
+    ])
+      expect(failedLine(row(reason, 2))).not.toMatch(/id-/)
+  })
+
   it("says why a cards essay was set aside over a recording, a picture or a clip (WALK7, SNIPS2)", () => {
     const row = (reason: string): RenderFailed => ({
       feed: "cards-essay",
@@ -548,7 +642,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     // A take you deleted withdraws the essay, which leaves the list
     // (paulgsc/server#1055): no row says it.
     expect(missing).not.toMatch(/deleted/)
-    expect(unheard).toMatch(/^Home couldn't make out a recording/)
+    expect(unheard).toMatch(/^Home couldn't make out recordings/)
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))
     const clipMissing = failedLine(row("clip-missing"))

@@ -92,6 +92,25 @@ const FailedSchema = EpisodeSchema.extend({
    */
   scenes: z.array(z.string().min(1)).optional().catch(undefined),
   sceneCount: z.number().int().positive().optional().catch(undefined),
+  /**
+   * What home's refusal of an essay names, by id (RETRY,
+   * paulgsc/server `essay_media::Refusal`'s items): for `take-unheard` and
+   * `take-missing`, the takes. Read leniently, as `scenes` is.
+   */
+  items: z.array(z.string().min(1)).optional().catch(undefined),
+  /**
+   * The names of the scenes that don't fit (`overflow`), in `scenes`' order,
+   * from the essay home holds (RETRY, the owner: "which scene, by its name,
+   * not an id"). Read leniently; absent from a home that doesn't send them,
+   * and then the scenes are counted, never named by id.
+   */
+  sceneNames: z.array(z.string().min(1).max(200)).optional().catch(undefined),
+  /**
+   * The names of a refusal's takes (`take-unheard`, `take-missing`), in
+   * `items`' order: the card and exchange each was said for (RETRY). Named
+   * whole or not at all; read leniently.
+   */
+  itemNames: z.array(z.string().min(1).max(200)).optional().catch(undefined),
 })
 
 const ComingSchema = z.object({
