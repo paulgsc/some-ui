@@ -754,8 +754,13 @@
         opacity: 0;
         pointer-events: none;
       }
+      /* Hidden by visibility, a moment after the picker closes: a tap's
+         click comes after its pointerup, which closes the picker, so the
+         row has to still be there to take it (display: none would send it
+         to whatever lies under). */
       .themes-panel {
-        display: none;
+        visibility: hidden;
+        transition: visibility 0s 250ms;
         position: absolute;
         right: 0;
         z-index: 2;
@@ -768,7 +773,8 @@
         box-shadow: 0 6px 24px color-mix(in oklab, var(--fg) 18%, transparent);
       }
       .themes:has(:popover-open) .themes-panel {
-        display: block;
+        visibility: visible;
+        transition: none;
       }
       .themes label {
         display: flex;

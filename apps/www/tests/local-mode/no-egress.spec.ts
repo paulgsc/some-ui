@@ -316,6 +316,7 @@ test.describe("the Pages build", () => {
   })
 
   test("reaches no other origin, and its policy is enforced", async ({
+    browser,
     context,
     page,
   }) => {
@@ -429,6 +430,22 @@ test.describe("the Pages build", () => {
     await palette.click()
     await page.locator('label[for="theme-device"]').click()
     await expect(panel).toBeHidden()
+    // A tap on a phone: its click follows the pointerup that closes the
+    // picker, so the row must still be there to take it.
+    const phone = await browser.newContext({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 390, height: 844 },
+    })
+    const tapped = await phone.newPage()
+    await tapped.goto(`${app().origin}${BASE}`)
+    await tapped.locator(".themes-toggle").tap()
+    await expect(tapped.locator(".themes-panel")).toBeVisible()
+    await tapped.locator('label[for="theme-mochi-night"]').tap()
+    await expect(tapped.locator("#theme-mochi-night")).toBeChecked()
+    await expect(tapped.locator(".themes-panel")).toBeHidden()
+    expect(tapped.url()).toBe(`${app().origin}${BASE}`)
+    await phone.close()
     await collect()
 
     // The résumé is static too (C1055): every version's page is there whole,
