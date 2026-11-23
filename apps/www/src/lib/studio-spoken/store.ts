@@ -11,7 +11,7 @@ import { z } from "zod"
 
 import type { SpokenCard } from "./model"
 
-const SCRIPTS_KEY = "some-ui:studio-spoken"
+export const SCRIPTS_KEY = "some-ui:studio-spoken"
 
 const PartSchema = z.object({
   id: z.string().nullable(),
@@ -37,6 +37,11 @@ const readScripts = readJson((value) => {
 
 export type SpokenStore = {
   readonly read: () => ReadonlyArray<SpokenCard>
+  /**
+   * The cards, or null when this phone can't read them whole: what a card
+   * picks is then unknown, never none (`lib/take-uses`, TU1).
+   */
+  readonly known: () => ReadonlyArray<SpokenCard> | null
   /** Says whether this phone kept it. */
   readonly write: (scripts: ReadonlyArray<SpokenCard>) => boolean
 }
@@ -44,6 +49,10 @@ export type SpokenStore = {
 export function spokenStore(storage: KeyedStorage | null): SpokenStore {
   return {
     read: () => openKept(storage, SCRIPTS_KEY, readScripts, []).value,
+    known: (): ReadonlyArray<SpokenCard> | null => {
+      const kept = openKept(storage, SCRIPTS_KEY, readScripts, [])
+      return kept.writable ? kept.value : null
+    },
     write: (scripts) => writeKept(storage, SCRIPTS_KEY, scripts, readScripts),
   }
 }

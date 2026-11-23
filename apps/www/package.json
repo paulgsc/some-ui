@@ -1,7 +1,7 @@
 {
   "name": "www",
   "private": true,
-  "version": "0.1.74",
+  "version": "0.1.75",
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-resume.mjs && vite",
@@ -13,6 +13,7 @@
     "build:fit-phone": "SOME_UI_PROFILE=mobile WWW_FIT_HARNESS=1 WWW_FIT_PAGE=phone vite build --outDir out/ui-fit-phone --emptyOutDir",
     "check:bundle-paths": "node check-bundle-paths.ts",
     "serve": "vite preview",
+    "preview:pages": "bash scripts/preview-pages.sh",
     "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
     "clean:build": "rm -rf ./dist ./tsconfig.tsbuildinfo",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
@@ -26,6 +27,7 @@
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
+    "record:asset": "tsx tests/record/asset.ts",
     "record:call": "tsx tests/record/call.ts",
     "record:cards": "tsx tests/record/cards.ts",
     "record:essay": "tsx tests/record/essay.ts",

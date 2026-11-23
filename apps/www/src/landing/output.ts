@@ -9,7 +9,7 @@ export const SITE_FILE = "node_modules/.cache/www/public-site.json"
 
 /**
  * Where the Pages build finds its media, relative to apps/www: the clips,
- * stills and photo the landing's slots name by key (`clips/apk.mp4`),
+ * stills and photo the landing's slots name by key (`clips/android/stop-1.mp4`),
  * put there by whatever renders or fetches them before the build. Never
  * committed (C1029); a slot whose file is absent draws its placeholder.
  */

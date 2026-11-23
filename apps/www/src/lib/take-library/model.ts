@@ -23,6 +23,8 @@ import { z } from "zod"
 import { HearAgainSchema } from "@/lib/hear-again/model"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { isTakeStation } from "@/lib/take-conveyor/model"
+import type { HomeSaid } from "@/lib/take-uses/model"
+import { UsedBySchema } from "@/lib/take-uses/model"
 
 /** One take, as the route serves it; fields home adds are dropped. */
 const TakeSchema = z.object({
@@ -120,6 +122,9 @@ const TakeSchema = z.object({
     .optional()
     .catch(undefined),
   hearAgain: HearAgainSchema,
+  // The videos home holds that play it (INUSE): told to `lib/take-uses`,
+  // not shown by Takes itself.
+  usedBy: UsedBySchema,
 })
 
 const TakesSchema = z.object({
@@ -166,6 +171,7 @@ function asTake({
   kind,
   about,
   ref,
+  usedBy: _usedBy,
   ...take
 }: ReadTake): LibraryPage["takes"][number] {
   return {
@@ -174,6 +180,13 @@ function asTake({
     ref: ref ?? "",
     ...(kind === "game" ? { fields: gameFields(about) } : {}),
   }
+}
+
+/** What home's answer says each take it listed is used by (INUSE). */
+export function readUsedBy(answer: HomeAnswer): HomeSaid {
+  if (answer.status !== 200) return []
+  const page = readAs(TakesSchema, answer.body)
+  return (page?.takes ?? []).map(({ id, usedBy }) => ({ id, usedBy }))
 }
 
 /** What home's answer says, for the screen. */

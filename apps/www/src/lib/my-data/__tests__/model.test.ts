@@ -47,6 +47,38 @@ const note = (over: Partial<PhoneNote> & { id: string }): PhoneNote => ({
 })
 
 describe("home's answer", () => {
+  it("reads what home says plays each note, and nothing from a home before it (INUSE)", () => {
+    const first = {
+      id: "t1",
+      recordedAt: "2026-11-01T10:00:00.000Z",
+      storedAt: "2026-11-01T10:01:00.000Z",
+      size: 100,
+      setAsideAt: null,
+      deletable: true,
+    }
+    const usedBy = [
+      {
+        kind: "feed-video",
+        key: "2026-w46",
+        title: "Rust Rounds essay, 2026-w46",
+        at: "2026-11-20T09:00:00.000Z",
+        withdrawsOnDelete: true,
+      },
+    ]
+    const read = readKept({
+      status: 200,
+      body: JSON.stringify({ ...KEPT, notes: [{ ...first, usedBy }] }),
+    })
+    expect(read.kind === "read" && read.kept.notes?.[0]?.usedBy).toEqual(usedBy)
+    const older = readKept({
+      status: 200,
+      body: JSON.stringify({ ...KEPT, notes: [first] }),
+    })
+    expect(
+      older.kind === "read" && older.kept.notes?.[0]?.usedBy
+    ).toBeUndefined()
+  })
+
   it("reads what home keeps, and says why when it can't", () => {
     expect(readKept({ status: 200, body: JSON.stringify(KEPT) })).toEqual(READ)
     expect(readKept({ status: 404, body: "" })).toEqual({ kind: "older" })

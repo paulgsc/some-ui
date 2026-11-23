@@ -87,6 +87,9 @@ import {
   WORD_SETS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import type { TakeUse, TakeUses, UseSource } from "@/lib/take-uses"
+import { phoneTakeUses, unreadOf, usesOfTake } from "@/lib/take-uses"
+import { UseMark } from "@/components/take-uses"
 
 import {
   GrowthLine,
@@ -312,8 +315,14 @@ const Item = ({
   onPlay,
   onStop,
   remove = { kind: "none" },
+  uses = [],
+  unread = [],
 }: {
   item: KindItem
+  /** What uses it, as this phone read it last (INUSE). */
+  uses?: ReadonlyArray<TakeUse>
+  /** The stores that read couldn't (TU1). */
+  unread?: ReadonlyArray<UseSource>
   playing: boolean
   /** Its audio is being read, here or from home. */
   fetching?: boolean
@@ -406,6 +415,9 @@ const Item = ({
           </span>
         ) : null}
       </span>
+      {item.wentAt === null ? (
+        <UseMark uses={uses} unread={unread} what={DELETING.markOf(name)} />
+      ) : null}
       {remove.kind === "offer" ? (
         <Button
           variant="ghost"
@@ -430,8 +442,11 @@ export const MyDataKind = ({
   onStop,
   unread,
   onDelete,
+  uses = null,
 }: {
   view: KindView
+  /** What uses each take, as last read; null before a read lands (INUSE). */
+  uses?: TakeUses | null
   playing: string | null
   /** `playing`'s audio is being read, here or from home. */
   fetching?: boolean
@@ -541,6 +556,8 @@ export const MyDataKind = ({
               onPlay={onPlay}
               onStop={onStop}
               remove={removeOf(item)}
+              uses={uses === null ? [] : usesOfTake(uses, item.id)}
+              unread={uses === null ? [] : unreadOf(uses, [item.id])}
             />
           ))}
         </ul>
@@ -635,6 +652,8 @@ const KindList = ({
   const state = useMyData(of, note)
   const data = phoneMyData()
   const { sheet, deleting } = useDeleting()
+  const takeUses = phoneTakeUses()
+  const uses = useSyncExternalStore(takeUses.subscribe, takeUses.getSnapshot)
   const view = kindOf(
     of,
     state.of,
@@ -667,6 +686,7 @@ const KindList = ({
         onPlay={data.play}
         onStop={data.stop}
         onDelete={deleting.ask}
+        uses={uses}
       />
       <DeleteSheetView
         sheet={sheet}

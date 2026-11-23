@@ -74,6 +74,8 @@ export function memoryProjectStore(
   const store: ProjectStore = {
     read: (id) => Promise.resolve(projects.get(id) ?? null),
     list: () => Promise.resolve([...projects.values()]),
+    listWhole: () =>
+      Promise.resolve({ value: [...projects.values()], setAside: [] }),
     audio: (project, take) =>
       Promise.resolve(audio.get(`${project}:${take}`) ?? null),
     room: () =>

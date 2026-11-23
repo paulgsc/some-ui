@@ -315,6 +315,7 @@ describe("burn-ins through the step cache", () => {
     frames: 45,
     frame: { width: 1920, height: 1080, fps: 30 },
     out: "burn-in-open-captions.mov",
+    scenes: ["open"],
     ...over,
   })
 

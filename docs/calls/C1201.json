@@ -1,0 +1,20 @@
+{
+  "id": "C1201",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/ask.ts",
+    "some-ui:apps/www/src/lib/asks/read.ts",
+    "some-ui:apps/www/src/lib/asks/list.ts"
+  ],
+  "chose": "Under C1200: an ask filed as /1 or /2 still reads, with what it never said (who waits, the call, and a decision's unblocks) as null, shown as \"Not said\" and picked by a chip of that name, so nothing old is guessed at. The page reads each repository's open asks and the hundred closed ones updated most lately (GitHub can't sort by closing), two reads each, so every waiting ask is there and the answered ones are the recent ones; that is four of GitHub's sixty unsigned reads an hour per open of the page, kept for a minute. Any closed ask reads as answered, whatever its close reason, and an answered row shows what it asked with no choices or steps left to take. The pivot's rows are the calls and its columns who waits, leaving out any no ask has, and each cell is split by kind, linking to that kind's list already picked, so the pivot never mixes the kinds' lists. Its own small grid is written here rather than through Jobs' pivot (lib/jobs/record-view), which groups by one open-ended key and folds the rest, where this crosses two fixed lists. A list's chips and its open row live in the page's address, so a pivot cell can open a list already picked. The nav names each view with its own link rather than the shared ViewStrip, a row of tabs over fixed addresses with no counts.",
+  "options": [
+    "old asks as Not said; open plus recent closed; pivot cells split by kind; state in the address (taken)",
+    "guess who waits and the call for old asks from their words",
+    "read every closed ask, page by page",
+    "a pivot cell opening one list of every kind"
+  ],
+  "gray": "The owner chose the shape; how old asks read, how far back answered ones go, and how the pivot opens a list without mixing the kinds are not settled by their words.",
+  "undo": "Record a call that moves this one; the reads are in lib/asks/read.ts, the old-ask reading in packages/video-render/src/ask.ts, and the pivot in lib/asks/list.ts.",
+  "refs": ["#3429"]
+}

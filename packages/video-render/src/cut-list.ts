@@ -13,7 +13,7 @@ import { z } from "zod"
 import { badgeProblems } from "./badges"
 import { ClaimSourcesSchema } from "./claims"
 import { LOOKS, VOICES } from "./plans"
-import { COMMIT, isPublicAddress, PAGE_FILE, SNIP_ID } from "./snip-id"
+import { COMMIT, isPublicAddress, PAGE_FILE, RUN_ID, SNIP_ID } from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
@@ -104,6 +104,13 @@ const PictureSchema = z.discriminatedUnion("kind", [
         file: z
           .string()
           .regex(PAGE_FILE, "a page's picture, <slug>-<hash12>.png"),
+        /**
+         * The Public Pages Capture run that took it (`pages-bundle-<run>`):
+         * which bundle home fetches, as a snip's commit is (#3395). A page
+         * taken again is a new picture, so a lost bundle is a new run and
+         * the scene names that one.
+         */
+        run: z.string().regex(RUN_ID, "a capture run's id, in digits"),
         /** The parts to zoom to, in order, as the capture named them. */
         at: z.array(z.string().min(1).max(200)).max(10).default([]),
       }),

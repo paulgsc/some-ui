@@ -24,12 +24,24 @@ One issue per decision. An epic's "Where we are" and the Residual Ledger's
 - **Body:** a few lines of prose for a reader on GitHub, then exactly one
   fenced block, opened with ` ```json ask `, holding the ask.
 
-An ask is one of two kinds, its `kind`. Both carry:
+An ask is one of two kinds, its `kind`. Every kind carries the same shared
+part, since every ask is the same thing underneath: something is held up
+until the owner decides or does it (C1200).
 
 - `question`: one sentence the owner can answer or act on.
 - `whyYours`: why an agent can't decide or do it.
+- `waits`: who is held up until it is answered: `claude` (a session's next
+  step), `pipeline` (a workflow, a render, a release) or `home` (a service
+  on the home network).
+- `call`: what kind of call it is, from the owner's list (#3425):
+  `architecture`, `mechanical`, `hardware`, `software`, `environment`,
+  `story` or `idiom`.
+- `unblocks`: what answering it lets go ahead, in the owner's words.
 - `refs`: the epic, stories and pull requests it is about. The ask's own
   issue is added for you.
+
+The kind's own part is the only one that differs: a decision's `options`, a
+checklist's `steps`.
 
 ### A decision
 
@@ -37,10 +49,13 @@ The owner chooses between options.
 
 ```json ask
 {
-  "schema": "some-ui.ask/2",
+  "schema": "some-ui.ask/3",
   "kind": "decision",
   "question": "Who answers between turns of a conversation?",
   "whyYours": "It decides what the conversation is: a product call, not a code one.",
+  "waits": "claude",
+  "call": "story",
+  "unblocks": "the conversation's next stories (TALK3, TALK6, TALK9)",
   "options": [
     { "says": "A live model", "unblocks": "TALK3, TALK6 and TALK9" },
     { "says": "A scripted reply", "unblocks": "TALK3 only" }
@@ -55,8 +70,10 @@ The owner chooses between options.
 - `recommended`: the option the agent would take, by its place in `options`.
   Leave it out when the agent has no view.
 
-A block in the first schema, `some-ui.ask/1`, has no `kind` and reads as a
-decision, so asks filed before kinds still read.
+A block filed before `/3` still reads: `some-ui.ask/1` (no `kind`) as a
+decision, and `some-ui.ask/2` as its kind. What it never said (`waits`,
+`call`, and a decision's `unblocks`) reads as unclassified, and the Asks
+page shows it that way. File every new ask as `/3`.
 
 ### A checklist
 
@@ -67,10 +84,12 @@ what to paste.
 
 ```json ask
 {
-  "schema": "some-ui.ask/2",
+  "schema": "some-ui.ask/3",
   "kind": "checklist",
   "question": "Will you set up the Grafana key home's photographer reads with?",
   "whyYours": "It is a credential only you can make, on home.",
+  "waits": "pipeline",
+  "call": "environment",
   "steps": [
     {
       "says": "A Grafana key",
@@ -87,7 +106,7 @@ what to paste.
       "paste": "The deploy's last lines"
     }
   ],
-  "unblocks": "the server card's clip on the public site",
+  "unblocks": "the server's dashboard pictures on the public site",
   "refs": [{ "repo": "some-ui", "kind": "issue", "number": 3415 }]
 }
 ```
@@ -95,14 +114,13 @@ what to paste.
 - `steps`: one to twelve, in order, each with what it `says` (a few
   words), `do` (one to twelve lines), and optionally `where` and `paste`.
   More than twelve steps is two asks.
-- `unblocks`: what finishing every step lets go ahead.
 - Never ask for a secret's value to be pasted. A step that makes one says
   where it is pasted instead (a secrets file, a repository's settings).
 
 `parseAskBody` in `packages/video-render/src/ask.ts` is the schema. An ask it
 can't read is left out of the call, and the weekly run says which one and why.
-The kinds are one family: a new kind is a member of `/2`'s union on `kind`
-(`AskV2Schema`), and every reader that switches on `kind` (`callOptionsOf`
+The kinds are one family: a new kind is a member of `/3`'s union on `kind`
+(`AskV3Schema`), and every reader that switches on `kind` (`callOptionsOf`
 for the call, the Asks page's receipt) fails to compile until it says what
 the new one is (C1095).
 
@@ -112,14 +130,28 @@ The weekly call reads every open ask into "Waiting on you"
 (`packages/video-render/CALL-ROUTINE.md` says how a checklist is said).
 
 **Asks**, on the home network's desktop web (`/asks`, account-only), lists
-every open ask, read from GitHub's public list each time it opens: filing the
-issue puts it there and closing it takes it away, so nothing else needs
-telling. A decision shows its options, each a choice; a checklist shows its
-steps, each with a box for what to paste back and Done. Every choice and step
-goes on the ask's receipt, which one button copies. What the owner does
-there stays in that browser tab, blanked of anything shaped like a key or a
-password, and leaves only as that copy (C1096). Neither the public site nor
-the Android app shows asks (C1097).
+every ask, read from GitHub's public list each time it opens: the open ones,
+which wait, and the hundred closed ones updated most lately in each
+repository, which were answered. Filing the issue puts it there and closing it answers it, so nothing
+else needs telling (C1200, C1201). Each kind has its own page
+(`/asks/decisions`, `/asks/checklists`), never mixed, under a nav that counts
+what waits of each. Every row has the same shape whatever its kind: what it
+asks, who waits on it, what it unblocks, the kind of call, and since when.
+Chips over those fields pick who waits, the call, waiting or answered, and
+the order (waiting longest, newest, A to Z); answered asks come last under
+every order. A third page, the pivot (`/asks/pivot`), counts the asks by call
+and by who waits, each cell split by kind and opening that kind's list
+already picked. An ask filed before `/3` shows what it never said as "Not
+said".
+
+A row opens to its ask: a decision shows its options, each a choice; a
+checklist shows its steps, each with a box for what to paste back and Done.
+Every choice and step goes on the ask's receipt, which one button copies.
+The receipt is how the owner hands an answer back; it never marks an ask
+answered, which only closing its issue does. What the owner does there stays
+in that browser tab, blanked of anything shaped like a key or a password,
+and leaves only as that copy (C1096). Neither the public site nor the
+Android app shows asks (C1097).
 
 ## Answering
 

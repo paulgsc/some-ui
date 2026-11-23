@@ -5,6 +5,7 @@
  */
 
 import {
+  ARTIFACT_FAMILIES,
   artifactFamily,
   artifactLineage,
   CACHE_FAMILIES,
@@ -139,6 +140,18 @@ describe("artifact families", () => {
       ]
     )
     expect(deletedIds(s, [signed])).toEqual([])
+  })
+
+  it("keeps every public pages bundle for its day: an essay names its run, and a later capture is another essay's", () => {
+    const bundle = (run: number): string => `pages-bundle-${String(run)}`
+    expect(artifactFamily(bundle(45210000001), ARTIFACT_FAMILIES)?.name).toBe(
+      "pages-bundle-${{ github.run_id }}"
+    )
+    const s = state(
+      [1, 2, 3].map((n) => artifact(bundle(n), n)),
+      [1, 2, 3].map((n) => [n, "validated"])
+    )
+    expect(deletedIds(s, [...ARTIFACT_FAMILIES])).toEqual([])
   })
 
   it("reports a name no family declares and never deletes it", () => {

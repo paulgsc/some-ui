@@ -1,0 +1,20 @@
+{
+  "id": "C1164",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/cooking/model.ts",
+    "packages/ui/shared/src/components/ui/station-strip",
+    "apps/www/src/lib/journey"
+  ],
+  "chose": "The Cooking page's line is drawn by the shared StationStrip, the conveyor display Studio's renders and takes already use, extended with a tone for the current station, a picked mark and picking. Its stops are the page's own type (lib/cooking/model.ts). It is not a member of lib/journey as C1115 said: journey's Stop is a closed set of the phone files' places (phone, home, mailbox, drive, run) with a fixed road per state, while a train's stops are the run's legs in the record's order (C1162), so making journey generic would give it a second meaning rather than a second member. The family the train belongs to is the conveyor's display, and that is the one extended. C1115 set the take conveyor aside because the owner moves takes along its stations; StationStrip is only its display, which moves nothing, so that objection is about the conveyor's model and not about this strip. The strip also gains a station done further down the line (`done`), so a train waiting on two others draws the one already arrived as passed. This moves C1115 only in the family; the rest of C1115 (GitHub as the store, the run block on the [ORCH] issue, only the join built) stands.",
+  "options": [
+    "the train's line drawn by StationStrip, its stops the page's own type (taken)",
+    "journey made generic over its stops and roads",
+    "a line drawn by the page alone"
+  ],
+  "gray": "C1115 named journey as the family; the code found StationStrip a closer fit. Which shared shape a new line extends is a design choice no check settles.",
+  "undo": "Record a call that moves this one, and draw the trains with a generic journey road in place of StationStrip.",
+  "refs": ["#3425"],
+  "moves": "C1115"
+}

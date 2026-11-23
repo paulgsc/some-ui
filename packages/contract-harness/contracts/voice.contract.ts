@@ -54,7 +54,9 @@
  * whether home gives its audio back to the phone (`playsBack`); a week of mock
  * interview's middle take whose recording home let go says when
  * (`recordingLetGoAt`, server#972 at 2b85647), and then neither plays back
- * nor is deletable.
+ * nor is deletable. Each note names the videos home holds that play it
+ * (`usedBy`, INUSE some-ui#3447), as each take of `GET /voice-notes/takes`
+ * does.
  *
  * Studio's takes on a conveyor (CONVEYOR1, some-ui#2873; `studio_take_move`):
  * the phone moves a take with `POST /voice-notes/:id/station`
@@ -154,6 +156,25 @@ const NoteAudioSchema = z.object({
  * each kind's count, room, set-aside count and earliest; what reached home
  * each week; and with `of`, that kind's newest.
  */
+/**
+ * The videos home holds that play a take (INUSE, some-ui#3447): one per
+ * video, a week's essay (`feed-video`), a cards essay (`essay`) or a queued
+ * Studio video (`studio-video`), feed videos first, each oldest first, and
+ * whether deleting the take makes home withdraw it. Optional until
+ * paulgsc/server serves it; `[]` once it does and nothing plays the take.
+ */
+const UsedBySchema = z
+  .array(
+    z.object({
+      kind: z.enum(["essay", "feed-video", "studio-video"]),
+      key: z.string(),
+      title: z.string(),
+      at: z.string(),
+      withdrawsOnDelete: z.boolean(),
+    })
+  )
+  .optional()
+
 const KeptSchema = z.object({
   kinds: z.array(
     z.object({
@@ -188,6 +209,7 @@ const KeptSchema = z.object({
         // When home let its recording go, a week of mock interview's middle
         // take (IW8, server#972); null while home holds it.
         recordingLetGoAt: z.string().nullable().optional(),
+        usedBy: UsedBySchema,
       })
     )
     .nullable(),
@@ -249,6 +271,7 @@ const TakesSchema = z.object({
       station: StationSchema.nullable().optional(),
       stationAt: z.string().nullable().optional(),
       stationSeq: z.number().int().nullable().optional(),
+      usedBy: UsedBySchema,
       // Whether home hears it again on the owner's ask (some-ui#3339):
       // optional until the server serves it.
       hearAgain: z

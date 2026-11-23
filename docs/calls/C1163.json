@@ -1,0 +1,19 @@
+{
+  "id": "C1163",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/settings/device-section.tsx",
+    "apps/www/src/lib/home-link/address.ts",
+    "apps/www/src/lib/home-link/words.ts"
+  ],
+  "chose": "The Android app reaches the Cooking page by one link in Settings, Home, shown while the phone is paired. It is built from the paired base (homeWebPage): the phone pairs with the address the web app's Settings shows, which is the web app's own origin plus the path its proxy serves home under, so the web app is that origin. A base paired another way, or over http, yields no link and the control is withdrawn. No address is hard-coded or shown. It is folded into the page's pull request, being a few lines.",
+  "options": [
+    "a link in Settings, Home, built from the paired base, folded into the page's pull request (taken)",
+    "the same link as its own pull request after the page lands",
+    "a link to a fixed address in the build's config"
+  ],
+  "gray": "The owner asked for a way from the APK to the page, \"probably folded somewhere in the settings\"; where it sits, how its address is found and whether it lands with the page are details their words leave open.",
+  "undo": "Record a call that moves this one, and remove CookingLink from device-section.tsx with homeWebPage and HOME_WEB.",
+  "refs": ["#3425"]
+}

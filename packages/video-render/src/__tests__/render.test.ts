@@ -15,7 +15,7 @@ import { nodePorts } from "@video-render/node"
 import { JOIN_BATCH } from "@video-render/plan"
 import { DEFAULT_POLICY, MB } from "@video-render/policy"
 import type { BurnInRequest, Ports } from "@video-render/render"
-import { render } from "@video-render/render"
+import { notDrawnLines, render } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import * as fixtures from "@video-render/testing"
 import {
@@ -511,6 +511,33 @@ describe("render", () => {
     expect(await ports.probe("out-changed/video.mp4")).toBeNull()
   })
 
+  // CHEAT: home's render worker reads this as paulgsc/server's
+  // `infra/render/render-calls.sh` `refusal` does: the last line saying
+  // the scenes don't fit, then each line of a scene id's shape after it.
+  it("says which scenes a burn-in that doesn't fit is over, as home's worker reads them", () => {
+    const sceneId = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+    const fit =
+      "These scenes don't fit the frame, so the video would cut them off:"
+    const heldFor = (log: ReadonlyArray<string>): ReadonlyArray<string> => {
+      const from = log.lastIndexOf(fit)
+      if (from === -1) return []
+      const after = log.slice(from + 1)
+      const end = after.findIndex((l) => !sceneId.test(l))
+      return end === -1 ? after : after.slice(0, end)
+    }
+    const problem = "the cheat-sheet burn-in (sheet-v1): row 5 doesn't fit"
+    const log = (overflows: boolean): ReadonlyArray<string> => [
+      "Nothing was rendered:",
+      "the cheat-sheet burn-in (sheet-v1) did not record",
+      ...notDrawnLines(["C1"], [problem], overflows),
+      "the recorder exited 1",
+    ]
+    expect(heldFor(log(true))).toEqual(["C1"])
+    expect(log(true)).toContain(problem)
+    // Anything else keeps the hourly retry.
+    expect(heldFor(log(false))).toEqual([])
+  })
+
   it("lays burn-ins over the video, or lists what it left out", async () => {
     const cut = everyMember()
     const word = (text: string, startMs: number, endMs: number): TimedWord => ({
@@ -567,7 +594,9 @@ describe("render", () => {
       {
         ...ports,
         checkBurnIns: (requests) => {
-          asked.push(...requests.map((r) => r.kind))
+          asked.push(
+            ...requests.map((r) => `${r.kind} over ${r.scenes.join(", ")}`)
+          )
           return Promise.resolve(["the headline and the card clash"])
         },
         recordBurnIn: () => Promise.reject(new Error("nothing records")),
@@ -577,7 +606,13 @@ describe("render", () => {
     expect(clashing.ok ? [] : clashing.problems).toEqual([
       "the headline and the card clash",
     ])
-    expect(asked).toEqual(["authorship", "headline", "headline", "captions"])
+    // Each names the scenes it is drawn over, which a refusal says (CHEAT).
+    expect(asked).toEqual([
+      "authorship over S1, S2",
+      "headline over S1",
+      "headline over S2",
+      "captions over S1",
+    ])
 
     const recorded: Array<string> = []
     const marks: Array<unknown> = []

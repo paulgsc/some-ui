@@ -31,13 +31,17 @@ import {
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { onSoundbitesKept } from "@/lib/soundbite-keeping"
 import { onStudioKept } from "@/lib/studio-keeping"
+import { phoneTakeUses } from "@/lib/take-uses"
 
-import { phoneTakesOf, readTakes } from "./model"
+import { phoneTakesOf, readTakes, readUsedBy } from "./model"
 
 export const takesHome: TakesHome = {
   async takes(q, wanted, after = null, query) {
     const asked = await askWhileBusy(() => askTakes(q, after, query), wanted)
-    if (asked.kind === "answered") return readTakes(asked.answer)
+    if (asked.kind === "answered") {
+      phoneTakeUses().told(readUsedBy(asked.answer))
+      return readTakes(asked.answer)
+    }
     return asked.kind === "unreachable" ? { kind: "away" } : asked
   },
   audio: (id) => askAudio(id),
