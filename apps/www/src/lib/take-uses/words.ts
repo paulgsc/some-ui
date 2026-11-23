@@ -47,7 +47,7 @@ export function whatLoses(use: TakeUse): string {
       const name = homeName(use)
       const Name = capital(name)
       if (use.withdraws === true)
-        return `${Name} on home plays it. Home withdraws that video once it's deleted; a copy you uploaded to YouTube is yours to take down.`
+        return `${Name} on home plays it. Home withdraws any video it made of it once it's deleted; a copy you uploaded to YouTube is yours to take down.`
       if (use.withdraws === null) return `${Name} on home plays it.`
       const { video } = use
       switch (video) {
@@ -60,7 +60,7 @@ export function whatLoses(use: TakeUse): string {
         }
         case "feed-video": {
           // Only a newer version, not made yet, plays it (server#1138).
-          return `A version of ${name} home hasn't made yet has it. The video home holds now stays, and home won't make that version with this take gone.`
+          return `A version of ${name} home hasn't made yet has it. Any video home already made of it stays, and home won't make that version with this take gone.`
         }
         case "essay":
         case "other": {

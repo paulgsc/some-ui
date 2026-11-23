@@ -35,6 +35,34 @@ const EVERY_USE: ReadonlyArray<TakeUse> = [
     withdraws: false,
   },
   { kind: "home", video: "other", key: "o1", title: "", withdraws: true },
+  {
+    kind: "home",
+    video: "feed-video",
+    key: "2026-w46",
+    title: "Rust Rounds essay, 2026-w46",
+    withdraws: true,
+  },
+  {
+    kind: "home",
+    video: "feed-video",
+    key: "2026-w46",
+    title: "Rust Rounds essay, 2026-w46",
+    withdraws: false,
+  },
+  {
+    kind: "home",
+    video: "essay",
+    key: "e1",
+    title: "Who I am",
+    withdraws: false,
+  },
+  {
+    kind: "home",
+    video: "other",
+    key: "\u0000unread:0",
+    title: "",
+    withdraws: null,
+  },
   { kind: "interview", week: "2026-w47", as: "answer" },
   { kind: "interview", week: "2026-w47", as: "read" },
   { kind: "rust", week: "2026-w06", as: "answer" },
@@ -47,7 +75,7 @@ describe("a take's uses, in words", () => {
     expect(USE_WORDS.markName(2)).toBe("In use: 2 things")
     expect(whatLoses(EVERY_USE[2])).toMatch(/^Scene 3 of “Pager”/u)
     expect(whatLoses(EVERY_USE[1])).toMatch(/its spoken card/u)
-    expect(whatLoses(EVERY_USE[13])).toMatch(/Rust Rounds week 6\./u)
+    expect(whatLoses(EVERY_USE[17])).toMatch(/Rust Rounds week 6\./u)
     expect(whatLoses(EVERY_USE[8])).toMatch(
       /^“Who I am” on home plays it\. Home withdraws/u
     )
@@ -71,12 +99,12 @@ describe("a take's uses, in words", () => {
     expect(
       home("feed-video", true, "2026-w46", "Rust Rounds essay, 2026-w46")
     ).toBe(
-      "Week 46's essay on home plays it. Home withdraws that video once it's deleted; a copy you uploaded to YouTube is yours to take down."
+      "Week 46's essay on home plays it. Home withdraws any video it made of it once it's deleted; a copy you uploaded to YouTube is yours to take down."
     )
     expect(
       home("feed-video", false, "2026-w46", "Rust Rounds essay, 2026-w46")
     ).toBe(
-      "A version of week 46's essay home hasn't made yet has it. The video home holds now stays, and home won't make that version with this take gone."
+      "A version of week 46's essay home hasn't made yet has it. Any video home already made of it stays, and home won't make that version with this take gone."
     )
     // A key that isn't a week falls back to home's own title.
     expect(home("feed-video", true, "2026-W46", "Rust Rounds essay")).toMatch(
