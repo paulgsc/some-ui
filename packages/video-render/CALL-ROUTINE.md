@@ -60,7 +60,10 @@ up to 14 days.
      doesn't parse is named in the PR body, never guessed.
      Say each ask with the options and recommendation its facts carry
      (`options`, made by `callOptionsOf` for either kind); for a checklist,
-     `said` says how many steps it has and what they are for.
+     `said` says how many steps it has and what they are for. Say who waits
+     on it and what answering it unblocks when the ask says so (`waits`,
+     `unblocks`); an ask filed before those were asked for leaves them
+     `null`, and is said without them.
    - **later:** every owner item from the ledger's `first_step` "Yours:"
      lines that has no ask yet.
    - Each `said` is plain, spoken English, a few sentences, in the owner's

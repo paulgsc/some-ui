@@ -1,0 +1,16 @@
+{
+  "id": "C1200",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/video-render/src/ask.ts",
+    "some-ui:docs/asks.md",
+    "some-ui:apps/www/src/lib/asks",
+    "some-ui:apps/www/src/components/asks",
+    "some-ui:apps/www/src/routes/_dashboard/_lan/asks.tsx",
+    "some-ui:apps/www/src/routes/_dashboard/_lan/asks"
+  ],
+  "chose": "The owner (2026-11-22, relayed by the coordinator): the Asks page splits by kind under a nav, and its shape is generic over every ask. Verbatim, first: \"checklists and asks are disjoint, so we shouldn't commingle them and simple make it an overflow scroll, they are different routes nested in the asks route, which should acuire a nav menu sidebar. also, as always, sort/filter table ergonomics with nav chips would nice, and let's also have  a route for pivot view of.\" Then: \"We have to be careful with that because it must be necessarily generic. We cannot silently, descend towards like overfitting for particular context, because effectively this will be the page for all kinds of decisions and all kinds of checklists, all of which just have the pattern of like Claude needs the prompt from what decision you made, or you need to do some checklist to unblock some pipeline, like setting up a token and then or running some commands and getting the logs and why do I feel like we are overfitting? Maybe I'm just wrong.\" And, to the generic shape the coordinator put to them: \"yes, it should\". So every ask is filed as some-ui.ask/3, whose shared part (who waits: Claude, a pipeline or home; the kind of call, from the owner's list on #3425; what answering it unblocks) is the same for every kind, and only a decision's options or a checklist's steps are the kind's own. An ask is answered when its issue is closed, not by the tab's receipt. /asks is a layout with a nav over one route, /asks/$view, whose views are the kinds and a pivot of call by who waits; every kind's list is one row shape under chips over the shared part, answered asks last.",
+  "undo": "Record a call that moves this one. Old asks still read as /3, so going back means a schema step of its own; the page's views, rows and chips are in apps/www/src/lib/asks/list.ts and components/asks.",
+  "refs": ["#3429", "#3425"]
+}

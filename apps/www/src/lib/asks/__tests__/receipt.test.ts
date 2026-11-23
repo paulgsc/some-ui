@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest"
 
 import { BLANKED } from "@/lib/asks/blank"
 import { keptReceipts } from "@/lib/asks/kept"
-import type { OpenAsk } from "@/lib/asks/model"
+import type { AskIssue } from "@/lib/asks/model"
 import type { Receipt } from "@/lib/asks/receipt"
 import {
   appended,
@@ -25,10 +25,12 @@ import {
 const AT = new Date("2026-11-22T16:00:00Z")
 
 const checklist: ChecklistAsk = {
-  schema: "some-ui.ask/2",
+  schema: "some-ui.ask/3",
   kind: "checklist",
   question: "Will you set up the keys?",
   whyYours: "Only you can make a credential.",
+  waits: "pipeline",
+  call: "environment",
   steps: [
     { says: "A Grafana key", do: ["Make it"] },
     { says: "Redeploy home", do: ["Redeploy"], paste: "The log's end" },
@@ -38,10 +40,13 @@ const checklist: ChecklistAsk = {
 }
 
 const decision: DecisionAsk = {
-  schema: "some-ui.ask/2",
+  schema: "some-ui.ask/3",
   kind: "decision",
   question: "Which voice?",
   whyYours: "A preference.",
+  waits: "claude",
+  call: "story",
+  unblocks: "the call's voice",
   options: [
     { says: "Nicole", unblocks: "the call" },
     { says: "Adam", unblocks: "the call" },
@@ -49,12 +54,14 @@ const decision: DecisionAsk = {
   refs: [],
 }
 
-const open = (ask: AskFile): OpenAsk & { ask: AskFile } => ({
+const open = (ask: AskFile): AskIssue & { ask: AskFile } => ({
   id: "some-ui-3423",
   repo: "some-ui",
   number: 3423,
   url: "https://github.com/paulgsc/some-ui/issues/3423",
   title: ask.question,
+  opened: "2026-11-20T09:00:00Z",
+  answered: null,
   ask,
 })
 
