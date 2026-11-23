@@ -8,14 +8,18 @@
 import { describe, expect, it } from "vitest"
 
 import type { SpokenCard } from "@/lib/studio-spoken/model"
-import type { TakeUses, UseSources } from "@/lib/take-uses/model"
+import type { TakeUses, UseIdea, UseSources } from "@/lib/take-uses/model"
 import {
+  homeUses,
   NO_USES,
+  unreadOf,
   unseen,
   USE_SOURCES,
+  UsedBySchema,
   usesAmong,
   usesOf,
   usesOfTake,
+  withHome,
 } from "@/lib/take-uses/model"
 
 const CARD: SpokenCard = {
@@ -51,8 +55,11 @@ const ALL: UseSources = {
       {
         id: "v1",
         revisions: [
-          { cutList: { title: "Old", shots: [{ id: "a" }] } },
-          { cutList: { title: "Pager", shots: [{ id: "a" }, { id: "b" }] } },
+          { rev: 1, cutList: { title: "Old", shots: [{ id: "a" }] } },
+          {
+            rev: 2,
+            cutList: { title: "Pager", shots: [{ id: "b" }, { id: "a" }] },
+          },
         ],
         chosen: { b: "p2", gone: "p9" },
         queued: [{ rev: 1, takes: [{ scene: "a", note: "p1" }] }],
@@ -107,6 +114,13 @@ const NONE: UseSources = {
   rust: { kind: "unread" },
 }
 
+/** An idea as a build that kept no answers left it, past its type. */
+function oddIdea(): UseIdea {
+  const odd: UseIdea = { id: "i2", answers: [] }
+  Object.defineProperty(odd, "answers", { value: undefined })
+  return odd
+}
+
 describe("what uses each take", () => {
   const uses = usesOf(ALL)
 
@@ -115,7 +129,7 @@ describe("what uses each take", () => {
       { kind: "spoken", card: "c1", title: "Who I am", part: 1 },
     ])
     expect(usesOfTake(uses, "p2")).toEqual([
-      { kind: "scene", video: "v1", title: "Pager", shot: "b", scene: 2 },
+      { kind: "scene", video: "v1", title: "Pager", shot: "b", scene: 1 },
     ])
     // A shot the latest cut dropped still names its take: never unused.
     expect(usesOfTake(uses, "p9")).toEqual([
@@ -123,10 +137,11 @@ describe("what uses each take", () => {
     ])
     // A revision queued for home names its take though the pick moved on.
     expect(usesOfTake(uses, "p1")).toEqual([
+      // Named and numbered as its own revision's cut has it.
       {
         kind: "queued",
         video: "v1",
-        title: "Pager",
+        title: "Old",
         rev: 1,
         shot: "a",
         scene: 1,
@@ -170,8 +185,40 @@ describe("what uses each take", () => {
     ).toEqual(["s3", "s3", "w1"])
   })
 
+  it("reads a source of another build's shape as unread, never as none", () => {
+    const odd = usesOf({
+      ...NONE,
+      ideas: {
+        kind: "read",
+        value: [
+          ...(ALL.ideas.kind === "read" ? ALL.ideas.value : []),
+          // An idea from a build that kept no answers.
+          oddIdea(),
+        ],
+      },
+    })
+    expect(odd.unread).toContain("ideas")
+    // What it read before the odd one stays.
+    expect(usesOfTake(odd, "d2")).toHaveLength(1)
+  })
+
+  it("leaves in doubt the takes a set-aside record names, and tells the sheet when one appears", () => {
+    const doubt = usesOf({
+      ...ALL,
+      spoken: { kind: "read", value: [], setAside: ['[{"using":"x1"}]'] },
+    })
+    expect(unreadOf(doubt, ["x1"])).toEqual(["spoken"])
+    expect(unreadOf(doubt, ["s1"])).toEqual([])
+    expect(unseen(usesOf(ALL), doubt, ["x1"])).toBe(true)
+    expect(unseen(usesOf(ALL), doubt, ["w1"])).toBe(false)
+  })
+
   it("says each source it couldn't read, never that nothing uses a take", () => {
-    expect(usesOf(NONE)).toEqual({ of: new Map(), unread: USE_SOURCES })
+    expect(usesOf(NONE)).toEqual({
+      of: new Map(),
+      unread: USE_SOURCES,
+      doubts: [],
+    })
     for (const source of USE_SOURCES) {
       const one = usesOf({ ...ALL, [source]: { kind: "unread" } })
       expect(one.unread).toEqual([source])
@@ -206,25 +253,86 @@ describe("a use told apart from one seen", () => {
 
 describe("what the sheet didn't show", () => {
   const used: TakeUses = usesOf({ ...NONE, ...{ spoken: ALL.spoken } })
-  const read = { ...used, unread: [] }
+  const read = { ...used, unread: [], doubts: [] }
 
   it("is nothing when the read says what was shown, or less", () => {
     expect(unseen(read, read, ["s3"])).toBe(false)
-    expect(unseen(read, { of: new Map(), unread: [] }, ["s3"])).toBe(false)
+    expect(
+      unseen(read, { of: new Map(), unread: [], doubts: [] }, ["s3"])
+    ).toBe(false)
     // Uses of takes the sheet doesn't name are not its business.
     expect(unseen(NO_USES, read, ["s1"])).toBe(false)
   })
 
   it("is a new use, a store newly unread, or anything before a first read", () => {
     expect(unseen(NO_USES, read, ["s3"])).toBe(true)
-    expect(unseen(read, { ...read, unread: ["ideas"] }, ["s3"])).toBe(true)
     expect(
-      unseen({ ...read, unread: ["ideas"] }, { ...read, unread: ["ideas"] }, [
-        "s3",
-      ])
+      unseen(read, { ...read, unread: ["ideas"], doubts: [] }, ["s3"])
+    ).toBe(true)
+    expect(
+      unseen(
+        { ...read, unread: ["ideas"], doubts: [] },
+        { ...read, unread: ["ideas"], doubts: [] },
+        ["s3"]
+      )
     ).toBe(false)
     expect(unseen(null, read, ["s3"])).toBe(true)
-    expect(unseen(null, { ...NO_USES, unread: ["rust"] }, ["s1"])).toBe(true)
+    expect(
+      unseen(null, { ...NO_USES, unread: ["rust"], doubts: [] }, ["s1"])
+    ).toBe(true)
     expect(unseen(null, NO_USES, ["s1"])).toBe(false)
+  })
+})
+
+describe("home's word on what plays a take", () => {
+  it("reads each video, a kind it doesn't know as another, and a shape it can't read as unsaid", () => {
+    expect(
+      UsedBySchema.parse([
+        {
+          kind: "feed-video",
+          key: "2026-w46",
+          title: "Rust Rounds essay, 2026-w46",
+          at: "x",
+          withdrawsOnDelete: true,
+        },
+        {
+          kind: "reel",
+          key: "k",
+          title: "",
+          at: "x",
+          withdrawsOnDelete: false,
+        },
+      ])?.map(({ kind }) => kind)
+    ).toEqual(["feed-video", "other"])
+    expect(UsedBySchema.parse(undefined)).toBeUndefined()
+    expect(UsedBySchema.parse([{ kind: "essay" }])).toBeUndefined()
+  })
+
+  it("adds home's word to what the phone read, never in its place", () => {
+    const phone = usesOf({ ...NONE, spoken: ALL.spoken })
+    const said = homeUses([
+      {
+        kind: "essay",
+        key: "e-2026-11-20",
+        title: "Who I am",
+        at: "x",
+        withdrawsOnDelete: true,
+      },
+    ])
+    const both = withHome(
+      phone,
+      new Map([
+        ["s3", said],
+        ["s1", []],
+      ])
+    )
+    expect(usesOfTake(both, "s3").map((use) => use.kind)).toEqual([
+      "spoken",
+      "home",
+    ])
+    expect(usesOfTake(both, "s1")).toEqual([])
+    expect(both.unread).toEqual(phone.unread)
+    // A video home names now that it didn't before is new to the sheet.
+    expect(unseen(phone, both, ["s3"])).toBe(true)
   })
 })

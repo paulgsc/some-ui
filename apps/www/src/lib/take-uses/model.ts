@@ -9,8 +9,11 @@
  * answer is its last take (ST26); a revision queued for home to make names
  * each scene's take (ST33); an interview week, or a Rust Rounds week,
  * went home naming the take of each answer, read and opening question.
- * A video home made that plays a take is home's to say, and no list home
- * gives says it yet: its member waits on home.
+ * A video home holds that plays a take is home's to say (`usedBy` on each
+ * note of `GET /voice-notes/kept` and `/voice-notes/takes`, paulgsc/server
+ * INUSE-S): the `home` member, as home last said it of that take. A home
+ * before it says nothing, and the sheet keeps its line on any essay video
+ * that plays it.
  *
  * - **TU1: a take some store uses is never said to be unused.** A source
  *   this phone couldn't read whole is `unread`, never an empty one: a row
@@ -23,6 +26,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { WeekSent } from "@some-ui/rust-rounds"
+import { z } from "zod"
 
 import type { InterviewSent } from "@/lib/interview-week/spec"
 import type { SpokenCard } from "@/lib/studio-spoken/model"
@@ -83,6 +87,19 @@ export type TakeUse =
       readonly week: string
       readonly as: "answer" | "read"
     }
+  /**
+   * A video home holds plays it, as home last said: a week's essay
+   * (`feed-video`), a cards essay (`essay`), a Studio video queued
+   * (`studio-video`), or a kind this build doesn't know (`other`).
+   * `withdraws`: home withdraws the video once the take is deleted.
+   */
+  | {
+      readonly kind: "home"
+      readonly video: HomeVideo
+      readonly key: string
+      readonly title: string
+      readonly withdraws: boolean
+    }
   /** It went home with Rust Rounds week `week`, as an answer or an opening. */
   | {
       readonly kind: "rust"
@@ -90,15 +107,82 @@ export type TakeUse =
       readonly as: "answer" | "opening"
     }
 
+/** The kinds of video home names in `usedBy`, and one it names that this build doesn't know. */
+const HOME_VIDEOS = ["feed-video", "essay", "studio-video"] as const
+
+export type HomeVideo = (typeof HOME_VIDEOS)[number] | "other"
+
+/**
+ * What home says uses a take (`usedBy`): absent from a home before it, and
+ * read as unsaid when it isn't what this build reads, never as none.
+ */
+export const UsedBySchema = z
+  .array(
+    z.object({
+      kind: z
+        .string()
+        .transform(
+          (kind): HomeVideo =>
+            HOME_VIDEOS.find((each) => each === kind) ?? "other"
+        ),
+      key: z.string(),
+      title: z.string(),
+      at: z.string(),
+      withdrawsOnDelete: z.boolean(),
+    })
+  )
+  .optional()
+  .catch(undefined)
+
+/** What home said uses each take it listed; `undefined`: it said nothing. */
+export type HomeSaid = ReadonlyArray<{
+  readonly id: string
+  readonly usedBy: z.infer<typeof UsedBySchema>
+}>
+
+/** Home's word on a take, as uses. */
+export const homeUses = (
+  usedBy: NonNullable<z.infer<typeof UsedBySchema>>
+): ReadonlyArray<TakeUse> =>
+  usedBy.map(({ kind, key, title, withdrawsOnDelete }) => ({
+    kind: "home",
+    video: kind,
+    key,
+    title,
+    withdraws: withdrawsOnDelete,
+  }))
+
+/** `uses` with home's word on each take added. */
+export function withHome(
+  uses: TakeUses,
+  home: ReadonlyMap<string, ReadonlyArray<TakeUse>>
+): TakeUses {
+  if (home.size === 0) return uses
+  const of = new Map(uses.of)
+  for (const [take, said] of home) {
+    if (said.length > 0) of.set(take, [...(of.get(take) ?? []), ...said])
+  }
+  return { ...uses, of }
+}
+
 /** A source as this phone read it: what it holds, or that it couldn't. */
 export type Read<T> =
-  | { readonly kind: "read"; readonly value: T }
+  | {
+      readonly kind: "read"
+      readonly value: T
+      /**
+       * The text of each record of it this phone set aside as unreadable
+       * (core-utils' `openKept`): a take it names may be used by it.
+       */
+      readonly setAside?: ReadonlyArray<string> | undefined
+    }
   | { readonly kind: "unread" }
 
 /** A Studio video, as its store keeps it (`@some-ui/soundbites`' `Project`). */
 export type UseVideo = {
   readonly id: string
   readonly revisions: ReadonlyArray<{
+    readonly rev?: number | undefined
     readonly cutList: {
       readonly title: string
       readonly shots: ReadonlyArray<{ readonly id: string }>
@@ -136,14 +220,47 @@ export type UseSources = {
   readonly rust: Read<ReadonlyArray<WeekSent>>
 }
 
-/** What uses each take, by its id, and the sources that couldn't be read. */
+/**
+ * What uses each take, by its id; the sources that couldn't be read at all;
+ * and, of those read, the text of each record set aside as unreadable, which
+ * leaves in doubt only the takes it names (`unreadOf`).
+ */
 export type TakeUses = {
   readonly of: ReadonlyMap<string, ReadonlyArray<TakeUse>>
   readonly unread: ReadonlyArray<UseSource>
+  readonly doubts: ReadonlyArray<{
+    readonly source: UseSource
+    readonly raw: string
+  }>
 }
 
 /** No take used, nothing unread: what no read at all must never be taken for. */
-export const NO_USES: TakeUses = { of: new Map(), unread: [] }
+export const NO_USES: TakeUses = { of: new Map(), unread: [], doubts: [] }
+
+/** Every source unread: what a read that failed says. */
+export const ALL_UNREAD: TakeUses = {
+  of: new Map(),
+  unread: USE_SOURCES,
+  doubts: [],
+}
+
+/**
+ * The sources that can't say whether they use any of `ids`: those unread,
+ * and those holding a record set aside that names one of them.
+ */
+export function unreadOf(
+  uses: TakeUses,
+  ids: ReadonlyArray<string>
+): ReadonlyArray<UseSource> {
+  return USE_SOURCES.filter(
+    (source) =>
+      uses.unread.includes(source) ||
+      uses.doubts.some(
+        (doubt) =>
+          doubt.source === source && ids.some((id) => doubt.raw.includes(id))
+      )
+  )
+}
 
 /** The uses `sources` name, by take. */
 export function usesOf(sources: UseSources): TakeUses {
@@ -153,85 +270,117 @@ export function usesOf(sources: UseSources): TakeUses {
     if (!now.some((each) => keyOf(each) === keyOf(use))) now.push(use)
     of.set(take, now)
   }
-  const unread = USE_SOURCES.filter(
+  const unread: Array<UseSource> = USE_SOURCES.filter(
     (source) => sources[source].kind === "unread"
   )
-  const { spoken, videos, ideas, interview, rust } = sources
-  if (spoken.kind === "read") {
-    for (const card of spoken.value) {
-      card.parts.forEach((part, n) => {
-        if (part.using !== null)
-          add(part.using, {
-            kind: "spoken",
-            card: card.id,
-            title: card.title,
-            part: n + 1,
-          })
-      })
+  const doubts = USE_SOURCES.flatMap((source) => {
+    const read = sources[source]
+    return read.kind === "read"
+      ? (read.setAside ?? []).map((raw) => ({ source, raw }))
+      : []
+  })
+  /**
+   * Each source's uses; the source is unread too when what it holds isn't
+   * the shape its type says (a record from another build), keeping the uses
+   * read before the throw: never a throw, and never none (TU1).
+   */
+  const each = (source: UseSource, step: () => void): void => {
+    try {
+      step()
+    } catch {
+      if (!unread.includes(source)) unread.push(source)
     }
   }
-  if (videos.kind === "read") {
-    for (const video of videos.value) {
-      const cut = video.revisions.at(-1)?.cutList
-      const scenes = (cut?.shots ?? []).map(({ id }) => id)
-      const sceneOf = (shot: string): number | null => {
-        const at = scenes.indexOf(shot)
-        return at === -1 ? null : at + 1
-      }
-      const title = cut?.title ?? ""
-      for (const [shot, take] of Object.entries(video.chosen)) {
-        add(take, {
-          kind: "scene",
-          video: video.id,
-          title,
-          shot,
-          scene: sceneOf(shot),
+  const { spoken, videos, ideas, interview, rust } = sources
+  if (spoken.kind === "read")
+    each("spoken", () => {
+      for (const card of spoken.value) {
+        card.parts.forEach((part, n) => {
+          if (part.using !== null)
+            add(part.using, {
+              kind: "spoken",
+              card: card.id,
+              title: card.title,
+              part: n + 1,
+            })
         })
       }
-      for (const { rev, takes } of video.queued ?? []) {
-        for (const { scene: shot, note } of takes)
-          add(note, {
-            kind: "queued",
+    })
+  if (videos.kind === "read")
+    each("videos", () => {
+      for (const video of videos.value) {
+        const cut = video.revisions.at(-1)?.cutList
+        const scenes = (cut?.shots ?? []).map(({ id }) => id)
+        const sceneOf = (shot: string): number | null => {
+          const at = scenes.indexOf(shot)
+          return at === -1 ? null : at + 1
+        }
+        const title = cut?.title ?? ""
+        for (const [shot, take] of Object.entries(video.chosen)) {
+          add(take, {
+            kind: "scene",
             video: video.id,
             title,
-            rev,
             shot,
             scene: sceneOf(shot),
           })
+        }
+        for (const { rev, takes } of video.queued ?? []) {
+          // Numbered as that revision's own cut has its scenes.
+          const own = video.revisions.find((each) => each.rev === rev)?.cutList
+          const shots = (own?.shots ?? []).map(({ id }) => id)
+          for (const { scene: shot, note } of takes) {
+            const at = shots.indexOf(shot)
+            add(note, {
+              kind: "queued",
+              video: video.id,
+              title: own?.title ?? title,
+              rev,
+              shot,
+              scene: at === -1 ? null : at + 1,
+            })
+          }
+        }
       }
-    }
-  }
-  if (ideas.kind === "read") {
-    for (const idea of ideas.value) {
-      for (const answer of idea.answers) {
-        const now = answer.takes?.at(-1)
-        if (now !== undefined)
-          add(now.take, {
-            kind: "idea",
-            idea: idea.id,
-            title: idea.about?.title ?? null,
-            question: answer.question,
-          })
+    })
+  if (ideas.kind === "read")
+    each("ideas", () => {
+      for (const idea of ideas.value) {
+        for (const answer of idea.answers) {
+          const now = answer.takes?.at(-1)
+          if (now !== undefined)
+            add(now.take, {
+              kind: "idea",
+              idea: idea.id,
+              title: idea.about?.title ?? null,
+              question: answer.question,
+            })
+        }
       }
-    }
+    })
+  if (interview.kind === "read")
+    each("interview", () => {
+      for (const sent of interview.value) {
+        for (const { take } of sent.answers)
+          add(take, { kind: "interview", week: sent.week, as: "answer" })
+        for (const { take } of sent.reads)
+          add(take, { kind: "interview", week: sent.week, as: "read" })
+      }
+    })
+  if (rust.kind === "read")
+    each("rust", () => {
+      for (const sent of rust.value) {
+        for (const { take } of sent.answers)
+          add(take, { kind: "rust", week: sent.week, as: "answer" })
+        for (const { take } of sent.opening ?? [])
+          add(take, { kind: "rust", week: sent.week, as: "opening" })
+      }
+    })
+  return {
+    of,
+    unread: USE_SOURCES.filter((source) => unread.includes(source)),
+    doubts,
   }
-  if (interview.kind === "read") {
-    for (const sent of interview.value) {
-      for (const { take } of sent.answers)
-        add(take, { kind: "interview", week: sent.week, as: "answer" })
-      for (const { take } of sent.reads)
-        add(take, { kind: "interview", week: sent.week, as: "read" })
-    }
-  }
-  if (rust.kind === "read") {
-    for (const sent of rust.value) {
-      for (const { take } of sent.answers)
-        add(take, { kind: "rust", week: sent.week, as: "answer" })
-      for (const { take } of sent.opening ?? [])
-        add(take, { kind: "rust", week: sent.week, as: "opening" })
-    }
-  }
-  return { of, unread }
 }
 
 /** What uses take `id`, as `uses` read it. */
@@ -255,6 +404,9 @@ function keyOf(use: TakeUse): string {
     case "idea": {
       return `idea:${use.idea}:${use.question}`
     }
+    case "home": {
+      return `home:${use.video}:${use.key}`
+    }
     case "interview":
     case "rust": {
       return `${use.kind}:${use.week}:${use.as}`
@@ -277,14 +429,56 @@ export function unseen(
   ids: ReadonlyArray<string>
 ): boolean {
   const before = shown ?? NO_USES
-  const newlyUnread = fresh.unread.some(
-    (source) => shown === null || !before.unread.includes(source)
+  const was = unreadOf(before, ids)
+  const newlyUnread = unreadOf(fresh, ids).some(
+    (source) => shown === null || !was.includes(source)
   )
   if (newlyUnread) return true
+  return newUse(before, fresh, ids)
+}
+
+/** Whether `fresh` holds a use of `ids` that `shown` didn't. */
+export function newUse(
+  shown: TakeUses,
+  fresh: TakeUses,
+  ids: ReadonlyArray<string>
+): boolean {
   return ids.some((id) => {
-    const seen = new Set(usesOfTake(before, id).map(keyOf))
+    const seen = new Set(usesOfTake(shown, id).map(keyOf))
     return usesOfTake(fresh, id).some((use) => !seen.has(keyOf(use)))
   })
+}
+
+/**
+ * How many things `uses` are of: a card used for two parts, or a video
+ * whose scene and queued version both have the take, is one.
+ */
+export function thingsIn(uses: ReadonlyArray<TakeUse>): number {
+  const thing = (use: TakeUse): string => {
+    switch (use.kind) {
+      case "spoken": {
+        return `card:${use.card}`
+      }
+      case "scene":
+      case "queued": {
+        return `video:${use.video}`
+      }
+      case "idea": {
+        return `idea:${use.idea}`
+      }
+      case "home": {
+        return `home:${use.video}:${use.key}`
+      }
+      case "interview":
+      case "rust": {
+        return `${use.kind}:${use.week}`
+      }
+      default: {
+        return assertNever(use)
+      }
+    }
+  }
+  return new Set(uses.map(thing)).size
 }
 
 /** The uses of `ids`, each with its take, in `ids`' order. */

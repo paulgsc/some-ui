@@ -11,9 +11,9 @@ import type { StudioUseStores, UsePorts } from "@/lib/take-uses/runtime"
 import { createTakeUses } from "@/lib/take-uses/runtime"
 
 const ports = (over: Partial<UsePorts> = {}): UsePorts => ({
-  spoken: () => [],
-  interview: () => [],
-  rust: () => [],
+  spoken: () => ({ value: [], setAside: [] }),
+  interview: () => ({ value: [], setAside: [] }),
+  rust: () => ({ value: [], setAside: [] }),
   studio: () => null,
   onStudio: () => () => undefined,
   failed: vi.fn(),
@@ -21,8 +21,8 @@ const ports = (over: Partial<UsePorts> = {}): UsePorts => ({
 })
 
 const studio = (over: Partial<StudioUseStores> = {}): StudioUseStores => ({
-  ideas: () => [],
-  videos: () => Promise.resolve([]),
+  ideas: () => ({ value: [], setAside: [] }),
+  videos: () => Promise.resolve({ value: [], setAside: [] }),
   subscribe: () => () => undefined,
   ...over,
 })
@@ -62,33 +62,37 @@ describe("reading what uses each take", () => {
   })
 
   it("keeps only the newest read for the lists, and reads again on a Studio write", async () => {
-    const resolvers: Array<(value: []) => void> = []
+    const resolvers: Array<(value: { value: []; setAside: [] }) => void> = []
     let write: () => void = () => undefined
     let spoken = 0
     const runtime = createTakeUses(
       ports({
         spoken: () => {
           spoken += 1
-          return spoken === 1
-            ? []
-            : [
-                {
-                  id: "c1",
-                  title: "T",
-                  category: "introduction",
-                  pastedAt: "x",
-                  parts: [
+          return {
+            setAside: [],
+            value:
+              spoken === 1
+                ? []
+                : [
                     {
-                      id: null,
-                      kind: "read",
-                      ask: null,
-                      text: "x",
-                      takes: ["t1"],
-                      using: "t1",
+                      id: "c1",
+                      title: "T",
+                      category: "introduction",
+                      pastedAt: "x",
+                      parts: [
+                        {
+                          id: null,
+                          kind: "read",
+                          ask: null,
+                          text: "x",
+                          takes: ["t1"],
+                          using: "t1",
+                        },
+                      ],
                     },
                   ],
-                },
-              ]
+          }
         },
         studio: () =>
           studio({
@@ -108,13 +112,36 @@ describe("reading what uses each take", () => {
     write()
     expect(resolvers).toHaveLength(2)
     // The newer read lands first, then the older one: the older is dropped.
-    resolvers[1]?.([])
+    resolvers[1]?.({ value: [], setAside: [] })
     await Promise.resolve()
     await Promise.resolve()
-    resolvers[0]?.([])
+    resolvers[0]?.({ value: [], setAside: [] })
     await Promise.resolve()
     await Promise.resolve()
     expect(heard).toHaveBeenCalledTimes(1)
     expect(runtime.getSnapshot()?.of.get("t1")).toHaveLength(1)
+  })
+
+  it("adds what home said plays a take, and drops it once home says nothing", async () => {
+    const runtime = createTakeUses(ports())
+    const video = {
+      kind: "studio-video" as const,
+      key: "v1",
+      title: "Pager",
+      at: "x",
+      withdrawsOnDelete: false,
+    }
+    runtime.told([{ id: "t1", usedBy: [video] }])
+    expect((await runtime.read()).of.get("t1")).toEqual([
+      {
+        kind: "home",
+        video: "studio-video",
+        key: "v1",
+        title: "Pager",
+        withdraws: false,
+      },
+    ])
+    runtime.told([{ id: "t1", usedBy: undefined }])
+    expect((await runtime.read()).of.get("t1")).toBeUndefined()
   })
 })

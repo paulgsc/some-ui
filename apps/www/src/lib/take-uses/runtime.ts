@@ -13,30 +13,39 @@ import type { InterviewSent } from "@/lib/interview-week/spec"
 import type { SpokenCard } from "@/lib/studio-spoken/model"
 
 import type {
+  HomeSaid,
   Read,
+  TakeUse,
   TakeUses,
   UseIdea,
   UseSource,
   UseSources,
   UseVideo,
 } from "./model"
-import { usesOf } from "./model"
+import { ALL_UNREAD, homeUses, usesOf, withHome } from "./model"
+
+/**
+ * A store as read: what it holds, and the text of each record of it set
+ * aside as unreadable; null when it can't be read at all.
+ */
+export type KeptRead<T> = {
+  readonly value: T
+  readonly setAside: ReadonlyArray<string>
+} | null
 
 /** Studio's stores, handed in by a route that may load Studio's package. */
 export type StudioUseStores = {
-  /** The ideas kept; null when this phone can't read them. */
-  readonly ideas: () => ReadonlyArray<UseIdea> | null
-  /** The videos kept; null when one this build can't read is kept. */
-  readonly videos: () => Promise<ReadonlyArray<UseVideo> | null>
+  readonly ideas: () => KeptRead<ReadonlyArray<UseIdea>>
+  readonly videos: () => Promise<KeptRead<ReadonlyArray<UseVideo>>>
   /** Calls `listener` after each write to the videos on this page. */
   readonly subscribe: (listener: () => void) => () => void
 }
 
 export type UsePorts = {
-  /** Each source kept in this device's storage; null when it can't be read. */
-  readonly spoken: () => ReadonlyArray<SpokenCard> | null
-  readonly interview: () => ReadonlyArray<InterviewSent> | null
-  readonly rust: () => ReadonlyArray<WeekSent> | null
+  /** Each source kept in this device's storage. */
+  readonly spoken: () => KeptRead<ReadonlyArray<SpokenCard>>
+  readonly interview: () => KeptRead<ReadonlyArray<InterviewSent>>
+  readonly rust: () => KeptRead<ReadonlyArray<WeekSent>>
   /** Studio's stores, once a route handed them in; null until then. */
   readonly studio: () => StudioUseStores | null
   /** Calls `listener` once Studio's stores are handed in. */
@@ -52,13 +61,25 @@ export type TakeUsesRuntime = {
   readonly getSnapshot: () => TakeUses | null
   /** Reads again for the lists. */
   readonly refresh: () => void
+  /**
+   * Home's word on what uses each take it just listed (`usedBy`); a take it
+   * said nothing of keeps no word of home's.
+   */
+  readonly told: (said: HomeSaid) => void
 }
 
 export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
-  const sync = <T>(source: UseSource, get: () => T | null): Read<T> => {
+  /** Home's word on each take, as it last said it. */
+  const home = new Map<string, ReadonlyArray<TakeUse>>()
+
+  const asRead = <T>(kept: KeptRead<T>): Read<T> =>
+    kept === null
+      ? { kind: "unread" }
+      : { kind: "read", value: kept.value, setAside: kept.setAside }
+
+  const sync = <T>(source: UseSource, get: () => KeptRead<T>): Read<T> => {
     try {
-      const value = get()
-      return value === null ? { kind: "unread" } : { kind: "read", value }
+      return asRead(get())
     } catch (error) {
       ports.failed(source, error)
       return { kind: "unread" }
@@ -69,8 +90,7 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
     const studio = ports.studio()
     if (studio === null) return { kind: "unread" }
     try {
-      const value = await studio.videos()
-      return value === null ? { kind: "unread" } : { kind: "read", value }
+      return asRead(await studio.videos())
     } catch (error) {
       ports.failed("videos", error)
       return { kind: "unread" }
@@ -78,6 +98,16 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
   }
 
   const read = async (): Promise<TakeUses> => {
+    try {
+      return await readAll()
+    } catch (error) {
+      // Never a reading of none: every source unread (TU1).
+      ports.failed("videos", error)
+      return ALL_UNREAD
+    }
+  }
+
+  const readAll = async (): Promise<TakeUses> => {
     const studio = ports.studio()
     const sources: UseSources = {
       spoken: sync("spoken", ports.spoken),
@@ -89,7 +119,7 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
       rust: sync("rust", ports.rust),
       videos: await videos(),
     }
-    return usesOf(sources)
+    return withHome(usesOf(sources), home)
   }
 
   let snapshot: TakeUses | null = null
@@ -142,5 +172,17 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
     },
     getSnapshot: () => snapshot,
     refresh,
+    told(said): void {
+      let changed = false
+      for (const { id, usedBy } of said) {
+        const next = usedBy === undefined ? [] : homeUses(usedBy)
+        const before = home.get(id) ?? []
+        if (JSON.stringify(before) === JSON.stringify(next)) continue
+        changed = true
+        if (next.length === 0) home.delete(id)
+        else home.set(id, next)
+      }
+      if (changed && listeners.size > 0) refresh()
+    },
   }
 }

@@ -16,25 +16,32 @@ import { interviewSent, SENT_KEY } from "@/lib/interview-week/store"
 import { SCRIPTS_KEY, spokenStore } from "@/lib/studio-spoken/store"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { usesOfTake } from "./model"
+import { unreadOf, usesOfTake } from "./model"
 import type { TakeUse, UseSource } from "./model"
-import type { StudioUseStores, TakeUsesRuntime } from "./runtime"
+import type { KeptRead, StudioUseStores, TakeUsesRuntime } from "./runtime"
 import { createTakeUses } from "./runtime"
 
 export type { TakeUse, TakeUses, UseSource } from "./model"
-export { NO_USES, usesAmong, usesOfTake } from "./model"
+export { NO_USES, thingsIn, unreadOf, usesAmong, usesOfTake } from "./model"
 export type { TakeUsesRuntime } from "./runtime"
 export { USE_WORDS, whatLoses } from "./words"
 
 /**
- * `read()`, or null when this phone set a record kept under `key` aside as
- * unreadable (core-utils' `openKept`, `<key>:unreadable:1` on): what that
- * record picks is unknown, never none (TU1).
+ * `read()` with the text of each record kept under `key` that this phone
+ * set aside as unreadable (core-utils' `openKept`, `<key>:unreadable:<n>`),
+ * looked for after the read, which is what sets one aside: a take such a
+ * record names is in doubt, never unused (TU1). Null when `read` is.
  */
-export function wholeOrNull<T>(key: string, read: () => T | null): T | null {
-  return browserLocalStorage.getItem(`${key}:unreadable:1`) === null
-    ? read()
-    : null
+export function keptWhole<T>(key: string, read: () => T | null): KeptRead<T> {
+  const value = read()
+  if (value === null) return null
+  const setAside: Array<string> = []
+  for (let n = 1; ; n += 1) {
+    const raw = browserLocalStorage.getItem(`${key}:unreadable:${String(n)}`)
+    if (raw === null) break
+    setAside.push(raw)
+  }
+  return { value, setAside }
 }
 
 const studio = handedIn<StudioUseStores>()
@@ -48,11 +55,11 @@ let runtime: TakeUsesRuntime | null = null
 export function phoneTakeUses(): TakeUsesRuntime {
   runtime ??= createTakeUses({
     spoken: () =>
-      wholeOrNull(SCRIPTS_KEY, () => spokenStore(browserLocalStorage).known()),
+      keptWhole(SCRIPTS_KEY, () => spokenStore(browserLocalStorage).known()),
     interview: () =>
-      wholeOrNull(SENT_KEY, () => interviewSent(browserLocalStorage).list()),
+      keptWhole(SENT_KEY, () => interviewSent(browserLocalStorage).list()),
     rust: () =>
-      wholeOrNull(WEEK_SENT_KEY, () => weeksSent(browserLocalStorage).list()),
+      keptWhole(WEEK_SENT_KEY, () => weeksSent(browserLocalStorage).list()),
     studio: studio.kept,
     onStudio: studio.onKept,
     failed: (source, error) => {
@@ -82,7 +89,9 @@ export function libraryUses(
     getSnapshot: uses.getSnapshot,
     mark: (id): ReactNode => {
       const now = uses.getSnapshot()
-      return now === null ? null : draw(usesOfTake(now, id), now.unread)
+      return now === null
+        ? null
+        : draw(usesOfTake(now, id), unreadOf(now, [id]))
     },
   }
 }

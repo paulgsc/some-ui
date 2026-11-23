@@ -66,9 +66,13 @@ async function askHome(
   note: string | null = null
 ): Promise<HomeReading> {
   const asked = await askWhileBusy(() => askKept(of, note))
-  return asked.kind === "answered"
-    ? readKept(asked.answer, asked.record)
-    : asked
+  if (asked.kind !== "answered") return asked
+  const reading = readKept(asked.answer, asked.record)
+  if (reading.kind === "read")
+    phoneTakeUses().told(
+      (reading.kept.notes ?? []).map(({ id, usedBy }) => ({ id, usedBy }))
+    )
+  return reading
 }
 
 async function askReceipts(): Promise<ReceiptsReading> {

@@ -86,11 +86,14 @@ export type ProjectStore = {
   read: (id: string) => Promise<Project | null>
   list: () => Promise<Array<Project>>
   /**
-   * Every project, or null when one this build can't read is kept: what it
-   * picks is then unknown, never none (www's `lib/take-uses`, TU1). Absent
-   * on a store that holds none it can't read.
+   * Every project, and the text of each kept row this build can't read as
+   * one: a take such a row names is in doubt, never unused (www's
+   * `lib/take-uses`, TU1). Null when a row can't be told as text.
    */
-  listWhole?: () => Promise<Array<Project> | null>
+  listWhole: () => Promise<{
+    readonly value: Array<Project>
+    readonly setAside: Array<string>
+  } | null>
   audio: (project: string, take: string) => Promise<Blob | null>
   /**
    * The bytes of audio the projects may still keep under the cap, which
@@ -258,13 +261,24 @@ export function indexedDbProjectStore(): ProjectStore {
       return rows.filter(isProject)
     },
 
-    async listWhole(): Promise<Array<Project> | null> {
+    async listWhole(): Promise<{
+      readonly value: Array<Project>
+      readonly setAside: Array<string>
+    } | null> {
       const tx = (await connect()).transaction(PROJECTS, "readonly")
       const rows: Array<unknown> = await result(
         tx.objectStore(PROJECTS).getAll()
       )
-      const projects = rows.filter(isProject)
-      return projects.length === rows.length ? projects : null
+      try {
+        return {
+          value: rows.filter(isProject),
+          setAside: rows
+            .filter((row) => !isProject(row))
+            .map((row) => JSON.stringify(row)),
+        }
+      } catch {
+        return null
+      }
     },
 
     async audio(project, take): Promise<Blob | null> {

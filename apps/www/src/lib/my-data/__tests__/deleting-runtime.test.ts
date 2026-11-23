@@ -11,7 +11,7 @@ import type { DeleteAsked } from "@/lib/home-link/delete-note"
 import type { DeletingPorts } from "@/lib/my-data/deleting-runtime"
 import { createDeleting } from "@/lib/my-data/deleting-runtime"
 import type { TakeUses } from "@/lib/take-uses/model"
-import { NO_USES } from "@/lib/take-uses/model"
+import { ALL_UNREAD, NO_USES } from "@/lib/take-uses/model"
 
 type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void }
 function deferred<T>(): Deferred<T> {
@@ -181,17 +181,36 @@ describe("My data's delete runtime", () => {
         ["t1", [{ kind: "spoken", card: "c1", title: "T", part: 1 }]],
       ]),
       unread: [],
+      doubts: [],
     }
     deleting.confirm()
     await flush()
     expect(asked).toHaveLength(0)
     expect(deleting.getSnapshot().sheet).toMatchObject({
       kind: "asking",
-      changed: true,
+      changed: "use",
       uses: uses.now,
     })
     deleting.confirm()
     await flush()
+    expect(asked.map((each) => each.ids)).toEqual([["t1"]])
+  })
+
+  it("says it can't check, never stays on Checking, when reading what uses it fails", async () => {
+    const { ports: p, asked } = ports()
+    const failed: Array<unknown> = []
+    const deleting = createDeleting({
+      ...p,
+      uses: () => Promise.reject(new Error("read")),
+      failed: (error) => failed.push(error),
+    })
+    deleting.ask("studio", ["t1"])
+    await flush()
+    expect(deleting.getSnapshot().sheet).toMatchObject({ uses: ALL_UNREAD })
+    expect(failed).toHaveLength(1)
+    deleting.confirm()
+    await flush()
+    // Shown that it couldn't check, the owner may still delete.
     expect(asked.map((each) => each.ids)).toEqual([["t1"]])
   })
 

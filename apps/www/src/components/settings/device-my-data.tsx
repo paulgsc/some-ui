@@ -88,7 +88,7 @@ import {
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import type { TakeUse, TakeUses, UseSource } from "@/lib/take-uses"
-import { phoneTakeUses, usesOfTake } from "@/lib/take-uses"
+import { phoneTakeUses, unreadOf, usesOfTake } from "@/lib/take-uses"
 import { UseMark } from "@/components/take-uses"
 
 import {
@@ -415,7 +415,9 @@ const Item = ({
           </span>
         ) : null}
       </span>
-      {item.wentAt === null ? <UseMark uses={uses} unread={unread} /> : null}
+      {item.wentAt === null ? (
+        <UseMark uses={uses} unread={unread} what={DELETING.markOf(name)} />
+      ) : null}
       {remove.kind === "offer" ? (
         <Button
           variant="ghost"
@@ -555,7 +557,7 @@ export const MyDataKind = ({
               onStop={onStop}
               remove={removeOf(item)}
               uses={uses === null ? [] : usesOfTake(uses, item.id)}
-              unread={uses?.unread ?? []}
+              unread={uses === null ? [] : unreadOf(uses, [item.id])}
             />
           ))}
         </ul>

@@ -170,6 +170,7 @@ const usedBy = (...parts: ReadonlyArray<number>): TakeUses => ({
     ],
   ]),
   unread: [],
+  doubts: [],
 })
 
 describe("the sheet's word on what uses its notes (INUSE, TU1)", () => {
@@ -202,7 +203,7 @@ describe("the sheet's word on what uses its notes (INUSE, TU1)", () => {
     expect(again.sheet).toMatchObject({
       kind: "asking",
       uses: usedBy(1, 2),
-      changed: true,
+      changed: "use",
     })
     expect(again.seq).toBe(shown.seq)
     // Seen now, the next confirm deletes.
@@ -227,7 +228,7 @@ describe("the sheet's word on what uses its notes (INUSE, TU1)", () => {
 
   it("deletes nothing on a second tap once the first asked again", () => {
     const again = confirm(shown, usedBy(1, 2))
-    expect(again.sheet).toMatchObject({ kind: "asking", changed: true })
+    expect(again.sheet).toMatchObject({ kind: "asking", changed: "use" })
     // The second tap was made on what the sheet showed before.
     expect(
       stepDeleting(again, {
@@ -241,13 +242,13 @@ describe("the sheet's word on what uses its notes (INUSE, TU1)", () => {
   })
 
   it("asks again when a store it read turns unread", () => {
-    const unread: TakeUses = { ...usedBy(1), unread: ["videos"] }
+    const unread: TakeUses = { ...usedBy(1), unread: ["videos"], doubts: [] }
     const again = confirm(shown, unread)
     // Asked again, but nothing started using it: it can't read a store now.
     expect(again.sheet).toMatchObject({
       kind: "asking",
       uses: unread,
-      changed: false,
+      changed: "unread",
     })
     // Shown unread, and still unread: the owner agreed to that.
     expect(confirm(again, unread).sheet.kind).toBe("deleting")
@@ -300,7 +301,7 @@ describe("the sheet's word on what uses its notes (INUSE, TU1)", () => {
     expect(confirm(ended, usedBy(1, 3)).sheet).toMatchObject({
       kind: "asking",
       ids: ["t1"],
-      changed: true,
+      changed: "use",
     })
     expect(confirm(ended, usedBy(1)).sheet.kind).toBe("deleting")
   })

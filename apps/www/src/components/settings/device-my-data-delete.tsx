@@ -34,7 +34,7 @@ import {
   receiptKind,
   receiptParts,
 } from "@/lib/my-data/words"
-import { USE_WORDS, usesAmong } from "@/lib/take-uses"
+import { unreadOf, USE_WORDS, usesAmong } from "@/lib/take-uses"
 import type { PanelUses } from "@/components/take-uses"
 import { panelSays, UsesPanel } from "@/components/take-uses"
 
@@ -234,8 +234,8 @@ function sheetUses(
     panel: {
       kind: "read",
       uses: among.map(({ use }) => use),
-      unread: sheet.uses.unread,
-      changed: sheet.kind === "asking" && sheet.changed,
+      unread: unreadOf(sheet.uses, sheet.ids),
+      changed: sheet.kind === "asking" ? sheet.changed : false,
     },
   }
 }

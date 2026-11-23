@@ -11,7 +11,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { keepIdeas } from "@/lib/idea-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
-import { keepUseStores, wholeOrNull } from "@/lib/take-uses"
+import { keepUseStores, keptWhole } from "@/lib/take-uses"
 
 /**
  * Studio's ideas and videos, for what uses each take (INUSE,
@@ -19,13 +19,12 @@ import { keepUseStores, wholeOrNull } from "@/lib/take-uses"
  * it asks. My data's kind route (`./settings/data/$kind.tsx`) hands the
  * same in; the first hand-in stands.
  */
+// An `if` statement, which the route's code splitting keeps in both its
+// chunks; an expression statement (`env && keep(...)`) it would drop.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true")
   keepUseStores({
-    ideas: () => wholeOrNull(IDEAS_KEY, () => keptIdeaStore().list()),
-    videos: () => {
-      const store = phoneProjectStore()
-      return store.listWhole?.() ?? store.list()
-    },
+    ideas: () => keptWhole(IDEAS_KEY, () => keptIdeaStore().list()),
+    videos: () => phoneProjectStore().listWhole(),
     subscribe: (listener) => phoneProjectStore().subscribe(listener),
   })
 

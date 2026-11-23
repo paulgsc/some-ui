@@ -6,7 +6,7 @@ import {
 } from "@some-ui/soundbites"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { keepUseStores, wholeOrNull } from "@/lib/take-uses"
+import { keepUseStores, keptWhole } from "@/lib/take-uses"
 import { DeviceMyDataKind } from "@/components/settings/device-my-data"
 
 /**
@@ -15,13 +15,12 @@ import { DeviceMyDataKind } from "@/components/settings/device-my-data"
  * it asks, so a sheet opened from `?note=` reads them. Studio's layout
  * (`../../journal.tsx`) hands the same in; the first hand-in stands.
  */
+// An `if` statement, which the route's code splitting keeps in both its
+// chunks; an expression statement (`env && keep(...)`) it would drop.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true")
   keepUseStores({
-    ideas: () => wholeOrNull(IDEAS_KEY, () => keptIdeaStore().list()),
-    videos: () => {
-      const store = phoneProjectStore()
-      return store.listWhole?.() ?? store.list()
-    },
+    ideas: () => keptWhole(IDEAS_KEY, () => keptIdeaStore().list()),
+    videos: () => phoneProjectStore().listWhole(),
     subscribe: (listener) => phoneProjectStore().subscribe(listener),
   })
 

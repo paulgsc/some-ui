@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@some-ui/shared"
 import { CircleHelp, Layers, LoaderCircle, TriangleAlert } from "lucide-react"
 
 import type { TakeUse, UseSource } from "@/lib/take-uses"
-import { USE_WORDS, whatLoses } from "@/lib/take-uses"
+import { thingsIn, USE_WORDS, whatLoses } from "@/lib/take-uses"
 
 /** What the panel says: checking, or what was read of the takes it names. */
 export type PanelUses =
@@ -21,8 +21,11 @@ export type PanelUses =
       readonly kind: "read"
       readonly uses: ReadonlyArray<TakeUse>
       readonly unread: ReadonlyArray<UseSource>
-      /** Asked again: a use appeared after the sheet first showed. */
-      readonly changed?: boolean
+      /**
+       * Asked again: a use appeared after the sheet first showed (`use`),
+       * or a store it read can't say now (`unread`).
+       */
+      readonly changed?: false | "use" | "unread"
     }
 
 /** Whether the panel has anything to say; nothing when all read and unused. */
@@ -41,7 +44,8 @@ export const UsesPanel = ({ uses }: { uses: PanelUses }): JSX.Element => {
     uses.kind === "checking"
       ? [USE_WORDS.checking]
       : [
-          ...(uses.changed === true ? [USE_WORDS.changed] : []),
+          ...(uses.changed === "use" ? [USE_WORDS.changed] : []),
+          ...(uses.changed === "unread" ? [USE_WORDS.unreadSince] : []),
           ...uses.uses.map((use) => whatLoses(use)),
           ...(uses.unread.length > 0 ? [USE_WORDS.unread(uses.unread)] : []),
         ]
@@ -83,20 +87,24 @@ export const UsesPanel = ({ uses }: { uses: PanelUses }): JSX.Element => {
 export const UseMark = ({
   uses,
   unread,
+  what,
 }: {
   uses: ReadonlyArray<TakeUse>
   unread: ReadonlyArray<UseSource>
+  /** Which recording it is on, for a screen reader: "the recording of …". */
+  what?: string | undefined
 }): JSX.Element | null => {
   const used = uses.length > 0
   if (!used && unread.length === 0) return null
+  const things = thingsIn(uses)
+  const name = used ? USE_WORDS.markName(things) : USE_WORDS.uncheckedName
+  const panel: PanelUses = { kind: "read", uses, unread }
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={
-            used ? USE_WORDS.markName(uses.length) : USE_WORDS.uncheckedName
-          }
+          aria-label={what === undefined ? name : USE_WORDS.markOf(name, what)}
           className={
             used
               ? "border-success/50 bg-success/10 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2.5 text-xs tabular-nums"
@@ -106,15 +114,19 @@ export const UseMark = ({
           {used ? (
             <>
               <Layers className="text-success size-4" aria-hidden />
-              <span aria-hidden>{uses.length}</span>
+              <span aria-hidden>{things}</span>
             </>
           ) : (
             <CircleHelp className="size-4" aria-hidden />
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(22rem,86vw)] p-0">
-        <UsesPanel uses={{ kind: "read", uses, unread }} />
+      <PopoverContent
+        align="end"
+        aria-label={name}
+        className="w-[min(22rem,86vw)] p-0"
+      >
+        <UsesPanel uses={panel} />
       </PopoverContent>
     </Popover>
   )

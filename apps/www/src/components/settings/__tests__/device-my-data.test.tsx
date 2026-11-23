@@ -519,12 +519,14 @@ describe("deleting from a kind's list (MD3)", () => {
         uses={{
           of: new Map([[first.id, [use, { ...use, as: "read" }]]]),
           unread: [],
+          doubts: [],
         }}
       />
     )
     // One mark, the same for every kind of use, on the row in use alone.
+    // An answer and a read of the one week are one thing using it.
     const marks = screen.getAllByRole("button", {
-      name: USE_WORDS.markName(2),
+      name: new RegExp(`^${USE_WORDS.markName(1)}, the recording of `, "u"),
     })
     expect(marks).toHaveLength(1)
     // Tapped, it says what the sheet would: each use and what it loses.
@@ -541,11 +543,13 @@ describe("deleting from a kind's list (MD3)", () => {
         unread={[]}
         onPlay={vi.fn()}
         onStop={vi.fn()}
-        uses={{ of: new Map(), unread: ["videos"] }}
+        uses={{ of: new Map(), unread: ["videos"], doubts: [] }}
       />
     )
     fireEvent.click(
-      screen.getByRole("button", { name: USE_WORDS.uncheckedName })
+      screen.getAllByRole("button", {
+        name: new RegExp(`^${USE_WORDS.uncheckedName}`, "u"),
+      })[0]
     )
     expect(screen.getByText(USE_WORDS.unread(["videos"]))).toBeTruthy()
   })
@@ -597,7 +601,7 @@ describe("the delete sheet (MD3)", () => {
         sheet={{
           ...asking,
           ids: ["t1", "t2"],
-          uses: { of: new Map([["t1", [spoken]]]), unread: [] },
+          uses: { of: new Map([["t1", [spoken]]]), unread: [], doubts: [] },
         }}
         onConfirm={onConfirm}
         onClose={vi.fn()}
@@ -629,7 +633,10 @@ describe("the delete sheet (MD3)", () => {
     unmount()
     render(
       <DeleteSheetView
-        sheet={{ ...asking, uses: { of: new Map(), unread: ["videos"] } }}
+        sheet={{
+          ...asking,
+          uses: { of: new Map(), unread: ["videos"], doubts: [] },
+        }}
         onConfirm={vi.fn()}
         onClose={vi.fn()}
       />
@@ -644,8 +651,8 @@ describe("the delete sheet (MD3)", () => {
       <DeleteSheetView
         sheet={{
           ...asking,
-          changed: true,
-          uses: { of: new Map([["t1", [spoken]]]), unread: [] },
+          changed: "use",
+          uses: { of: new Map([["t1", [spoken]]]), unread: [], doubts: [] },
         }}
         onConfirm={vi.fn()}
         onClose={vi.fn()}

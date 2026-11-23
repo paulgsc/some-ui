@@ -35,7 +35,7 @@ import { z } from "zod"
 
 import type { DeleteAsked } from "@/lib/home-link/delete-note"
 import type { TakeUses } from "@/lib/take-uses/model"
-import { unseen } from "@/lib/take-uses/model"
+import { newUse, unseen } from "@/lib/take-uses/model"
 
 import type { KindItem, Of } from "./model"
 
@@ -232,14 +232,15 @@ export type DeleteSheet =
   | { readonly kind: "closed" }
   /**
    * Asking once: what uses them, what goes and what stays, "Keep it" first.
-   * `changed`: asked again, since a use appeared after it was first shown.
+   * `changed`: asked again, since a use appeared after it was first shown
+   * (`use`), or a store it read can't say now (`unread`); `false` before.
    */
   | {
       readonly kind: "asking"
       readonly of: DeletableKind
       readonly ids: ReadonlyArray<string>
       readonly uses: SheetUses
-      readonly changed: boolean
+      readonly changed: false | "use" | "unread"
     }
   | {
       readonly kind: "deleting"
@@ -306,13 +307,6 @@ export type DeletingEvent =
   /** "Keep it", Done, or the sheet dismissed. */
   | { readonly type: "closed" }
 
-/** Whether `fresh` holds a use of `ids` that `shown` didn't, not only a store unread. */
-const newUse = (
-  shown: TakeUses | null,
-  fresh: TakeUses,
-  ids: ReadonlyArray<string>
-): boolean => unseen(shown, { ...fresh, unread: shown?.unread ?? [] }, ids)
-
 export function stepDeleting(
   state: DeletingState,
   event: DeletingEvent
@@ -364,7 +358,9 @@ export function stepDeleting(
             sheet: {
               ...sheet,
               uses: event.uses,
-              changed: newUse(sheet.uses, event.uses, sheet.ids),
+              changed: newUse(sheet.uses, event.uses, sheet.ids)
+                ? "use"
+                : "unread",
             },
           }
         return {
@@ -390,7 +386,10 @@ export function stepDeleting(
             of: sheet.of,
             ids: again,
             uses: event.uses,
-            changed: newUse(sheet.uses, event.uses, again),
+            changed:
+              sheet.uses !== null && newUse(sheet.uses, event.uses, again)
+                ? "use"
+                : "unread",
           },
         }
       return {
