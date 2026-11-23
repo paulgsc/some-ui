@@ -335,7 +335,12 @@ export const TakeReconcile = ({
     <div className="flex flex-col gap-4">
       <Unread state={state} dispatch={dispatch} pair={pair} />
       {page !== null && only?.banner}
-      {page !== null && only !== undefined && takes.length === 0 && only.empty}
+      {/* None of them listed says none waits only when home listed all. */}
+      {page !== null &&
+        only !== undefined &&
+        takes.length === 0 &&
+        page.total <= listed.length &&
+        only.empty}
       {page !== null &&
         only === undefined &&
         takes.length === 0 &&
@@ -343,9 +348,8 @@ export const TakeReconcile = ({
           <p className="text-muted-foreground text-sm">{WORDS.none}</p>
         )}
       {page !== null &&
-        only === undefined &&
         takes.length === 0 &&
-        page.total > 0 && (
+        (only === undefined ? page.total > 0 : page.total > listed.length) && (
           <div className="flex flex-col gap-2">
             <p className="text-sm">{WORDS.noneShown(page.total)}</p>
             <Button

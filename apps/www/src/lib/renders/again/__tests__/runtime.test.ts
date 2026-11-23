@@ -30,13 +30,13 @@ const flush = (): Promise<void> =>
 
 describe("step", () => {
   it("takes one tap at a time, and an answer only while asking", () => {
-    const asking = step(IDLE, { type: "tap", target: TARGET })
-    expect(asking).toEqual({ kind: "asking" })
-    expect(step(asking, { type: "tap", target: TARGET })).toBe(asking)
+    const asking = step(IDLE, { type: "tap", target: TARGET, at: 7 })
+    expect(asking).toEqual({ kind: "asking", at: 7 })
+    expect(step(asking, { type: "tap", target: TARGET, at: 9 })).toBe(asking)
     const said = { kind: "away" } as const
     expect(step(IDLE, { type: "answered", said })).toBe(IDLE)
     const after = step(asking, { type: "answered", said })
-    expect(after).toEqual({ kind: "said", said })
+    expect(after).toEqual({ kind: "said", said, at: 7 })
     expect(step(after, { type: "dismissed" })).toBe(IDLE)
     expect(step(asking, { type: "dismissed" })).toBe(asking)
   })
@@ -73,16 +73,16 @@ describe("createAgain", () => {
     const asked = deferred()
     const ask = vi.fn(() => asked.promise)
     const readAgain = vi.fn()
-    const runtime = createAgain({ ask, readAgain })
+    const runtime = createAgain({ ask, readAgain, now: () => 42 })
     runtime.attach()
     runtime.dispatch({ type: "tap", target: TARGET })
     runtime.dispatch({ type: "tap", target: TARGET })
     expect(ask).toHaveBeenCalledTimes(1)
     expect(ask).toHaveBeenCalledWith(TARGET)
-    expect(runtime.getSnapshot()).toEqual({ kind: "asking" })
+    expect(runtime.getSnapshot()).toEqual({ kind: "asking", at: 42 })
     asked.resolve(ASKED)
     await flush()
-    expect(runtime.getSnapshot()).toEqual({ kind: "said", said: ASKED })
+    expect(runtime.getSnapshot()).toEqual({ kind: "said", said: ASKED, at: 42 })
     expect(readAgain).toHaveBeenCalledTimes(1)
   })
 
@@ -95,7 +95,7 @@ describe("createAgain", () => {
     detach()
     asked.resolve(ASKED)
     await flush()
-    expect(runtime.getSnapshot()).toEqual({ kind: "asking" })
+    expect(runtime.getSnapshot()).toMatchObject({ kind: "asking" })
     expect(readAgain).not.toHaveBeenCalled()
   })
 

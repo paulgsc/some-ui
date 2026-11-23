@@ -10,6 +10,8 @@ import { readAttentionIds } from "./ask"
 export const againAttentionQuery = queryOptions({
   queryKey: ["home", "attention", "ids"],
   queryFn: readAttentionIds,
-  staleTime: 15_000,
+  // Read afresh each time the page opens: the owner's acts on Needs your
+  // attention change it, and nothing there tells this read.
+  staleTime: 0,
   retry: false,
 })

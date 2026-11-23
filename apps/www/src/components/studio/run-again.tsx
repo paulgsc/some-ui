@@ -22,6 +22,7 @@ import {
   failedLine,
   renderName,
   RENDERS_WORDS,
+  rendersAgainIn,
   rendersQuery,
   WHILE_UNDER_WAY_MS,
 } from "@/lib/renders"
@@ -344,14 +345,23 @@ export const RunAgainPage = ({
   useEffect(() => runtime.attach(), [runtime])
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   const asked = stepOfSaid(state)
+  const tappedAt = state.kind === "said" ? state.at : 0
+  /** Where the run is on `board`, once tapped. */
+  const followed = (board: Board): Step | null =>
+    asked === null ? null : follow(asked, board, feed, rowKey, tappedAt)
   const query = {
     ...rendersQuery,
     // Followed while the run moves: the board is read every half minute
     // until it is made or stops, whatever else it holds.
-    refetchInterval:
-      asked !== null && !settled(asked)
+    refetchInterval: (read: {
+      readonly state: Parameters<typeof rendersAgainIn>[0]
+    }): number | false => {
+      const data = read.state.data
+      const step = data?.kind === "read" ? followed(data.board) : asked
+      return step !== null && !settled(step)
         ? WHILE_UNDER_WAY_MS
-        : rendersQuery.refetchInterval,
+        : rendersAgainIn(read.state)
+    },
   }
   const notice = state.kind === "said" ? saidLine(state.said) : null
   // How long each step took is said as of the board's last read.
@@ -368,19 +378,23 @@ export const RunAgainPage = ({
                   : RENDERS_WORDS.older}
               </p>
             )
-          if (asked !== null)
+          const step = followed(outcome.board)
+          const row = rowOf(outcome.board, feed, rowKey)
+          if (step !== null)
             return (
               <div className="flex flex-col gap-4">
                 <p className="text-sm font-medium">
                   {renderName({ feed, key: rowKey })}
                 </p>
-                <Conveyor
-                  step={follow(asked, outcome.board, feed, rowKey, readAt)}
-                  now={readAt}
-                />
+                <Conveyor step={step} now={readAt} />
+                {/* Stopped again: its steps and the tap once more. */}
+                {settled(step) &&
+                  step.state !== "done" &&
+                  row !== undefined && (
+                    <Again row={row} runtime={runtime} state={state} />
+                  )}
               </div>
             )
-          const row = rowOf(outcome.board, feed, rowKey)
           return row === undefined ? (
             <p className="text-muted-foreground text-sm">{WORDS.gone}</p>
           ) : (

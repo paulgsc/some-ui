@@ -142,6 +142,26 @@ describe("Takes › Needs your attention (HEARD3)", () => {
     expect(screen.queryByText(W.none)).toBeNull()
   })
 
+  it("never says none of the takes asked for waits while home listed only some (RETRY)", async () => {
+    render(
+      <TakeReconcile
+        ports={{
+          home: home({ kind: "read", page: { takes: [FAILED], total: 101 } }),
+          player: quietPlayer,
+        }}
+        pair={null}
+        only={{
+          ids: new Set(["r1"]),
+          banner: <p>The take an essay waits on</p>,
+          empty: <p>None of them waits on you now.</p>,
+        }}
+      />
+    )
+    await settle()
+    expect(screen.queryByText("None of them waits on you now.")).toBeNull()
+    expect(screen.getByText(W.noneShown(101))).toBeTruthy()
+  })
+
   it("offers Delete… only on a kind the build deletes, and says the rest are kept for good", async () => {
     const onDelete = vi.fn()
     render(

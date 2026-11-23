@@ -385,6 +385,35 @@ describe("follow", () => {
     })
   })
 
+  it("reads a run's end against the tap where home names no ask time", () => {
+    const unnamed: Step = { ...STEP, state: "waiting", askedAt: null }
+    const tapped = 1_795_390_000
+    const old = {
+      feed: FEED,
+      key: KEY,
+      at: tapped - 600,
+      by: "recorder" as const,
+      exit: 1,
+    }
+    expect(
+      follow(unnamed, { ...empty, failed: [old] }, FEED, KEY, tapped)
+    ).toBe(unnamed)
+    const burnt = { ...old, at: tapped + 300 }
+    expect(
+      follow(unnamed, { ...empty, failed: [burnt] }, FEED, KEY, tapped)
+    ).toMatchObject({
+      state: "failed",
+      endedAt: tapped + 300,
+    })
+  })
+
+  it("never takes an earlier make of the episode for this run's", () => {
+    const earlier = { feed: FEED, key: KEY, at: 1_795_380_000 }
+    expect(follow(STEP, { ...empty, done: [earlier] }, FEED, KEY, NOW)).toBe(
+      STEP
+    )
+  })
+
   it("never moves a step back to waiting once it is in the oven", () => {
     const rendering: Step = { ...STEP, state: "rendering", startedAt: 5 }
     expect(

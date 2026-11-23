@@ -18,14 +18,15 @@ export type Said =
 
 export type AgainState =
   | { readonly kind: "idle" }
-  | { readonly kind: "asking" }
-  | { readonly kind: "said"; readonly said: Said }
+  /** `at`: when the tap was, Unix seconds, the run's start where home names none. */
+  | { readonly kind: "asking"; readonly at: number }
+  | { readonly kind: "said"; readonly said: Said; readonly at: number }
 
 /** Which render a tap asks home to run again. */
 export type Target = { readonly feed: string; readonly key: string }
 
 export type AgainEvent =
-  | { readonly type: "tap"; readonly target: Target }
+  | { readonly type: "tap"; readonly target: Target; readonly at: number }
   | { readonly type: "answered"; readonly said: Said }
   | { readonly type: "dismissed" }
 
@@ -34,11 +35,11 @@ export const IDLE: AgainState = { kind: "idle" }
 export function step(state: AgainState, event: AgainEvent): AgainState {
   switch (event.type) {
     case "tap": {
-      return state.kind === "asking" ? state : { kind: "asking" }
+      return state.kind === "asking" ? state : { kind: "asking", at: event.at }
     }
     case "answered": {
       return state.kind === "asking"
-        ? { kind: "said", said: event.said }
+        ? { kind: "said", said: event.said, at: state.at }
         : state
     }
     case "dismissed": {
@@ -59,12 +60,18 @@ export type AgainPorts = {
   readonly ask: (target: Target) => Promise<Said>
   /** Reads the board (and the takes needing attention) again. */
   readonly readAgain: () => void
+  /** The clock, Unix seconds; the phone's own when absent. */
+  readonly now?: (() => number) | undefined
 }
 
 export type AgainRuntime = {
   readonly subscribe: (listener: () => void) => () => void
   readonly getSnapshot: () => AgainState
-  readonly dispatch: (event: Exclude<AgainEvent, { type: "answered" }>) => void
+  readonly dispatch: (
+    event:
+      | Omit<Extract<AgainEvent, { type: "tap" }>, "at">
+      | Extract<AgainEvent, { type: "dismissed" }>
+  ) => void
   /** Starts the runtime; the returned call ends it, and a later answer is dropped. */
   readonly attach: () => () => void
 }
@@ -95,7 +102,8 @@ export function createAgain(ports: AgainPorts): AgainRuntime {
       // Nothing is asked of a page not attached (gone, or not yet there).
       if (event.type === "tap" && !live) return
       const before = state
-      set(step(state, event))
+      const now = ports.now ?? ((): number => Math.floor(Date.now() / 1000))
+      set(step(state, event.type === "tap" ? { ...event, at: now() } : event))
       if (event.type === "tap" && before.kind !== "asking") {
         void ports.ask(event.target).then(settle)
       }

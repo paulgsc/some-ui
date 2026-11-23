@@ -41,7 +41,12 @@ import {
   subjectOf,
   thingName,
 } from "@/lib/renders"
-import { AGAIN_WORDS, planOf, stopOf } from "@/lib/renders/again"
+import {
+  AGAIN_WORDS,
+  againAttentionQuery,
+  planOf,
+  stopOf,
+} from "@/lib/renders/again"
 
 import { Part, ReadList, StudioPage } from "./layout"
 
@@ -217,10 +222,20 @@ const RowTile = ({
  * itself, within the hour (a clip's walk).
  */
 const ToAgain = ({ failed }: { failed: RenderFailed }): JSX.Element | null => {
-  if (!hasAudience("apk")) return null
   const stop = stopOf(failed)
-  const plan = planOf(stop, { kind: "unread" }, failed.feed)
-  if (plan.kind === "preview" || plan.kind === "byItself") return null
+  // Takes are counted as Run it again counts them, from the attention list.
+  const attention = useQuery({
+    ...againAttentionQuery,
+    enabled: stop.kind === "takes-unheard",
+  }).data
+  const plan = planOf(stop, attention ?? { kind: "unread" }, failed.feed)
+  // Each page is the phone's ("apk"), as this one is (A3).
+  if (
+    !hasAudience("apk") ||
+    plan.kind === "preview" ||
+    plan.kind === "byItself"
+  )
+    return null
   return (
     <Link
       to="/journal/renders/$feed/$key"
@@ -233,11 +248,15 @@ const ToAgain = ({ failed }: { failed: RenderFailed }): JSX.Element | null => {
           : AGAIN_WORDS.open}
       </span>
       <span className="text-muted-foreground flex items-center gap-1.5">
-        {plan.kind === "takes" && <Dot meaning="attention" />}
+        {plan.kind === "takes" && plan.waiting.length > 0 && (
+          <Dot meaning="attention" />
+        )}
         {plan.kind === "ready"
           ? AGAIN_WORDS.onRow.ready
           : plan.kind === "takes"
-            ? AGAIN_WORDS.onRow.takes(plan.takes.length)
+            ? plan.read && plan.waiting.length === 0
+              ? AGAIN_WORDS.onRow.ready
+              : AGAIN_WORDS.onRow.takes(plan.waiting.length)
             : AGAIN_WORDS.onRow.elsewhere}
       </span>
     </Link>

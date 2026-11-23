@@ -331,18 +331,23 @@ export const settled = (step: Step): boolean =>
  * Where a step stands once the board is read again: the board says where
  * the row is now (made, under way, waiting, or stopped again), and every time
  * home said before is kept, since home keeps only a step in flight's.
- * `board` read before the tap's own answer moves nothing back.
+ * What the board lists from before the run started (`askedAt`, else
+ * `tappedAt`, when the owner tapped) is the run it ran again, and moves
+ * nothing.
  */
 export function follow(
   step: Step,
   board: Board,
   feed: string,
   key: string,
-  now: number
+  tappedAt: number
 ): Step {
   const named = (row: { feed: string; key: string }): boolean =>
     row.feed === feed && row.key === key
-  const done = board.done.find(named)
+  // What the board lists from before the run started is the run it ran
+  // again; only what is later is this run's.
+  const from = step.askedAt ?? tappedAt
+  const done = board.done.find((row) => named(row) && row.at >= from)
   if (done !== undefined)
     return { ...step, state: "done", endedAt: step.endedAt ?? done.at }
   if (board.now !== null && named(board.now)) {
@@ -358,9 +363,7 @@ export function follow(
   if (board.waiting.some(named))
     return step.state === "asked" ? { ...step, state: "waiting" } : step
   const failed = board.failed.find(named)
-  // A failure from before the tap is the one it ran again; only a later one
-  // is this run's.
-  if (failed !== undefined && failed.at > (step.askedAt ?? now))
+  if (failed !== undefined && failed.at > from)
     return {
       ...step,
       state: failed.reason === undefined ? "failed" : "blocked",
