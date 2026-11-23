@@ -430,6 +430,8 @@ export const DELETING = {
   /** A row's "Delete…", and its name for a screen reader. */
   row: "Delete…",
   rowName: (when: string): string => `Delete the recording of ${when}…`,
+  /** Which recording a row's mark of what uses it is on (INUSE). */
+  markOf: (when: string): string => `the recording of ${when}`,
   select: "Select",
   cancel: "Cancel",
   selectName: (when: string): string => `Select the recording of ${when}`,

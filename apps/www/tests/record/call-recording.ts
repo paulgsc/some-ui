@@ -21,6 +21,7 @@ import {
 import type { CallWeek } from "@some-ui/video-render"
 
 import { fail, here, launchChromium } from "./command"
+import { callFacts } from "./thumbnail-facts"
 import {
   placeBed,
   POLICY_OPTIONS,
@@ -207,13 +208,7 @@ export async function recordCall(
     await renderCut(root, SERIES, callCutList(week, takes, { bed, part }), {
       preview,
       episode: "call.mp4",
-      thumbnail: {
-        genre: "call",
-        from: week.week.from,
-        to: week.week.to,
-        part,
-        of,
-      },
+      thumbnail: callFacts(week, part, of),
       marks: () => callChapterMarks(week, part),
       policy,
       browser,

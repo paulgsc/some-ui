@@ -50,6 +50,7 @@ import type { CallValues } from "./call-recording"
 import { FRAME, SERIES } from "./call-recording"
 import { answerFile, fail, here, launchChromium } from "./command"
 import { captureScreens } from "./screens"
+import { interviewEssayFacts, rustEssayFacts } from "./thumbnail-facts"
 import {
   placeBed,
   policyOf,
@@ -127,11 +128,7 @@ type EssayKind<E extends { readonly week: { readonly id: string } }> = {
 
 const RUST: EssayKind<Essay> = {
   name: "a Rust Rounds essay",
-  thumbnail: (essay) => ({
-    genre: "rust-essay",
-    week: essay.week.id,
-    firstTicket: essay.tickets.at(0)?.title ?? null,
-  }),
+  thumbnail: rustEssayFacts,
   read: /\/rust-essays\/[^/?#]+\.json$/,
   stage: null,
   parse: parseEssay,
@@ -149,7 +146,7 @@ const RUST: EssayKind<Essay> = {
 
 const INTERVIEW: EssayKind<InterviewEssay> = {
   name: "an interview essay",
-  thumbnail: (essay) => ({ genre: "interview-essay", role: essay.role.title }),
+  thumbnail: interviewEssayFacts,
   read: /\/interview-essays\/[^/?#]+\.json$/,
   stage: "interview",
   parse: parseInterviewEssay,

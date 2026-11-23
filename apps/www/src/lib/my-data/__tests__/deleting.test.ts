@@ -20,6 +20,8 @@ import {
   stepDeleting,
 } from "@/lib/my-data/deleting"
 import type { KindItem } from "@/lib/my-data/model"
+import type { TakeUses } from "@/lib/take-uses/model"
+import { NO_USES } from "@/lib/take-uses/model"
 
 const RECEIPT: Receipt = {
   id: "t1",
@@ -137,37 +139,217 @@ describe("what home's answer to a delete says", () => {
   })
 })
 
+/** "Delete for good" tapped on `state`, with what uses its notes read then. */
+const confirm = (
+  state: DeletingState,
+  uses: TakeUses = NO_USES
+): DeletingState =>
+  stepDeleting(state, {
+    type: "confirmed",
+    seq: state.seq,
+    asks: state.asks,
+    shown: state.shown,
+    uses,
+  })
+
+/** `state` once its ask's read of uses landed. */
+const read = (state: DeletingState, uses: TakeUses = NO_USES): DeletingState =>
+  stepDeleting(state, { type: "usesRead", asks: state.asks, uses })
+
+/** Uses of `t1`: part 1 of a spoken card, and maybe more. */
+const usedBy = (...parts: ReadonlyArray<number>): TakeUses => ({
+  of: new Map([
+    [
+      "t1",
+      parts.map((part) => ({
+        kind: "spoken" as const,
+        card: "c1",
+        title: "Who I am",
+        part,
+      })),
+    ],
+  ]),
+  unread: [],
+  doubts: [],
+})
+
+describe("the sheet's word on what uses its notes (INUSE, TU1)", () => {
+  const asked = stepDeleting(INITIAL_DELETING, {
+    type: "asked",
+    of: "studio",
+    ids: ["t1"],
+  })
+  const shown = read(asked, usedBy(1))
+
+  it("shows what the read found, only for the ask it was read for", () => {
+    expect(shown.sheet).toMatchObject({ kind: "asking", uses: usedBy(1) })
+    expect(
+      stepDeleting(asked, { type: "usesRead", asks: 0, uses: usedBy(1) })
+    ).toBe(asked)
+    // A later read never swaps what the owner is looking at.
+    expect(
+      stepDeleting(shown, { type: "usesRead", asks: 1, uses: NO_USES })
+    ).toBe(shown)
+  })
+
+  it("deletes when the confirm's read finds nothing the sheet didn't show", () => {
+    expect(confirm(shown, usedBy(1)).sheet.kind).toBe("deleting")
+    // A use gone since takes less than the owner agreed to.
+    expect(confirm(shown, NO_USES).sheet.kind).toBe("deleting")
+  })
+
+  it("asks again, never deletes, on a use that appeared since it showed", () => {
+    const again = confirm(shown, usedBy(1, 2))
+    expect(again.sheet).toMatchObject({
+      kind: "asking",
+      uses: usedBy(1, 2),
+      changed: "use",
+    })
+    expect(again.seq).toBe(shown.seq)
+    // Seen now, the next confirm deletes.
+    expect(confirm(again, usedBy(1, 2)).sheet.kind).toBe("deleting")
+  })
+
+  it("deletes nothing on a tap made while it said it was checking, whatever lands first", () => {
+    // Tapped while checking; the first read lands, then the tap's.
+    const tapped = asked
+    const landed = read(asked, usedBy(1))
+    expect(
+      stepDeleting(landed, {
+        type: "confirmed",
+        seq: tapped.seq,
+        asks: tapped.asks,
+        shown: tapped.shown,
+        uses: usedBy(1),
+      })
+    ).toBe(landed)
+    expect(confirm(asked, NO_USES)).toBe(asked)
+  })
+
+  it("deletes nothing on a second tap once the first asked again", () => {
+    const again = confirm(shown, usedBy(1, 2))
+    expect(again.sheet).toMatchObject({ kind: "asking", changed: "use" })
+    // The second tap was made on what the sheet showed before.
+    expect(
+      stepDeleting(again, {
+        type: "confirmed",
+        seq: shown.seq,
+        asks: shown.asks,
+        shown: shown.shown,
+        uses: usedBy(1, 2),
+      })
+    ).toBe(again)
+  })
+
+  it("asks again when a store it read turns unread", () => {
+    const unread: TakeUses = { ...usedBy(1), unread: ["videos"], doubts: [] }
+    const again = confirm(shown, unread)
+    // Asked again, but nothing started using it: it can't read a store now.
+    expect(again.sheet).toMatchObject({
+      kind: "asking",
+      uses: unread,
+      changed: "unread",
+    })
+    // Shown unread, and still unread: the owner agreed to that.
+    expect(confirm(again, unread).sheet.kind).toBe("deleting")
+  })
+
+  it("drops a confirm tapped on an earlier ask, or before an earlier confirm", () => {
+    // Keep it, then Delete… on another take: the first tap's read lands.
+    const other = read(
+      stepDeleting(stepDeleting(shown, { type: "closed" }), {
+        type: "asked",
+        of: "studio",
+        ids: ["t2"],
+      })
+    )
+    expect(
+      stepDeleting(other, {
+        type: "confirmed",
+        seq: shown.seq,
+        asks: shown.asks,
+        shown: shown.shown,
+        uses: NO_USES,
+      })
+    ).toBe(other)
+    // Two taps: the first deletes, the second's read changes nothing,
+    // even once home answered and the sheet offers Try again.
+    const deleting = confirm(shown, usedBy(1))
+    const ended = stepDeleting(deleting, {
+      type: "answered",
+      seq: deleting.seq,
+      end: endOf({ kind: "unreachable" }),
+    })
+    expect(
+      stepDeleting(ended, {
+        type: "confirmed",
+        seq: shown.seq,
+        asks: shown.asks,
+        shown: shown.shown,
+        uses: usedBy(1),
+      })
+    ).toBe(ended)
+  })
+
+  it("asks again on Try again when a use appeared since", () => {
+    const deleting = confirm(shown, usedBy(1))
+    const ended = stepDeleting(deleting, {
+      type: "answered",
+      seq: deleting.seq,
+      end: endOf({ kind: "unreachable" }),
+    })
+    expect(confirm(ended, usedBy(1, 3)).sheet).toMatchObject({
+      kind: "asking",
+      ids: ["t1"],
+      changed: "use",
+    })
+    expect(confirm(ended, usedBy(1)).sheet.kind).toBe("deleting")
+  })
+})
+
 describe("the sheet's step", () => {
-  const asking = stepDeleting(INITIAL_DELETING, {
+  const asked = stepDeleting(INITIAL_DELETING, {
     type: "asked",
     of: "studio",
     ids: ["t1", "t1", "t2"],
   })
+  const asking = read(asked)
 
   it("asks once, then deletes only on confirm", () => {
-    expect(asking.sheet).toEqual({
+    expect(asked.sheet).toEqual({
       kind: "asking",
       of: "studio",
       ids: ["t1", "t2"],
+      uses: null,
+      changed: false,
     })
+    // Nothing deletes while it says it is checking.
+    expect(confirm(asked)).toBe(asked)
     expect(stepDeleting(asking, { type: "closed" }).sheet).toEqual({
       kind: "closed",
     })
-    const deleting = stepDeleting(asking, { type: "confirmed" })
+    const deleting = confirm(asking)
     expect(deleting).toEqual({
       seq: 1,
-      sheet: { kind: "deleting", of: "studio", ids: ["t1", "t2"] },
+      asks: 1,
+      shown: 2,
+      sheet: {
+        kind: "deleting",
+        of: "studio",
+        ids: ["t1", "t2"],
+        uses: NO_USES,
+      },
     })
     // Nothing closes, asks again or confirms again while it deletes.
     expect(stepDeleting(deleting, { type: "closed" })).toBe(deleting)
-    expect(stepDeleting(deleting, { type: "confirmed" })).toBe(deleting)
+    expect(confirm(deleting)).toBe(deleting)
     expect(
       stepDeleting(deleting, { type: "asked", of: "studio", ids: ["t9"] })
     ).toBe(deleting)
   })
 
   it("ends on every answer, and offers Try again only where home was silent", () => {
-    const deleting = stepDeleting(asking, { type: "confirmed" })
+    const deleting = confirm(asking)
     const ends: ReadonlyArray<DeleteEnd> = [
       endOf({ kind: "unpaired" }),
       endOf({ kind: "busy" }),
@@ -200,9 +382,10 @@ describe("the sheet's step", () => {
         kind: "ended",
         of: "studio",
         ids: ["t1", "t2"],
+        uses: NO_USES,
         end,
       })
-      const retried = stepDeleting(ended, { type: "confirmed" })
+      const retried = confirm(ended)
       return retried.sheet.kind === "deleting" ? retried.sheet.ids : null
     })
     expect(again).toEqual([
@@ -216,7 +399,7 @@ describe("the sheet's step", () => {
   })
 
   it("drops an answer, or a let-go, to an earlier confirm", () => {
-    const first = stepDeleting(asking, { type: "confirmed" })
+    const first = confirm(asking)
     const end = endOf({
       kind: "answered",
       answers: [{ id: "t1", answer: gone(RECEIPT) }],
@@ -224,13 +407,14 @@ describe("the sheet's step", () => {
     expect(stepDeleting(first, { type: "answered", seq: 0, end })).toBe(first)
     const ended = stepDeleting(first, { type: "answered", seq: 1, end })
     // Done, then another recording asked about and confirmed.
-    const second: DeletingState = stepDeleting(
-      stepDeleting(stepDeleting(ended, { type: "closed" }), {
-        type: "asked",
-        of: "studio",
-        ids: ["t3"],
-      }),
-      { type: "confirmed" }
+    const second: DeletingState = confirm(
+      read(
+        stepDeleting(stepDeleting(ended, { type: "closed" }), {
+          type: "asked",
+          of: "studio",
+          ids: ["t3"],
+        })
+      )
     )
     expect(second.seq).toBe(2)
     expect(

@@ -1,0 +1,22 @@
+{
+  "id": "C1360",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/take-uses",
+    "apps/www/src/lib/my-data/deleting.ts",
+    "apps/www/src/lib/my-data/deleting-runtime.ts",
+    "apps/www/src/components/settings/device-my-data-delete.tsx",
+    "apps/www/src/components/settings/device-my-data.tsx",
+    "packages/ui/soundbites/src/components/take-library"
+  ],
+  "chose": "What uses a take is one compile-time union, TakeUse, joined in lib/take-uses from the references the phone already keeps: a spoken card part's pick (`using`), a Studio video's chosen take per shot, an idea answer's last take, and the takes an interview week or Rust Rounds week was sent with. It sits beside lib/take-about (what a take was said for), which joins the same stores, and reads them the same way: Studio's stores are handed in by a route. A row in My data and a card in Takes carry an \"In use · <what>\" badge. My data's one delete sheet (LA19) gains a stronger first panel naming each use and what it loses, a \"Delete it anyway\" button, and \"No spoken card, Studio video, idea or week you sent picks it\" when nothing does. The safety direction is held in the sheet's step: a store that couldn't be read is unread, never unused; what uses the takes is read again at every confirm; and a use or unread store the sheet didn't show asks again instead of deleting. A video home made that plays the take is home's to know, and no route says it yet, so the sheet keeps today's \"any essay video on home that plays it\" line until home's lists carry it. An interview week's take not yet sent is not counted as a use: until Send nothing picked it.",
+  "options": [
+    "one TakeUse union joined from the existing references, beside take-about (taken)",
+    "a flag per screen, each list working out its own uses",
+    "wait for home to say every use, and build the phone half after"
+  ],
+  "gray": "Which references count as a use, how strong the warning reads, and whether an unsent interview take counts are the owner's to notice; no check or earlier call settles them.",
+  "undo": "Record a call that moves this one; drop the uses port from DeletingPorts and the badges, and the sheet reads as before.",
+  "refs": ["#3447"]
+}

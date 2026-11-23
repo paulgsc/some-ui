@@ -1,7 +1,13 @@
 import type { JSX } from "react"
+import { keepStudioUseStores } from "@/routes/_dashboard/_apk/-studio-use-stores"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { DeviceMyDataKind } from "@/components/settings/device-my-data"
+
+// Studio's stores for what uses each take (INUSE): an `if` statement, which
+// the route's code splitting keeps in both its chunks; an expression
+// statement (`env && keep()`) it would drop.
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") keepStudioUseStores()
 
 /**
  * One kind of recording in My data (MY-DATA MD2, #2476): newest first.

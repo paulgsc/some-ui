@@ -15,6 +15,9 @@
  *   C460).
  * - **It asks once,** "Keep it" first: `asked` opens the sheet, `confirmed`
  *   deletes. While it deletes, the sheet can't be closed or asked again.
+ * - **It says what uses them** (INUSE, C1360): what uses each is read at
+ *   `asked` and again at each `confirmed`, and a use, or a store unread,
+ *   that the sheet didn't show asks again instead of deleting (TU1).
  * - **Home's answer is final but for silence.** A receipt (`200`) is gone
  *   for good; a `409` (home keeps it) and a `404` (home holds no such note)
  *   delete nothing and are never asked again. Only no answer, or home or
@@ -31,6 +34,8 @@ import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { DeleteAsked } from "@/lib/home-link/delete-note"
+import type { TakeUses } from "@/lib/take-uses/model"
+import { newUse, unseen } from "@/lib/take-uses/model"
 
 import type { KindItem, Of } from "./model"
 
@@ -216,35 +221,59 @@ export function retryable(
   }
 }
 
+/**
+ * What uses the notes a sheet names, as it showed them (INUSE, C1360): null
+ * while the first read is out, "Checking".
+ */
+type SheetUses = TakeUses | null
+
 /** The sheet. */
 export type DeleteSheet =
   | { readonly kind: "closed" }
-  /** Asking once: what goes and what stays, "Keep it" first. */
+  /**
+   * Asking once: what uses them, what goes and what stays, "Keep it" first.
+   * `changed`: asked again, since a use appeared after it was first shown
+   * (`use`), or a store it read can't say now (`unread`); `false` before.
+   */
   | {
       readonly kind: "asking"
       readonly of: DeletableKind
       readonly ids: ReadonlyArray<string>
+      readonly uses: SheetUses
+      readonly changed: false | "use" | "unread"
     }
   | {
       readonly kind: "deleting"
       readonly of: DeletableKind
       readonly ids: ReadonlyArray<string>
+      readonly uses: SheetUses
     }
   | {
       readonly kind: "ended"
       readonly of: DeletableKind
       readonly ids: ReadonlyArray<string>
+      readonly uses: SheetUses
       readonly end: DeleteEnd
     }
 
 export type DeletingState = {
   /** Each confirm's number: an answer to an earlier one changes nothing. */
   readonly seq: number
+  /** Each ask's number: a read of uses for an earlier one changes nothing. */
+  readonly asks: number
+  /**
+   * What the sheet shows of the notes' uses, numbered: each change to it,
+   * a first read or an ask again, is a new one, and a confirm counts only
+   * for the one it was tapped on (TU1).
+   */
+  readonly shown: number
   readonly sheet: DeleteSheet
 }
 
 export const INITIAL_DELETING: DeletingState = {
   seq: 0,
+  asks: 0,
+  shown: 0,
   sheet: { kind: "closed" },
 }
 
@@ -255,8 +284,24 @@ export type DeletingEvent =
       readonly of: DeletableKind
       readonly ids: ReadonlyArray<string>
     }
-  /** "Delete for good", or Try again. */
-  | { readonly type: "confirmed" }
+  /** What uses them, read for ask `asks`. */
+  | {
+      readonly type: "usesRead"
+      readonly asks: number
+      readonly uses: TakeUses
+    }
+  /**
+   * "Delete for good", or Try again, tapped at confirm `seq` of ask `asks`
+   * on what the sheet showed as `shown`, with what uses them read again
+   * since the tap.
+   */
+  | {
+      readonly type: "confirmed"
+      readonly seq: number
+      readonly asks: number
+      readonly shown: number
+      readonly uses: TakeUses
+    }
   | { readonly type: "answered"; readonly seq: number; readonly end: DeleteEnd }
   | { readonly type: "letGoEnded"; readonly seq: number; readonly let: boolean }
   /** "Keep it", Done, or the sheet dismissed. */
@@ -272,28 +317,98 @@ export function stepDeleting(
       if (sheet.kind === "deleting" || event.ids.length === 0) return state
       return {
         ...state,
-        sheet: { kind: "asking", of: event.of, ids: [...new Set(event.ids)] },
+        asks: state.asks + 1,
+        shown: state.shown + 1,
+        sheet: {
+          kind: "asking",
+          of: event.of,
+          ids: [...new Set(event.ids)],
+          uses: null,
+          changed: false,
+        },
+      }
+    }
+    case "usesRead": {
+      if (event.asks !== state.asks || sheet.kind !== "asking") return state
+      // What it shows is replaced only by a confirm's read, which asks again.
+      if (sheet.uses !== null) return state
+      return {
+        ...state,
+        shown: state.shown + 1,
+        sheet: { ...sheet, uses: event.uses },
       }
     }
     case "confirmed": {
-      if (sheet.kind === "asking")
+      // A tap counts only on the sheet as it showed then: a second tap, or
+      // one before what it shows changed, deletes nothing (TU1).
+      if (
+        event.asks !== state.asks ||
+        event.seq !== state.seq ||
+        event.shown !== state.shown
+      )
+        return state
+      if (sheet.kind === "asking") {
+        // Nothing is deleted while it says it is checking.
+        if (sheet.uses === null) return state
+        // A use the owner wasn't shown asks again, never deletes.
+        if (unseen(sheet.uses, event.uses, sheet.ids))
+          return {
+            ...state,
+            shown: state.shown + 1,
+            sheet: {
+              ...sheet,
+              uses: event.uses,
+              changed: newUse(sheet.uses, event.uses, sheet.ids)
+                ? "use"
+                : "unread",
+            },
+          }
         return {
+          ...state,
           seq: state.seq + 1,
-          sheet: { kind: "deleting", of: sheet.of, ids: sheet.ids },
+          sheet: {
+            kind: "deleting",
+            of: sheet.of,
+            ids: sheet.ids,
+            uses: event.uses,
+          },
         }
+      }
       if (sheet.kind !== "ended") return state
       const again = retryable(sheet.ids, sheet.end)
       if (again.length === 0) return state
+      if (unseen(sheet.uses, event.uses, again))
+        return {
+          ...state,
+          shown: state.shown + 1,
+          sheet: {
+            kind: "asking",
+            of: sheet.of,
+            ids: again,
+            uses: event.uses,
+            changed:
+              sheet.uses !== null && newUse(sheet.uses, event.uses, again)
+                ? "use"
+                : "unread",
+          },
+        }
       return {
+        ...state,
         seq: state.seq + 1,
-        sheet: { kind: "deleting", of: sheet.of, ids: again },
+        sheet: { kind: "deleting", of: sheet.of, ids: again, uses: event.uses },
       }
     }
     case "answered": {
       if (sheet.kind !== "deleting" || event.seq !== state.seq) return state
       return {
         ...state,
-        sheet: { kind: "ended", of: sheet.of, ids: sheet.ids, end: event.end },
+        sheet: {
+          kind: "ended",
+          of: sheet.of,
+          ids: sheet.ids,
+          uses: sheet.uses,
+          end: event.end,
+        },
       }
     }
     case "letGoEnded": {

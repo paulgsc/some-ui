@@ -39,7 +39,9 @@ describe("Spoken's runtime", () => {
     const { runtime, storage } = spokenPhone()
     const id = runtime.keep(PASTED)
     expect(spokenStore(storage).read()[0]?.id).toBe(id)
-    const full = spokenPhone({ store: { read: () => [], write: () => false } })
+    const full = spokenPhone({
+      store: { read: () => [], known: () => null, write: () => false },
+    })
     expect(full.runtime.keep(PASTED)).toBeNull()
     expect(full.runtime.cards.getSnapshot()).toEqual([])
   })

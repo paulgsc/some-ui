@@ -1,5 +1,6 @@
 import {
   addDays,
+  clockOf,
   dayOf,
   dayWords,
   formatDay,
@@ -272,5 +273,12 @@ describe("weekOpenNow", () => {
       weekOpenNow(weeks, opensOf, Date.parse("2026-11-01T00:00:00Z"))?.id
     ).toBe("w47")
     expect(weekOpenNow([], opensOf, 0)).toBeNull()
+  })
+})
+
+describe("clockOf", () => {
+  it("says a moment in Unix seconds as a weekday and a clock time", () => {
+    // 2026-11-22T23:05:00Z
+    expect(clockOf(1795388700, "UTC")).toBe("Sun 11:05 PM")
   })
 })

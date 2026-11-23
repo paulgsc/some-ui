@@ -34,6 +34,9 @@ import {
   receiptKind,
   receiptParts,
 } from "@/lib/my-data/words"
+import { unreadOf, USE_WORDS, usesAmong } from "@/lib/take-uses"
+import type { PanelUses } from "@/components/take-uses"
+import { panelSays, UsesPanel } from "@/components/take-uses"
 
 /**
  * The delete sheet's snapshot, and its runtime: My data's page and Takes ›
@@ -82,6 +85,16 @@ const ReceiptFacts = ({ receipt }: { receipt: Receipt }): JSX.Element => {
   )
 }
 
+/** Each panel's fill, and its title's colour. */
+const PANEL = {
+  goes: "bg-destructive/10",
+  stays: "bg-card border",
+} as const
+const PANEL_TITLE = {
+  goes: "text-destructive",
+  stays: "text-muted-foreground",
+} as const
+
 const Lines = ({
   title,
   lines,
@@ -91,11 +104,9 @@ const Lines = ({
   lines: ReadonlyArray<string>
   tone: "goes" | "stays"
 }): JSX.Element => (
-  <div
-    className={`space-y-2.5 rounded-2xl p-4 text-sm ${tone === "goes" ? "bg-destructive/10" : "bg-card border"}`}
-  >
+  <div className={`space-y-2.5 rounded-2xl p-4 text-sm ${PANEL[tone]}`}>
     <p
-      className={`text-xs font-bold tracking-wide uppercase ${tone === "goes" ? "text-destructive" : "text-muted-foreground"}`}
+      className={`text-xs font-bold tracking-wide uppercase ${PANEL_TITLE[tone]}`}
     >
       {title}
     </p>
@@ -212,6 +223,23 @@ export const DeleteSheetView = ({
   </MyDataSheet>
 )
 
+/** What the sheet's panel says of the notes it asks about (INUSE, TU1). */
+function sheetUses(
+  sheet: Extract<DeleteSheet, { kind: "asking" | "deleting" }>
+): { readonly used: number; readonly panel: PanelUses } {
+  if (sheet.uses === null) return { used: 0, panel: { kind: "checking" } }
+  const among = usesAmong(sheet.uses, sheet.ids)
+  return {
+    used: new Set(among.map(({ take }) => take)).size,
+    panel: {
+      kind: "read",
+      uses: among.map(({ use }) => use),
+      unread: unreadOf(sheet.uses, sheet.ids),
+      changed: sheet.kind === "asking" ? sheet.changed : false,
+    },
+  }
+}
+
 const Asking = ({
   sheet,
   onConfirm,
@@ -223,22 +251,25 @@ const Asking = ({
 }): JSX.Element => {
   const n = sheet.ids.length
   const deleting = sheet.kind === "deleting"
+  const { used, panel } = sheetUses(sheet)
+  const inUse = used > 0
+  const says = panelSays(panel)
+  const stays = says
+    ? DELETING.stays(sheet.of, n)
+    : [USE_WORDS.unused(n), ...DELETING.stays(sheet.of, n)]
   return (
     <>
       <SheetHeader className="px-0 text-left">
         <SheetTitle className="text-xl">
-          {DELETING.title(sheet.of, n)}
+          {inUse ? USE_WORDS.title(n, used) : DELETING.title(sheet.of, n)}
         </SheetTitle>
         <SheetDescription className="sr-only">
-          {DELETING.goesTitle}
+          {inUse ? USE_WORDS.inUseTitle : DELETING.goesTitle}
         </SheetDescription>
       </SheetHeader>
+      {says ? <UsesPanel uses={panel} /> : null}
       <Lines title={DELETING.goesTitle} lines={DELETING.goes(n)} tone="goes" />
-      <Lines
-        title={DELETING.staysTitle}
-        lines={DELETING.stays(sheet.of, n)}
-        tone="stays"
-      />
+      <Lines title={DELETING.staysTitle} lines={stays} tone="stays" />
       <div className="flex flex-col gap-2.5">
         <Button size="lg" className={BIG} onClick={onClose} disabled={deleting}>
           {DELETING.keep(n)}
@@ -248,9 +279,13 @@ const Asking = ({
           size="lg"
           className={BIG}
           onClick={onConfirm}
-          disabled={deleting}
+          disabled={deleting || panel.kind === "checking"}
         >
-          {deleting ? DELETING.deleting : DELETING.confirm(n)}
+          {deleting
+            ? DELETING.deleting
+            : inUse
+              ? USE_WORDS.confirm(n)
+              : DELETING.confirm(n)}
         </Button>
       </div>
     </>

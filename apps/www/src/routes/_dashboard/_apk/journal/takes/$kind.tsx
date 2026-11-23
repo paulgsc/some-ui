@@ -33,8 +33,10 @@ import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { noteOfTake } from "@/lib/take-about"
 import type { AboutStores } from "@/lib/take-about"
 import { takePorts } from "@/lib/take-library/ports"
+import { libraryUses } from "@/lib/take-uses"
 import { PairHomeLink } from "@/components/pair-home-link"
 import { StudioPage } from "@/components/studio/layout"
+import { UseMark } from "@/components/take-uses"
 
 /** This phone's ideas and videos, for what each take was said for. */
 const STORES: AboutStores = {
@@ -60,6 +62,12 @@ const PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? { ...takePorts(STORES), names: NAMES }
     : null
+
+/** Each take's mark of what uses it (INUSE), in the Android app alone. */
+const USES =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? libraryUses((uses, unread) => <UseMark uses={uses} unread={unread} />)
+    : undefined
 
 /**
  * A game's moment log, read through the home link: the Android app's alone,
@@ -165,6 +173,7 @@ const KindPage = (): JSX.Element => {
         <TakeLibrary
           key={`${kind}:${about ?? ""}`}
           ports={PORTS}
+          uses={USES}
           pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
           compartment={kind}
           row={toEpisode}

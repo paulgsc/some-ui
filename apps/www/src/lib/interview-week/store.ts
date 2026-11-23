@@ -24,7 +24,7 @@ import type { InterviewSent } from "./spec"
 
 const WEEKS_KEY = "some-ui:interview-week.weeks"
 const DRAFTS_KEY = "some-ui:interview-week.drafts"
-const SENT_KEY = "some-ui:interview-week.sent"
+export const SENT_KEY = "some-ui:interview-week.sent"
 const LADDER_KEY = "some-ui:interview-week.ladder"
 const PACE_KEY = "some-ui:interview-week.band-pace"
 

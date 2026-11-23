@@ -4,13 +4,15 @@
  * every feed's screen says is `VIDEOS_WORDS`; what differs by feed (its name,
  * what an episode is called, how one is labelled) is `FEED_WORDS`.
  */
-import { addDays, isoWeeksIn } from "@some-ui/core-utils"
+import { addDays, clockOf, isoWeeksIn } from "@some-ui/core-utils"
 import { WEEK_ID, weekNumber } from "@some-ui/rust-rounds/entry"
 
 import { essayName, isEssayKey } from "@/lib/cards-essay-key"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 
+import type { Produced, ShownAsset } from "./assets"
 import type { Episode, Feed, FetchFailure } from "./model"
+import type { StoppedWhy } from "./step-conveyor"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
 export function share(done: number, total: number): number {
@@ -266,9 +268,69 @@ export const VIDEOS_WORDS = {
   linkAway: "Home didn't answer, so the link isn't saved. Try again.",
   linkOlder: "Home didn't keep the link. Update home, then try again.",
   onYouTube: "Watch on YouTube",
-  /** Its chapters, for the upload's YouTube description (SFEED4). */
-  chapters: "Its chapters",
-  chaptersLine:
-    "Paste them into the YouTube description when you upload it, and YouTube shows each as a chapter.",
-  chaptersWhat: "the chapters",
 } as const
+
+/**
+ * What an episode's page says of each file its render left beside the video
+ * (ASSETS-R, C1300; its chapters, SFEED4): the file and what to do with it,
+ * that it isn't made and whether home can make it now, and, once asked for,
+ * where it stands on the conveyor (`./step-conveyor`, in Studio's renders'
+ * own station words) and since when.
+ */
+export const ASSET_WORDS = {
+  thumbnail: {
+    heading: "Its thumbnail",
+    there: "Save it, then set it as the video's thumbnail in YouTube Studio.",
+    alt: "The episode's thumbnail",
+    missing:
+      "Home made none with this episode. It can make one now from the episode, and the video stays as it is.",
+    line: "Home makes it from the episode, one thing at a time, and keeps it with the episode.",
+  },
+  description: {
+    heading: "Its chapters",
+    there:
+      "Paste them into the YouTube description when you upload it, and YouTube shows each as a chapter.",
+    what: "the chapters",
+    missing:
+      "This episode has none: they're made with the video, and it has too few scenes or came before chapters did.",
+    line: "Home makes them with the video, and keeps them with it.",
+  },
+  conveyor: "Where it is",
+  why: {
+    tooLong: "Its video is longer than home makes, so this waits on the video.",
+    tooLarge:
+      "Its video is larger than home keeps, so this waits on the video.",
+    overflow:
+      "Its video's scenes run past the frame, so this waits on the video.",
+    noVideo: "It's made once the episode's video is.",
+    missingInput:
+      "Something the episode uses isn't on home yet; it moves on by itself once it is.",
+    couldNot:
+      "Home tried and couldn't make it from this episode, and trying again would come out the same.",
+    held: "Home is holding it until something it needs changes; it moves on by itself.",
+  } satisfies Record<StoppedWhy, string>,
+  when: {
+    asked: (at: number, timeZone?: string): string =>
+      `Asked for ${clockOf(at, timeZone)}.`,
+    started: (at: number, timeZone?: string): string =>
+      `In the oven since ${clockOf(at, timeZone)}.`,
+    ended: (at: number, timeZone?: string): string =>
+      `Off the line ${clockOf(at, timeZone)}.`,
+  },
+  generate: "Generate",
+  asking: "Asking home…",
+  save: "Save",
+  saveFailed: "The share sheet didn't open. Try again.",
+  produced: {
+    older:
+      "Home can't make this file for this episode: it no longer holds the episode, or it's from before it could.",
+    unreadable: "Home didn't answer, so nothing was asked. Try again.",
+  } satisfies Record<Exclude<Produced["kind"], "step">, string>,
+} as const satisfies {
+  readonly [A in ShownAsset]: {
+    readonly heading: string
+    readonly there: string
+    readonly missing: string
+    readonly line: string
+  } & Readonly<Record<string, string>>
+} & Readonly<Record<string, unknown>>
