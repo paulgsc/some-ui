@@ -1,32 +1,17 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
-import {
-  IDEAS_KEY,
-  keptIdeasForHome,
-  keptIdeaStore,
-  phoneProjectStore,
-  phoneStudioKeeping,
-} from "@some-ui/soundbites"
+import { keptIdeasForHome, phoneStudioKeeping } from "@some-ui/soundbites"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { keepIdeas } from "@/lib/idea-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
-import { keepUseStores, keptWhole } from "@/lib/take-uses"
 
-/**
- * Studio's ideas and videos, for what uses each take (INUSE,
- * `lib/take-uses`): handed in when this route loads, before any page under
- * it asks. My data's kind route (`./settings/data/$kind.tsx`) hands the
- * same in; the first hand-in stands.
- */
-// An `if` statement, which the route's code splitting keeps in both its
-// chunks; an expression statement (`env && keep(...)`) it would drop.
-if (import.meta.env.VITE_DEVICE_BACKEND === "true")
-  keepUseStores({
-    ideas: () => keptWhole(IDEAS_KEY, () => keptIdeaStore().list()),
-    videos: () => phoneProjectStore().listWhole(),
-    subscribe: (listener) => phoneProjectStore().subscribe(listener),
-  })
+import { keepStudioUseStores } from "./-studio-use-stores"
+
+// Studio's stores for what uses each take (INUSE): an `if` statement, which
+// the route's code splitting keeps in both its chunks; an expression
+// statement (`env && keep()`) it would drop.
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") keepStudioUseStores()
 
 /**
  * Every Studio page, whichever opens first: in the Android app, Studio's

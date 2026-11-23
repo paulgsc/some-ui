@@ -1,28 +1,13 @@
 import type { JSX } from "react"
-import {
-  IDEAS_KEY,
-  keptIdeaStore,
-  phoneProjectStore,
-} from "@some-ui/soundbites"
+import { keepStudioUseStores } from "@/routes/_dashboard/_apk/-studio-use-stores"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { keepUseStores, keptWhole } from "@/lib/take-uses"
 import { DeviceMyDataKind } from "@/components/settings/device-my-data"
 
-/**
- * Studio's ideas and videos, for what uses each take (INUSE,
- * `lib/take-uses`): handed in when this route loads, before any page under
- * it asks, so a sheet opened from `?note=` reads them. Studio's layout
- * (`../../journal.tsx`) hands the same in; the first hand-in stands.
- */
-// An `if` statement, which the route's code splitting keeps in both its
-// chunks; an expression statement (`env && keep(...)`) it would drop.
-if (import.meta.env.VITE_DEVICE_BACKEND === "true")
-  keepUseStores({
-    ideas: () => keptWhole(IDEAS_KEY, () => keptIdeaStore().list()),
-    videos: () => phoneProjectStore().listWhole(),
-    subscribe: (listener) => phoneProjectStore().subscribe(listener),
-  })
+// Studio's stores for what uses each take (INUSE): an `if` statement, which
+// the route's code splitting keeps in both its chunks; an expression
+// statement (`env && keep()`) it would drop.
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") keepStudioUseStores()
 
 /**
  * One kind of recording in My data (MY-DATA MD2, #2476): newest first.
