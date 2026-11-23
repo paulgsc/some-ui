@@ -2627,7 +2627,10 @@
         "some-ui:apps/www/tests/record/call-recording.ts",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
-        "server:apps/servers/file_host/src/routes/feed_videos.rs"
+        "server:apps/servers/file_host/src/routes/feed_videos.rs",
+        "server:apps/servers/file_host/src/renders_again.rs",
+        "some-ui:apps/www/tests/record/asset.ts",
+        "some-ui:apps/www/tests/record/asset-make.ts"
       ],
       "modules": ["feed_videos", "renders"],
       "objectives": [
