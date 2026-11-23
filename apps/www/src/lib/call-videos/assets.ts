@@ -81,6 +81,11 @@ type NoneReason = (typeof NONE_REASONS)[number]
 const isNoneReason = (value: string): value is NoneReason =>
   NONE_REASONS.some((reason) => reason === value)
 
+/** The two families share no reason: a reason is held or none, never both. */
+type Disjoint<A, B> = [Extract<A, B>] extends [never] ? true : never
+const REASONS_DISJOINT: Disjoint<HeldReason, NoneReason> = true
+void REASONS_DISJOINT
+
 /**
  * One file's step. Its times are home's, in Unix seconds as the renders
  * board gives them, from what is on its drive: when it
