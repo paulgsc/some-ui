@@ -110,6 +110,13 @@ describe("themeCss", () => {
     }
   })
 
+  it("marks each picker row checked and focused by its own radio", () => {
+    for (const id of ["device", ...THEMES.map((t) => t.id)])
+      expect(css, id).toContain(
+        `.themes:has(#theme-${id}:checked) [for="theme-${id}"] .pick {`
+      )
+  })
+
   it("refuses a set without the device's two themes", () => {
     expect(() =>
       themeCss(THEMES.filter((t) => t.id !== DEVICE_THEMES.dark))
@@ -156,7 +163,7 @@ describe("the landing's colours", () => {
     const header = page.slice(0, page.indexOf("</header>"))
     const radios = [
       ...header.matchAll(
-        /<input type="radio" name="theme" id="theme-([a-z-]+)" autocomplete="off"( checked)?/g
+        /<input type="radio" name="theme" id="theme-([a-z-]+)" autocomplete="off" aria-label="[^"]+"( checked)?/g
       ),
     ]
     expect(radios.map((r) => r[1])).toEqual([
@@ -170,14 +177,31 @@ describe("the landing's colours", () => {
     // The app's switcher's own marks (lucide's Palette and Monitor), as the
     // build draws them: the palette opens the picker, and the monitor marks
     // the device's choice.
-    const summary = header.slice(
-      header.indexOf("<summary"),
-      header.indexOf("</summary>")
+    const toggle = header.slice(
+      header.indexOf('<button type="button" class="themes-toggle"'),
+      header.indexOf("</button>", header.indexOf("themes-toggle"))
     )
-    expect(summary).toContain(THEME_ICONS.palette)
-    expect(summary).toContain(LANDING_WORDS.theme)
+    expect(toggle).toContain('popovertarget="themes-open"')
+    expect(toggle).toContain(THEME_ICONS.palette)
+    expect(toggle).toContain(LANDING_WORDS.theme)
+    // The radios sit in the popover, so focus in it goes back to the
+    // palette when it closes; their rows sit beside it, so a click on one
+    // is a click outside it, which closes it (C1184).
+    const popover = header.slice(
+      header.indexOf('<div id="themes-open" popover'),
+      header.indexOf('<div class="themes-panel"')
+    )
+    expect(popover.match(/<input type="radio"/g)).toHaveLength(
+      THEMES.length + 1
+    )
+    expect(popover).not.toContain("<label")
+    const panel = header.slice(header.indexOf('<div class="themes-panel"'))
+    expect(panel.match(/<label for="theme-[a-z-]+">/g)).toHaveLength(
+      THEMES.length + 1
+    )
+    expect(panel).not.toContain("<input")
     expect(header).toMatch(
-      /id="theme-device"[^>]*\/><span class="swatch swatch--icon"/
+      /<label for="theme-device"><span class="pick"><\/span><span class="swatch swatch--icon"/
     )
     expect(header).toContain(THEME_ICONS.device)
     expect(page + head).not.toMatch(/<script|onchange|onclick/i)

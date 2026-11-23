@@ -36,7 +36,9 @@ from `@some-ui/styles` when the site is built, and the page names no colour of i
 The device's light or dark setting picks Mochi or Mochi Night, and the header's theme
 picker (radios, no script) tries any other; the page keeps nothing about the choice. It
 opens behind the app's own palette icon, drawn from lucide at build time
-(`theme-icons.ts`), as the app's theme switcher shows it.
+(`theme-icons.ts`), as the app's theme switcher shows it, and closes on a click outside
+it, on Escape, or when a theme is picked: its open state is a popover, which the browser
+dismisses.
 
 ## The mochi
 

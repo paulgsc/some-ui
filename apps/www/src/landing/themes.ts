@@ -134,6 +134,13 @@ export function themeCss(themes: ReadonlyArray<LandingTheme>): string {
     ...themes.map(
       (t) => `:root:has(#${pickId(t.id)}:checked) { ${declarations(t)} }`
     ),
+    // Each theme's row shows its radio's state: the radios sit in the
+    // picker's popover, and their rows beside it (themePicker).
+    ...(["device", ...themes.map((t) => t.id)] as const).map((id) => {
+      const radio = `#${pickId(id)}`
+      const row = `[for="${pickId(id)}"]`
+      return `.themes:has(${radio}:checked) ${row} .pick { background: var(--accent); box-shadow: inset 0 0 0 3px var(--card), 0 0 0 1.5px var(--accent); } .themes:has(${radio}:focus-visible) ${row} .pick-name { outline: 2px solid var(--accent); outline-offset: 2px; }`
+    }),
   ].join("\n      ")
 }
 
@@ -152,7 +159,7 @@ export type ThemePicker = {
 }
 
 /**
- * The picker: a disclosure of radios behind the palette icon, one a theme,
+ * The picker: radios behind the palette icon, one a theme,
  * the first following the device. Each theme shows its ground and accent
  * beside its name; the device's shows the monitor.
  */
@@ -163,32 +170,46 @@ export function themePicker(
 ): string {
   const swatch = (from: string, to: string): string =>
     `<span class="swatch" aria-hidden="true" style="--sw-bg: ${from}; --sw-fg: ${to}"></span>`
-  const option = (
-    id: SessionThemeId | "device",
-    label: string,
-    mark: string
-  ): string =>
-    // autocomplete off: a browser restoring the last pick on reload would
-    // keep something about the reader.
-    `<label><input type="radio" name="theme" id="${pickId(id)}" autocomplete="off"${id === "device" ? " checked" : ""} />${mark}<span>${e(label)}</span></label>`
-  return `<details class="themes">
-          <summary title="${e(words.theme)}"><span class="theme-icon" aria-hidden="true">${icons.palette}</span><span class="theme-name">${e(words.theme)}</span></summary>
-          <fieldset>
-            <legend>${e(words.theme)}</legend>
-            ${[
-              option(
-                "device",
-                words.themeDevice,
-                `<span class="swatch swatch--icon" aria-hidden="true">${icons.device}</span>`
-              ),
-              ...themes.map((t) =>
-                option(
-                  t.id,
-                  t.label,
-                  swatch(t.colours["--background"], t.colours["--primary"])
-                )
-              ),
-            ].join("\n            ")}
-          </fieldset>
-        </details>`
+  const options: ReadonlyArray<{
+    readonly id: SessionThemeId | "device"
+    readonly label: string
+    readonly mark: string
+  }> = [
+    {
+      id: "device",
+      label: words.themeDevice,
+      mark: `<span class="swatch swatch--icon" aria-hidden="true">${icons.device}</span>`,
+    },
+    ...themes.map((t) => ({
+      id: t.id,
+      label: t.label,
+      mark: swatch(t.colours["--background"], t.colours["--primary"]),
+    })),
+  ]
+  // The open state is a popover, unseen, that holds the radios (C1184):
+  // the browser closes it on a click anywhere outside it or on Escape, and
+  // focus inside it goes back to the palette when it closes. Each theme's
+  // row is a label beside it, not in it, so a click on one picks the theme
+  // and, being outside, closes the picker. The rows show while it is open.
+  // autocomplete off: a browser restoring the last pick on reload would
+  // keep something about the reader.
+  return `<div class="themes">
+          <button type="button" class="themes-toggle" popovertarget="themes-open" title="${e(words.theme)}"><span class="theme-icon" aria-hidden="true">${icons.palette}</span><span class="theme-name">${e(words.theme)}</span></button>
+          <div id="themes-open" popover role="radiogroup" aria-label="${e(words.theme)}">
+            ${options
+              .map(
+                (o) =>
+                  `<input type="radio" name="theme" id="${pickId(o.id)}" autocomplete="off" aria-label="${e(o.label)}"${o.id === "device" ? " checked" : ""} />`
+              )
+              .join("\n            ")}
+          </div>
+          <div class="themes-panel" aria-hidden="true">
+            ${options
+              .map(
+                (o) =>
+                  `<label for="${pickId(o.id)}"><span class="pick"></span>${o.mark}<span class="pick-name">${e(o.label)}</span></label>`
+              )
+              .join("\n            ")}
+          </div>
+        </div>`
 }
