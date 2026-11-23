@@ -4,7 +4,7 @@ The host says the intro, each chapter line and the close; the narrator says each
 
 ## intro
 
-This is an open question, not an explainer. Two repositories, one person, and a crowd of agent sessions all merge into GitHub on a free personal account, and the merges wait in line. I'll show where the time goes, with the numbers, what we settled on, and why we still don't like it. If you know a better pattern that stays on GitHub and costs nothing, that's the part I'm asking for. It's as of November twenty-first, twenty twenty-six.
+This is an open question, not an explainer. Two repositories, one person, and a crowd of agent sessions all merge into GitHub on a free personal account, and the merges wait in line. I'll show where the time goes, with the numbers, what we settled on, and why we still don't like it. If you know a better pattern that stays on GitHub and costs nothing, that's the part I'm asking for. It's as of November twenty-third, twenty twenty-six.
 
 ## P1
 
@@ -70,7 +70,7 @@ So the answer has to keep four things. It stays on GitHub. It costs nothing. Mai
 
 _Chapter three. What we chose._
 
-What we settled on has two parts. First, a branch does all its settling before it ever opens a pull request: review, fixes, and the checks a laptop can run. Then three to five settled branches land together in one bucket, so one CI round covers all of them. Second, fix the filter, so a change only runs the jobs it can fail.
+What we settled on has two parts. First, a branch does all its settling before it ever opens a pull request: review, fixes, and the checks a laptop can run. Then one to seven settled branches land together in one bucket, so one CI round covers all of them. Second, fix the filter, so a change only runs the jobs it can fail.
 
 ## H1
 
@@ -92,4 +92,4 @@ Here's where I'd like help. A free organization seems to get the merge queue on 
 
 ## close
 
-The audit's data and scripts, and the workflow file, are public in the some-ui repository, and the description links each. If you have a pattern that keeps all four constraints, the issue is open.
+The audit's data and scripts are public in our testing repository, the workflow file in some-ui, and the description links each. If you have a pattern that keeps all four constraints, the issue is open.

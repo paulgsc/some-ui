@@ -29,7 +29,7 @@ It holds a draft cut list, its narration, real stills, and what the pipeline can
 | P8    | The same PR, run again and again                                               | GitHub: Actions run list                 | `stills/actions-pr-runs.png`     | **no** (a page)  |
 | K1    | The merge queue is offered to organizations' public repos; ours are a person's | GitHub Docs, "Who can use this feature?" | `stills/docs-merge-queue.png`    | **no** (a page)  |
 | K2    | What a better pattern must keep                                                | cheat-sheet card                         | —                                | yes              |
-| W1    | C1021: settle, then land 3–5 per bucket; CI1 fixes the filter                  | flow card                                | C1021, CI1                       | yes              |
+| W1    | C1021: settle, then land 1–7 per bucket; CD1 fixed the filter                  | flow card                                | C1021, CI1                       | yes              |
 | H1    | A red bucket, coarse reverts, cross-repo pairs, one runner pool                | cheat-sheet card, △                      | —                                | yes              |
 | H2    | The server half of #3376 waited, then re-ran                                   | GitHub: server#1098 checks               | `stills/server-1098-checks.png`  | **no** (a page)  |
 | Q1    | A free org? a merge train? gate after merge? yours?                            | cheat-sheet card, ✋                     | —                                | yes              |

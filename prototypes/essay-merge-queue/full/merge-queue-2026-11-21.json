@@ -50,7 +50,7 @@
       ],
       "spoken": {
         "role": "intro",
-        "said": "This is an open question, not an explainer. Two repositories, one person, and a crowd of agent sessions all merge into GitHub on a free personal account, and the merges wait in line. I'll show where the time goes, with the numbers, what we settled on, and why we still don't like it. If you know a better pattern that stays on GitHub and costs nothing, that's the part I'm asking for. It's as of November twenty-first, twenty twenty-six."
+        "said": "This is an open question, not an explainer. Two repositories, one person, and a crowd of agent sessions all merge into GitHub on a free personal account, and the merges wait in line. I'll show where the time goes, with the numbers, what we settled on, and why we still don't like it. If you know a better pattern that stays on GitHub and costs nothing, that's the part I'm asking for. It's as of November twenty-third, twenty twenty-six."
       },
       "durationMs": 31900
     },
@@ -348,7 +348,7 @@
         "kind": "screen",
         "of": {
           "from": "pages",
-          "url": "https://github.com/paulgsc/some-ui/actions?query=event%3Apull_request",
+          "url": "https://github.com/paulgsc/some-ui/actions?query=event%3Apull_request+branch%3Aclaude%2Fcoord-fast-track-store",
           "capturedAt": "2026-11-21T23:46:53.350Z",
           "file": "github-com-paulgsc-some-ui-actions-46008fa356ee.png"
         }
@@ -444,7 +444,7 @@
               {
                 "badge": "main",
                 "label": "Bucket",
-                "note": "Three to five settled branches in one PR"
+                "note": "One to seven settled branches in one PR"
               },
               {
                 "badge": "main",
@@ -452,9 +452,9 @@
                 "note": "Instead of one per branch, per merge"
               },
               {
-                "badge": "pr",
+                "badge": "main",
                 "label": "Fix the filter",
-                "note": "CI1, with two gates, in flight"
+                "note": "CD1 (#3388) and #3394, landed"
               }
             ]
           }
@@ -463,7 +463,7 @@
       "spoken": {
         "role": "scene",
         "chapter": "Chapter three. What we chose.",
-        "narration": "What we settled on has two parts. First, a branch does all its settling before it ever opens a pull request: review, fixes, and the checks a laptop can run. Then three to five settled branches land together in one bucket, so one CI round covers all of them. Second, fix the filter, so a change only runs the jobs it can fail."
+        "narration": "What we settled on has two parts. First, a branch does all its settling before it ever opens a pull request: review, fixes, and the checks a laptop can run. Then one to seven settled branches land together in one bucket, so one CI round covers all of them. Second, fix the filter, so a change only runs the jobs it can fail."
       },
       "durationMs": 27700
     },
@@ -481,7 +481,7 @@
             "rows": [
               {
                 "task": "A red bucket",
-                "command": "3-5 branches wait",
+                "command": "1-7 branches wait",
                 "note": "one flaky test holds back every branch in it",
                 "badge": "gap"
               },
@@ -597,8 +597,8 @@
               },
               {
                 "task": "The audit",
-                "command": "prototypes/ci-audit",
-                "note": "branch claude/ci-audit-data: data and scripts"
+                "command": "paulgsc/testing@a5ec27e",
+                "note": "recon/2026-11-21-ci-audit/: data and scripts"
               },
               {
                 "task": "The filter",
@@ -619,7 +619,7 @@
       ],
       "spoken": {
         "role": "close",
-        "said": "The audit's data and scripts, and the workflow file, are public in the some-ui repository, and the description links each. If you have a pattern that keeps all four constraints, the issue is open."
+        "said": "The audit's data and scripts are public in our testing repository, the workflow file in some-ui, and the description links each. If you have a pattern that keeps all four constraints, the issue is open."
       },
       "durationMs": 14600
     }
