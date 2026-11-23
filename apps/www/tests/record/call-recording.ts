@@ -21,7 +21,7 @@ import {
 import type { CallWeek } from "@some-ui/video-render"
 
 import { fail, here, launchChromium } from "./command"
-import { callFacts } from "./thumbnail-facts"
+import { callFacts, callPartFolder } from "./thumbnail-facts"
 import {
   placeBed,
   POLICY_OPTIONS,
@@ -176,7 +176,7 @@ export async function recordCall(
       preview
         ? values.out
         : of > 1
-          ? join(values.out, week.week.from, `part-${String(part)}`)
+          ? join(values.out, week.week.from, callPartFolder(part))
           : join(values.out, week.week.from)
     )
     const voices = callVoices(scenes)

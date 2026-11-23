@@ -1,18 +1,20 @@
 /**
  * An episode's files beside its video, on its page (ASSETS-R, C1300): each
  * member of `@some-ui/video-render/assets`'s `EpisodeAsset` the page shows,
- * what home says of it, and what asking home to make one came to. Pure, so
- * every answer is held by a test; the page reads each with its own query and
- * asks with one send (`./index`).
+ * where home says each stands, and what asking home to make one came to.
+ * Pure, so every answer is held by a test; the page reads each file with its
+ * own query and asks with one send (`./index`).
  *
  * The page reads each file itself (`GET /feeds/:feed/videos/:key/<asset>`),
- * so a home from before this list still shows what it serves; the list's
- * `assets` (`./model`) says only what a file it lacks is doing: not made,
- * asked for, or tried and not made. The video is the page's own row, so it is
- * not among these.
+ * so a home from before the list's steps still shows what it serves. The
+ * list's `assets` (`./model`) carries a `Step` per file (paulgsc/server
+ * `routes::feed_videos`): where a file home lacks stands on the line, which
+ * the page draws as the conveyor every render moves along (`./conveyor`,
+ * the owner, 2026-11-22). The video is the page's own row, so it is not
+ * among these.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, readAs } from "@some-ui/core-utils"
 import { isAloneAsset } from "@some-ui/video-render/assets"
 import type { AloneAsset, EpisodeAsset } from "@some-ui/video-render/assets"
 import { z } from "zod"
@@ -23,28 +25,79 @@ export const SHOWN_ASSETS = ["thumbnail", "description"] as const
 export type ShownAsset = (typeof SHOWN_ASSETS)[number]
 
 /**
- * What home's list says of a file (`assets` on each episode): there; not
- * made; asked for and waiting its turn, or being made; or tried and not made
- * (a title no readable size fits, say), which asking again would not change.
+ * Where a file stands, as home says (`Step`): not made; asked for; waiting
+ * its turn on home's one line; being made; made; or stopped, either tried and
+ * not made (`failed`, which asking again would not change) or held by
+ * something that has to change first (`blocked`, with its `reason`).
  */
-export const AssetStateSchema = z.enum([
-  "present",
+export const STEP_STATES = [
   "missing",
-  "queued",
-  "running",
+  "asked",
+  "waiting",
+  "rendering",
+  "done",
   "failed",
-])
+  "blocked",
+] as const
 
-export type AssetState = z.infer<typeof AssetStateSchema>
+export type StepState = (typeof STEP_STATES)[number]
 
-/** Each file's state, as far as home's list says: absent from an older home. */
+/**
+ * Why home holds a step (`reason`): its render policy refused the video, a
+ * cards essay's input isn't on home, there's no video yet, or the recorder
+ * made nothing. A reason this phone doesn't know reads as made nothing.
+ */
+export const STEP_REASONS = [
+  "too-long",
+  "too-large",
+  "overflow",
+  "no-video",
+  "take-missing",
+  "take-unheard",
+  "snip-missing",
+  "snip-gone",
+  "clip-missing",
+  "recorder",
+] as const
+
+export type StepReason = (typeof STEP_REASONS)[number]
+
+export const isStepReason = (value: string): value is StepReason =>
+  STEP_REASONS.some((reason) => reason === value)
+
+/**
+ * One file's step. Its times are home's, from what is on its drive: when it
+ * was asked for and when home started on it only while it is under way,
+ * when it ended once it has.
+ */
+export const StepSchema = z.object({
+  asset: z.enum([
+    "video",
+    "thumbnail",
+    "description",
+  ] satisfies ReadonlyArray<EpisodeAsset>),
+  state: z.enum(STEP_STATES),
+  askedAt: z.string().min(1).optional(),
+  startedAt: z.string().min(1).optional(),
+  endedAt: z.string().min(1).optional(),
+  reason: z.string().min(1).optional(),
+  itemCount: z.number().int().nonnegative().optional(),
+})
+
+export type Step = z.infer<typeof StepSchema>
+
+/**
+ * Each file's step, as far as home's list says: absent from an older home. A
+ * step this phone can't read (a state home learned since) is dropped alone,
+ * so it never takes the episode's list down with it.
+ */
 export const AssetsSchema = z
   .object({
-    video: AssetStateSchema,
-    thumbnail: AssetStateSchema,
-    description: AssetStateSchema,
-  } satisfies Record<EpisodeAsset, typeof AssetStateSchema>)
-  .partial()
+    video: StepSchema.optional().catch(undefined),
+    thumbnail: StepSchema.optional().catch(undefined),
+    description: StepSchema.optional().catch(undefined),
+  } satisfies Record<EpisodeAsset, z.ZodType<Step | undefined>>)
+  .catch({})
 
 export type Assets = z.infer<typeof AssetsSchema>
 
@@ -86,66 +139,92 @@ export function readAsset<A extends ShownAsset>(
 
 /**
  * What the page shows for a file: its content; that it isn't made, with
- * Generate where home can make it on its own (`ASSET_MADE`, `isAloneAsset`); that home was
- * asked and will make it; that home tried and couldn't; or nothing, while
- * it is read, or where home can't say.
+ * Generate where home can make it on its own (`isAloneAsset`); where it
+ * stands on the line, once asked for or stopped; or nothing, while it is
+ * read, or where home can't say.
  */
 export type AssetView<A extends ShownAsset> =
   | { readonly kind: "there"; readonly content: AssetContent[A] }
   /** `generate`: the file to ask home for, where it can make it alone. */
   | { readonly kind: "missing"; readonly generate: AloneAsset | null }
-  | { readonly kind: "asked" }
-  | { readonly kind: "failed" }
+  | { readonly kind: "line"; readonly step: Step }
   | { readonly kind: "hidden" }
 
 /**
- * The view of `asset` from its read and the list's word on it. A file read
- * there is shown, whatever the list says; one home holds none of is shown
- * by the list's state, and hidden when the list says nothing (an older home,
+ * The newer word on a file: the list's step, or the step home answered an
+ * ask with (`asked`), whichever has moved further along; a stamp only the
+ * earlier one carries is kept, since home keeps a step's earlier times only
+ * while it is under way.
+ */
+export function latestStep(
+  listed: Step | undefined,
+  asked: Step | null
+): Step | undefined {
+  if (asked === null) return listed
+  if (listed === undefined || listed.state === "missing") return asked
+  return {
+    ...listed,
+    ...(listed.askedAt === undefined && asked.askedAt !== undefined
+      ? { askedAt: asked.askedAt }
+      : {}),
+    ...(listed.startedAt === undefined && asked.startedAt !== undefined
+      ? { startedAt: asked.startedAt }
+      : {}),
+  }
+}
+
+/**
+ * The view of `asset` from its read and its step. A file read there is
+ * shown, whatever the step says; one home holds none of is shown by its
+ * step, made included (made since the file was read, which the page reads
+ * again as the step moves), and hidden when there is none (an older home,
  * whose page showed no such file).
  */
 export function assetView<A extends ShownAsset>(
   asset: A,
   read: AssetRead<A> | undefined,
-  state: AssetState | undefined
+  step: Step | undefined
 ): AssetView<A> {
   if (read === undefined || read.kind === "unreadable")
     return { kind: "hidden" }
   if (read.kind === "there") return read
-  switch (state) {
-    case undefined:
-    case "present": {
-      // Listed but not served: let go or changed since the list was read.
-      return { kind: "hidden" }
-    }
+  if (step === undefined) return { kind: "hidden" }
+  switch (step.state) {
     case "missing": {
       return { kind: "missing", generate: isAloneAsset(asset) ? asset : null }
     }
-    case "queued":
-    case "running": {
-      return { kind: "asked" }
-    }
-    case "failed": {
-      return { kind: "failed" }
+    case "asked":
+    case "waiting":
+    case "rendering":
+    case "done":
+    case "failed":
+    case "blocked": {
+      return { kind: "line", step }
     }
     default: {
-      return assertNever(state)
+      return assertNever(step.state)
     }
   }
 }
 
 /** What asking home to make a file came to. */
 export type Produced =
-  /** Home will make it, or already has it or is making it. */
-  | { readonly kind: "asked" }
-  /** A home from before this ask: it serves no such path. */
+  /** Home took the ask, or has the file or was making it: where it stands. */
+  | { readonly kind: "step"; readonly step: Step }
+  /** Home holds no such episode, or is from before this ask. */
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
-/** Home's answer to `POST …/produce`. */
+/**
+ * Home's answer to `POST …/produce`: a step on 202 (taken, or already under
+ * way), 200 (made) and 409 (stopped, with why); 404 for an episode or ask
+ * home doesn't know. A 422 is home declining to make chapters apart from
+ * their video, which the page never asks.
+ */
 export function readProduced(answer: HomeAnswer): Produced {
   if (answer.status === 404 || answer.status === 405) return { kind: "older" }
-  return answer.status === 202 || answer.status === 200
-    ? { kind: "asked" }
-    : { kind: "unreadable" }
+  if (answer.status !== 200 && answer.status !== 202 && answer.status !== 409)
+    return { kind: "unreadable" }
+  const step = readAs(StepSchema, answer.body)
+  return step === null ? { kind: "unreadable" } : { kind: "step", step }
 }

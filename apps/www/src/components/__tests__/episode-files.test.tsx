@@ -15,19 +15,36 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as CallVideosModule from "@/lib/call-videos"
-import type { AssetRead, Produced, ShownAsset } from "@/lib/call-videos/assets"
+import type {
+  AssetRead,
+  Produced,
+  ShownAsset,
+  Step,
+  StepState,
+} from "@/lib/call-videos/assets"
 import type { Episode } from "@/lib/call-videos/model"
 import { ASSET_WORDS } from "@/lib/call-videos/words"
+import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
+
+const ASKED_AT = "2026-11-22T23:05:00Z"
+
+const step = (
+  asset: Step["asset"],
+  state: StepState,
+  over: Partial<Step> = {}
+): Step => ({ asset, state, ...over })
 
 const home = vi.hoisted(
   (): {
     reads: Map<string, AssetRead<ShownAsset>>
     produced: Array<string>
-  } => ({ reads: new Map(), produced: [] })
+    read: Array<string>
+  } => ({ reads: new Map(), produced: [], read: [] })
 )
 
 vi.mock("@/lib/call-videos", async (importOriginal) => {
@@ -38,17 +55,22 @@ vi.mock("@/lib/call-videos", async (importOriginal) => {
       _feed: string,
       _key: string,
       asset: ShownAsset
-    ): Promise<AssetRead<ShownAsset>> =>
-      Promise.resolve(home.reads.get(asset) ?? { kind: "none" }),
+    ): Promise<AssetRead<ShownAsset>> => {
+      home.read.push(asset)
+      return Promise.resolve(home.reads.get(asset) ?? { kind: "none" })
+    },
     produceAsset: (
       _feed: string,
       key: string,
       asset: string
     ): Promise<Produced> => {
       home.produced.push(`${key}/${asset}`)
-      return Promise.resolve({ kind: "asked" })
+      return Promise.resolve({
+        kind: "step",
+        step: { asset: "thumbnail", state: "waiting", askedAt: ASKED_AT },
+      })
     },
-    saveThumbnail: (): Promise<boolean> => Promise.resolve(true),
+    saveThumbnail: (): Promise<string> => Promise.resolve("opened"),
   }
 })
 
@@ -63,20 +85,28 @@ const episode = (over: Partial<Episode>): Episode => ({
   ...over,
 })
 
-const show = (shown: Episode): void => {
+const showing = (shown: Episode): { rerender: (next: Episode) => void } => {
   const client = new QueryClient()
   const wrap = ({ children }: { children: ReactNode }): ReactNode => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
-  render(<EpisodeFiles feed="call" episode={shown} />, {
+  const { rerender } = render(<EpisodeFiles feed="call" episode={shown} />, {
     wrapper: wrap,
   })
+  return {
+    rerender: (next) => rerender(<EpisodeFiles feed="call" episode={next} />),
+  }
+}
+
+const show = (shown: Episode): void => {
+  showing(shown)
 }
 
 afterEach(() => {
   cleanup()
   home.reads.clear()
   home.produced.length = 0
+  home.read.length = 0
 })
 
 describe("EpisodeFiles", () => {
@@ -91,29 +121,82 @@ describe("EpisodeFiles", () => {
     expect(screen.getByRole("button", { name: ASSET_WORDS.save })).toBeTruthy()
   })
 
-  it("asks home once for a thumbnail it made none of, and says so", async () => {
-    show(episode({ assets: { thumbnail: "missing", description: "missing" } }))
+  it("asks home once for a thumbnail it made none of, and puts it on the line", async () => {
+    show(
+      episode({
+        assets: {
+          thumbnail: step("thumbnail", "missing"),
+          description: step("description", "missing"),
+        },
+      })
+    )
     fireEvent.click(
       await screen.findByRole("button", { name: ASSET_WORDS.generate })
     )
-    await screen.findByText(ASSET_WORDS.produced.asked)
+    const strip = await screen.findByRole("list", {
+      name: ASSET_WORDS.conveyor,
+    })
+    expect(
+      within(strip)
+        .getByText(CONVEYOR_WORDS.stations.room)
+        .closest("li")
+        ?.getAttribute("aria-current")
+    ).toBe("step")
     expect(home.produced).toEqual(["2026-11-09/thumbnail"])
     // Chapters come with the video: no Generate of their own.
     expect(screen.getByText(ASSET_WORDS.description.missing)).toBeTruthy()
     expect(
-      screen.getAllByRole("button", { name: ASSET_WORDS.generate })
-    ).toHaveLength(1)
+      screen.queryByRole("button", { name: ASSET_WORDS.generate })
+    ).toBeNull()
   })
 
-  it("says a thumbnail asked for is coming, and one home couldn't make", async () => {
-    show(episode({ assets: { thumbnail: "queued", description: "failed" } }))
-    await screen.findByText(ASSET_WORDS.thumbnail.asked)
-    expect(screen.getByText(ASSET_WORDS.description.failed)).toBeTruthy()
+  it("draws a thumbnail in the oven, and chapters home couldn't make beside the line", async () => {
+    show(
+      episode({
+        assets: {
+          thumbnail: step("thumbnail", "rendering", { startedAt: ASKED_AT }),
+          description: step("description", "failed", { reason: "recorder" }),
+        },
+      })
+    )
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("list", { name: ASSET_WORDS.conveyor })
+      ).toHaveLength(2)
+    )
+    const [thumbnail] = screen.getAllByRole("list", {
+      name: ASSET_WORDS.conveyor,
+    })
+    expect(
+      within(thumbnail)
+        .getByText(CONVEYOR_WORDS.stations.oven)
+        .closest("li")
+        ?.getAttribute("aria-current")
+    ).toBe("step")
+    expect(screen.getByText(ASSET_WORDS.why.couldNot)).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
   })
 
   it("shows nothing of a file an older home neither serves nor lists", async () => {
     show(episode({}))
-    await waitFor(() => expect(screen.queryByRole("heading")).toBeNull())
+    await waitFor(() =>
+      expect([...home.read].sort()).toEqual(["description", "thumbnail"])
+    )
+    // Let both reads land before looking.
+    await new Promise((settled) => setTimeout(settled, 0))
+    expect(screen.queryByRole("heading")).toBeNull()
+  })
+
+  it("reads a file again once home's list says it moved, and shows it", async () => {
+    const { rerender } = showing(
+      episode({ assets: { thumbnail: step("thumbnail", "rendering") } })
+    )
+    await screen.findByRole("list", { name: ASSET_WORDS.conveyor })
+    home.reads.set("thumbnail", {
+      kind: "there",
+      content: { base64: "iVBORw0K" },
+    })
+    rerender(episode({ assets: { thumbnail: step("thumbnail", "done") } }))
+    await screen.findByAltText(ASSET_WORDS.thumbnail.alt)
   })
 })

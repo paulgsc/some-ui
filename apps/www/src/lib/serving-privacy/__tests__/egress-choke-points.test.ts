@@ -56,12 +56,14 @@
  *   nothing but the take's id and the act's name. Studio's feed videos
  *   (`lib/call-videos`, ST38, FEED4) asks home for the episodes of a feed
  *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
- *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
- *   kept), for an episode's video on Watch, a part at a time (one
- *   `GET /feeds/:feed/videos/:key/video` per part) and for its chapters when
- *   its page opens (one `GET /feeds/:feed/videos/:key/description`, SFEED4),
- *   and sends an episode's link on Save (one `PUT
- *   /feeds/:feed/videos/:key/link`).
+ *   one `GET /feeds/:feed/videos` per open, drag down, Try again, Save home
+ *   kept or Generate home took), for an episode's video on Watch, a part at
+ *   a time (one `GET /feeds/:feed/videos/:key/video` per part), and for each
+ *   file beside it when its page opens or the file's step moves (one
+ *   `GET /feeds/:feed/videos/:key/<file>`: its chapters, SFEED4; its
+ *   thumbnail, whole; ASSETS-R); it sends an episode's link on Save (one
+ *   `PUT /feeds/:feed/videos/:key/link`) and, on Generate, the name of a file
+ *   to make (one `POST /feeds/:feed/videos/:key/produce` of `{ asset }`).
  *
  * - **LA19 (MY-DATA MD5): only My data's delete path deletes a record on
  *   home** (its sheet, on My data's page or Takes › Needs your attention's,
@@ -342,8 +344,8 @@ const CALLS_SENDS = [
   ['"GET"', "episodesPath(feed)"],
   ['"GET"', 'assetPath(feed, key, "video")', "undefined", "{ start, end }"],
   ['"PUT"', "linkPath(feed, key)", "JSON.stringify({ link })"],
-  ['"GET"', "assetPath(feed, key, asset)", "undefined", '"whole"'],
-  ['"GET"', "assetPath(feed, key, asset)"],
+  ['"GET"', "path", "undefined", '"whole"'],
+  ['"GET"', "path"],
   ['"POST"', "producePath(feed, key)", "JSON.stringify({ asset })"],
 ]
 /** The paths those requests reach, as the read writes them. */
@@ -352,6 +354,7 @@ const CALLS_PATHS = [
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/${asset}`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/produce`",
+  "ASKED_AS[asset](send, assetPath(feed, key, asset))",
 ]
 
 /** LA8, SFEED12: a template's preview, and the three requests it may send. */

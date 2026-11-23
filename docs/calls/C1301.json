@@ -1,0 +1,21 @@
+{
+  "id": "C1301",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/call-videos/step-conveyor.ts",
+    "apps/www/src/lib/call-videos/assets.ts",
+    "apps/www/src/components/episode-files.tsx",
+    "apps/www/tests/record/asset-make.ts"
+  ],
+  "chose": "A file asked of home is drawn on Studio's renders conveyor, through the shared StationStrip and the renders' own station and side-track words, as the owner asked (2026-11-22, via the coordinator): its line is the render line less Boxing (In line, Waiting for an oven, In the oven, Ready for pickup), each station read from home's Step, with one clock line (asked for, in the oven since, off the line). A held step sits on a side track by its reason, through one table keyed by a closed union of home's reasons: the render policy's refusals on their own tracks, missing input and no video yet on the counter, and a recorder that made nothing, or a reason this phone doesn't know, as burnt. A made step shows Ready for pickup until the file is read again, rather than hiding the block. On home's side of the phone, `record:asset` writes only to the work folder home hands it: a partial, then a hard link, so it never overwrites.",
+  "options": [
+    "the renders conveyor's stations less Boxing, read from home's Step (taken)",
+    "the whole render line, Boxing included, for a file made in one go",
+    "a line of its own for files, with its own words",
+    "a plain line of text per state, with no strip"
+  ],
+  "gray": "The owner chose the conveyor; which stations a file shows, where each of home's reasons sits, and what a made file shows before it is read again are left open, and the owner sees them on the episode page.",
+  "undo": "Draw the step as a line of text in `episode-files.tsx`, and drop `step-conveyor.ts` and its test.",
+  "refs": ["#3390", "#3391"]
+}

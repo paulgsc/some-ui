@@ -485,14 +485,19 @@ declared (checked by reading every call site and by the tests named).
   and the act's name; #3339), Studio's feed videos,
   the weekly call's and Playoff Delta's (`lib/call-videos`, through
   `lib/home-link/call-videos`' `keep`: one `GET /feeds/:feed/videos` each
-  time a feed's screen opens, on a drag down, on Try again and once after a
-  Save home kept; on Watch, one `GET /feeds/:feed/videos/:key/video` per part
+  time a feed's screen opens, on a drag down, on Try again, once after a
+  Save home kept and once after a Generate home took; on Watch, one
+  `GET /feeds/:feed/videos/:key/video` per part
   of the episode's video, each a range of at most `PART_BYTES`, into the
-  phone's cache; when an episode's page opens, one
-  `GET /feeds/:feed/videos/:key/description` of its chapters (SFEED4, #2763);
-  and, on Save, one `PUT /feeds/:feed/videos/:key/link` of the
-  link the owner pasted, only once it reads as a `YouTube` video; sending
-  nothing of the phone's but that link; while the link is busy with another
+  phone's cache; when an episode's page opens, and again when the list says
+  a file's step moved, one `GET /feeds/:feed/videos/:key/<file>` of each file
+  beside the video (`ASKED_AS`: its chapters, `description`, SFEED4, #2763;
+  its thumbnail, `thumbnail`, whole; ASSETS-R); on Save, one
+  `PUT /feeds/:feed/videos/:key/link` of the
+  link the owner pasted, only once it reads as a `YouTube` video; and, on
+  Generate, one `POST /feeds/:feed/videos/:key/produce` of the name of the
+  file to make (`{ asset }`, a file home makes alone); sending nothing of the
+  phone's but that link and that name; while the link is busy with another
   run it asks again a second later, at most ten times; ST38, #2661; FEED4,
   #2647), Studio › Renders (`lib/renders`, through `lib/home-link/renders`'
   `keep`: one `GET /renders` each time Studio's index or the page opens, on a
@@ -675,13 +680,17 @@ declared (checked by reading every call site and by the tests named).
   `lib/template-preview` and `lib/episode-feedback/home-read.ts` call them,
   each its own; one that has `call-videos.ts` send anything
   but one `GET` of `episodesPath(feed)` per list, one ranged `GET` of
-  `videoPath(feed, key)` per part and one `PUT` of `linkPath(feed, key)` per
-  Save, lets
+  `assetPath(feed, key, "video")` per part, one `GET` of each file beside the
+  video by `ASKED_AS` per read, one `PUT` of `linkPath(feed, key)` per
+  Save and one `POST` of `producePath(feed, key)` with `{ asset }` alone per
+  Generate, lets
   anything but `lib/call-videos` call it, or has `lib/call-videos` read the
-  list but on the screen opening, a drag down, Try again or once after a
-  Save home kept, fetch a video but
-  on Watch, or send a link but on Save and once it reads as a `YouTube`
-  video (`youtubeLink` (`@some-ui/core-utils`)); one that
+  list but on the screen opening, a drag down, Try again, once after a
+  Save home kept or once after a Generate home took, fetch a video but
+  on Watch, read a file beside it but on its page opening or its step
+  moving, send a link but on Save and once it reads as a `YouTube`
+  video (`youtubeLink` (`@some-ui/core-utils`)), or ask for a file but on
+  Generate; one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
   run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`,

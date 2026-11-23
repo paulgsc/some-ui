@@ -12,6 +12,7 @@ import { FEED_FACTS } from "@/lib/studio-index/words"
 
 import type { Produced, ShownAsset } from "./assets"
 import type { Episode, Feed, FetchFailure } from "./model"
+import type { StoppedWhy } from "./step-conveyor"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
 export function share(done: number, total: number): number {
@@ -269,11 +270,24 @@ export const VIDEOS_WORDS = {
   onYouTube: "Watch on YouTube",
 } as const
 
+/** A moment home stamped, on the clock: "Mon 2:05 PM". */
+function clockOf(iso: string, timeZone?: string): string | null {
+  const at = Date.parse(iso)
+  if (Number.isNaN(at)) return null
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    ...(timeZone === undefined ? {} : { timeZone }),
+  }).format(new Date(at))
+}
+
 /**
  * What an episode's page says of each file its render left beside the video
- * (ASSETS-R, C1300; its chapters, SFEED4), by `AssetView`'s kinds: the file
- * and what to do with it; not made, and whether home can make it now; asked
- * for; tried and not made.
+ * (ASSETS-R, C1300; its chapters, SFEED4): the file and what to do with it,
+ * that it isn't made and whether home can make it now, and, once asked for,
+ * where it stands on the conveyor (`./step-conveyor`, in Studio's renders'
+ * own station words) and since when.
  */
 export const ASSET_WORDS = {
   thumbnail: {
@@ -282,10 +296,7 @@ export const ASSET_WORDS = {
     alt: "The episode's thumbnail",
     missing:
       "Home made none with this episode. It can make one now from the episode, and the video stays as it is.",
-    asked:
-      "Home will make it when it's free, after what it's making now, and keep it with the episode.",
-    failed:
-      "Home tried and couldn't make one from this episode, and trying again would come out the same.",
+    line: "Home is making it from the episode, one thing at a time, and keeps it with the episode.",
   },
   description: {
     heading: "Its chapters",
@@ -294,17 +305,43 @@ export const ASSET_WORDS = {
     what: "the chapters",
     missing:
       "This episode has none: they're made with the video, and it has too few scenes or came before chapters did.",
-    asked: "Home will make them with the video, and keep them with it.",
-    failed: "Home tried and couldn't make chapters for this episode.",
+    line: "Home makes them with the video, and keeps them with it.",
+  },
+  conveyor: "Where it is",
+  why: {
+    tooLong: "Its video is longer than home makes, so this waits on the video.",
+    tooLarge:
+      "Its video is larger than home keeps, so this waits on the video.",
+    overflow:
+      "Its video's scenes run past the frame, so this waits on the video.",
+    noVideo: "It's made once the episode's video is.",
+    missingInput:
+      "Something the episode uses isn't on home yet; it moves on by itself once it is.",
+    couldNot:
+      "Home tried and couldn't make it from this episode, and trying again would come out the same.",
+  } satisfies Record<StoppedWhy, string>,
+  when: {
+    asked: (at: string, timeZone?: string): string | null => {
+      const clock = clockOf(at, timeZone)
+      return clock === null ? null : `Asked for ${clock}.`
+    },
+    started: (at: string, timeZone?: string): string | null => {
+      const clock = clockOf(at, timeZone)
+      return clock === null ? null : `In the oven since ${clock}.`
+    },
+    ended: (at: string, timeZone?: string): string | null => {
+      const clock = clockOf(at, timeZone)
+      return clock === null ? null : `Off the line ${clock}.`
+    },
   },
   generate: "Generate",
   asking: "Asking home…",
   save: "Save",
   saveFailed: "The share sheet didn't open. Try again.",
   produced: {
-    asked: "Asked. Home will make it when it's free.",
+    step: "Asked. Home will make it when it's free.",
     older:
-      "Home can't make this file for this episode. Update home, then try again.",
+      "Home can't make this file for this episode: it no longer holds the episode, or it's from before it could.",
     unreadable: "Home didn't answer, so nothing was asked. Try again.",
   } satisfies Record<Produced["kind"], string>,
 } as const satisfies {
@@ -312,7 +349,6 @@ export const ASSET_WORDS = {
     readonly heading: string
     readonly there: string
     readonly missing: string
-    readonly asked: string
-    readonly failed: string
+    readonly line: string
   } & Readonly<Record<string, string>>
 } & Readonly<Record<string, unknown>>

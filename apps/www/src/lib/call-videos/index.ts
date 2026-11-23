@@ -137,23 +137,27 @@ export async function produceAsset(
     asked.kind === "answered"
       ? readProduced(asked.answer)
       : { kind: "unreadable" }
-  if (produced.kind === "asked") void feedVideos(feed).open()
+  if (produced.kind === "step") void feedVideos(feed).open()
   return produced
 }
 
 /** The cache folder a thumbnail is shared from, apart from the videos'. */
 const THUMBNAIL_DIR = "episode-thumbnails"
 
+/** What handing a thumbnail to the share sheet came to. */
+export type ThumbnailSaved = "opened" | "failed" | "unavailable"
+
 /**
  * Hands an episode's thumbnail (its PNG as base64) to the share sheet, so the
  * owner keeps it where they choose before setting it in YouTube Studio
- * (C1025); whether the sheet opened. Never rejects.
+ * (C1025): whether the sheet opened, didn't, or can't in this build, in
+ * which case the page withdraws Save. Never rejects.
  */
 export async function saveThumbnail(
   feed: Feed,
   key: string,
   base64: string
-): Promise<boolean> {
+): Promise<ThumbnailSaved> {
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
   const shared = await shareFiles(THUMBNAIL_DIR, FEED_WORDS[feed].label(key), [
     {
@@ -161,7 +165,10 @@ export async function saveThumbnail(
       data: new Blob([bytes], { type: "image/png" }),
     },
   ])
-  return shared.status === "succeeded"
+  if (shared.status === "succeeded") return "opened"
+  return shared.status === "failed" && shared.error.kind === "unavailable"
+    ? "unavailable"
+    : "failed"
 }
 
 /** Every feed's list, as one snapshot (`lib/episodes-feed`'s `FeedLists`). */

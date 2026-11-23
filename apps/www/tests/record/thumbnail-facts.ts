@@ -86,10 +86,17 @@ export const playoffDeltaFacts = (
   week: kindOf(week) === "legend" ? "legend" : week,
 })
 
-/** A Playoff Delta episode's folder: `<season>-week-NN`. */
+/** A Playoff Delta episode's folder: `<season>-week-NN`, as its recorder names it. */
+export const playoffDeltaFolder = (season: string, week: number): string =>
+  `${season}-week-${String(week).padStart(2, "0")}`
+
+/** A call part's folder inside its week's, as its recorder names it. */
+export const callPartFolder = (part: number): string => `part-${String(part)}`
+
+/** `playoffDeltaFolder`, read back. */
 const PD_FOLDER = /^(.+)-week-(\d+)$/
 
-/** A call part's folder: `part-<k>`, inside its week's. */
+/** `callPartFolder`, read back. */
 const PART_FOLDER = /^part-(\d+)$/
 
 /** `root`'s `name` as JSON, or why it can't be read. */

@@ -22,6 +22,7 @@
  * of the file asked for. What the
  * screen makes of each answer is `lib/call-videos`'s, its one caller.
  */
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import type { AloneAsset, EpisodeAsset } from "@some-ui/video-render/assets"
 
 import type { ShownAsset } from "@/lib/call-videos/assets"
@@ -86,6 +87,17 @@ export function sendLink(
   )
 }
 
+/** How each file beside the video is asked for: bytes whole, or text. */
+const ASKED_AS: {
+  readonly [A in ShownAsset]: (
+    send: HomeCall,
+    path: string
+  ) => Promise<HomeAnswer>
+} = {
+  thumbnail: (send, path) => send("GET", path, undefined, "whole"),
+  description: (send, path) => send("GET", path),
+}
+
 /**
  * Asks home once for one of an episode's files beside its video, whole: its
  * chapters as text, its thumbnail's bytes as base64. Never rejects.
@@ -97,9 +109,7 @@ export function askAsset(
 ): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) =>
-      asset === "thumbnail"
-        ? send("GET", assetPath(feed, key, asset), undefined, "whole")
-        : send("GET", assetPath(feed, key, asset))
+      ASKED_AS[asset](send, assetPath(feed, key, asset))
     )
   )
 }

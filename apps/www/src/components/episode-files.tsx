@@ -10,9 +10,9 @@
  */
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, Notice, StationStrip } from "@some-ui/shared"
 import type { AloneAsset } from "@some-ui/video-render/assets"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 
 import type { Feed } from "@/lib/call-videos"
 import {
@@ -25,13 +25,19 @@ import type {
   AssetContent,
   AssetView,
   ShownAsset,
+  Step,
 } from "@/lib/call-videos/assets"
-import { assetView, SHOWN_ASSETS } from "@/lib/call-videos/assets"
+import { assetView, latestStep, SHOWN_ASSETS } from "@/lib/call-videos/assets"
 import type { Episode } from "@/lib/call-videos/model"
+import { FILE_STRIP, fileConveyor } from "@/lib/call-videos/step-conveyor"
 import { useAsyncIntent } from "@/lib/intent"
+import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
 import { CopyButton } from "@/components/copy-button"
 
-/** A thumbnail, with Save, which hands it to the share sheet. */
+/**
+ * A thumbnail, with Save, which hands it to the share sheet; Save is
+ * withdrawn where this build can't share.
+ */
 const Thumbnail = ({
   feed,
   episodeKey,
@@ -45,12 +51,11 @@ const Thumbnail = ({
     (bytes: string) => saveThumbnail(feed, episodeKey, bytes),
     { presentation: "interactive" }
   )
-  const failed =
-    save.state.status === "failed" ||
-    (save.state.status === "succeeded" && !save.state.value)
+  const { state } = save
+  const saved = state.status === "succeeded" ? state.value : null
   return (
     <>
-      {failed && (
+      {(state.status === "failed" || saved === "failed") && (
         <Notice onDismiss={save.reset}>{ASSET_WORDS.saveFailed}</Notice>
       )}
       <img
@@ -58,14 +63,16 @@ const Thumbnail = ({
         alt={ASSET_WORDS.thumbnail.alt}
         className="aspect-video w-full rounded-md"
       />
-      <Button
-        size="sm"
-        className="self-start"
-        disabled={save.state.status === "working"}
-        onClick={() => save.start(base64)}
-      >
-        {ASSET_WORDS.save}
-      </Button>
+      {saved !== "unavailable" && (
+        <Button
+          size="sm"
+          className="self-start"
+          disabled={state.status === "working"}
+          onClick={() => save.start(base64)}
+        >
+          {ASSET_WORDS.save}
+        </Button>
+      )}
     </>
   )
 }
@@ -91,52 +98,49 @@ const There = ({
     <Thumbnail feed={feed} episodeKey={episodeKey} base64={content.base64} />
   )
 
-/** Generate: asks home once to make a file, and says what came of it. */
-const Generate = ({
-  feed,
-  episodeKey,
+/** Where a file asked of home stands, on the conveyor every render moves along. */
+const OnTheLine = ({
   asset,
+  step,
 }: {
-  feed: Feed
-  episodeKey: string
-  asset: AloneAsset
+  asset: ShownAsset
+  step: Step
 }): JSX.Element => {
-  const produce = useAsyncIntent(
-    (alone: AloneAsset) => produceAsset(feed, episodeKey, alone),
-    { presentation: "interactive" }
-  )
-  const { state } = produce
-  const said =
-    state.status === "succeeded"
-      ? ASSET_WORDS.produced[state.value.kind]
-      : state.status === "failed"
-        ? ASSET_WORDS.produced.unreadable
-        : null
+  const { at, aside, when } = fileConveyor(step)
+  const said = when === null ? null : ASSET_WORDS.when[when.kind](when.at)
   return (
     <>
-      {said !== null && <Notice onDismiss={produce.reset}>{said}</Notice>}
-      <Button
-        size="sm"
-        className="self-start"
-        disabled={state.status === "working"}
-        onClick={() => produce.start(asset)}
-      >
-        {state.status === "working" ? ASSET_WORDS.asking : ASSET_WORDS.generate}
-      </Button>
+      <StationStrip
+        label={ASSET_WORDS.conveyor}
+        stations={FILE_STRIP}
+        at={at}
+        aside={
+          aside === null
+            ? null
+            : {
+                name: CONVEYOR_WORDS.asides[aside.aside],
+                line: ASSET_WORDS.why[aside.why],
+              }
+        }
+      />
+      {aside === null && (
+        <p className="text-muted-foreground text-xs">
+          {ASSET_WORDS[asset].line}
+        </p>
+      )}
+      {said !== null && <p className="text-xs">{said}</p>}
     </>
   )
 }
 
-/** The line under a block's heading, by what it shows; none while hidden. */
+/** The line under a block's heading, where it has one. */
 function lineOf(asset: ShownAsset, view: AssetView<ShownAsset>): string | null {
-  const words = ASSET_WORDS[asset]
   switch (view.kind) {
     case "there":
-    case "missing":
-    case "asked":
-    case "failed": {
-      return words[view.kind]
+    case "missing": {
+      return ASSET_WORDS[asset][view.kind]
     }
+    case "line":
     case "hidden": {
       return null
     }
@@ -146,7 +150,11 @@ function lineOf(asset: ShownAsset, view: AssetView<ShownAsset>): string | null {
   }
 }
 
-/** One file's block: shown, made on asking, asked for, or not made. */
+/**
+ * One file's block: shown; not made, with Generate where home can make it
+ * alone; or on the line, from the list's step or the step home answered
+ * Generate with, whichever is further along.
+ */
 const AssetBlock = ({
   feed,
   episode,
@@ -158,25 +166,58 @@ const AssetBlock = ({
 }): JSX.Element | null => {
   // Read each time the page opens (the app's default is not to), so a file
   // home made since, or an answer home couldn't give before, shows.
+  const listed = episode.assets?.[asset]
+  // Keyed by its step too, so the file is read again once home's list says
+  // it moved (made since the page opened, say) rather than staying hidden.
   const { data } = useQuery({
-    queryKey: ["feeds", feed, "asset", asset, episode.key],
+    queryKey: ["feeds", feed, "asset", asset, episode.key, listed?.state],
     queryFn: ({ signal }) =>
       episodeAsset(feed, episode.key, asset, () => !signal.aborted),
     refetchOnMount: "always",
+    // The block holds still while the file is read again (HS1).
+    placeholderData: keepPreviousData,
     retry: false,
   })
-  const view = assetView(asset, data, episode.assets?.[asset])
+  const produce = useAsyncIntent(
+    (alone: AloneAsset) => produceAsset(feed, episode.key, alone),
+    { presentation: "interactive" }
+  )
+  const { state } = produce
+  const answered =
+    state.status === "succeeded" && state.value.kind === "step"
+      ? state.value.step
+      : null
+  const said =
+    state.status === "succeeded" && state.value.kind !== "step"
+      ? ASSET_WORDS.produced[state.value.kind]
+      : state.status === "failed"
+        ? ASSET_WORDS.produced.unreadable
+        : null
+  const view = assetView(asset, data, latestStep(listed, answered))
+  if (view.kind === "hidden") return null
   const line = lineOf(asset, view)
-  if (line === null) return null
   return (
     <section className="flex flex-col gap-2 rounded-lg border p-3">
+      {said !== null && <Notice onDismiss={produce.reset}>{said}</Notice>}
       <h2 className="text-sm font-medium">{ASSET_WORDS[asset].heading}</h2>
-      <p className="text-muted-foreground text-xs">{line}</p>
+      {line !== null && <p className="text-muted-foreground text-xs">{line}</p>}
       {view.kind === "there" && (
         <There feed={feed} episodeKey={episode.key} content={view.content} />
       )}
+      {view.kind === "line" && <OnTheLine asset={asset} step={view.step} />}
       {view.kind === "missing" && view.generate !== null && (
-        <Generate feed={feed} episodeKey={episode.key} asset={view.generate} />
+        <Button
+          size="sm"
+          className="self-start"
+          disabled={state.status === "working"}
+          onClick={() => {
+            if (view.generate !== null) produce.start(view.generate)
+          }}
+        >
+          {state.status === "working"
+            ? ASSET_WORDS.asking
+            : ASSET_WORDS.generate}
+        </Button>
       )}
     </section>
   )

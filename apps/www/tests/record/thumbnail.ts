@@ -101,22 +101,21 @@ export async function clearThumbnail(root: string): Promise<void> {
 
 /**
  * `input`'s thumbnail into `root`'s `thumbnail.png`, replacing any earlier
- * one, and the file it wrote; with a title that can't be drawn, none, a line
- * on stderr saying why, and the why.
+ * one; with a title that can't be drawn, none, and a line on stderr saying
+ * why.
  */
 export async function writeThumbnail(
   browser: Browser,
   root: string,
   input: ThumbnailInput
-): Promise<Parsed<string>> {
+): Promise<void> {
   const file = join(root, THUMBNAIL_FILE)
   await clearThumbnail(root)
   const drawn = await drawThumbnail(browser, input)
   if (!drawn.ok) {
     process.stderr.write(`no thumbnail: ${drawn.problems.join("; ")}\n`)
-    return drawn
+    return
   }
   await writeFile(file, drawn.value)
   console.log(`wrote ${file}`)
-  return { ok: true, value: file }
 }

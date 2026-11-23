@@ -34,7 +34,7 @@ import { chapterSlides, hasCaptions } from "@some-ui/video-render"
 import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium } from "./command"
-import { playoffDeltaFacts } from "./thumbnail-facts"
+import { playoffDeltaFacts, playoffDeltaFolder } from "./thumbnail-facts"
 import {
   placeBed,
   POLICY_OPTIONS,
@@ -242,10 +242,7 @@ export async function recordPlayoffDelta(
     const root = here(
       asked.preview
         ? values.out
-        : join(
-            values.out,
-            `${season.label}-week-${String(asked.week).padStart(2, "0")}`
-          )
+        : join(values.out, playoffDeltaFolder(season.label, asked.week))
     )
     const { context, page } = await open(browser, values, asked)
     // Every reveal at rest: the still is the slide as it settles.
