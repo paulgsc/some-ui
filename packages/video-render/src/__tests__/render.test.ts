@@ -15,7 +15,13 @@ import { nodePorts } from "@video-render/node"
 import { JOIN_BATCH } from "@video-render/plan"
 import { DEFAULT_POLICY, MB } from "@video-render/policy"
 import type { BurnInRequest, Ports } from "@video-render/render"
-import { notDrawnLines, render } from "@video-render/render"
+import {
+  notDrawnLines,
+  overflowLines,
+  render,
+  SCENE_NAME_MAX,
+  sceneNames,
+} from "@video-render/render"
 import type { Series } from "@video-render/series"
 import * as fixtures from "@video-render/testing"
 import {
@@ -536,6 +542,53 @@ describe("render", () => {
     expect(log(true)).toContain(problem)
     // Anything else keeps the hourly retry.
     expect(heldFor(log(false))).toEqual([])
+  })
+
+  it("names each scene too full for its frame after every id, so the worker reads the ids as before (RETRY)", () => {
+    const sceneId = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+    const lines = overflowLines([
+      { id: "c3-opens", name: "How a round opens, scene 3" },
+      { id: "c4-cheat", name: "  The cheat\nsheet  " },
+      { id: "c7-marks", name: "" },
+      "c9",
+    ])
+    expect(lines).toEqual([
+      "These scenes don't fit the frame, so the video would cut them off:",
+      "c3-opens",
+      "c4-cheat",
+      "c7-marks",
+      "c9",
+      "scene c3-opens is named: How a round opens, scene 3",
+      "scene c4-cheat is named: The cheat sheet",
+    ])
+    // The worker's read: ids up to the first line not of an id's shape.
+    const after = lines.slice(1)
+    const end = after.findIndex((l) => !sceneId.test(l))
+    expect(after.slice(0, end)).toEqual([
+      "c3-opens",
+      "c4-cheat",
+      "c7-marks",
+      "c9",
+    ])
+    const [, , long] = overflowLines([{ id: "s1", name: "x".repeat(400) }])
+    const name = long?.replace("scene s1 is named: ", "") ?? ""
+    expect(name).toHaveLength(SCENE_NAME_MAX)
+    expect(name.endsWith("…")).toBe(true)
+  })
+
+  it("names each scene by its chapter and its place in the video (RETRY)", () => {
+    const scenes = [
+      { id: "brand-in" },
+      { id: "c1", mark: "How a round opens" },
+      { id: "c2" },
+      { id: "c3", mark: "The cheat sheet" },
+    ]
+    expect(sceneNames(scenes, (scene) => scene.mark)).toEqual([
+      "scene 1",
+      "How a round opens, scene 2",
+      "How a round opens, scene 3",
+      "The cheat sheet, scene 4",
+    ])
   })
 
   it("lays burn-ins over the video, or lists what it left out", async () => {
