@@ -220,6 +220,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/pull-to-check.tsx",
   "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
+  "apps/www/src/components/take-uses/**",
   "apps/www/src/components/reflection/device-*.tsx",
   "apps/www/src/components/sessions/device-*.tsx",
   "packages/voice-capture/**",

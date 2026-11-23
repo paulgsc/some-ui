@@ -1,12 +1,11 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
+import { keepStudioUseStores } from "@/routes/_dashboard/_apk/-studio-use-stores"
 import { keptIdeasForHome, phoneStudioKeeping } from "@some-ui/soundbites"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { keepIdeas } from "@/lib/idea-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
-
-import { keepStudioUseStores } from "./-studio-use-stores"
 
 // Studio's stores for what uses each take (INUSE): an `if` statement, which
 // the route's code splitting keeps in both its chunks; an expression
