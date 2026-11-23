@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 27,
+  "contract_epoch": 28,
   "oldest_supported": 1,
   "routes": [
     {
@@ -293,9 +293,23 @@
       "module": "feed_videos"
     },
     {
+      "method": "POST",
+      "path": "/feeds/:feed/videos/:key/produce",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/produce",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
       "method": "DELETE",
       "path": "/feeds/:feed/videos/:key/rest",
       "full_path": "/api/v1/feeds/:feed/videos/:key/rest",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos/:key/thumbnail",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/thumbnail",
       "versioned": true,
       "module": "feed_videos"
     },
