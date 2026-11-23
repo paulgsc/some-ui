@@ -114,6 +114,20 @@ describe("a file made only with its video, beside one made", () => {
       )
     ).toEqual({ kind: "missing", generate: null })
   })
+
+  it("still shows chapters home serves, whatever their step says", () => {
+    const there: AssetRead<"description"> = {
+      kind: "there",
+      content: { text: "0:00 Opening\n" },
+    }
+    expect(
+      assetView("description", there, {
+        asset: "description",
+        state: "blocked",
+        reason: "made-with-video",
+      })
+    ).toEqual(there)
+  })
 })
 
 describe("latestStep", () => {

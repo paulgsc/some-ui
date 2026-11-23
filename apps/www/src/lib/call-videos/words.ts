@@ -292,7 +292,7 @@ export const ASSET_WORDS = {
       "Paste them into the YouTube description when you upload it, and YouTube shows each as a chapter.",
     what: "the chapters",
     missing:
-      "This episode has none: they're made with the video, and it has too few scenes or came before chapters did.",
+      "This episode has none: chapters are made with the video, and none came out of this one.",
     line: "Home makes them with the video, and keeps them with it.",
   },
   conveyor: "Where it is",

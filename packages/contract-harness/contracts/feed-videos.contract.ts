@@ -3,9 +3,12 @@
  * `routes/feed_videos.rs`, `handlers/feed_videos.rs`, `feeds/videos.rs`;
  * ST38, FEED4). The phone lists a feed's episodes with
  * `GET /feeds/:feed/videos` and brings one's video with
- * `GET /feeds/:feed/videos/:key/video`, and saves its YouTube link with
- * `PUT /feeds/:feed/videos/:key/link`
- * (`apps/www/src/lib/home-link/call-videos.ts`), through the app's home link.
+ * `GET /feeds/:feed/videos/:key/video`, saves its YouTube link with
+ * `PUT /feeds/:feed/videos/:key/link`, reads its thumbnail with
+ * `GET /feeds/:feed/videos/:key/thumbnail` and asks home to make one of its
+ * files with `POST /feeds/:feed/videos/:key/produce` (ASSETS-R,
+ * paulgsc/server#1140; `apps/www/src/lib/home-link/call-videos.ts`), through
+ * the app's home link.
  *
  * Hand-written, for the cards essays' feed (`cards-essay`, server#878, at
  * contract epoch 10): each episode is `{ key, week, part, of, videoBytes,
@@ -42,6 +45,10 @@ const LIST = "/feeds/:feed/videos"
 const VIDEO = "/feeds/:feed/videos/:key/video"
 
 const LINK = "/feeds/:feed/videos/:key/link"
+
+const THUMBNAIL = "/feeds/:feed/videos/:key/thumbnail"
+
+const PRODUCE = "/feeds/:feed/videos/:key/produce"
 
 const CARDS = { path: { feed: "cards-essay" } }
 
@@ -101,5 +108,23 @@ export const contracts = [
     LINK,
     "a cards essay's YouTube link",
     { ...ESSAY, body: { link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" } }
+  ),
+
+  ...pairedPhoneOnly(
+    "feed_videos",
+    "feed_videos.cards_thumbnail",
+    "GET",
+    THUMBNAIL,
+    "a cards essay's thumbnail",
+    ESSAY
+  ),
+
+  ...pairedPhoneOnly(
+    "feed_videos",
+    "feed_videos.cards_produce",
+    "POST",
+    PRODUCE,
+    "asking home to make a cards essay's thumbnail",
+    { ...ESSAY, body: { asset: "thumbnail" } }
   ),
 ]
