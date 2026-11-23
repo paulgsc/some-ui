@@ -18,14 +18,12 @@
  * whole row; a row whose command can't sit beside its task there is
  * refused, naming it (CHEAT, C1400).
  *
- * CH1: up to `MOST_ROWS`, the schema's bound, a sheet whose rows each sit
- * side by side in a column of half the 16:9 body, with room for their badge
- * to spell itself out (`holdsInTwoColumns`), and that appear at their
- * default times, is drawn, in either frame. Its Tolerance: in the 16:9
- * frame any other row draws only while its sheet fits one column, and is
- * refused, by its number, once the sheet takes two; and a sheet whose rows
- * are given times out of order is outside it
- * (`__tests__/cheat-sheet.test.ts`, "CH1").
+ * CH1: up to `MOST_ROWS`, the schema's bound, a sheet whose rows are each
+ * one that holds at every count in its frame (`holdsAtEveryCount`), at
+ * their default times, is drawn. Its Tolerance: a sheet with any other row
+ * may be refused, only by that row's number; and a sheet whose rows are
+ * given times out of order is outside it (`__tests__/cheat-sheet.test.ts`,
+ * "CH1").
  */
 
 import { z } from "zod"
@@ -159,8 +157,9 @@ export const COMMAND_TYPE: CommandType = {
 type ColumnSet = "one" | "two"
 
 /**
- * A row set from `y`: side by side when its task and command fit there with
- * room for its badge to open, else stacked; null when neither fits.
+ * A row set from `y`: side by side when it fits there with room for its
+ * badge to open, else, in one column, stacked; null when neither fits. More
+ * room never refuses a row: either way of setting it only gains from width.
  */
 function setRow(
   r: Row,
@@ -169,30 +168,39 @@ function setRow(
   reach: number,
   column: ColumnSet
 ): Omit<RowDrawing, "opens" | "atMs"> | null {
+  const side = setRowAs(r, y, box, reach, column, false)
+  return (
+    side ?? (column === "one" ? setRowAs(r, y, box, reach, column, true) : null)
+  )
+}
+
+/** A row set from `y`, task above command when `stacked`, else beside it. */
+function setRowAs(
+  r: Row,
+  y: number,
+  box: Box,
+  reach: number,
+  column: ColumnSet,
+  stacked: boolean
+): Omit<RowDrawing, "opens" | "atMs"> | null {
   const left = box.x + PAD + BADGE_COLUMN
   const right = box.x + box.width - PAD - reach
   const top = y + PAD
   const commandWidth = monoWidth(r.command, COMMAND_PX)
   // In two columns a task longer than the task column pushes its own
   // command along, since its row can't stack.
-  const taskWidth =
-    column === "one"
+  const taskWidth = stacked
+    ? right - left
+    : column === "one"
       ? TASK_WIDTH
       : Math.max(TASK_WIDTH, Math.ceil(widthOf(r.task, TASK)) + 1)
-  const sideX = left + taskWidth + COLUMN_GAP
-  const side = setText(r.task, TASK, { x: left, y: top, width: taskWidth }, 1)
-  const stacked =
-    column === "one" && (side === null || sideX + commandWidth > right)
-      ? setText(r.task, TASK, { x: left, y: top, width: right - left }, 1)
-      : null
-  const task = stacked ?? side
+  const task = setText(r.task, TASK, { x: left, y: top, width: taskWidth }, 1)
   if (task === null) return null
-  const commandX = stacked === null ? sideX : left
+  const commandX = stacked ? left : left + taskWidth + COLUMN_GAP
   if (commandX + commandWidth > right) return null
-  const commandY =
-    stacked === null
-      ? top + (task.box.height - COMMAND_LINE) / 2
-      : top + task.box.height
+  const commandY = stacked
+    ? top + task.box.height
+    : top + (task.box.height - COMMAND_LINE) / 2
   // In two columns the note runs under the whole row, from the task's edge.
   const noteX = column === "one" ? commandX : left
   const noteY =
@@ -281,15 +289,20 @@ function twoColumns(box: Box): ReadonlyArray<Box> | null {
 }
 
 /**
- * Whether `r` sits side by side in a column of the two `g`'s body holds,
- * with room for its badge to spell itself out: CH1's rows. True where the
- * body holds no two columns, since there the rows stay in one.
+ * Whether `r` is one of CH1's rows in `g`'s frame: one that draws in the
+ * body's one column with room for its badge to spell itself out, and, where
+ * the body holds two columns, side by side in one of them too. Where a row
+ * is set depends on its column alone, never on the rows around it, so such
+ * a row draws at any count.
  */
-export function holdsInTwoColumns(r: Row, g: Geometry): boolean {
-  const column = twoColumns(cardBody(g))?.[0]
-  if (column === undefined) return true
+export function holdsAtEveryCount(r: Row, g: Geometry): boolean {
+  const body = cardBody(g)
   const reach = r.badge === undefined ? 0 : openWidth(r.badge, BADGE_PX)
-  return setRow(r, column.y, column, reach, "two") !== null
+  if (setRow(r, body.y, body, reach, "one") === null) return false
+  const column = twoColumns(body)?.[0]
+  return (
+    column === undefined || setRow(r, column.y, column, reach, "two") !== null
+  )
 }
 
 export function drawCheatSheet(

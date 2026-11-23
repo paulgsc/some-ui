@@ -3,7 +3,7 @@ import { BADGE_STATES } from "@burn-ins/lib/badge"
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { cardBody, ITEM } from "@burn-ins/lib/cards"
 import {
-  holdsInTwoColumns,
+  holdsAtEveryCount,
   MOST_ROWS,
   type CheatSheetFrame,
 } from "@burn-ins/lib/cheat-sheet"
@@ -297,22 +297,22 @@ describe("the cheat-sheet card", () => {
     }
   })
 
-  // CH1: a sheet whose rows each sit side by side in half the 16:9 body,
-  // with room for their badge to open (`holdsInTwoColumns`), is drawn, at
-  // every count the schema allows, in both frames. Rows of each length a
-  // row can be (task short to long; command short, in the gap where a badge
-  // opening decides, or long; note none, one line or two), each badge or
+  // CH1: a sheet of rows that each hold at every count in its frame
+  // (`holdsAtEveryCount`) is drawn, at every count the schema allows, in
+  // both frames. Rows of each length a row can be (task short to long;
+  // command short, in the gap where a badge opening decides, or long; note
+  // none, one line, two in the wide frame, or two only there), each badge or
   // none, new or already seen; every row alike, rows mixed from all, and
   // rows mixed from those CH1 covers. An accepted sheet keeps every row
   // inside the body and clear of the others at every moment of its rise.
-  // Outside CH1, the Tolerance: only a 16:9 sheet of more rows than one
-  // column holds refuses, and only the rows CH1 doesn't cover, by number.
-  it("CH1: draws every sheet of rows two columns hold, at every count and length the schema allows", () => {
+  // A refusal names only rows CH1 doesn't cover (its Tolerance).
+  it("CH1: draws every sheet of rows that hold at every count, at every count and length the schema allows", () => {
     const LONG = "sudo systemctl start nixos-upgrade"
     const tasks = [
       "Go",
       "A file deleted by accident",
       "A dead disk, a box that won't boot",
+      "A dead disk, a box that won't boot, and a new one with nothing on it yet at all",
     ]
     const commands = [
       "survives",
@@ -325,6 +325,7 @@ describe("the cheat-sheet card", () => {
       "",
       "Triggers refuse both on most record tables.",
       "Exit, roll back the image, the earlier migrations stay. Nothing to restore, and nothing to say.",
+      "Exit, roll back the image, the earlier migrations stay. Nothing to restore, and nothing to say. Exit, roll back the image, the earlier migrations stay. Nothing more.",
     ]
     const rows = tasks.flatMap((task) =>
       commands.flatMap((command) =>
@@ -338,24 +339,24 @@ describe("the cheat-sheet card", () => {
       )
     )
     type Row = (typeof rows)[number]
-    const wide = geometryOf(LANDSCAPE)
-    const holds = (r: Row): boolean =>
-      holdsInTwoColumns({ ...r, atMs: undefined }, wide)
-    const covered = rows.filter(holds)
-    // Both kinds are tried, or the property proves nothing.
-    expect(covered.length).toBeGreaterThan(0)
-    expect(covered.length).toBeLessThan(rows.length)
-    const pick = (from: ReadonlyArray<Row>, k: number): Row =>
-      from[k % from.length] ?? rows[0]!
-    const sheets = (n: number): ReadonlyArray<ReadonlyArray<Row>> =>
-      Array.from({ length: 40 }, (_, k) => [
-        Array.from({ length: n }, () => pick(rows, k * 11)),
-        Array.from({ length: n }, (_, i) => pick(rows, k * 11 + 37 * i)),
-        Array.from({ length: n }, (_, i) => pick(covered, k * 5 + 13 * i)),
-      ]).flat()
     const named = /^the cheat-sheet burn-in \(sheet-v1\): row (\d+) /
     for (const frame of [LANDSCAPE, PORTRAIT]) {
-      const body = cardBody(geometryOf(frame))
+      const g = geometryOf(frame)
+      const holds = (r: Row): boolean =>
+        holdsAtEveryCount({ ...r, atMs: undefined }, g)
+      const covered = rows.filter(holds)
+      // Both kinds are tried in each frame, or the property proves nothing.
+      expect(covered.length, `${frame.width}`).toBeGreaterThan(0)
+      expect(covered.length, `${frame.width}`).toBeLessThan(rows.length)
+      const pick = (from: ReadonlyArray<Row>, k: number): Row =>
+        from[k % from.length] ?? rows[0]!
+      const sheets = (n: number): ReadonlyArray<ReadonlyArray<Row>> =>
+        Array.from({ length: 24 }, (_, k) => [
+          Array.from({ length: n }, () => pick(rows, k * 11)),
+          Array.from({ length: n }, (_, i) => pick(rows, k * 11 + 37 * i)),
+          Array.from({ length: n }, (_, i) => pick(covered, k * 5 + 13 * i)),
+        ]).flat()
+      const body = cardBody(g)
       for (let n = 1; n <= MOST_ROWS; n++)
         for (const sheetRows of sheets(n))
           for (const badgesSeen of [[], [...BADGE_STATES]]) {
@@ -363,10 +364,10 @@ describe("the cheat-sheet card", () => {
             const where = `${frame.width}x${frame.height}, ${n} rows, seen ${badgesSeen.length}: ${JSON.stringify(sheetRows)}`
             const p = sheet(params, frame)
             if (!p.ok) {
-              const inCH1 = frame === PORTRAIT || sheetRows.every(holds)
-              expect(inCH1, `${where}: ${p.problems.join("; ")}`).toBe(false)
-              // One column holds three rows of any of these.
-              expect(n, where).toBeGreaterThan(3)
+              expect(
+                sheetRows.every(holds),
+                `${where}: ${p.problems.join("; ")}`
+              ).toBe(false)
               for (const problem of p.problems) {
                 expect(isFitProblem(problem), where).toBe(true)
                 const row = Number(named.exec(problem)?.[1] ?? 0)
