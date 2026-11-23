@@ -637,6 +637,7 @@ describe("checkRetentionTriggers", () => {
     "WASM Release",
     "Android Compat",
     "Snips Capture",
+    "Public Pages Capture",
   ])
 
   it("reads only the workflow_run list, and asks for each kept family's workflow", () => {
@@ -647,6 +648,7 @@ describe("checkRetentionTriggers", () => {
       "      - Mobile APK",
       '      - "Extension Release"',
       "      - Snips Capture",
+      "      - Public Pages Capture",
       "      - Site Assets",
       "    types: [completed]",
       "  pull_request:",

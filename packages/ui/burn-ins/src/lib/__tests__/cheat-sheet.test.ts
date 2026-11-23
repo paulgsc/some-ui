@@ -306,6 +306,9 @@ describe("the cheat-sheet card", () => {
   // rows mixed from those CH1 covers. An accepted sheet keeps every row
   // inside the body and clear of the others at every moment of its rise.
   // A refusal names only rows CH1 doesn't cover (its Tolerance).
+  // Cost: about 0.95 s idle and 5.6 s on a CI runner running every
+  // package's tests at once (#3449's run), past vitest's 5 s default, so
+  // the case carries a 30 s bound (BIT1).
   it("CH1: draws every sheet of rows that hold at every count, at every count and length the schema allows", () => {
     const LONG = "sudo systemctl start nixos-upgrade"
     const tasks = [
@@ -413,7 +416,7 @@ describe("the cheat-sheet card", () => {
             }
           }
     }
-  })
+  }, 30_000)
 
   it("CH1's Tolerance: a long command draws while its sheet fits one column of the 16:9 body, and is refused by its number once it takes two", () => {
     const row = {

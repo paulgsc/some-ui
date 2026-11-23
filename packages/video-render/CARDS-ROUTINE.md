@@ -151,10 +151,12 @@ Since you, months later, are the listener:
    - Or it shows a public page, photographed logged out, when the subject
      lives outside the app (a pull request's checks, a run's log page, a
      page of docs): `{"kind": "screen", "of": {"from": "pages", …}}`. Take
-     the pages with `pnpm --filter www record:pages` (`docs/snips.md`,
-     "Public pages"), name each by the address, `capturedAt` and file its
-     record gives. Don't put the pictures in paulgsc/testing, whose guard
-     refuses them: how they reach home is not settled yet. Say in the narration what the page showed as of
+     the pages by dispatching `Public Pages Capture` in paulgsc/some-ui with
+     the list `record:pages` reads (`docs/snips.md`, "How public pages reach
+     home"), and name each by the address, `capturedAt`, file and `run` its
+     run's summary gives. Home fetches that run's bundle, which lives one
+     day. Don't put the pictures in paulgsc/testing, whose guard refuses
+     them. Say in the narration what the page showed as of
      when it was taken, since the page itself moves on.
    - **Badges:** ■ `main` for what is on a default branch at the stamp's
      commit, ◧ `pr` for an open pull request, □ `next` for what is planned
