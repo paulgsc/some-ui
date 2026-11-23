@@ -36,6 +36,7 @@ import {
 import type {
   ChapterMark,
   CutList,
+  Overflowing,
   Ports,
   RenderPolicy,
   StillTake,
@@ -207,6 +208,12 @@ export type Shot = {
   readonly own?: TakeFiles
   /** Its files' name, when not its place in `shots` (`stillFile`). */
   readonly file?: string
+  /**
+   * Its name for a person, said when it doesn't fit the frame (RETRY):
+   * "<chapter>, scene <n>" (`sceneNames`); "scene <n>" by its place here
+   * when absent.
+   */
+  readonly name?: string
 }
 
 /**
@@ -266,7 +273,7 @@ export async function recordStills({
       ? null
       : await speakerOf(root, speaker, policy, nodePorts(root))
   const takes: Array<StillTake | null> = []
-  const overflowing: Array<string> = []
+  const overflowing: Array<Overflowing> = []
   // Home's board says "scene k of n" (#2899): `scenes <n>` once, before the
   // first `recorded <file>`, is the n (paulgsc/server's render worker reads it).
   if (announce) console.log(`scenes ${String(shots.length)}`)
@@ -278,7 +285,10 @@ export async function recordStills({
       await document.fonts.ready
     })
     if ((await shown.getAttribute("data-overflow")) === "true")
-      overflowing.push(shot.id)
+      overflowing.push({
+        id: shot.id,
+        name: shot.name ?? `scene ${String(i + 1)}`,
+      })
     await page.screenshot({
       path: join(root, `${file}.png`),
       animations: "disabled",

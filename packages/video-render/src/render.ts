@@ -70,10 +70,63 @@ export type BurnInRequest = BurnIn & {
 export const SCENES_OVERFLOW =
   "These scenes don't fit the frame, so the video would cut them off:"
 
-/** The lines that say `scenes` don't fit the frame (`SCENES_OVERFLOW`). */
+/** The longest scene name the refusal says. */
+export const SCENE_NAME_MAX = 120
+
+/**
+ * A scene too full for its frame: its id, or its id and its name for a
+ * person (RETRY, the owner: a failure says "which scene, by its name, not an
+ * id").
+ */
+export type Overflowing =
+  | string
+  | { readonly id: string; readonly name: string }
+
+/** A scene's name on one line: whitespace folded, cut short at `SCENE_NAME_MAX`. */
+function oneLine(name: string): string {
+  const folded = name.replaceAll(/\s+/g, " ").trim()
+  return folded.length <= SCENE_NAME_MAX
+    ? folded
+    : `${folded.slice(0, SCENE_NAME_MAX - 1).trimEnd()}…`
+}
+
+/**
+ * The lines that say `scenes` don't fit the frame (`SCENES_OVERFLOW`): the
+ * head, every id, then `scene <id> is named: <name>` for each with a name.
+ * The worker reads ids up to the first line not of an id's shape, so the
+ * names come after every id; it keeps them for home's board (`sceneNames`,
+ * paulgsc/server's follow-up to #1140).
+ */
 export const overflowLines = (
-  scenes: ReadonlyArray<string>
-): ReadonlyArray<string> => [SCENES_OVERFLOW, ...scenes]
+  scenes: ReadonlyArray<Overflowing>
+): ReadonlyArray<string> => {
+  const ids = scenes.map((scene) =>
+    typeof scene === "string" ? scene : scene.id
+  )
+  const named = scenes.flatMap((scene) => {
+    if (typeof scene === "string") return []
+    const said = oneLine(scene.name)
+    return said === "" ? [] : [`scene ${scene.id} is named: ${said}`]
+  })
+  return [SCENES_OVERFLOW, ...ids, ...named]
+}
+
+/**
+ * Each scene's name for a person, by the chapter it is in and its place in
+ * the video: "<chapter>, scene <n>", or "scene <n>" before any chapter, `n`
+ * from 1. `chapterOf` gives the title of the chapter a scene opens, if any.
+ */
+export function sceneNames<T>(
+  scenes: ReadonlyArray<T>,
+  chapterOf: (scene: T) => string | undefined
+): ReadonlyArray<string> {
+  let chapter: string | undefined
+  return scenes.map((scene, i) => {
+    chapter = chapterOf(scene) ?? chapter
+    const place = `scene ${String(i + 1)}`
+    return chapter === undefined ? place : `${chapter}, ${place}`
+  })
+}
 
 /**
  * What a recorder says of a burn-in it couldn't draw over `scenes`, for
