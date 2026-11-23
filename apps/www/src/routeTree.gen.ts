@@ -67,6 +67,8 @@ import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboa
 import { Route as DashboardApkSettingsHomeRouteImport } from './routes/_dashboard/_apk/settings/home'
 import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboard/_apk/settings/phone'
 import { Route as DashboardApkSettingsStatusRouteImport } from './routes/_dashboard/_apk/settings/status'
+import { Route as DashboardLanAsksIndexRouteImport } from './routes/_dashboard/_lan/asks/index'
+import { Route as DashboardLanAsksViewRouteImport } from './routes/_dashboard/_lan/asks/$view'
 import { Route as DashboardApkJobsInterviewIndexRouteImport } from './routes/_dashboard/_apk/jobs/interview/index'
 import { Route as DashboardApkJobsInterviewHowRouteImport } from './routes/_dashboard/_apk/jobs/interview/how'
 import { Route as DashboardApkJobsInterviewPastRouteImport } from './routes/_dashboard/_apk/jobs/interview/past'
@@ -407,6 +409,16 @@ const DashboardApkSettingsStatusRoute =
     path: '/settings/status',
     getParentRoute: () => DashboardApkRoute,
   } as any)
+const DashboardLanAsksIndexRoute = DashboardLanAsksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardLanAsksRoute,
+} as any)
+const DashboardLanAsksViewRoute = DashboardLanAsksViewRouteImport.update({
+  id: '/$view',
+  path: '/$view',
+  getParentRoute: () => DashboardLanAsksRoute,
+} as any)
 const DashboardApkJobsInterviewIndexRoute =
   DashboardApkJobsInterviewIndexRouteImport.update({
     id: '/',
@@ -650,7 +662,7 @@ export interface FileRoutesByFullPath {
   '/journal': typeof DashboardApkJournalRouteWithChildren
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
-  '/asks': typeof DashboardLanAsksRoute
+  '/asks': typeof DashboardLanAsksRouteWithChildren
   '/cooking': typeof DashboardLanCookingRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
@@ -676,10 +688,12 @@ export interface FileRoutesByFullPath {
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/settings/status': typeof DashboardApkSettingsStatusRoute
+  '/asks/$view': typeof DashboardLanAsksViewRoute
   '/aph/': typeof DashboardApkAphIndexRoute
   '/jobs/': typeof DashboardApkJobsIndexRoute
   '/journal/': typeof DashboardApkJournalIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
+  '/asks/': typeof DashboardLanAsksIndexRoute
   '/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
   '/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
@@ -740,7 +754,6 @@ export interface FileRoutesByTo {
   '/game-week': typeof DashboardApkGameWeekRoute
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
-  '/asks': typeof DashboardLanAsksRoute
   '/cooking': typeof DashboardLanCookingRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
@@ -765,10 +778,12 @@ export interface FileRoutesByTo {
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/settings/status': typeof DashboardApkSettingsStatusRoute
+  '/asks/$view': typeof DashboardLanAsksViewRoute
   '/aph': typeof DashboardApkAphIndexRoute
   '/jobs': typeof DashboardApkJobsIndexRoute
   '/journal': typeof DashboardApkJournalIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
+  '/asks': typeof DashboardLanAsksIndexRoute
   '/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
   '/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
@@ -836,7 +851,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal': typeof DashboardApkJournalRouteWithChildren
   '/_dashboard/_apk/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
-  '/_dashboard/_lan/asks': typeof DashboardLanAsksRoute
+  '/_dashboard/_lan/asks': typeof DashboardLanAsksRouteWithChildren
   '/_dashboard/_lan/cooking': typeof DashboardLanCookingRoute
   '/_dashboard/_lan/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
@@ -862,10 +877,12 @@ export interface FileRoutesById {
   '/_dashboard/_apk/settings/home': typeof DashboardApkSettingsHomeRoute
   '/_dashboard/_apk/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/_dashboard/_apk/settings/status': typeof DashboardApkSettingsStatusRoute
+  '/_dashboard/_lan/asks/$view': typeof DashboardLanAsksViewRoute
   '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
   '/_dashboard/_apk/jobs/': typeof DashboardApkJobsIndexRoute
   '/_dashboard/_apk/journal/': typeof DashboardApkJournalIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
+  '/_dashboard/_lan/asks/': typeof DashboardLanAsksIndexRoute
   '/_dashboard/_apk/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
   '/_dashboard/_apk/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/_dashboard/_apk/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
@@ -957,10 +974,12 @@ export interface FileRouteTypes {
     | '/settings/home'
     | '/settings/phone'
     | '/settings/status'
+    | '/asks/$view'
     | '/aph/'
     | '/jobs/'
     | '/journal/'
     | '/practice/'
+    | '/asks/'
     | '/jobs/interview/how'
     | '/jobs/interview/past'
     | '/jobs/interview/questions'
@@ -1021,7 +1040,6 @@ export interface FileRouteTypes {
     | '/game-week'
     | '/rust-rounds'
     | '/soundbites'
-    | '/asks'
     | '/cooking'
     | '/home-switches'
     | '/lessons'
@@ -1046,10 +1064,12 @@ export interface FileRouteTypes {
     | '/settings/home'
     | '/settings/phone'
     | '/settings/status'
+    | '/asks/$view'
     | '/aph'
     | '/jobs'
     | '/journal'
     | '/practice'
+    | '/asks'
     | '/jobs/interview/how'
     | '/jobs/interview/past'
     | '/jobs/interview/questions'
@@ -1142,10 +1162,12 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/settings/home'
     | '/_dashboard/_apk/settings/phone'
     | '/_dashboard/_apk/settings/status'
+    | '/_dashboard/_lan/asks/$view'
     | '/_dashboard/_apk/aph/'
     | '/_dashboard/_apk/jobs/'
     | '/_dashboard/_apk/journal/'
     | '/_dashboard/_apk/practice/'
+    | '/_dashboard/_lan/asks/'
     | '/_dashboard/_apk/jobs/interview/how'
     | '/_dashboard/_apk/jobs/interview/past'
     | '/_dashboard/_apk/jobs/interview/questions'
@@ -1609,6 +1631,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkSettingsStatusRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_lan/asks/': {
+      id: '/_dashboard/_lan/asks/'
+      path: '/'
+      fullPath: '/asks/'
+      preLoaderRoute: typeof DashboardLanAsksIndexRouteImport
+      parentRoute: typeof DashboardLanAsksRoute
+    }
+    '/_dashboard/_lan/asks/$view': {
+      id: '/_dashboard/_lan/asks/$view'
+      path: '/$view'
+      fullPath: '/asks/$view'
+      preLoaderRoute: typeof DashboardLanAsksViewRouteImport
+      parentRoute: typeof DashboardLanAsksRoute
+    }
     '/_dashboard/_apk/jobs/interview/': {
       id: '/_dashboard/_apk/jobs/interview/'
       path: '/'
@@ -2051,8 +2087,21 @@ const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
   DashboardApkRouteChildren,
 )
 
+interface DashboardLanAsksRouteChildren {
+  DashboardLanAsksViewRoute: typeof DashboardLanAsksViewRoute
+  DashboardLanAsksIndexRoute: typeof DashboardLanAsksIndexRoute
+}
+
+const DashboardLanAsksRouteChildren: DashboardLanAsksRouteChildren = {
+  DashboardLanAsksViewRoute: DashboardLanAsksViewRoute,
+  DashboardLanAsksIndexRoute: DashboardLanAsksIndexRoute,
+}
+
+const DashboardLanAsksRouteWithChildren =
+  DashboardLanAsksRoute._addFileChildren(DashboardLanAsksRouteChildren)
+
 interface DashboardLanRouteChildren {
-  DashboardLanAsksRoute: typeof DashboardLanAsksRoute
+  DashboardLanAsksRoute: typeof DashboardLanAsksRouteWithChildren
   DashboardLanCookingRoute: typeof DashboardLanCookingRoute
   DashboardLanHomeSwitchesRoute: typeof DashboardLanHomeSwitchesRoute
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
@@ -2060,7 +2109,7 @@ interface DashboardLanRouteChildren {
 }
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
-  DashboardLanAsksRoute: DashboardLanAsksRoute,
+  DashboardLanAsksRoute: DashboardLanAsksRouteWithChildren,
   DashboardLanCookingRoute: DashboardLanCookingRoute,
   DashboardLanHomeSwitchesRoute: DashboardLanHomeSwitchesRoute,
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,

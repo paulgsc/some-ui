@@ -1,25 +1,47 @@
 /**
- * The asks, read: one `GET` of GitHub's public list of open issues labelled
- * `ask` per repository (`@/lib/public-github`). What each answer reads as is
- * `./model`'s; when it is read is the query's (`./index`).
+ * The asks, read: two `GET`s of GitHub's public list of issues labelled
+ * `ask` per repository (`@/lib/public-github`), the open ones (every one,
+ * up to 100) and the 100 closed ones updated most lately (C1201). What each
+ * answer reads as is `./model`'s; when it is read is the query's
+ * (`./index`).
  */
 import type { WorkRepo } from "@some-ui/video-render"
 import { ASK_LABEL, WORK_REPOS } from "@some-ui/video-render"
 
 import { readGithub } from "@/lib/public-github"
 
-import type { OpenAsk } from "./model"
+import type { AskIssue } from "./model"
 import { asksOf, aToZ, IssuesSchema } from "./model"
 
-async function readRepo(repo: WorkRepo): Promise<Array<OpenAsk>> {
-  // A page holds every open ask, up to 100.
+type State = "open" | "closed"
+
+/** `repo`'s asks in `state`: one page, of up to 100. */
+async function readRepo(
+  repo: WorkRepo,
+  state: State
+): Promise<Array<AskIssue>> {
   const issues = await readGithub(
-    `${repo}/issues?labels=${ASK_LABEL}&state=open&per_page=100`,
+    `${repo}/issues?labels=${ASK_LABEL}&state=${state}&sort=updated&per_page=100`,
     IssuesSchema
   )
   return asksOf(repo, issues)
 }
 
-/** Every open ask, A to Z; rejects when either repository's can't be read. */
-export const readOpenAsks = async (): Promise<Array<OpenAsk>> =>
-  aToZ(await Promise.all(WORK_REPOS.map(readRepo)))
+/**
+ * The asks, waiting and answered, A to Z, each once: one whose state
+ * changed between the two reads is in both, and reads as answered (rightly
+ * when it was closed, wrongly for the rarer reopening, until the next read).
+ * Rejects when any read fails.
+ */
+export const readAsks = async (): Promise<Array<AskIssue>> => {
+  const read = await Promise.all(
+    WORK_REPOS.flatMap((repo) => [
+      readRepo(repo, "closed"),
+      readRepo(repo, "open"),
+    ])
+  )
+  const once = new Map<string, AskIssue>()
+  for (const issue of read.flat())
+    if (!once.has(issue.id)) once.set(issue.id, issue)
+  return aToZ([[...once.values()]])
+}
