@@ -3,7 +3,8 @@
 // `snips/`, and each cut taken from its `video.mp4` by shot
 // (`shot-times.json`), silent, into a Site Assets folder laid out by key
 // (apps/www/src/landing/show.ts, `faceKey`). Run by Snips Capture's apk-clip
-// job (android) and Site Assets' extensions job (extensions).
+// job (android), and by Site Assets' extensions job (extensions) and its
+// dashboards job (server, from the walk's own folder: no cut, so no video).
 //
 //   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder>
 //

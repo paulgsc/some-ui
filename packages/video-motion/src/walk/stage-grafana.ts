@@ -1,27 +1,25 @@
 /**
- * The Grafana stage (C1073, #3415): home's own Grafana, its panels opened one
+ * The Grafana stage: a throwaway Grafana that a Site Assets job starts on
+ * GitHub (`scripts/dashboards-on-sample.sh`), serving the dashboards compiled
+ * from paulgsc/server's jsonnet over sample telemetry, its panels opened one
  * by one at a fixed size, theme and time range, in a Chromium with nothing
- * else in it. Home's dashboards are walked here (`./home-dashboards`), inside
- * home's render worker, for the public site's server clip and cores still.
+ * else in it (`./home-dashboards`). Grafana lets an anonymous Viewer read, so
+ * the walk holds no key.
  *
- * Only Grafana is reached, and only Grafana is given the token:
+ * Only Grafana is reached:
  *
- * - The token is a Viewer service account's, read from `GRAFANA_TOKEN` in
- *   the environment, never from the sample, a file or an argument, and the
- *   browser is started without it in its own environment.
  * - Every request is fetched here, never by the browser: one for another
- *   origin is refused, one to Grafana goes with the token and follows no
- *   redirect, and a redirect it answers is refused and fails the walk (a
- *   redirect to another host would otherwise carry the token, and one to
- *   the login page would be photographed).
+ *   origin is refused, one to Grafana follows no redirect, and a redirect it
+ *   answers is refused and fails the walk (one to the login page would be
+ *   photographed).
  * - Service workers are blocked and every WebSocket closed: neither passes
  *   through the routes above.
  *
- * A script error, or an answer from Grafana that is not a success, fails the
- * walk: a panel that did not draw is not the dashboard. A screen is taken
- * once, after the page's last navigation, a panel's query has answered,
- * nothing is in flight, no panel is loading, and the fonts and two frames
- * are drawn.
+ * A script error, an answer from Grafana that is not a success, or a panel
+ * that says it has no data fails the walk: a panel that did not draw is not
+ * the dashboard. A screen is taken once, after the page's last navigation, a
+ * panel's query has answered, nothing is in flight, no panel is loading, and
+ * the fonts and two frames are drawn.
  */
 
 import type { Page, Request } from "playwright-core"
@@ -29,9 +27,6 @@ import { chromium } from "playwright-core"
 
 import type { Stage } from "./run"
 import { settlePage } from "./stage-sandbox"
-
-/** The environment variable that holds Grafana's token. */
-const GRAFANA_TOKEN = "GRAFANA_TOKEN"
 
 /** How long a panel may take to fetch and draw its data. */
 const DRAWN_MS = 30_000
@@ -43,7 +38,7 @@ export type GrafanaStageSpec = {
   readonly kind: "grafana"
   /** The version of what the dashboards show (file_host's), which the walk names. */
   readonly version: string
-  /** Grafana, as the walk reaches it (`http://grafana:3000` inside home's render worker). */
+  /** Grafana, as the walk reaches it (`http://127.0.0.1:3000` on the runner). */
   readonly origin: string
   /** The page the walk opens, a path and query under the origin. */
   readonly page: string
@@ -60,30 +55,15 @@ async function reached(page: Page, origin: string): Promise<void> {
   }
 }
 
-/** The browser's environment: the walk's, less the token. */
-function withoutToken(): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [name, value] of Object.entries(process.env)) {
-    if (name !== GRAFANA_TOKEN && value !== undefined) env[name] = value
-  }
-  return env
-}
+/** What Grafana draws in a panel whose query answered nothing. */
+const NO_DATA = "No data"
 
 export async function openGrafanaStage(
   spec: GrafanaStageSpec,
   chrome: string
 ): Promise<Stage> {
-  const token = process.env[GRAFANA_TOKEN]
-  if (token === undefined || token === "") {
-    throw new Error(
-      `${GRAFANA_TOKEN} is not set: the walk needs Grafana's token`
-    )
-  }
   const origin = new URL(spec.origin).origin
-  const browser = await chromium.launch({
-    executablePath: chrome,
-    env: withoutToken(),
-  })
+  const browser = await chromium.launch({ executablePath: chrome })
   try {
     const context = await browser.newContext({
       viewport: spec.viewport,
@@ -129,10 +109,7 @@ export async function openGrafanaStage(
       }
       const document = documents
       try {
-        const answer = await route.fetch({
-          headers: { ...request.headers(), authorization: `Bearer ${token}` },
-          maxRedirects: 0,
-        })
+        const answer = await route.fetch({ maxRedirects: 0 })
         const status = answer.status()
         if (status >= 300) {
           problems.push(`${url.pathname} answered ${String(status)}`)
@@ -175,6 +152,10 @@ export async function openGrafanaStage(
         .first()
         .waitFor({ state: "detached", timeout: DRAWN_MS })
       await settlePage(page)
+      // A panel whose series the telemetry lacks draws this, not the panel.
+      if ((await page.getByText(NO_DATA, { exact: true }).count()) > 0) {
+        throw new Error(`${page.url()} drew "${NO_DATA}"`)
+      }
     }
 
     return {

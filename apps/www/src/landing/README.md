@@ -23,9 +23,14 @@ project each. Each episode is one to four scenes, and each scene is some copy an
   (`SITE_SHOW_DRAFTS=1`), never on Pages; agreeing one sets its `draft` to false.
 - **Timing.** `timeline.ts` lays the whole show on one clock: copy streams in, then the
   cubes turn.
-- **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the two producer
-  jobs: each still copied from a walk's screens, each cut taken silent from a rendered
-  video by shot. A face the build doesn't have shows its title card.
+- **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the producer jobs:
+  each still copied from a walk's screens, each cut taken silent from a rendered video by
+  shot. A face the build doesn't have shows its title card.
+- **The server's dashboards are sample data.** The server episode's stills and the cores
+  gap's still are file_host's own Grafana panels, compiled from paulgsc/server's jsonnet
+  and drawn by Site Assets' `dashboards` job over a made-up week of telemetry
+  (`packages/video-motion/scripts/dashboards-on-sample.sh`). Home and its numbers are
+  never reached (the owner on #3401, 2026-11-23), and the episode's words say so.
 - **Skeletons.** Until an episode's pair turns in, each of its places stands as a skeleton
   of what is coming, a clip's frame or a still's, by the face's slot (`slotOf`, C1185).
 

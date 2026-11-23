@@ -155,24 +155,25 @@ describe("the walk's microphone (WALK3)", () => {
   })
 })
 
-/** What home writes for its render worker (`site_shots` in paulgsc/server). */
+/** What Site Assets' dashboards job writes for the walks (`motion dashboards-sample`). */
 const HOME_SAMPLE = {
-  schema: "some-ui.walk-sample/home-dashboards/1",
-  version: "0.42.1",
-  origin: "http://grafana:3000",
+  schema: "some-ui.walk-sample/home-dashboards/2",
+  version: "0.0.0+4b98b6f2d410",
+  origin: "http://127.0.0.1:3000",
   to: "2026-11-16T00:00:00Z",
   days: 7,
 }
 
-describe("home's dashboards (C1073, #3415)", () => {
-  it("reads home's sample, and refuses a window that does not end at a UTC midnight", () => {
+describe("the server's dashboards, on sample telemetry (#3401)", () => {
+  it("reads the sample week, and refuses any other window", () => {
     expect(homeServer.sample.safeParse(HOME_SAMPLE).success).toBe(true)
     for (const bad of [
-      { ...HOME_SAMPLE, to: "2026-11-23T05:00:00Z" },
+      { ...HOME_SAMPLE, to: "2026-11-23T00:00:00Z" },
+      { ...HOME_SAMPLE, to: "2026-11-16T05:00:00Z" },
       { ...HOME_SAMPLE, days: 1 },
-      { ...HOME_SAMPLE, to: "2999-01-01T00:00:00Z" },
       { ...HOME_SAMPLE, origin: "file:///etc" },
       { ...HOME_SAMPLE, version: "" },
+      { ...HOME_SAMPLE, schema: "some-ui.walk-sample/home-dashboards/1" },
       { ...HOME_SAMPLE, token: "x" },
     ]) {
       expect(homeServer.sample.safeParse(bad).success).toBe(false)
@@ -201,7 +202,10 @@ describe("home's dashboards (C1073, #3415)", () => {
     const sample = homeServer.sample.parse(HOME_SAMPLE)
     const server = homeServer.walk(sample)
     const cores = homeCores.walk(sample)
-    expect(server.stage).toMatchObject({ kind: "grafana", version: "0.42.1" })
+    expect(server.stage).toMatchObject({
+      kind: "grafana",
+      version: "0.0.0+4b98b6f2d410",
+    })
     expect(server.steps).toHaveLength(6)
     expect(stepProblems(server.steps)).toEqual([])
     expect(server.steps.slice(1).map((step) => step.action.kind)).toEqual(

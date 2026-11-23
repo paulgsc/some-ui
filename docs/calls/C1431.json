@@ -1,0 +1,21 @@
+{
+  "id": "C1431",
+  "made": "2026-11-23",
+  "by": "owner",
+  "paths": [
+    "packages/video-motion/src/walk/stage-grafana.ts",
+    "packages/video-motion/src/walk/home-dashboards.ts",
+    "packages/video-motion/src/walk/dashboard-telemetry.ts",
+    "packages/video-motion/scripts/dashboards-on-sample.sh",
+    "packages/video-motion/walks/home-server.json"
+  ],
+  "chose": "The owner (2026-11-23, on #3401, comment 7112444256, close paraphrase): \"Why do we need the Grafana key at all? I thought we were taking screenshots of the dashboard, not of my live dashboard. There's no reason to show my actual metrics or my uptime. Given the jsonnet and libsonnet, generate the dashboard with mock telemetry and take a screenshot or a screen recording of that. It's deterministic and automatic; I don't want any administrative or editorial task. … There's absolutely no reason to surface real-time metrics from the home box. The box is private and the data is private. Asking for that was an anti-pattern from the start.\" So the grafana stage walks a throwaway Grafana that lets an anonymous Viewer read, and holds no key: `GRAFANA_TOKEN` and its handling are gone. The walks' sample is the fixed sample week (`some-ui.walk-sample/home-dashboards/2`), and a panel that draws \"No data\" fails the walk. The server episode's words say the dashboards are code built in CI, why these panels, and that the numbers are sample data.",
+  "options": [
+    "walk home's own Grafana with a Viewer token, inside home's render worker (C1073, moved)",
+    "walk a throwaway Grafana on GitHub over mock telemetry, with no key (chosen)"
+  ],
+  "gray": "Recorded as the owner's call; the owner gave no options. The two above are the design C1073 chose and the one the owner moved it to.",
+  "undo": "Record a call that moves this one; give the stage back a token read from the environment and a sample naming a passed week.",
+  "refs": ["#3401", "#3422"],
+  "moves": "C1073"
+}

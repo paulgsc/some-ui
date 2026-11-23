@@ -1,42 +1,41 @@
 /**
- * Home's dashboards for the public site (C1073, #3415): two walks on home's
- * own Grafana (`./stage-grafana`), each panel opened alone (`/d-solo/`) at
- * one size, in the dark theme, over one window of time that the sample
- * names. Home's render worker walks them; the server card's clip is the
- * first walk's walkthrough (`home-server`), the cores card's still the
- * second walk's one screen (`home-cores`).
+ * The server's dashboards for the public site (the owner on #3401,
+ * 2026-11-23, which moves C1071 and C1073): two walks on a throwaway Grafana
+ * (`./stage-grafana`) that a Site Assets job starts on GitHub, serving the
+ * dashboards compiled from paulgsc/server's jsonnet over a throwaway
+ * Prometheus that holds one week of sample telemetry
+ * (`./dashboard-telemetry`). Each panel is opened alone (`/d-solo/`) at one
+ * size, in the dark theme, over that week. The server episode's faces are the
+ * first walk's walkthrough (`home-server`), the cores gap's still the second
+ * walk's one screen (`home-cores`). Home is never reached, and no number in
+ * them is home's.
  *
- * Which panels go public is the owner's (#3401: "the server through its
- * Grafana dashboards", "the 4 CPU cores"; #3415's yes). Each is an
- * aggregate: rates, shares, counts and uptime, never a client, an address
- * or a subject (paulgsc/server docs/identity.md). A panel is named here by
- * its dashboard's uid and its id in that dashboard's jsonnet
- * (paulgsc/server infra/grafana/dashboards), so a panel that moves is a
- * change here, in review.
+ * Which panels: the owner's (#3401: "the server through its Grafana
+ * dashboards", "the 4 CPU cores"). A panel is named here by its dashboard's
+ * uid and its id in that dashboard's jsonnet (paulgsc/server
+ * infra/grafana/dashboards), so a panel that moves is a change here, in
+ * review.
  *
- * Deterministic framing: the sample's window (`to`, a UTC midnight, and
- * `days` before it), the stage's size and theme, and UTC. The same window
- * over the same data gives the same pictures.
+ * Deterministic framing: the sample week (`WEEK`), the stage's size and
+ * theme, and UTC. The same dashboards over the same telemetry give the same
+ * pictures.
  */
 
 import { z } from "zod"
 
+import { WEEK } from "./dashboard-telemetry"
 import type { Step, Walk } from "./run"
 
-/** What home writes for the render worker (`site_shots` in paulgsc/server). */
+/** What the Site Assets job writes for the walks: the sample week, and where its Grafana answers. */
 const SampleSchema = z.strictObject({
-  schema: z.literal("some-ui.walk-sample/home-dashboards/1"),
-  /** file_host's version, as it says it: the walk names what it shows. */
+  schema: z.literal("some-ui.walk-sample/home-dashboards/2"),
+  /** The server commit the dashboards were built from, as build metadata (`0.0.0+<sha>`). */
   version: z.string().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/),
-  /** Grafana, as the render worker reaches it. */
+  /** The throwaway Grafana, as the walk reaches it. */
   origin: z.url({ protocol: /^https?$/ }),
-  /** The window's end: a UTC midnight that has passed, so its data is all in. */
-  to: z.iso
-    .datetime()
-    .refine((at) => at.endsWith("T00:00:00Z"), "to must be a UTC midnight")
-    .refine((at) => Date.parse(at) <= Date.now(), "to must have passed"),
-  /** How many days the window holds, ending at `to`: a week, as the words say. */
-  days: z.literal(7),
+  /** The window's end and length: the week the telemetry holds, and no other. */
+  to: z.literal(WEEK.to),
+  days: z.literal(WEEK.days),
 })
 type Sample = z.infer<typeof SampleSchema>
 
