@@ -2862,7 +2862,7 @@
             },
             {
               "class": "structural",
-              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them; every recorder that burns in goes through the same burnInRecorder.",
+              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them.",
               "ref": "some-ui:packages/video-render/src/__tests__/render.test.ts"
             }
           ],
@@ -3355,7 +3355,7 @@
             },
             {
               "class": "structural",
-              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them; every recorder that burns in goes through the same burnInRecorder.",
+              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them.",
               "ref": "some-ui:packages/video-render/src/__tests__/render.test.ts"
             }
           ],
@@ -3642,7 +3642,7 @@
             },
             {
               "class": "structural",
-              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them; every recorder that burns in goes through the same burnInRecorder.",
+              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them.",
               "ref": "some-ui:packages/video-render/src/__tests__/render.test.ts"
             }
           ],
