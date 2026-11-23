@@ -13,6 +13,7 @@ import {
   reportWeek,
   sampleCallWeek,
   sampleEssay,
+  sampleGameEssay,
   sampleInterviewEssay,
   sampleReport,
   sampleSpokenCard,
@@ -22,6 +23,7 @@ import type {
   CallWeek,
   EngagementReport,
   Essay,
+  GameEssay,
   InterviewEssay,
 } from "@some-ui/video-render"
 import { renderToStaticMarkup } from "react-dom/server"
@@ -31,6 +33,7 @@ import { Call, CastProvider } from "./essay-parts"
 import { EssaySceneFrame } from "./essay-stage"
 import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW } from "./essay-words"
+import { fieldOf, gameEssayAt } from "./game-essay-view"
 import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
 import { screenStageOf } from "./rust-screen-view"
@@ -527,6 +530,48 @@ describe("an interview essay's stage (IW6)", () => {
     const heard = interviewEssayAt(essay(), "heard-1").view
     expect(heard.section === "heard" && heard.read.id).toBe("keep-it-first")
     expect(interviewEssayAt(essay(), "reading-2").speaker).toBe("tutor")
+  })
+})
+
+describe("a Game Week essay's stage (GWB)", () => {
+  const sample = sampleGameEssay()
+  const essay = (): GameEssay => {
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    return sample.value
+  }
+
+  it("draws a bite's scenes from its game and bite, and halftime from its game", () => {
+    const setup = gameEssayAt(essay(), "setup-1").view
+    expect(setup.section === "setup" && setup.bite.take).toBe("sample-bite-1")
+    const halftime = gameEssayAt(essay(), "halftime-1").view
+    expect(halftime.section === "halftime" && halftime.game.id).toBe(
+      "401873010"
+    )
+    expect(gameEssayAt(essay(), "bite-2").speaker).toBe("you")
+    expect(gameEssayAt(essay(), "no-such-scene").scene.id).toBe("intro")
+  })
+
+  it("draws the field with the offense going left to right", () => {
+    // NE has the ball at the CHI 45: 55 yards from its own goal, 5 to gain.
+    expect(
+      fieldOf({
+        period: 1,
+        clock: "11:35",
+        possession: "NE",
+        down: 4,
+        distance: 5,
+        spot: { side: "CHI", yard: 45 },
+        score: { away: 0, home: 0 },
+      })
+    ).toEqual({ ball: 55, gain: 60 })
+    expect(
+      fieldOf({
+        period: 1,
+        clock: "1:00",
+        spot: { side: "NE", yard: 20 },
+        score: { away: 0, home: 0 },
+      })
+    ).toBeNull()
   })
 })
 

@@ -45,6 +45,7 @@ import {
   whereOf,
 } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
+import { GameEssayStagePage } from "./game-essay-stage"
 import { InterviewEssayStagePage } from "./interview-essay-stage"
 import { SpokenCardStagePage } from "./spoken-card-stage"
 
@@ -850,7 +851,8 @@ export const EssaySceneFrame = ({
 }
 
 /**
- * The stage of the essay `kind` names: the interview essay's, a cards
+ * The stage of the essay `kind` names: the interview essay's, the Game
+ * Week essay's (`game`), a cards
  * essay's spoken card (`spoken`, WALK7: `week` names the card), or the Rust
  * Rounds essay's.
  */
@@ -860,6 +862,8 @@ export const EssayStagePage = ({
 }: EssayStageProps): JSX.Element | null =>
   kind === "interview" ? (
     <InterviewEssayStagePage {...props} />
+  ) : kind === "game" ? (
+    <GameEssayStagePage {...props} />
   ) : kind === "spoken" ? (
     <SpokenCardStagePage
       card={props.week}

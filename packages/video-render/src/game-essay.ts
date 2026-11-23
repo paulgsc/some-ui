@@ -51,6 +51,7 @@ import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import {
   HALVES,
   isScenarioId,
+  scenarioOf,
   type Half,
   type ScenarioId,
 } from "@some-ui/game-scenarios"
@@ -672,6 +673,10 @@ export function gameEssayIntro(
     ].join(" "),
   }
 }
+
+/** A bite's scenario as the catalog names it, or null for one said first and never mapped. */
+export const gameScenarioName = (scenario: ScenarioId | null): string | null =>
+  scenario === null ? null : scenarioOf(scenario).name
 
 /** The close's chapter title. */
 const CLOSE_TITLE = "The week, closed"

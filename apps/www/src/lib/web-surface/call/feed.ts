@@ -57,6 +57,12 @@ export const essaySource = besideStage("rust-essays")
  */
 export const interviewEssaySource = besideStage("interview-essays")
 
+/**
+ * A Game Week essay, by its week (GWB, #2074), read as its siblings are:
+ * the recorder answers it from `record:essay --essay-file`.
+ */
+export const gameEssaySource = besideStage("game-essays")
+
 /** A Rust Rounds week with its runs (`GET /rust-weeks/<id>`), answered by `record:essay --week-file`. */
 export const rustScreenSource = besideStage("rust-screens")
 
