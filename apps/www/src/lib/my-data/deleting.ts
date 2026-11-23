@@ -260,12 +260,19 @@ export type DeletingState = {
   readonly seq: number
   /** Each ask's number: a read of uses for an earlier one changes nothing. */
   readonly asks: number
+  /**
+   * What the sheet shows of the notes' uses, numbered: each change to it,
+   * a first read or an ask again, is a new one, and a confirm counts only
+   * for the one it was tapped on (TU1).
+   */
+  readonly shown: number
   readonly sheet: DeleteSheet
 }
 
 export const INITIAL_DELETING: DeletingState = {
   seq: 0,
   asks: 0,
+  shown: 0,
   sheet: { kind: "closed" },
 }
 
@@ -283,19 +290,28 @@ export type DeletingEvent =
       readonly uses: TakeUses
     }
   /**
-   * "Delete for good", or Try again, tapped at confirm `seq` of ask `asks`,
-   * with what uses them read again since the tap.
+   * "Delete for good", or Try again, tapped at confirm `seq` of ask `asks`
+   * on what the sheet showed as `shown`, with what uses them read again
+   * since the tap.
    */
   | {
       readonly type: "confirmed"
       readonly seq: number
       readonly asks: number
+      readonly shown: number
       readonly uses: TakeUses
     }
   | { readonly type: "answered"; readonly seq: number; readonly end: DeleteEnd }
   | { readonly type: "letGoEnded"; readonly seq: number; readonly let: boolean }
   /** "Keep it", Done, or the sheet dismissed. */
   | { readonly type: "closed" }
+
+/** Whether `fresh` holds a use of `ids` that `shown` didn't, not only a store unread. */
+const newUse = (
+  shown: TakeUses | null,
+  fresh: TakeUses,
+  ids: ReadonlyArray<string>
+): boolean => unseen(shown, { ...fresh, unread: shown?.unread ?? [] }, ids)
 
 export function stepDeleting(
   state: DeletingState,
@@ -308,6 +324,7 @@ export function stepDeleting(
       return {
         ...state,
         asks: state.asks + 1,
+        shown: state.shown + 1,
         sheet: {
           kind: "asking",
           of: event.of,
@@ -321,19 +338,33 @@ export function stepDeleting(
       if (event.asks !== state.asks || sheet.kind !== "asking") return state
       // What it shows is replaced only by a confirm's read, which asks again.
       if (sheet.uses !== null) return state
-      return { ...state, sheet: { ...sheet, uses: event.uses } }
+      return {
+        ...state,
+        shown: state.shown + 1,
+        sheet: { ...sheet, uses: event.uses },
+      }
     }
     case "confirmed": {
-      if (event.asks !== state.asks || event.seq !== state.seq) return state
+      // A tap counts only on the sheet as it showed then: a second tap, or
+      // one before what it shows changed, deletes nothing (TU1).
+      if (
+        event.asks !== state.asks ||
+        event.seq !== state.seq ||
+        event.shown !== state.shown
+      )
+        return state
       if (sheet.kind === "asking") {
-        // A use the owner wasn't shown asks again, never deletes (TU1).
+        // Nothing is deleted while it says it is checking.
+        if (sheet.uses === null) return state
+        // A use the owner wasn't shown asks again, never deletes.
         if (unseen(sheet.uses, event.uses, sheet.ids))
           return {
             ...state,
+            shown: state.shown + 1,
             sheet: {
               ...sheet,
               uses: event.uses,
-              changed: sheet.uses !== null,
+              changed: newUse(sheet.uses, event.uses, sheet.ids),
             },
           }
         return {
@@ -353,12 +384,13 @@ export function stepDeleting(
       if (unseen(sheet.uses, event.uses, again))
         return {
           ...state,
+          shown: state.shown + 1,
           sheet: {
             kind: "asking",
             of: sheet.of,
             ids: again,
             uses: event.uses,
-            changed: true,
+            changed: newUse(sheet.uses, event.uses, again),
           },
         }
       return {

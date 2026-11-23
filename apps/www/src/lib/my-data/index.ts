@@ -197,6 +197,12 @@ export function phoneDeleting(): Deleting {
       phoneTakeUses().refresh()
     },
     uses: () => phoneTakeUses().read(),
+    failed: (error) => {
+      reportFailure({
+        port: "my data: what uses a take",
+        error: toIntentError(error),
+      })
+    },
   })
   return deleting
 }

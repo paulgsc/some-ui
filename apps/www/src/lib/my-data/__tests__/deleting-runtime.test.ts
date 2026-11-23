@@ -73,6 +73,7 @@ function ports(): {
     order,
     ports: {
       uses: () => Promise.resolve(uses.now),
+      failed: (): void => undefined,
       deleteNotes: async (ids, settle): Promise<DeleteAsked> => {
         const answer = deferred<DeleteAsked>()
         asked.push({ ids, answer })
@@ -118,6 +119,7 @@ describe("My data's delete runtime", () => {
     const { ports: p, asked, letGo, reread } = ports()
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1", "t2", "t3"])
+    await flush()
     deleting.confirm()
     await flush()
     asked[0]?.answer.resolve({
@@ -156,6 +158,7 @@ describe("My data's delete runtime", () => {
     ] as const) {
       deleting.close()
       deleting.ask("studio", ["t1"])
+      await flush()
       deleting.confirm()
       await flush()
       asked.at(-1)?.answer.resolve(answer)
@@ -196,6 +199,7 @@ describe("My data's delete runtime", () => {
     const { ports: p, asked, letGo } = ports()
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1"])
+    await flush()
     deleting.confirm()
     await flush()
     asked[0]?.answer.resolve({
@@ -206,6 +210,7 @@ describe("My data's delete runtime", () => {
     // Done before this phone's copy has gone, then another take asked about.
     deleting.close()
     deleting.ask("studio", ["t2"])
+    await flush()
     deleting.confirm()
     await flush()
     letGo[0]?.done.resolve(false)
@@ -223,6 +228,7 @@ describe("My data's delete runtime", () => {
     const { ports: p, asked } = ports()
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1", "t2"])
+    await flush()
     deleting.confirm()
     await flush()
     asked[0]?.answer.resolve({
@@ -249,6 +255,7 @@ describe("My data's delete runtime", () => {
     const { ports: p, asked, letGo, order } = ports()
     const deleting = createDeleting(p)
     deleting.ask("studio", ["t1"])
+    await flush()
     deleting.confirm()
     await flush()
     asked[0]?.answer.resolve({

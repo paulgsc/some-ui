@@ -6,24 +6,36 @@
  * `build.paths.ts`), and until one has, they read as unread, never as
  * using nothing (TU1). Phone-only.
  */
+import type { ReactNode } from "react"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
-import { weeksSent } from "@some-ui/rust-rounds"
+import { WEEK_SENT_KEY, weeksSent } from "@some-ui/rust-rounds"
 import type { LibraryUses } from "@some-ui/soundbites"
 
 import { handedIn } from "@/lib/handed-in"
-import { interviewSent } from "@/lib/interview-week/store"
-import { spokenStore } from "@/lib/studio-spoken/store"
+import { interviewSent, SENT_KEY } from "@/lib/interview-week/store"
+import { SCRIPTS_KEY, spokenStore } from "@/lib/studio-spoken/store"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import { usesOfTake } from "./model"
+import type { TakeUse, UseSource } from "./model"
 import type { StudioUseStores, TakeUsesRuntime } from "./runtime"
 import { createTakeUses } from "./runtime"
-import { USE_WORDS } from "./words"
 
-export type { TakeUse, TakeUses } from "./model"
+export type { TakeUse, TakeUses, UseSource } from "./model"
 export { NO_USES, usesAmong, usesOfTake } from "./model"
 export type { TakeUsesRuntime } from "./runtime"
 export { USE_WORDS, whatLoses } from "./words"
+
+/**
+ * `read()`, or null when this phone set a record kept under `key` aside as
+ * unreadable (core-utils' `openKept`, `<key>:unreadable:1` on): what that
+ * record picks is unknown, never none (TU1).
+ */
+export function wholeOrNull<T>(key: string, read: () => T | null): T | null {
+  return browserLocalStorage.getItem(`${key}:unreadable:1`) === null
+    ? read()
+    : null
+}
 
 const studio = handedIn<StudioUseStores>()
 
@@ -35,9 +47,12 @@ let runtime: TakeUsesRuntime | null = null
 /** Made on first use, so importing this module reads nothing. */
 export function phoneTakeUses(): TakeUsesRuntime {
   runtime ??= createTakeUses({
-    spoken: () => spokenStore(browserLocalStorage).known(),
-    interview: () => interviewSent(browserLocalStorage).list(),
-    rust: () => weeksSent(browserLocalStorage).list(),
+    spoken: () =>
+      wholeOrNull(SCRIPTS_KEY, () => spokenStore(browserLocalStorage).known()),
+    interview: () =>
+      wholeOrNull(SENT_KEY, () => interviewSent(browserLocalStorage).list()),
+    rust: () =>
+      wholeOrNull(WEEK_SENT_KEY, () => weeksSent(browserLocalStorage).list()),
     studio: studio.kept,
     onStudio: studio.onKept,
     failed: (source, error) => {
@@ -50,17 +65,24 @@ export function phoneTakeUses(): TakeUsesRuntime {
   return runtime
 }
 
-/** What Takes' rows say of what uses each take (`TakeLibrary`'s `uses`). */
-export function libraryUses(): LibraryUses {
+/**
+ * What Takes' cards draw of what uses each take (`TakeLibrary`'s `uses`):
+ * `draw` is the route's mark (`components/take-uses`' `UseMark`), handed
+ * each take's uses and the stores unread; nothing before the first read.
+ */
+export function libraryUses(
+  draw: (
+    uses: ReadonlyArray<TakeUse>,
+    unread: ReadonlyArray<UseSource>
+  ) => ReactNode
+): LibraryUses {
   const uses = phoneTakeUses()
   return {
     subscribe: uses.subscribe,
     getSnapshot: uses.getSnapshot,
-    inUse: (id): ReadonlyArray<string> => {
+    mark: (id): ReactNode => {
       const now = uses.getSnapshot()
-      return now === null
-        ? []
-        : usesOfTake(now, id).map((use) => USE_WORDS.badgeLine(use))
+      return now === null ? null : draw(usesOfTake(now, id), now.unread)
     },
   }
 }

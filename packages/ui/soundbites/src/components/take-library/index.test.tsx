@@ -5,6 +5,7 @@ import {
   simulatedPattern,
   simulatedPlayer,
 } from "@some-ui/voice-capture/testing"
+import type { LibraryUses } from "@soundbites/components/take-library"
 import { TakeLibrary } from "@soundbites/components/take-library"
 import { HEAR_AGAIN_WORDS } from "@soundbites/lib/hear-again/words"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
@@ -13,7 +14,6 @@ import type {
   LibraryOnPhone,
   LibraryPhone,
   LibraryStations,
-  LibraryUses,
   PhoneTake,
   TakesHome,
 } from "@soundbites/lib/library/runtime"
@@ -362,19 +362,18 @@ describe("Takes on home (ST32)", () => {
       expect(screen.queryByText("“An aside”")).toBeNull()
     })
 
-    it("badges a take the phone says something uses, and only that one (INUSE)", async () => {
+    it("draws the build's mark on a take the phone says something uses, and only on that one (INUSE)", async () => {
       const uses: LibraryUses = {
         subscribe: () => () => undefined,
         getSnapshot: () => 0,
-        inUse: (id) => (id === "n1" ? ["In use · part 1 of “Who I am”"] : []),
+        mark: (id) =>
+          id === "n1" ? <button type="button">in use</button> : null,
       }
       render(
-        <TakeLibrary ports={{ ...ports, uses }} pair={null} compartment="all" />
+        <TakeLibrary ports={ports} uses={uses} pair={null} compartment="all" />
       )
       await settle()
-      expect(screen.getAllByText("In use · part 1 of “Who I am”")).toHaveLength(
-        1
-      )
+      expect(screen.getAllByRole("button", { name: "in use" })).toHaveLength(1)
     })
 
     it("filters by a chip in the top bar, each chip with its count, and folds the canned under the rest", async () => {

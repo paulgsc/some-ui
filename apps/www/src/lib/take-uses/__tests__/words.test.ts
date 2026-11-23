@@ -9,13 +9,15 @@ import { describe, expect, it } from "vitest"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type { TakeUse } from "@/lib/take-uses/model"
 import { USE_SOURCES } from "@/lib/take-uses/model"
-import { USE_WORDS, weekName, whatLoses, whatUses } from "@/lib/take-uses/words"
+import { USE_WORDS, weekName, whatLoses } from "@/lib/take-uses/words"
 
 const EVERY_USE: ReadonlyArray<TakeUse> = [
   { kind: "spoken", card: "c1", title: "Who I am", part: 2 },
   { kind: "spoken", card: "c1", title: " ", part: 1 },
-  { kind: "scene", video: "v1", title: "Pager", scene: 3 },
-  { kind: "scene", video: "v1", title: "Pager", scene: null },
+  { kind: "scene", video: "v1", title: "Pager", shot: "b", scene: 3 },
+  { kind: "scene", video: "v1", title: "Pager", shot: "z", scene: null },
+  { kind: "queued", video: "v1", title: "Pager", rev: 2, shot: "b", scene: 3 },
+  { kind: "queued", video: "v1", title: "", rev: 2, shot: "z", scene: null },
   { kind: "idea", idea: "i1", title: "Phones", question: "what" },
   { kind: "idea", idea: "i1", title: null, question: "what" },
   { kind: "interview", week: "2026-w47", as: "answer" },
@@ -26,21 +28,24 @@ const EVERY_USE: ReadonlyArray<TakeUse> = [
 
 describe("a take's uses, in words", () => {
   it("say what uses it and what that loses, for every use", () => {
-    expect(USE_WORDS.badgeLine(EVERY_USE[0])).toBe(
-      "In use · part 2 of “Who I am”"
+    expect(USE_WORDS.markName(1)).toBe("In use: 1 thing")
+    expect(USE_WORDS.markName(2)).toBe("In use: 2 things")
+    expect(whatLoses(EVERY_USE[2])).toMatch(/^Scene 3 of “Pager”/u)
+    expect(whatLoses(EVERY_USE[1])).toMatch(/its spoken card/u)
+    expect(whatLoses(EVERY_USE[10])).toMatch(/Rust Rounds week 6\./u)
+    expect(whatLoses(EVERY_USE[4])).toBe(
+      "Version 2 of “Pager”, finished for home to make, has it as scene 3's take. Home can't make that version with it gone."
     )
-    expect(whatUses(EVERY_USE[2])).toBe("chosen for scene 3 of “Pager”")
-    expect(whatUses(EVERY_USE[1])).toBe("part 1 of a spoken card")
-    expect(whatUses(EVERY_USE[8])).toBe("your Rust Rounds answer, week 6")
     expect(whatLoses(EVERY_USE[0])).toMatch(/^Part 2 of “Who I am” plays it\./u)
     expect(weekName("odd")).toBe("the week odd")
   })
 
   it("never name the machinery", () => {
     const said = [
-      ...EVERY_USE.flatMap((use) => [whatUses(use), whatLoses(use)]),
-      USE_WORDS.badge,
-      USE_WORDS.more(2),
+      ...EVERY_USE.map((use) => whatLoses(use)),
+      USE_WORDS.markName(1),
+      USE_WORDS.markName(3),
+      USE_WORDS.uncheckedName,
       USE_WORDS.title(1, 1),
       USE_WORDS.title(3, 3),
       USE_WORDS.title(4, 2),

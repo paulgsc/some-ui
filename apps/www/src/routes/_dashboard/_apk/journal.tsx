@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import {
+  IDEAS_KEY,
   keptIdeasForHome,
   keptIdeaStore,
   phoneProjectStore,
@@ -10,7 +11,23 @@ import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { keepIdeas } from "@/lib/idea-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
-import { keepUseStores } from "@/lib/take-uses"
+import { keepUseStores, wholeOrNull } from "@/lib/take-uses"
+
+/**
+ * Studio's ideas and videos, for what uses each take (INUSE,
+ * `lib/take-uses`): handed in when this route loads, before any page under
+ * it asks. My data's kind route (`./settings/data/$kind.tsx`) hands the
+ * same in; the first hand-in stands.
+ */
+if (import.meta.env.VITE_DEVICE_BACKEND === "true")
+  keepUseStores({
+    ideas: () => wholeOrNull(IDEAS_KEY, () => keptIdeaStore().list()),
+    videos: () => {
+      const store = phoneProjectStore()
+      return store.listWhole?.() ?? store.list()
+    },
+    subscribe: (listener) => phoneProjectStore().subscribe(listener),
+  })
 
 /**
  * Every Studio page, whichever opens first: in the Android app, Studio's
@@ -18,19 +35,13 @@ import { keepUseStores } from "@/lib/take-uses"
  * ideas sent whole go home (ST26, `lib/idea-keeping`), so a take recorded
  * in a sitting or a video Finish queued goes home however the page was
  * reached. The first hand-in stands, and a child's effect runs before this
- * one, so New idea's own reading stands where it opens first. Its ideas
- * and videos go to what tells each take's use (INUSE, `lib/take-uses`).
+ * one, so New idea's own reading stands where it opens first.
  */
 const StudioLayout = (): JSX.Element => {
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     keepStudio(phoneStudioKeeping())
     keepIdeas({ forHome: keptIdeasForHome() })
-    keepUseStores({
-      ideas: () => keptIdeaStore().list(),
-      videos: () => phoneProjectStore().list(),
-      subscribe: (listener) => phoneProjectStore().subscribe(listener),
-    })
   }, [])
   return <Outlet />
 }

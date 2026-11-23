@@ -85,6 +85,12 @@ export type StoredNotice = { readonly key: number; readonly text: string }
 export type ProjectStore = {
   read: (id: string) => Promise<Project | null>
   list: () => Promise<Array<Project>>
+  /**
+   * Every project, or null when one this build can't read is kept: what it
+   * picks is then unknown, never none (www's `lib/take-uses`, TU1). Absent
+   * on a store that holds none it can't read.
+   */
+  listWhole?: () => Promise<Array<Project> | null>
   audio: (project: string, take: string) => Promise<Blob | null>
   /**
    * The bytes of audio the projects may still keep under the cap, which
@@ -250,6 +256,15 @@ export function indexedDbProjectStore(): ProjectStore {
         tx.objectStore(PROJECTS).getAll()
       )
       return rows.filter(isProject)
+    },
+
+    async listWhole(): Promise<Array<Project> | null> {
+      const tx = (await connect()).transaction(PROJECTS, "readonly")
+      const rows: Array<unknown> = await result(
+        tx.objectStore(PROJECTS).getAll()
+      )
+      const projects = rows.filter(isProject)
+      return projects.length === rows.length ? projects : null
     },
 
     async audio(project, take): Promise<Blob | null> {

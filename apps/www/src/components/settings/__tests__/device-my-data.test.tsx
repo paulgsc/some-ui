@@ -522,8 +522,32 @@ describe("deleting from a kind's list (MD3)", () => {
         }}
       />
     )
-    expect(screen.getAllByText(USE_WORDS.badgeLine(use))).toHaveLength(1)
-    expect(screen.getByText(USE_WORDS.more(1))).toBeTruthy()
+    // One mark, the same for every kind of use, on the row in use alone.
+    const marks = screen.getAllByRole("button", {
+      name: USE_WORDS.markName(2),
+    })
+    expect(marks).toHaveLength(1)
+    // Tapped, it says what the sheet would: each use and what it loses.
+    fireEvent.click(marks[0])
+    expect(screen.getByText(whatLoses(use))).toBeTruthy()
+    expect(screen.getByText(whatLoses({ ...use, as: "read" }))).toBeTruthy()
+  })
+
+  it("marks every row distinctly when a store couldn't be read, and never as unused (TU1)", () => {
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        unread={[]}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        uses={{ of: new Map(), unread: ["videos"] }}
+      />
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: USE_WORDS.uncheckedName })
+    )
+    expect(screen.getByText(USE_WORDS.unread(["videos"]))).toBeTruthy()
   })
 
   it("offers Delete… on a take of another kind home marks deletable (HEARD5)", () => {

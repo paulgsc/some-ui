@@ -55,6 +55,7 @@ const ALL: UseSources = {
           { cutList: { title: "Pager", shots: [{ id: "a" }, { id: "b" }] } },
         ],
         chosen: { b: "p2", gone: "p9" },
+        queued: [{ rev: 1, takes: [{ scene: "a", note: "p1" }] }],
       },
     ],
   },
@@ -114,11 +115,22 @@ describe("what uses each take", () => {
       { kind: "spoken", card: "c1", title: "Who I am", part: 1 },
     ])
     expect(usesOfTake(uses, "p2")).toEqual([
-      { kind: "scene", video: "v1", title: "Pager", scene: 2 },
+      { kind: "scene", video: "v1", title: "Pager", shot: "b", scene: 2 },
     ])
     // A shot the latest cut dropped still names its take: never unused.
     expect(usesOfTake(uses, "p9")).toEqual([
-      { kind: "scene", video: "v1", title: "Pager", scene: null },
+      { kind: "scene", video: "v1", title: "Pager", shot: "gone", scene: null },
+    ])
+    // A revision queued for home names its take though the pick moved on.
+    expect(usesOfTake(uses, "p1")).toEqual([
+      {
+        kind: "queued",
+        video: "v1",
+        title: "Pager",
+        rev: 1,
+        shot: "a",
+        scene: 1,
+      },
     ])
     expect(usesOfTake(uses, "d2")).toEqual([
       { kind: "idea", idea: "i1", title: "Phones", question: "what" },
@@ -164,6 +176,31 @@ describe("what uses each take", () => {
       const one = usesOf({ ...ALL, [source]: { kind: "unread" } })
       expect(one.unread).toEqual([source])
     }
+  })
+})
+
+describe("a use told apart from one seen", () => {
+  it("is the same use when a new cut only renumbers its scene", () => {
+    const video = (shots: ReadonlyArray<string>): UseSources => ({
+      ...NONE,
+      videos: {
+        kind: "read",
+        value: [
+          {
+            id: "v1",
+            revisions: [
+              { cutList: { title: "P", shots: shots.map((id) => ({ id })) } },
+            ],
+            chosen: { b: "t1" },
+          },
+        ],
+      },
+    })
+    const before = usesOf(video(["a", "b"]))
+    const after = usesOf(video(["x", "a", "b"]))
+    expect(unseen(before, { ...after, unread: before.unread }, ["t1"])).toBe(
+      false
+    )
   })
 })
 

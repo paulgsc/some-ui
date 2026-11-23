@@ -3,7 +3,7 @@ export type { IdeaCaptureProps } from "./components/idea"
 export { IdeaBundle } from "./components/idea-bundle"
 export type { IdeaBundleProps } from "./components/idea-bundle"
 export { keptDraftStore } from "./lib/idea/draft"
-export { keptIdeaStore } from "./lib/idea/store"
+export { IDEAS_KEY, keptIdeaStore } from "./lib/idea/store"
 export { UnnamedIdeaTakes } from "./components/idea-unnamed"
 export type { IdeaStore } from "./lib/idea/store"
 export { keptIdeasForHome } from "./lib/idea/home"
@@ -27,7 +27,7 @@ export type {
 } from "./lib/idea/hearing"
 export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
-export type { TopicGap } from "./components/take-library"
+export type { LibraryUses, TopicGap } from "./components/take-library"
 export type {
   LibraryPage,
   LibraryQuery,
@@ -39,7 +39,6 @@ export type {
   LibraryOnPhone,
   LibraryPhone,
   LibraryStations,
-  LibraryUses,
   PhoneTake,
   TakesHome,
 } from "./lib/library/runtime"

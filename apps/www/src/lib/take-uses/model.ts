@@ -6,14 +6,20 @@
  * A use is a pick that something kept makes of one take among its retries:
  * a spoken card's part plays the take it `using` names (`lib/studio-spoken`,
  * SCR3); a Studio video's scene is cut from its `chosen` take; an idea's
- * answer is its last take (ST26); an interview week, or a Rust Rounds week,
+ * answer is its last take (ST26); a revision queued for home to make names
+ * each scene's take (ST33); an interview week, or a Rust Rounds week,
  * went home naming the take of each answer, read and opening question.
  * A video home made that plays a take is home's to say, and no list home
  * gives says it yet: its member waits on home.
  *
- * - **TU1: a take some store uses is never shown as unused.** A source this
- *   phone couldn't read is `unread`, never an empty one, and `unseen` reads
- *   every use, or source unread, the owner was not shown as new.
+ * - **TU1: a take some store uses is never said to be unused.** A source
+ *   this phone couldn't read whole is `unread`, never an empty one: a row
+ *   then carries the "couldn't check" mark, and the delete sheet says so.
+ *   `unseen` reads every use, or source unread, the owner was not shown as
+ *   new, and the sheet asks again on it (`lib/my-data/deleting`).
+ * - Not a use: an interview or Rust Rounds take not yet sent (nothing picked
+ *   it), an interview question's first take (`ladder.first`, kept as the
+ *   record of growth, not as a pick), a scene note or reflection said aloud.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { WeekSent } from "@some-ui/rust-rounds"
@@ -49,6 +55,19 @@ export type TakeUse =
       readonly kind: "scene"
       readonly video: string
       readonly title: string
+      readonly shot: string
+      readonly scene: number | null
+    }
+  /**
+   * Revision `rev` of Studio video `video`, queued for home to make (ST33),
+   * names it as scene `scene`'s take (numbered as `scene` is).
+   */
+  | {
+      readonly kind: "queued"
+      readonly video: string
+      readonly title: string
+      readonly rev: number
+      readonly shot: string
       readonly scene: number | null
     }
   /** It is the take now of an answer of idea `idea`. */
@@ -86,6 +105,16 @@ export type UseVideo = {
     }
   }>
   readonly chosen: Readonly<Record<string, string>>
+  /** Each revision queued for home to make, with the take of each scene. */
+  readonly queued?:
+    | ReadonlyArray<{
+        readonly rev: number
+        readonly takes: ReadonlyArray<{
+          readonly scene: string
+          readonly note: string
+        }>
+      }>
+    | undefined
 }
 
 /** An idea, as its store keeps it (`@some-ui/soundbites`' `Idea`). */
@@ -145,14 +174,30 @@ export function usesOf(sources: UseSources): TakeUses {
     for (const video of videos.value) {
       const cut = video.revisions.at(-1)?.cutList
       const scenes = (cut?.shots ?? []).map(({ id }) => id)
-      for (const [shot, take] of Object.entries(video.chosen)) {
+      const sceneOf = (shot: string): number | null => {
         const at = scenes.indexOf(shot)
+        return at === -1 ? null : at + 1
+      }
+      const title = cut?.title ?? ""
+      for (const [shot, take] of Object.entries(video.chosen)) {
         add(take, {
           kind: "scene",
           video: video.id,
-          title: cut?.title ?? "",
-          scene: at === -1 ? null : at + 1,
+          title,
+          shot,
+          scene: sceneOf(shot),
         })
+      }
+      for (const { rev, takes } of video.queued ?? []) {
+        for (const { scene: shot, note } of takes)
+          add(note, {
+            kind: "queued",
+            video: video.id,
+            title,
+            rev,
+            shot,
+            scene: sceneOf(shot),
+          })
       }
     }
   }
@@ -202,7 +247,10 @@ function keyOf(use: TakeUse): string {
       return `spoken:${use.card}:${String(use.part)}`
     }
     case "scene": {
-      return `scene:${use.video}:${String(use.scene)}`
+      return `scene:${use.video}:${use.shot}`
+    }
+    case "queued": {
+      return `queued:${use.video}:${String(use.rev)}:${use.shot}`
     }
     case "idea": {
       return `idea:${use.idea}:${use.question}`

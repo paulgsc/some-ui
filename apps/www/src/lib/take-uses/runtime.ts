@@ -26,7 +26,8 @@ import { usesOf } from "./model"
 export type StudioUseStores = {
   /** The ideas kept; null when this phone can't read them. */
   readonly ideas: () => ReadonlyArray<UseIdea> | null
-  readonly videos: () => Promise<ReadonlyArray<UseVideo>>
+  /** The videos kept; null when one this build can't read is kept. */
+  readonly videos: () => Promise<ReadonlyArray<UseVideo> | null>
   /** Calls `listener` after each write to the videos on this page. */
   readonly subscribe: (listener: () => void) => () => void
 }
@@ -68,7 +69,8 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
     const studio = ports.studio()
     if (studio === null) return { kind: "unread" }
     try {
-      return { kind: "read", value: await studio.videos() }
+      const value = await studio.videos()
+      return value === null ? { kind: "unread" } : { kind: "read", value }
     } catch (error) {
       ports.failed("videos", error)
       return { kind: "unread" }
@@ -131,6 +133,10 @@ export function createTakeUses(ports: UsePorts): TakeUsesRuntime {
         if (listeners.size === 0) {
           unhook?.()
           unhook = null
+          // A list opened later shows no mark until its own read lands,
+          // never one from before a pick changed.
+          snapshot = null
+          reads += 1
         }
       }
     },

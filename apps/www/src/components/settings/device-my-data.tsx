@@ -87,8 +87,9 @@ import {
   WORD_SETS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
-import type { TakeUse, TakeUses } from "@/lib/take-uses"
-import { phoneTakeUses, USE_WORDS, usesOfTake } from "@/lib/take-uses"
+import type { TakeUse, TakeUses, UseSource } from "@/lib/take-uses"
+import { phoneTakeUses, usesOfTake } from "@/lib/take-uses"
+import { UseMark } from "@/components/take-uses"
 
 import {
   GrowthLine,
@@ -307,32 +308,6 @@ type RowDelete =
       readonly onToggle: () => void
     }
 
-/** A row's "In use" badge: its first use, and how many more (INUSE). */
-const InUse = ({
-  uses,
-}: {
-  uses: ReadonlyArray<TakeUse>
-}): JSX.Element | null => {
-  const first = uses.at(0)
-  const more = uses.slice(1)
-  if (first === undefined) return null
-  return (
-    <span className="mt-1 flex flex-wrap gap-1.5">
-      <span className="border-success/50 bg-success/10 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs">
-        <span className="bg-success size-2 shrink-0 rounded-full" aria-hidden />
-        <span className="min-w-0 break-words">
-          {USE_WORDS.badgeLine(first)}
-        </span>
-      </span>
-      {more.length > 0 ? (
-        <span className="border-border inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
-          {USE_WORDS.more(more.length)}
-        </span>
-      ) : null}
-    </span>
-  )
-}
-
 const Item = ({
   item,
   playing,
@@ -341,10 +316,13 @@ const Item = ({
   onStop,
   remove = { kind: "none" },
   uses = [],
+  unread = [],
 }: {
   item: KindItem
   /** What uses it, as this phone read it last (INUSE). */
   uses?: ReadonlyArray<TakeUse>
+  /** The stores that read couldn't (TU1). */
+  unread?: ReadonlyArray<UseSource>
   playing: boolean
   /** Its audio is being read, here or from home. */
   fetching?: boolean
@@ -429,7 +407,6 @@ const Item = ({
             )}
           </span>
         )}
-        <InUse uses={uses} />
         {item.plays === "none" &&
         item.wentAt === null &&
         remove.kind !== "select" ? (
@@ -438,6 +415,7 @@ const Item = ({
           </span>
         ) : null}
       </span>
+      {item.wentAt === null ? <UseMark uses={uses} unread={unread} /> : null}
       {remove.kind === "offer" ? (
         <Button
           variant="ghost"
@@ -577,6 +555,7 @@ export const MyDataKind = ({
               onStop={onStop}
               remove={removeOf(item)}
               uses={uses === null ? [] : usesOfTake(uses, item.id)}
+              unread={uses?.unread ?? []}
             />
           ))}
         </ul>

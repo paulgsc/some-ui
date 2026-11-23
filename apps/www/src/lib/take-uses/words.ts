@@ -16,63 +16,38 @@ export function weekName(week: string): string {
 const quoted = (title: string | null): string | null =>
   title === null || title.trim() === "" ? null : `“${title.trim()}”`
 
-/** What uses it, after "In use · ": short, for a row's badge. */
-export function whatUses(use: TakeUse): string {
-  switch (use.kind) {
-    case "spoken": {
-      const title = quoted(use.title)
-      return title === null
-        ? `part ${String(use.part)} of a spoken card`
-        : `part ${String(use.part)} of ${title}`
-    }
-    case "scene": {
-      const title = quoted(use.title) ?? "a Studio video"
-      return use.scene === null
-        ? `chosen for a scene of ${title}`
-        : `chosen for scene ${String(use.scene)} of ${title}`
-    }
-    case "idea": {
-      const title = quoted(use.title)
-      return title === null ? "answers an idea" : `answers ${title}`
-    }
-    case "interview": {
-      return use.as === "answer"
-        ? `your interview answer, ${weekName(use.week)}`
-        : `your interview read, ${weekName(use.week)}`
-    }
-    case "rust": {
-      return use.as === "answer"
-        ? `your Rust Rounds answer, ${weekName(use.week)}`
-        : `your Rust Rounds opening, ${weekName(use.week)}`
-    }
-    default: {
-      return assertNever(use)
-    }
-  }
-}
-
-/** What becomes of the thing that uses it, once it is deleted: for the sheet. */
+/**
+ * What becomes of the thing that uses it once it is deleted, for the sheet
+ * and the mark's panel. A pick isn't cleared by a delete (the card, the
+ * video and the idea keep naming the take), so each says what to do there.
+ */
 export function whatLoses(use: TakeUse): string {
   switch (use.kind) {
     case "spoken": {
       const title = quoted(use.title) ?? "its spoken card"
-      return `Part ${String(use.part)} of ${title} plays it. That part has no take until you pick another.`
+      return `Part ${String(use.part)} of ${title} plays it. The part will still name it, with nothing to play, until you pick another take there.`
     }
     case "scene": {
       const title = quoted(use.title) ?? "a Studio video"
-      return use.scene === null
-        ? `It is chosen for a scene of ${title}. That scene has no take until you choose another.`
-        : `It is chosen for scene ${String(use.scene)} of ${title}. That scene has no take until you choose another.`
+      const scene =
+        use.scene === null ? "A scene" : `Scene ${String(use.scene)}`
+      return `${scene} of ${title} is chosen with it. The scene will still name it, with nothing to play, until you choose another take there.`
+    }
+    case "queued": {
+      const title = quoted(use.title) ?? "a Studio video"
+      const scene =
+        use.scene === null ? "a scene" : `scene ${String(use.scene)}`
+      return `Version ${String(use.rev)} of ${title}, finished for home to make, has it as ${scene}'s take. Home can't make that version with it gone.`
     }
     case "idea": {
       const title = quoted(use.title) ?? "an idea"
-      return `It is how you answered a question of ${title}. That answer has no recording until you say it again.`
+      return `It is how you answered a question of ${title}. That answer will have no recording until you say it again.`
     }
     case "interview": {
-      return `It went home as ${use.as === "answer" ? "an answer" : "a read"} in your interview ${weekName(use.week)}. The essay of that week that plays it goes with it.`
+      return `It went home as ${use.as === "answer" ? "an answer" : "a read"} in your interview ${weekName(use.week)}. If home made that week's essay, the essay goes too.`
     }
     case "rust": {
-      return `It went home as ${use.as === "answer" ? "an answer" : "an opening question"} in your Rust Rounds ${weekName(use.week)}. The essay of that week that plays it goes with it.`
+      return `It went home as ${use.as === "answer" ? "an answer" : "an opening question"} in your Rust Rounds ${weekName(use.week)}. If home made that week's essay, the essay goes too.`
     }
     default: {
       return assertNever(use)
@@ -90,11 +65,10 @@ const SOURCE_NAMES: Readonly<Record<UseSource, string>> = {
 }
 
 export const USE_WORDS = {
-  /** A row's badge: "In use", then what uses it. */
-  badge: "In use",
-  badgeLine: (use: TakeUse): string => `In use · ${whatUses(use)}`,
-  /** Beside the first use, when there are more. */
-  more: (n: number): string => `+${String(n)} more`,
+  /** A take's mark, by its name for a screen reader: how many use it. */
+  markName: (n: number): string =>
+    n === 1 ? "In use: 1 thing" : `In use: ${String(n)} things`,
+  uncheckedName: "Couldn't check what uses it",
   /** The sheet's title when what it deletes is in use. */
   title: (n: number, used: number): string =>
     n === 1

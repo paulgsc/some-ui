@@ -11,7 +11,7 @@ import { z } from "zod"
 
 import type { SpokenCard } from "./model"
 
-const SCRIPTS_KEY = "some-ui:studio-spoken"
+export const SCRIPTS_KEY = "some-ui:studio-spoken"
 
 const PartSchema = z.object({
   id: z.string().nullable(),

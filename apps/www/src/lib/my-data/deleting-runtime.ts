@@ -54,6 +54,8 @@ export type DeletingPorts = {
    * store it couldn't read is named unread (TU1).
    */
   readonly uses: () => Promise<TakeUses>
+  /** Says a read of uses failed, which deletes nothing. */
+  readonly failed: (error: unknown) => void
 }
 
 export type Deleting = {
@@ -117,19 +119,30 @@ export function createDeleting(ports: DeletingPorts): Deleting {
       dispatch({ type: "asked", of, ids })
       if (state === before) return
       const { asks } = state
-      void ports.uses().then((uses) => {
-        dispatch({ type: "usesRead", asks, uses })
-      })
+      ports
+        .uses()
+        .then((uses) => {
+          dispatch({ type: "usesRead", asks, uses })
+        })
+        .catch((error: unknown) => {
+          ports.failed(error)
+        })
     },
     confirm(): void {
-      // The tap's numbers: a second tap, or one on a sheet since asked
-      // again, changes nothing once the first has moved the sheet.
-      const { seq, asks } = state
-      void ports.uses().then((uses) => {
-        const before = state
-        dispatch({ type: "confirmed", seq, asks, uses })
-        if (state !== before && state.sheet.kind === "deleting") void run()
-      })
+      // The tap's numbers: a second tap, or one on a sheet whose uses have
+      // changed since, changes nothing (TU1).
+      const { seq, asks, shown } = state
+      ports
+        .uses()
+        .then((uses) => {
+          const before = state
+          dispatch({ type: "confirmed", seq, asks, shown, uses })
+          if (state !== before && state.sheet.kind === "deleting") void run()
+        })
+        .catch((error: unknown) => {
+          // Nothing is deleted on a read that failed; the sheet stays.
+          ports.failed(error)
+        })
     },
     close(): void {
       dispatch({ type: "closed" })

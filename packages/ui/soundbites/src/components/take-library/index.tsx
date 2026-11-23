@@ -81,7 +81,6 @@ import type {
   LibraryPhone,
   LibraryPorts,
   LibraryStations,
-  LibraryUses,
   PhoneTake,
 } from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
@@ -113,7 +112,23 @@ const WORDS = LIBRARY_WORDS
 
 type Dispatch = (intent: LibraryIntent) => void
 
+/**
+ * What uses each take (INUSE): the build's own mark for a take something
+ * uses, which opens what uses it, from the stores the phone keeps, drawn
+ * again on each change it tells of. A take it draws nothing for is one it
+ * knows no use of, never one it calls unused.
+ */
+export type LibraryUses = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `mark` draws may have. */
+  readonly getSnapshot: () => unknown
+  /** Take `id`'s mark; null for none. */
+  readonly mark: (id: string) => ReactNode
+}
+
 export type TakeLibraryProps = {
+  /** What uses each take, as the build marks it (INUSE); absent, none. */
+  uses?: LibraryUses | undefined
   /** Home, as the build reaches it, and a player. Read once. */
   ports: LibraryPorts
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
@@ -253,14 +268,6 @@ const Pill = ({
   </span>
 )
 
-/** A pill saying what uses a take (INUSE): set apart by its fill. */
-const UsePill = ({ children }: { children: ReactNode }): JSX.Element => (
-  <span className="border-success/50 bg-success/10 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs">
-    <span className="bg-success size-2 shrink-0 rounded-full" aria-hidden />
-    <span className="min-w-0 break-words">{children}</span>
-  </span>
-)
-
 /**
  * What a take was said for, as its card says it: its kind's mark and name,
  * what it was for, and when it was said, with a note's picks.
@@ -308,15 +315,15 @@ const HomeCard = ({
   item,
   state,
   stations,
-  uses,
+  mark,
   row,
   dispatch,
 }: {
   item: HomeRow
   state: LibraryState
   stations: LibraryStations | undefined
-  /** What uses it, each as its badge says (INUSE). */
-  uses: ReadonlyArray<string>
+  /** The build's mark for what uses it (INUSE); null for none. */
+  mark: ReactNode
   row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
@@ -362,8 +369,7 @@ const HomeCard = ({
               <Pill dot="home">{WORDS.onHomeSince(take.storedAt)}</Pill>
             )}
             {standing !== null && <Pill>{standing}</Pill>}
-            {gone !== "deleted" &&
-              uses.map((use) => <UsePill key={use}>{use}</UsePill>)}
+            {gone !== "deleted" && mark}
             {/* A take on the conveyor says Canned there; set aside is said
                 only of one on none (C423). */}
             {standing === null && take.setAsideAt !== null && (
@@ -531,7 +537,7 @@ const Listed = ({
         item={each}
         state={state}
         stations={stations}
-        uses={uses?.inUse(each.take.id) ?? []}
+        mark={uses?.mark(each.take.id) ?? null}
         row={row}
         dispatch={dispatch}
       />
@@ -993,6 +999,7 @@ export const TakeLibrary = ({
   row,
   initialChips,
   gaps,
+  uses,
 }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are; the first read asks for what the page opens on */
   const [library] = useState(() =>
@@ -1009,7 +1016,7 @@ export const TakeLibrary = ({
     ...initialChips,
   }))
   const [order, setOrder] = useState<Order>("newest")
-  const { stations, phone, about, onPhone, uses } = ports
+  const { stations, phone, about, onPhone } = ports
   // Renders again whenever what a row's station or kind says may have changed.
   useSyncExternalStore(
     stations?.subscribe ?? unsubscribed,
