@@ -46,12 +46,12 @@ export const STEP_STATES = [
 export type StepState = (typeof STEP_STATES)[number]
 
 /**
- * Why home holds a step (`reason`): its render policy refused the video, a
- * cards essay's input isn't on home, there's no video yet, or the recorder
- * made nothing. A step reads by its reason, failed or held alike
- * (`./step-conveyor`).
+ * Why home holds a step on a side track (`reason`): its render policy
+ * refused the video, a cards essay's input isn't on home, there's no video
+ * yet, or the recorder made nothing. A step reads by its reason, failed or
+ * held alike (`./step-conveyor`).
  */
-const STEP_REASONS = [
+const HELD_REASONS = [
   "too-long",
   "too-large",
   "overflow",
@@ -64,10 +64,22 @@ const STEP_REASONS = [
   "recorder",
 ] as const
 
-export type StepReason = (typeof STEP_REASONS)[number]
+export type HeldReason = (typeof HELD_REASONS)[number]
 
-export const isStepReason = (value: string): value is StepReason =>
-  STEP_REASONS.some((reason) => reason === value)
+export const isHeldReason = (value: string): value is HeldReason =>
+  HELD_REASONS.some((reason) => reason === value)
+
+/**
+ * Why home says a file isn't made and isn't on the line either: chapters
+ * beside a made video that came out with none (`made-with-video`), which
+ * home never makes alone. The page shows such a file as none.
+ */
+const NONE_REASONS = ["made-with-video"] as const
+
+type NoneReason = (typeof NONE_REASONS)[number]
+
+const isNoneReason = (value: string): value is NoneReason =>
+  NONE_REASONS.some((reason) => reason === value)
 
 /**
  * One file's step. Its times are home's, in Unix seconds as the renders
@@ -188,9 +200,6 @@ export function latestStep(
   }
 }
 
-/** Home's reason for a file it makes only with the video, beside one made. */
-const MADE_WITH_VIDEO = "made-with-video"
-
 /**
  * The view of `asset` from its read and its step. A file read there is
  * shown, whatever the step says; one home holds none of is shown by its
@@ -207,9 +216,11 @@ export function assetView<A extends ShownAsset>(
     return { kind: "hidden" }
   if (read.kind === "there") return read
   if (step === undefined) return { kind: "hidden" }
-  // Chapters beside a made video that has none (too few scenes, or made
-  // before chapters): not made, and home never makes them alone, so no line.
-  if (step.state === "blocked" && step.reason === MADE_WITH_VIDEO)
+  if (
+    step.state === "blocked" &&
+    step.reason !== undefined &&
+    isNoneReason(step.reason)
+  )
     return { kind: "missing", generate: null }
   switch (step.state) {
     case "missing": {
