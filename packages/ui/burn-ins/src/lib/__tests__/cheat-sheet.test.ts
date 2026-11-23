@@ -293,79 +293,137 @@ describe("the cheat-sheet card", () => {
     }
   })
 
-  // CH1: a sheet is never refused for its count. Every count the schema
-  // allows, in both frames, by rows of every length a row can be: the task
-  // short to long, the command short to long, the note none, one line or
-  // two, each badge new (so spelling itself out) or none. A refusal always
-  // names a row, and the longest rows that sit side by side are accepted at
-  // every count.
+  // CH1: a row that sits side by side in a column of half the 16:9 body is
+  // never refused for its count. Every count the schema allows, in both
+  // frames, by rows of each length a row can be (task short to long, the
+  // command short or long, the note none, one line or two), each sheet both
+  // with every row alike and with its rows mixed, each badge new (spelling
+  // itself out) or already seen. An accepted sheet keeps every row inside
+  // the body and clear of the others at every moment of its rise.
+  //
+  // Its Tolerance: in the 16:9 frame a row whose command can't sit beside
+  // its task in half the body (`LONG`) draws only while its sheet fits one
+  // column, and is refused, by its number, once it takes two.
   it("CH1: refuses a row, never a count, for every count and row length the schema allows", () => {
+    const LONG = "sudo systemctl start nixos-upgrade"
     const tasks = [
       "Go",
       "A file deleted by accident",
       "A dead disk, a box that won't boot",
     ]
-    const commands = [
-      "survives",
-      "does not survive",
-      "sudo systemctl start nixos-upgrade",
-    ]
+    const commands = ["survives", "does not survive", LONG]
     const notes = [
       "",
       "Triggers refuse both on most record tables.",
       "Exit, roll back the image, the earlier migrations stay. Nothing to restore, and nothing to say.",
     ]
+    const variants = tasks.flatMap((task) =>
+      commands.flatMap((command) =>
+        notes.map((note) => ({ task, command, note }))
+      )
+    )
     const badges = [undefined, ...BADGE_STATES]
     const named = /^the cheat-sheet burn-in \(sheet-v1\): row \d+ /
-    for (const frame of [LANDSCAPE, PORTRAIT])
+    const sheets = (n: number): ReadonlyArray<ReadonlyArray<object>> => [
+      // Every row alike, one sheet per variant.
+      ...variants.map((v) =>
+        Array.from({ length: n }, (_, i) => ({
+          ...v,
+          badge: badges[i % badges.length],
+        }))
+      ),
+      // Rows mixed: row i of sheet k is variant (k + 7i) mod |variants|.
+      ...variants.map((_, k) =>
+        Array.from({ length: n }, (_, i) => ({
+          ...variants[(k + 7 * i) % variants.length],
+          badge: badges[(k + i) % badges.length],
+        }))
+      ),
+    ]
+    const seenOf = [[], [...BADGE_STATES]]
+    for (const frame of [LANDSCAPE, PORTRAIT]) {
+      const body = cardBody(geometryOf(frame))
       for (let n = 1; n <= MOST_ROWS; n++)
-        for (const task of tasks)
-          for (const command of commands)
-            for (const note of notes) {
-              const rows = Array.from({ length: n }, (_, i) => ({
-                task,
-                command,
-                note,
-                ...(badges[i % badges.length] === undefined
-                  ? {}
-                  : { badge: badges[i % badges.length] }),
-              }))
-              const p = sheet({ title: "Rows", rows }, frame)
-              const where = `${frame.width}x${frame.height}, ${n} × ${task} | ${command} | ${note}`
-              if (!p.ok) {
+        for (const rows of sheets(n))
+          for (const badgesSeen of seenOf) {
+            const params = {
+              title: "Rows",
+              badgesSeen,
+              rows: rows.map((r) =>
+                Object.fromEntries(
+                  Object.entries(r).filter(([, v]) => v !== undefined)
+                )
+              ),
+            }
+            const where = `${frame.width}x${frame.height}, ${n} rows, seen ${badgesSeen.length}: ${JSON.stringify(params.rows.map((r) => Object.values(r).join(" | ")))}`
+            const p = sheet(params, frame)
+            if (!p.ok) {
+              expect(
+                p.problems.filter((x) => !named.test(x)),
+                where
+              ).toEqual([])
+              expect(p.problems.every(isFitProblem), where).toBe(true)
+              // Only in the Tolerance: a long command, in two columns.
+              expect(frame, where).toBe(LANDSCAPE)
+              expect(
+                params.rows.some((r) => r.command === LONG),
+                where
+              ).toBe(true)
+              continue
+            }
+            expect(at(params, END, frame).rows, where).toHaveLength(n)
+            // A row is lowest as its rise begins: check each row's first
+            // moment, and the end.
+            const moments = [
+              ...Array.from(
+                { length: n },
+                (_, k) => ITEM.leadMs + k * ITEM.gapMs
+              ),
+              END,
+            ]
+            for (const t of moments) {
+              const f = frameAt(p.value, t)
+              if (f.kind !== "cheat-sheet") throw new Error(f.kind)
+              const panels = f.frame.rows.map((r) => r.panel)
+              for (const [k, a] of panels.entries()) {
                 expect(
-                  p.problems.filter((x) => !named.test(x)),
-                  where
-                ).toEqual([])
-                // Only a command too long to sit beside its task is refused.
-                expect(command, where).toBe(commands[2])
-                expect(p.problems.every(isFitProblem), where).toBe(true)
-                continue
-              }
-              const body = cardBody(geometryOf(frame))
-              const panels = at({ title: "Rows", rows }, END, frame).rows.map(
-                (r) => r.panel
-              )
-              expect(panels, where).toHaveLength(n)
-              for (const [i, a] of panels.entries()) {
-                expect(
-                  a.x >= body.x && a.x + a.width <= body.x + body.width,
-                  where
+                  a.x >= body.x &&
+                    a.x + a.width <= body.x + body.width &&
+                    a.y >= body.y &&
+                    a.y + a.height <= body.y + body.height,
+                  `${where}, at ${t} ms`
                 ).toBe(true)
-                expect(
-                  a.y >= body.y &&
-                    a.y + a.height + ITEM.risePx <= body.y + body.height,
-                  where
-                ).toBe(true)
-                for (const b of panels.slice(i + 1))
+                for (const b of panels.slice(k + 1))
                   expect(
                     a.x + a.width <= b.x ||
                       b.x + b.width <= a.x ||
                       a.y + a.height <= b.y ||
                       b.y + b.height <= a.y,
-                    `${where}: rows overlap`
+                    `${where}, at ${t} ms: rows overlap`
                   ).toBe(true)
               }
             }
+          }
+    }
+  })
+
+  it("CH1's Tolerance: a long command draws while its sheet fits one column of the 16:9 body, and is refused by its number once it takes two", () => {
+    const row = {
+      task: "Go",
+      command: "sudo systemctl start nixos-upgrade",
+      note: "Exit, roll back the image, the earlier migrations stay. Nothing to restore, and nothing to say.",
+    }
+    const one = sheet({ title: "Long", rows: [row, row, row] })
+    expect(one.ok).toBe(true)
+    const two = sheet({
+      title: "Long",
+      rows: Array.from({ length: 5 }, () => row),
+    })
+    expect(two.ok ? [] : two.problems).toEqual(
+      [1, 2, 3, 4, 5].map(
+        (i) =>
+          `the cheat-sheet burn-in (sheet-v1): row ${i} doesn't fit: 5 rows take two columns, and its command doesn't fit beside its task in one`
+      )
+    )
   })
 })

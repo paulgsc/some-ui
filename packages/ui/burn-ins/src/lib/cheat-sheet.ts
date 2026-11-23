@@ -18,10 +18,12 @@
  * whole row; a row whose command can't sit beside its task there is
  * refused, naming it (CHEAT, C1400).
  *
- * CH1: a sheet is never refused for how many rows it has. Up to
- * `MOST_ROWS`, the schema's bound, rows that fit on their own fit together,
- * in either frame: only a row is refused, by its number
- * (`__tests__/cheat-sheet.test.ts`, "CH1").
+ * CH1: up to `MOST_ROWS`, the schema's bound, a sheet is refused only for
+ * a row, by its number, never for how many rows it has, in either frame,
+ * for rows that sit side by side in a column of half the 16:9 body. Its
+ * Tolerance: a row whose command can't sit beside its task there draws
+ * only while its 16:9 sheet fits one column (`__tests__/cheat-sheet.test.ts`,
+ * "CH1").
  */
 
 import { z } from "zod"
