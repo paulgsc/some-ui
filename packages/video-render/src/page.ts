@@ -11,9 +11,12 @@
  *   (`some-ui.pages/1`) beside the pictures: each page's address, the
  *   moment it was taken, its size and the parts it was asked to box.
  * - The render takes that folder beside the essay that names its pages,
- *   as `<key>.pages/`, as it takes snips. How it reaches home is not
- *   settled (`docs/snips.md`, "Public pages").
- * - A scene names a page by its address, its capture time and its file.
+ *   as `<key>.pages/`, as it takes snips. It reaches home as a snip does
+ *   (#3395, `docs/snips.md`, "How public pages reach home"): the
+ *   dispatch-only Public Pages Capture uploads `pages-bundle-<run>`, and
+ *   home fetches the run each scene names.
+ * - A scene names a page by its address, its capture time, its file and
+ *   the run that took it.
  *   The capture time is the "as of" a viewer is told: a page on GitHub
  *   moves on, and the picture keeps the moment it showed.
  *

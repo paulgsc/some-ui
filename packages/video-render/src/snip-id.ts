@@ -14,6 +14,13 @@ export const SNIP_ID =
 export const COMMIT = /^[0-9a-f]{40}$/
 
 /**
+ * A GitHub Actions run's id, as a pages capture's bundle is named by it
+ * (`pages-bundle-<run>`, `docs/snips.md`, "Public pages"): a page is taken
+ * live, so the run, not a commit, says which pictures home fetches.
+ */
+export const RUN_ID = /^[1-9][0-9]{0,19}$/
+
+/**
  * A public page's picture, as the pages capture names it (`./page`):
  * where it is (its host and path, as a slug), then the first 12 hex digits
  * of the PNG's SHA-256, so a page that changes gets a new name.
