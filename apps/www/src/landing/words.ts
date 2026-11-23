@@ -78,7 +78,7 @@ export const LANDING_WORDS: LandingWords = {
     {
       id: "cores",
       title: "My home server has four CPU cores",
-      line: "When work slows down, I'm measuring whether it's my code or the machine. This is my server's own CPU panel, from the dashboards I keep as code, drawn in CI on sample data: each night's render job takes every core, and work queues for them.",
+      line: "When work slows down, I'm measuring whether it's my code or the machine. This is my server's own CPU panel, from the dashboards I keep as code, drawn in CI on a made-up week in which a nightly render job takes every core and work queues for them.",
       visual: "stills/cores.png",
       visualNote:
         "Drawing of my server's CPU panel on sample data: busy and waiting, of 4 cores",

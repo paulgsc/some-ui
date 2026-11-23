@@ -136,6 +136,11 @@ jobs:
     name: The server's dashboards, on sample data
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # pages.yml reads only a run that succeeded, so a failure here (the
+    # server's main, an image pull, a Grafana that did not start) must not
+    # hide the other jobs' media: the run still succeeds, this job shows red
+    # in it, and the landing keeps the last stills it fetched.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

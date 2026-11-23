@@ -19,9 +19,11 @@
  * that says it has no data fails the walk: a panel that did not draw is not
  * the dashboard. A screen is taken once, after the page's last navigation, a
  * panel's query has answered, nothing is in flight, no panel is loading, and
- * the fonts and two frames are drawn.
+ * the fonts and two frames are drawn, and it is kept once two screens in a
+ * row are the same.
  */
 
+import { writeFile } from "node:fs/promises"
 import type { Page, Request } from "playwright-core"
 import { chromium } from "playwright-core"
 
@@ -55,8 +57,12 @@ async function reached(page: Page, origin: string): Promise<void> {
   }
 }
 
-/** What Grafana draws in a panel whose query answered nothing. */
-const NO_DATA = "No data"
+/** How many more screens a panel may take to hold still, and the gap between them. */
+const STILL_TRIES = 20
+const STILL_GAP_MS = 250
+
+/** What Grafana draws in a panel whose query answered nothing, in either case. */
+const NO_DATA = /^\s*no data\s*$/i
 
 export async function openGrafanaStage(
   spec: GrafanaStageSpec,
@@ -152,9 +158,19 @@ export async function openGrafanaStage(
         .first()
         .waitFor({ state: "detached", timeout: DRAWN_MS })
       await settlePage(page)
-      // A panel whose series the telemetry lacks draws this, not the panel.
-      if ((await page.getByText(NO_DATA, { exact: true }).count()) > 0) {
-        throw new Error(`${page.url()} drew "${NO_DATA}"`)
+      // A stat measures its text once, when it draws, which can be before
+      // Grafana's web font has loaded: a resize makes every panel measure
+      // again, now with the font, so its size does not depend on timing.
+      await page.setViewportSize({
+        width: spec.viewport.width,
+        height: spec.viewport.height + 1,
+      })
+      await page.setViewportSize(spec.viewport)
+      await settlePage(page)
+      // A panel whose series the telemetry lacks draws this, not the panel
+      // ("No data" by default, "no data" where a panel sets its own).
+      if ((await page.getByText(NO_DATA).count()) > 0) {
+        throw new Error(`${page.url()} drew no data`)
       }
     }
 
@@ -170,7 +186,24 @@ export async function openGrafanaStage(
       },
       settle: drawn,
       shoot: async (path): Promise<void> => {
-        await page.screenshot({ path, animations: "disabled", caret: "hide" })
+        // Grafana sizes a stat's text after it draws, a frame or more late:
+        // a screen is kept once two in a row are the same, so the same
+        // telemetry gives the same bytes.
+        const take = (): Promise<Buffer> =>
+          page.screenshot({ animations: "disabled", caret: "hide" })
+        let last = await take()
+        for (let i = 0; i < STILL_TRIES; i += 1) {
+          await page.waitForTimeout(STILL_GAP_MS)
+          const next = await take()
+          if (next.equals(last)) {
+            await writeFile(path, next)
+            return
+          }
+          last = next
+        }
+        throw new Error(
+          `${page.url()} was still changing after ${String(STILL_TRIES)} screens`
+        )
       },
       problems: (): ReadonlyArray<string> => problems,
       close: () => browser.close(),

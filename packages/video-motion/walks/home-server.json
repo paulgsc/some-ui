@@ -27,7 +27,7 @@
         "from": 3,
         "narration": [
           "I picked the panels that say whether it stays up and how it says no: restarts, the services it needs, and what the rate limiter turns away.",
-          "They lean towards staying up and refusing well, not towards speed yet. When that changes, new dashboards are one pull request away."
+          "They lean towards staying up and refusing well, not towards speed yet. When my questions change, new dashboards are one pull request away."
         ]
       }
     ],

@@ -12,8 +12,9 @@
  * show what the panels are for: file_host restarts twice (deploys), NATS is
  * down once for twenty minutes, a scraper meets the rate limiter one
  * afternoon, and each night a render job takes all four cores, so work
- * queues for them (PSI's CPU waiting) while they are busy. The noise is a
- * seeded generator's, never the clock's or `Math.random`'s.
+ * queues for them (PSI's CPU waiting) while they are busy. The noise is
+ * the repo's one seeded draw (`unitIntervalBySeed`, `@some-ui/core-utils`),
+ * keyed by series and instant, never the clock's or `Math.random`'s.
  *
  * Which series and labels: those the panels' queries read, at
  * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard 943,
@@ -22,6 +23,8 @@
  * `metrics/rate_limit.rs`). A panel whose query moves to a series this does
  * not write draws "No data", which the walk's stage refuses.
  */
+
+import { fnv1a, unitIntervalBySeed } from "@some-ui/core-utils"
 
 /** The window the walks show: seven days ending at a UTC midnight long past. */
 export const WEEK = { to: "2026-11-16T00:00:00Z", days: 7 } as const
@@ -34,18 +37,6 @@ const LEAD_S = 3600
 
 const HOUR_S = 3600
 const DAY_S = 86_400
-
-/** A seeded generator (mulberry32): the same seed, the same noise. */
-function seeded(seed: number): () => number {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296
-  }
-}
 
 /** Seconds since the epoch of `iso`. */
 const at = (iso: string): number => Date.parse(iso) / 1000
@@ -121,8 +112,7 @@ const gauge = (
 
 /**
  * A counter from its rate: the running total of `rate(t)` per second over
- * each step, from 0 at the first instant. A rate is read once per instant,
- * in order, so a seeded rate's noise is the same every run.
+ * each step, from 0 at the first instant.
  */
 function counter(
   rate: (t: number) => number,
@@ -148,25 +138,25 @@ function instants(): ReadonlyArray<number> {
 
 /** Every family the walked panels read, over `times`. */
 function families(times: ReadonlyArray<number>): ReadonlyArray<Family> {
-  const noise = seeded(3401)
-  // Each series draws its noise once per instant, in order, as it is built.
-  const jitter = (scale: number): ((t: number) => number) => {
-    const values = new Map(times.map((t) => [t, (noise() - 0.5) * scale]))
-    return (t) => values.get(t) ?? 0
-  }
+  // A series' noise at an instant, from a seed keyed by both: the same
+  // whatever order the series are built or read in.
+  const jitter =
+    (key: string, scale: number): ((t: number) => number) =>
+    (t) =>
+      (unitIntervalBySeed(fnv1a(`${key}@${String(t)}`)) - 0.5) * scale
 
   const fileHostUp = (t: number): number => (restarting(t) ? 0 : 1)
   const natsUp = (t: number): number => (within(t, ...NATS_DOWN) ? 0 : 1)
   const always = (): number => 1
 
-  const allowedJitter = jitter(1.2)
-  const rejectedJitter = jitter(0.02)
+  const allowedJitter = jitter("allowed", 1.2)
+  const rejectedJitter = jitter("rejected", 0.02)
   const allowed = (t: number): number =>
     1.5 + 7 * daily(t) + allowedJitter(t) + (within(t, ...SCRAPER) ? 9 : 0)
   const rejected = (t: number): number =>
     (within(t, ...SCRAPER) ? 2.6 : 0) + Math.max(0, rejectedJitter(t))
 
-  const shedJitter = jitter(0.08)
+  const shedJitter = jitter("shed", 0.08)
   const refusal = (
     stage: "http" | "ws",
     reason: string,
@@ -178,11 +168,13 @@ function families(times: ReadonlyArray<number>): ReadonlyArray<Family> {
   })
   const none = (): number => 0
 
-  const tokensJitter = jitter(4)
-  const clientsJitter = jitter(1.5)
+  const tokensJitter = jitter("tokens", 4)
+  const clientsJitter = jitter("clients", 1.5)
 
-  const busyJitter = Array.from({ length: 4 }, () => jitter(0.06))
-  const waitJitter = jitter(0.12)
+  const busyJitter = Array.from({ length: 4 }, (_, core) =>
+    jitter(`busy-${String(core)}`, 0.06)
+  )
+  const waitJitter = jitter("wait", 0.12)
   /** How much of a core's minute it was busy, 0 to 1. */
   const busy = (core: number, t: number): number => {
     const base = rendering(t)

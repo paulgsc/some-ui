@@ -35,9 +35,11 @@ net="dashboards-on-sample-$$"
 cleanup() {
   docker rm -f "$net-grafana" "$net-prometheus" > /dev/null 2>&1 || true
   docker network rm "$net" > /dev/null 2>&1 || true
-  # The containers wrote as root: remove through one, so nothing is left.
-  docker run --rm -v "$work:/work" --entrypoint sh "$prometheus" -c 'rm -rf /work/*' > /dev/null 2>&1 || true
-  rm -rf "$work"
+  # Prometheus wrote its blocks as its own user, which this one cannot
+  # remove: remove them as root through a container first. Nothing in the
+  # cleanup fails the run, so a run that drew its pictures keeps them.
+  docker run --rm --user 0 -v "$work:/work" --entrypoint sh "$prometheus" -c 'rm -rf /work/*' > /dev/null 2>&1 || true
+  rm -rf "$work" 2> /dev/null || true
 }
 trap cleanup EXIT
 
@@ -48,10 +50,10 @@ docker run --rm --network none \
   -v "$server/infra/grafana/dashboards:/workspace:ro" \
   -v "$work/generated:/generated" "$builder"
 
-# 2. The week of sample telemetry, and the walks' sample naming it.
-port=3000
-origin="http://127.0.0.1:$port"
-pnpm -s motion dashboards-sample "$work/sample" --origin "$origin" --version "$version"
+# 2. The week of sample telemetry, and the walks' sample naming it. Grafana's
+# port is chosen when it starts (step 4), so the sample is written for a
+# placeholder origin here and given the real one there.
+pnpm -s motion dashboards-sample "$work/sample" --origin http://127.0.0.1:1 --version "$version"
 
 # 3. Prometheus' blocks from it, then Prometheus over them, with nothing to
 # scrape. Its retention outlasts the week however old it is: retention is
@@ -72,7 +74,7 @@ docker run -d --name "$net-prometheus" --network "$net" --network-alias promethe
 # http://prometheus:9090) and dashboard provider, the compiled dashboards, and
 # an anonymous Viewer. Its alert rules are left out: they would only query.
 # No plugin is fetched, no update checked and nothing reported.
-docker run -d --name "$net-grafana" --network "$net" -p "127.0.0.1:$port:3000" \
+docker run -d --name "$net-grafana" --network "$net" -p "127.0.0.1::3000" \
   -v "$server/infra/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro" \
   -v "$server/infra/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro" \
   -v "$work/generated:/var/lib/grafana/dashboards:ro" \
@@ -82,13 +84,16 @@ docker run -d --name "$net-grafana" --network "$net" -p "127.0.0.1:$port:3000" \
   -e GF_ANALYTICS_CHECK_FOR_UPDATES=false -e GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false \
   -e GF_NEWS_NEWS_FEED_ENABLED=false \
   "$grafana" > /dev/null
+# A free port on this machine's loopback, which docker chose.
+origin="http://$(docker port "$net-grafana" 3000/tcp | grep -m 1 '^127\.0\.0\.1:')"
+jq --arg origin "$origin" '.origin = $origin' "$work/sample/sample.json" > "$work/sample/walk.json"
 
 # Both answer, and Grafana has loaded both dashboards, or the run stops here
 # with their logs: a walk of a Grafana that never started photographs nothing.
 ready() {
-  docker exec "$net-prometheus" wget -qO- http://localhost:9090/-/ready > /dev/null 2>&1 &&
-    curl -fsS "$origin/api/dashboards/uid/file-host-dashboard" > /dev/null 2>&1 &&
-    curl -fsS "$origin/api/dashboards/uid/who-dunnit-forensic" > /dev/null 2>&1
+  docker exec "$net-prometheus" wget -T 5 -qO- http://localhost:9090/-/ready > /dev/null 2>&1 &&
+    curl -fsS --max-time 5 "$origin/api/dashboards/uid/file-host-dashboard" > /dev/null 2>&1 &&
+    curl -fsS --max-time 5 "$origin/api/dashboards/uid/who-dunnit-forensic" > /dev/null 2>&1
 }
 for _ in $(seq 1 90); do
   ready && break
@@ -104,5 +109,5 @@ fi
 # 5. The walks.
 for app in home-server home-cores; do
   rm -rf "$out/walk-$app"
-  pnpm -s motion walk "$app" --sample "$work/sample/sample.json" --out "$out/walk-$app"
+  pnpm -s motion walk "$app" --sample "$work/sample/walk.json" --out "$out/walk-$app"
 done
