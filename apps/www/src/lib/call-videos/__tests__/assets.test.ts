@@ -104,6 +104,18 @@ describe("assetView", () => {
   })
 })
 
+describe("a file made only with its video, beside one made", () => {
+  it("reads as not made, with no Generate and no line", () => {
+    expect(
+      assetView(
+        "description",
+        { kind: "none" },
+        { asset: "description", state: "blocked", reason: "made-with-video" }
+      )
+    ).toEqual({ kind: "missing", generate: null })
+  })
+})
+
 describe("latestStep", () => {
   it("takes the answer to Generate until the list has moved past not made", () => {
     const asked = step("asked", { askedAt: 1795388700 })

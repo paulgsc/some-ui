@@ -188,6 +188,9 @@ export function latestStep(
   }
 }
 
+/** Home's reason for a file it makes only with the video, beside one made. */
+const MADE_WITH_VIDEO = "made-with-video"
+
 /**
  * The view of `asset` from its read and its step. A file read there is
  * shown, whatever the step says; one home holds none of is shown by its
@@ -204,6 +207,10 @@ export function assetView<A extends ShownAsset>(
     return { kind: "hidden" }
   if (read.kind === "there") return read
   if (step === undefined) return { kind: "hidden" }
+  // Chapters beside a made video that has none (too few scenes, or made
+  // before chapters): not made, and home never makes them alone, so no line.
+  if (step.state === "blocked" && step.reason === MADE_WITH_VIDEO)
+    return { kind: "missing", generate: null }
   switch (step.state) {
     case "missing": {
       return { kind: "missing", generate: isAloneAsset(asset) ? asset : null }
