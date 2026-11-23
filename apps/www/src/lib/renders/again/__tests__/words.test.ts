@@ -153,7 +153,7 @@ describe("Run it again's words", () => {
 
   it("says a step home is still settling is worth a second try", () => {
     expect(stepLine({ ...STEP, state: "blocked", reason: "settling" })).toBe(
-      "Home is still getting this essay ready for the worker. Try again in a minute."
+      "Home is still getting this essay ready. Try again in a minute."
     )
   })
 
