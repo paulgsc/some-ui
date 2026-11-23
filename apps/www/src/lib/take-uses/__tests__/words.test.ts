@@ -61,6 +61,38 @@ describe("a take's uses, in words", () => {
     expect(weekName("odd")).toBe("the week odd")
   })
 
+  it("say what deleting does to each video home names, by its kind (server#1138)", () => {
+    const home = (
+      video: "essay" | "feed-video" | "studio-video" | "other",
+      withdraws: boolean | null,
+      key = "k",
+      title = "Who I am"
+    ): string => whatLoses({ kind: "home", video, key, title, withdraws })
+    expect(
+      home("feed-video", true, "2026-w46", "Rust Rounds essay, 2026-w46")
+    ).toBe(
+      "Week 46's essay on home plays it. Home withdraws that video once it's deleted; a copy you uploaded to YouTube is yours to take down."
+    )
+    expect(
+      home("feed-video", false, "2026-w46", "Rust Rounds essay, 2026-w46")
+    ).toBe(
+      "A version of week 46's essay home hasn't made yet has it. The video home holds now stays, and home won't make that version with this take gone."
+    )
+    // A key that isn't a week falls back to home's own title.
+    expect(home("feed-video", true, "2026-W46", "Rust Rounds essay")).toMatch(
+      /^“Rust Rounds essay” on home plays it\./u
+    )
+    expect(home("studio-video", false, "v1", "Pager")).toBe(
+      "“Pager”, a Studio video home holds, has it. If home hasn't made it yet, it can't with this take gone."
+    )
+    expect(home("essay", false)).toBe(
+      "“Who I am” on home has it. Home keeps that video."
+    )
+    expect(home("other", null, "\u0000unread:0", "")).toBe(
+      "A video on home plays it."
+    )
+  })
+
   it("never name the machinery", () => {
     const said = [
       ...EVERY_USE.map((use) => whatLoses(use)),
