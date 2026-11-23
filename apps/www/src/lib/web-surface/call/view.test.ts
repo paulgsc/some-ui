@@ -33,7 +33,10 @@ import { Call, CastProvider } from "./essay-parts"
 import { EssaySceneFrame } from "./essay-stage"
 import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW } from "./essay-words"
-import { Screen as GameScreen } from "./game-essay-stage"
+import {
+  labelOf as gameLabelOf,
+  Screen as GameScreen,
+} from "./game-essay-stage"
 import { fieldOf, gameEssayAt } from "./game-essay-view"
 import { GAME_ESSAY_WORDS as GW } from "./game-essay-words"
 import { interviewEssayAt } from "./interview-essay-view"
@@ -614,10 +617,62 @@ describe("a Game Week essay's stage (GWB)", () => {
     expect(drawn("bite-1")).toContain(GW.yourVoice)
   })
 
+  it("names a game by its teams in the header and nav, never ESPN's id", () => {
+    const of = essay()
+    for (const scene of gameEssayAt(of, undefined).scenes)
+      expect(gameLabelOf(of, scene)).not.toContain("401873010")
+    expect(gameLabelOf(of, gameEssayAt(of, "bite-1").scene)).toContain(
+      GW.game("NE", "CHI")
+    )
+  })
+
+  it("says goal to go as Goal, and draws both goal lines", () => {
+    const of = essay()
+    const [game] = of.games
+    const [first, ...rest] = game.halves
+    const [bite, ...bites] = first.bites
+    if (bite.play === null)
+      throw new Error("the sample's first bite is matched")
+    const goal: GameEssay = {
+      ...of,
+      games: [
+        {
+          ...game,
+          halves: [
+            {
+              ...first,
+              bites: [
+                {
+                  ...bite,
+                  play: {
+                    ...bite.play,
+                    still: {
+                      ...bite.play.still,
+                      distance: 3,
+                      spot: { side: "CHI", yard: 3 },
+                    },
+                  },
+                },
+                ...bites,
+              ],
+            },
+            ...rest,
+          ],
+        },
+      ],
+    }
+    const markup = drawn("setup-1", goal)
+    expect(markup).toContain("4th &amp; Goal")
+    // Eleven lines from goal to goal, the ball's and the line to gain.
+    const field = markup.slice(markup.indexOf('data-field="true"'))
+    expect(field.match(/<line /g)).toHaveLength(13)
+  })
+
   it("draws an unmatched bite with its stamp and no field (D12)", () => {
     const markup = drawn("bite-3")
     expect(markup).toContain(GW.noPlay)
-    expect(markup).toContain("Said at ")
+    // 02:40 UTC on Oct 23 is 19:40 on the owner's clock, Oct 22.
+    expect(markup).toContain(GW.saidAt("19:40"))
     expect(markup).not.toContain('data-field="true"')
   })
 })

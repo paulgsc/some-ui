@@ -51,7 +51,8 @@ const SAMPLE = sampleGameEssay()
 type Game = GameEssay["games"][number]
 type Bite = Game["halves"][number]["bites"][number]
 
-const labelOf = (essay: GameEssay, scene: GameEssayScene): string => {
+/** A scene's label in the frame's header and its nav: exported for its tests. */
+export const labelOf = (essay: GameEssay, scene: GameEssayScene): string => {
   switch (scene.section) {
     case "intro": {
       return SW.whoMadeThis
