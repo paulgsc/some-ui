@@ -23,6 +23,7 @@ export const THEME_ROLES = [
   "--primary-foreground",
   "--chart-1",
   "--chart-2",
+  "--destructive",
 ] as const
 
 type ThemeRole = (typeof THEME_ROLES)[number]
@@ -57,6 +58,7 @@ function rolesFrom(
     "--primary-foreground": role("--primary-foreground"),
     "--chart-1": role("--chart-1"),
     "--chart-2": role("--chart-2"),
+    "--destructive": role("--destructive"),
   }
 }
 
@@ -106,6 +108,8 @@ function declarations(theme: LandingTheme): string {
     `--accent-fg: ${c["--primary-foreground"]};`,
     `--chart-a: ${c["--chart-1"]};`,
     `--chart-b: ${c["--chart-2"]};`,
+    // A hug's heart (C1187): the theme's one red.
+    `--heart: ${c["--destructive"]};`,
     `--screen: ${light ? c["--foreground"] : c["--background"]};`,
     `--screen-fg: ${light ? c["--background"] : c["--foreground"]};`,
   ].join(" ")
@@ -136,10 +140,6 @@ export function themeCss(themes: ReadonlyArray<LandingTheme>): string {
 /** Text into HTML, as text (render.ts's `e`). */
 type Escape = (text: string) => string
 
-/**
- * The picker: a disclosure of radios, one a theme, the first following the
- * device. Each shows the theme's ground and accent beside its name.
- */
 /**
  * The picker as the site draws it: the session themes, and the two icons the
  * app's own theme switcher shows (components/theme-switcher.tsx: lucide's

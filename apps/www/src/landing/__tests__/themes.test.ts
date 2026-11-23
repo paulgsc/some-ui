@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { mochiSvg } from "@/landing/mochi"
+import { landingMochi } from "@/landing/mochi"
 import { renderLanding, renderLandingHead } from "@/landing/render"
 import { THEME_ICONS } from "@/landing/theme-icons"
 import {
@@ -34,6 +34,7 @@ const LANDING_ROLES = [
   "--accent-fg",
   "--chart-a",
   "--chart-b",
+  "--heart",
   "--screen",
   "--screen-fg",
 ]
@@ -146,7 +147,7 @@ describe("the landing's colours", () => {
     expect(head).toContain(themeCss(THEMES))
     const page = renderLanding(
       resumeData.fullstack,
-      mochiSvg(),
+      landingMochi(),
       LANDING_WORDS,
       new Map(),
       [],

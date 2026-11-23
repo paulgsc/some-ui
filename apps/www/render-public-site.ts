@@ -26,7 +26,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 
 import type { MediaSize } from "./src/landing/media.ts"
 import { mp4HasSound, mp4Size, pngSize } from "./src/landing/media.ts"
-import { mochiSvg } from "./src/landing/mochi.ts"
+import { landingMochi } from "./src/landing/mochi.ts"
 import type { RenderedSite, SitePage } from "./src/landing/output.ts"
 import { SITE_FILE, SITE_MEDIA_DIR } from "./src/landing/output.ts"
 import type { ResumeVersion } from "./src/landing/pages.ts"
@@ -130,7 +130,7 @@ const pages: ReadonlyArray<SitePage> = [
     head: renderLandingHead(undefined, episodes, themes),
     body: renderLanding(
       resumeData.fullstack,
-      mochiSvg(),
+      landingMochi(),
       undefined,
       media,
       episodes,

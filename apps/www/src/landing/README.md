@@ -38,6 +38,12 @@ picker (radios, no script) tries any other; the page keeps nothing about the cho
 opens behind the app's own palette icon, drawn from lucide at build time
 (`theme-icons.ts`), as the app's theme switcher shows it.
 
+## The mochi
+
+Until the owner's photo is bundled, the photo slot holds the mochi (`mochi.ts`). It blinks
+and sways where the page moves (C1186), and a reader can send it a hug (C1187): it is a
+button, and pressing it sets a heart rising, all CSS, with no script and nothing kept.
+
 ## Previewing a branch on your machine
 
 To see a branch's site exactly as Pages would serve it, before it merges and without a

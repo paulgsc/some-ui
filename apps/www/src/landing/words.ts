@@ -30,6 +30,8 @@ export type LandingWords = {
   readonly resume: string
   readonly lede: string
   readonly photoAlt: string
+  /** The mochi's button, which sends it a hug (C1187). */
+  readonly hug: string
   readonly projectsTitle: string
   readonly gapsTitle: string
   readonly experienceTitle: string
@@ -52,6 +54,7 @@ export const LANDING_WORDS: LandingWords = {
   resume: "Résumé (PDF)",
   lede: "I build web services in Rust and apps in TypeScript and React. These are my own work, public, and I use them every day.",
   photoAlt: "Paul Gathondu",
+  hug: "Send Mochi a hug",
   projectsTitle: "What I built and use every day",
   gapsTitle: "Gaps I'm working through",
   experienceTitle: "Experience",

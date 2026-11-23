@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { mochiSvg } from "@/landing/mochi"
+import { landingMochi, mochiSvg } from "@/landing/mochi"
 import { SITE_BASE } from "@/landing/output"
 import type { LandingMedia } from "@/landing/render"
 import {
@@ -37,7 +37,7 @@ const EPISODES: ReadonlyArray<ResolvedEpisode> = resolved.episodes
 const resume = resumeData.fullstack
 const page = renderLanding(
   resume,
-  mochiSvg(),
+  landingMochi(),
   LANDING_WORDS,
   new Map(),
   EPISODES
@@ -59,7 +59,7 @@ const MEDIA: LandingMedia = new Map([
 ])
 const withMedia = renderLanding(
   resume,
-  mochiSvg(),
+  landingMochi(),
   LANDING_WORDS,
   MEDIA,
   EPISODES
@@ -79,6 +79,28 @@ describe("renderLanding", () => {
     expect(page).toContain('data-slot="photo"')
     expect(page).toContain(`data-asset="${PHOTO}"`)
     expect(page).toContain(`d="${MOCHI_BODY}"`)
+  })
+
+  it("lets a reader send the mochi a hug, a button with no script, and drops it for a photo (C1187)", () => {
+    const slot = page.slice(
+      page.indexOf('<figure class="photo"'),
+      page.indexOf("</figure>", page.indexOf('<figure class="photo"'))
+    )
+    expect(slot).toContain(
+      `<button type="button" class="hug" aria-label="${LANDING_WORDS.hug}">`
+    )
+    expect(slot).toContain('<span class="hug-heart" aria-hidden="true"><svg')
+    expect(slot).not.toMatch(/<script|onclick|onpointer/i)
+    const withPhoto = renderLanding(
+      resume,
+      landingMochi(),
+      LANDING_WORDS,
+      new Map([[PHOTO, { width: 400, height: 400 }]])
+    )
+    expect(withPhoto).not.toContain('class="hug"')
+    expect(withPhoto).toContain(
+      `role="img" aria-label="${LANDING_WORDS.photoAlt}"`
+    )
   })
 
   it("moves only the mochi's own named parts (C1186)", () => {
@@ -367,7 +389,7 @@ describe("renderLanding", () => {
       ...LANDING_WORDS,
       lede: '<img src=x onerror="alert(1)">',
     }
-    expect(renderLanding(resume, "", words)).toContain(
+    expect(renderLanding(resume, landingMochi(), words)).toContain(
       "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"
     )
   })

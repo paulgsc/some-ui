@@ -7,11 +7,13 @@
  *
  * The page carries no script. Every card is a picture with its words below
  * it, never over it (C1113). The photo slot holds the mochi, the brand
- * cast's own drawing (`mochiSvg`), until the owner's photo is bundled.
+ * cast's own drawing (`landingMochi`), until the owner's photo is bundled; a
+ * reader can send it a hug (C1187).
  */
 import type { ResumeData } from "@some-ui/resume"
 
 import type { MediaSize } from "./media.ts"
+import type { LandingMochi } from "./mochi.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
 import type { ResolvedEpisode, ResolvedFace, SlotKind } from "./show.ts"
 import { showMediaKeys } from "./show.ts"
@@ -312,6 +314,15 @@ const gapCard = (g: GapWords, media: LandingMedia): string => {
 /** The photo slot's asset: the owner's portrait, once one is bundled. */
 export const PHOTO = "photo/portrait.webp"
 
+/**
+ * The mochi, a reader can send a hug (C1187): a button that, pressed, sets a
+ * heart rising from it (and, where the page moves, squeezes it, curls its
+ * antennas in and narrows its eyes), all of it CSS on :active, so the page
+ * runs no script and keeps nothing.
+ */
+const hug = (mochi: LandingMochi, words: LandingWords): string =>
+  `<button type="button" class="hug" aria-label="${e(words.hug)}"><span class="hug-body">${mochi.svg}</span><span class="hug-heart" aria-hidden="true">${mochi.heart}</span></button>`
+
 /** Every asset key the landing's slots name: the photo, each face, each still. */
 export function landingMediaKeys(
   words: LandingWords = LANDING_WORDS,
@@ -367,7 +378,7 @@ export function renderLandingHead(
  */
 export function renderLanding(
   resume: ResumeData,
-  mochiSvg: string,
+  mochi: LandingMochi,
   words: LandingWords = LANDING_WORDS,
   media: LandingMedia = new Map(),
   episodes: ReadonlyArray<ResolvedEpisode> = [],
@@ -401,7 +412,11 @@ export function renderLanding(
   return `
     <header class="top">
       <div class="in">
-        <figure class="photo" data-slot="photo" data-asset="${PHOTO}" role="img" aria-label="${e(words.photoAlt)}">${media.has(PHOTO) ? `<img src="${mediaSrc(PHOTO)}" alt="" />` : mochiSvg}</figure>
+        ${
+          media.has(PHOTO)
+            ? `<figure class="photo" data-slot="photo" data-asset="${PHOTO}" role="img" aria-label="${e(words.photoAlt)}"><img src="${mediaSrc(PHOTO)}" alt="" /></figure>`
+            : `<figure class="photo" data-slot="photo" data-asset="${PHOTO}">${hug(mochi, words)}</figure>`
+        }
         <div class="who">
           <h1>${e(profile.name)}</h1>
           <p class="role">${e(words.role + where)}</p>
