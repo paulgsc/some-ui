@@ -1,0 +1,19 @@
+{
+  "id": "C1222",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/home-link/renders.ts",
+    "apps/www/src/lib/renders/again/model.ts",
+    "apps/www/src/components/studio/run-again.tsx"
+  ],
+  "chose": "The phone runs a render again through home's one shared way to make part of an episode again, `POST /feeds/:feed/videos/:key/produce {\"asset\":\"video\"}` (built on paulgsc/server by REDO-S for this and Studio's Generate, its own call C1320), and reads every answer that carries home's Step (202, 200, 409) as one closed `Step` (asked, waiting, rendering, done, failed, blocked, with its times, reason and items); 404 and 405 read as home not holding it or not able to yet, alike. After the tap the page follows that Step on the conveyor, moving it by what the board says of the row and keeping every time home said, since home keeps only a step in flight's. Only the feeds produce serves get a button: a clip's walk is left to home's hourly try, and a preview to its template's page.",
+  "options": [
+    "home's shared produce request and its Step, followed on the board (taken)",
+    "a run-again route of the renders board's own (the first draft, /renders/:feed/:key/again)",
+    "no route: wait for the hourly try"
+  ],
+  "gray": "Two stories (run again, generate an asset) wanted the same request; which shape the phone reads, and how it follows a run after the tap, no check or earlier decision settles.",
+  "undo": "Point `askRunAgain` at another route and replace `readAgain`/`follow` in `lib/renders/again/model.ts`.",
+  "refs": ["#3445"]
+}

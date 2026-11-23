@@ -2630,7 +2630,8 @@
         "server:apps/servers/file_host/src/routes/feed_videos.rs",
         "server:apps/servers/file_host/src/renders_again.rs",
         "some-ui:apps/www/tests/record/asset.ts",
-        "some-ui:apps/www/tests/record/asset-make.ts"
+        "some-ui:apps/www/tests/record/asset-make.ts",
+        "some-ui:apps/www/src/lib/renders/again"
       ],
       "modules": ["feed_videos", "renders"],
       "objectives": [
@@ -3051,6 +3052,38 @@
           "proof": [
             "server:apps/servers/file_host/src/call_weeks/pass.rs#every_week_held_is_written_for_the_render_worker_once",
             "server:apps/servers/file_host/src/call_weeks/render.rs#each_week_held_reads_as_rendered_waiting_or_failed"
+          ]
+        },
+        {
+          "id": "CW9",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "Running a render that couldn't finish again from the phone has at most one effect however often it is tapped, says where it stands from asked to made or stopped, and is refused, saying what still stops it, while something does.",
+          "requirement": "POST /feeds/:feed/videos/:key/produce with asset video, a paired phone's only, answers with the episode's Step: a burnt episode is put back in line for the render worker's next look, and asking again while it is asked, waiting or rendering answers the same and does nothing more; a cards essay home refused for takes it couldn't make out is looked at again by the cards pass only once none of its takes is still unheard, else 409 names those takes; a refusal by the render policy or for an item the essay names that home doesn't keep answers 409 and changes nothing; a made video is never made again. The phone offers the tap only once the takes needing attention are read and none the essay plays still waits, and follows the Step on the board until it is made or stops.",
+          "verdict": "holds",
+          "conclusion": "Shown in home's tests (paulgsc/server#1140): a burnt video is put back in line once and a refused one never moves; a cards essay home refused runs the pass now only once its takes no longer stop it; every answer is a Step whose times come from what is on the drive; only a paired phone asks. Shown in the phone's tests: the tap is offered only once nothing the essay plays still waits, and the Step is followed on the board, keeping every time home said.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "renders_again matches one closed Asset union, derives every path in one function, and answers with the episode's Step; a burnt video's failed log moves aside once, a refusal by the render policy never moves, and a refused cards essay is re-checked read-only before the pass is asked to run; tested.",
+              "ref": "server:apps/servers/file_host/src/renders_again.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The phone's Run it again offers the tap only once the takes needing attention are read and none the essay plays still waits, reads every Step home can answer, and follows it on the board, keeping every time home said; tested.",
+              "ref": "some-ui:apps/www/src/lib/renders/again/model.ts"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "proof": [
+            "server:apps/servers/file_host/src/renders_again.rs#a_burnt_video_is_taken_once_and_a_refused_one_never_moves",
+            "server:apps/servers/file_host/src/renders_again.rs#a_cards_essay_home_refused_runs_the_pass_now_unless_it_is_still_refused",
+            "server:apps/servers/file_host/src/renders_again.rs#an_asset_is_one_of_three_and_a_step_says_its_conveyor",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs#only_a_paired_phone_asks_home_to_produce_an_asset",
+            "some-ui:apps/www/src/lib/renders/again/__tests__/model.test.ts#turns the button on once none of them waits"
           ]
         }
       ]

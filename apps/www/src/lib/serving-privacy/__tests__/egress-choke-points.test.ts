@@ -203,8 +203,10 @@ const HOME_LINK_CALLERS = new Set([
   // LA8 (SFEED13): Studio › Renders, which asks home what it is making as
   // Studio's index or the page opens, on a drag down, on Try again, and every
   // half minute while home has something under way. It sends nothing of its
-  // own.
+  // own; Run it again (RETRY) sends one POST per tap, naming only which
+  // render, and reads the takes needing attention as that page does.
   "lib/renders/read.ts",
+  "lib/renders/again/ask.ts",
   // LA8 (GWB14 D15): Takes opened on a game, which asks home for that
   // game's moment log as it opens and each minute while the game is on. It
   // sends nothing of its own but the game's id.
@@ -1007,7 +1009,11 @@ describe("LA8: the phone reaches home through one module", () => {
           read(f)
         )
       )
-    expect(readers).toEqual(["lib/call-videos/index.ts"])
+    expect(readers).toEqual([
+      "lib/call-videos/index.ts",
+      // RETRY: Run it again asks home's produce request for an episode's video.
+      "lib/renders/again/ask.ts",
+    ])
   })
 
   it("sends nothing from Studio's Feedback page but one GET of a feed's notes, and only the page's read asks it (SFEED6)", () => {

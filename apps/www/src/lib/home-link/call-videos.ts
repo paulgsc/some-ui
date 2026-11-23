@@ -23,7 +23,7 @@
  * screen makes of each answer is `lib/call-videos`'s, its one caller.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
-import type { AloneAsset, EpisodeAsset } from "@some-ui/video-render/assets"
+import type { EpisodeAsset, ProducedAsset } from "@some-ui/video-render/assets"
 
 import type { ShownAsset } from "@/lib/call-videos/assets"
 import type { Feed } from "@/lib/call-videos/model"
@@ -114,11 +114,14 @@ export function askAsset(
   )
 }
 
-/** Asks home once to make one of an episode's files; never rejects. */
+/**
+ * Asks home once to make one of an episode's files: one made on its own, or
+ * its video, by rendering it again (RETRY's Run it again); never rejects.
+ */
 export function sendProduce(
   feed: Feed,
   key: string,
-  asset: AloneAsset
+  asset: ProducedAsset
 ): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) =>

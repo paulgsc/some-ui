@@ -1,0 +1,18 @@
+{
+  "id": "C1220",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/renders/again",
+    "apps/www/src/components/studio/run-again.tsx"
+  ],
+  "chose": "Run it again is one family over every row under Couldn't finish, whatever made it: a compile-time `Stop` union read from what home's board already records (burnt by the recorder or by home, takes home couldn't hear, the render policy's refusal, a take or clip the essay names that home doesn't keep, snips, a preview), each mapped by an exhaustive switch to the owner's steps (`Plan`: ready, the takes, elsewhere, a preview's own page). A stop this phone can't change shows what has to change and no button, since running it again would end the same way. Inward reach: it reuses Needs your attention (its list and its hear-again act), the board's read and home's existing hear-again ordering (`stage_want`), adding no queue and no per-kind page.",
+  "options": [
+    "one Stop union over every row, steps by exhaustive switch (taken)",
+    "a Retry button per essay kind (cards, Rust Rounds, interview), each with its own reasons",
+    "a button on every failed row that always asks home, letting home refuse"
+  ],
+  "gray": "The owner asked for retry on a burnt essay, naming two cases; no check or earlier decision says whether it is a cards-essay feature or one over every render, nor whether a stop the phone can't change shows a disabled button or none.",
+  "undo": "Drop `lib/renders/again`, `components/studio/run-again.tsx`, the `renders/$feed/$key` route and the row's way in on Renders.",
+  "refs": ["#3445"]
+}

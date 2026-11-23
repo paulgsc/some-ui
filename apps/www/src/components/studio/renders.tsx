@@ -2,18 +2,25 @@
  * Studio › Renders (SFEED13, #2761): what home is making for the feeds and
  * templates, with a rough bar while it renders, what waits its turn and why,
  * what couldn't finish, what finished lately, and what's coming. Each row
- * names its kind and the thing, and opens its own page (#2899). The read is the query's
+ * names its kind and the thing, and opens its own page (#2899); one that
+ * couldn't finish also leads to its Run it again page (RETRY). The read is the query's
  * (`rendersQuery`), which reads again on its own while home has something
  * under way; a drag down reads again too (PULL). Every word is `lib/renders`'s.
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { CardLink, CardLinkBody, StationStrip } from "@some-ui/shared"
+import { CardLink, CardLinkBody, Dot, StationStrip } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import type { Board, RendersOutcome, Row, Subject } from "@/lib/renders"
+import type {
+  Board,
+  RenderFailed,
+  RendersOutcome,
+  Row,
+  Subject,
+} from "@/lib/renders"
 import {
   CONVEYOR_WORDS,
   doneLine,
@@ -34,6 +41,13 @@ import {
   subjectOf,
   thingName,
 } from "@/lib/renders"
+import {
+  AGAIN_WORDS,
+  againAttentionQuery,
+  planOf,
+  stopOf,
+  youLine,
+} from "@/lib/renders/again"
 
 import { Part, ReadList, StudioPage } from "./layout"
 
@@ -155,12 +169,15 @@ const RowTile = ({
   tag,
   line,
   tone = "muted",
+  after,
 }: {
   row: Row
   /** Where it is on the conveyor (#2899). */
   tag: string
   line: string | null
   tone?: "muted" | "plain"
+  /** Under the tile, outside it: a failed row's way to run it again. */
+  after?: ReactNode
 }): JSX.Element => {
   const subject = subjectOf(row)
   const body = (
@@ -182,7 +199,7 @@ const RowTile = ({
     </>
   )
   return (
-    <li>
+    <li className="flex flex-col gap-1">
       {!opens(subject) ? (
         <div className="bg-card border-border/60 flex h-full flex-col gap-1 rounded-2xl border px-4 py-3">
           {body}
@@ -194,7 +211,58 @@ const RowTile = ({
           </ToPage>
         </CardLink>
       )}
+      {after}
     </li>
+  )
+}
+
+/**
+ * Under a row that couldn't finish, the way to its Run it again page, and
+ * what waits on the owner there (RETRY). A preview (asked for again on its
+ * template's page) and a row home makes again only by itself (a clip's walk)
+ * have no page: what the owner can do is said there instead (`youLine`).
+ */
+const ToAgain = ({ failed }: { failed: RenderFailed }): JSX.Element | null => {
+  const stop = stopOf(failed)
+  // Takes are counted as Run it again counts them, from the attention list.
+  const attention = useQuery({
+    ...againAttentionQuery,
+    enabled: hasAudience("apk") && stop.kind === "takes-unheard",
+  }).data
+  const plan = planOf(stop, attention ?? { kind: "unread" }, failed.feed)
+  // Each page is the phone's ("apk"), as this one is (A3).
+  if (!hasAudience("apk")) return null
+  // Nothing to run from here: what the owner can do is said on the row.
+  if (plan.kind === "preview" || plan.kind === "byItself")
+    return (
+      <p className="text-muted-foreground px-4 py-1 text-sm">
+        {youLine(failed)}
+      </p>
+    )
+  return (
+    <Link
+      to="/journal/renders/$feed/$key"
+      params={{ feed: failed.feed, key: failed.key }}
+      className="flex items-center justify-between gap-2 px-4 py-1 text-sm"
+    >
+      <span className="text-brand font-semibold underline-offset-4 hover:underline">
+        {plan.kind === "elsewhere"
+          ? AGAIN_WORDS.openElsewhere
+          : AGAIN_WORDS.open}
+      </span>
+      <span className="text-muted-foreground flex items-center gap-1.5">
+        {plan.kind === "takes" && plan.waiting.length > 0 && (
+          <Dot meaning="attention" />
+        )}
+        {plan.kind === "ready"
+          ? AGAIN_WORDS.onRow.ready
+          : plan.kind === "takes"
+            ? plan.read && plan.waiting.length === 0
+              ? AGAIN_WORDS.onRow.ready
+              : AGAIN_WORDS.onRow.takes(plan.waiting.length)
+            : AGAIN_WORDS.onRow.elsewhere}
+      </span>
+    </Link>
   )
 }
 
@@ -266,6 +334,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
                 row={failed}
                 tag={CONVEYOR_WORDS.asides[failedAside(failed)]}
                 line={failedLine(failed)}
+                after={<ToAgain failed={failed} />}
               />
             ))}
           </ul>
