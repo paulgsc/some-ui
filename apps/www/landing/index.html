@@ -638,6 +638,7 @@
         .cube-camera {
           --edge: calc(100cqi * var(--media-depth));
           --depth: calc(var(--edge) / 2);
+          --shell-radius: clamp(7px, 4cqi, 11px);
           height: 100%;
           transform-origin: center center calc(-1 * var(--depth));
           transform: rotateX(12deg) rotateY(-10deg);
@@ -657,19 +658,32 @@
         .ring--cube .face {
           display: grid;
           align-content: center;
-          border-radius: 0;
+          --panel: var(--card);
           transform: rotateX(calc(var(--i) * -90deg)) translateZ(var(--depth));
         }
         .ring--cube .face:nth-child(even) {
-          background: color-mix(in oklab, var(--card) 92%, var(--screen));
+          --panel: color-mix(in oklab, var(--card) 92%, var(--screen));
+        }
+        .ring--cube .face,
+        .cube-cap {
+          border-radius: var(--shell-radius);
+          background: linear-gradient(
+            145deg,
+            color-mix(in oklab, var(--panel) 93%, var(--screen-fg)),
+            var(--panel) 45%,
+            color-mix(in oklab, var(--panel) 96%, var(--screen))
+          );
+          box-shadow:
+            inset 0 0 0 1px var(--line),
+            inset 0 1px 2px
+              color-mix(in oklab, var(--screen-fg) 12%, transparent);
         }
         .cube-cap {
+          --panel: color-mix(in oklab, var(--card) 78%, var(--screen));
           position: absolute;
           inset-block: 0;
           left: 50%;
           width: var(--edge);
-          background: color-mix(in oklab, var(--card) 75%, var(--screen));
-          box-shadow: inset 0 0 0 1px var(--line);
           backface-visibility: hidden;
           transform: translateX(-50%) rotateY(var(--cap-turn)) translateZ(50cqi);
         }
