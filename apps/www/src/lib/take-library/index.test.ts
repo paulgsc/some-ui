@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { TakesAsked } from "@/lib/home-link/takes-read"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { takesHome } from "@/lib/take-library"
-import { phoneTakesOf, readTakes } from "@/lib/take-library/model"
+import { phoneTakesOf, readTakes, readUsedBy } from "@/lib/take-library/model"
 import { VOICE_OFS } from "@/lib/voice-home/model"
 
 const asked = vi.hoisted(
@@ -94,6 +94,30 @@ afterEach(() => {
 })
 
 describe("Takes on home's reads of home (ST32)", () => {
+  it("reads what home says plays each take, apart from what the screen shows (INUSE)", () => {
+    const essay = {
+      kind: "essay",
+      key: "e1",
+      title: "Who I am",
+      at: "2026-11-20T09:00:00.000Z",
+      withdrawsOnDelete: true,
+    }
+    const [first, second] = TAKES.takes
+    const answer = reply(200, {
+      ...TAKES,
+      takes: [{ ...first, usedBy: [essay] }, second],
+    })
+    expect(readUsedBy(answer)).toEqual([
+      { id: "t1", usedBy: [{ ...essay }] },
+      { id: "t2", usedBy: undefined },
+    ])
+    const read = readTakes(answer)
+    expect(read.kind === "read" && "usedBy" in (read.page.takes[0] ?? {})).toBe(
+      false
+    )
+    expect(readUsedBy(reply(404, {}))).toEqual([])
+  })
+
   it("reads the takes, a search by words, and one home will search by meaning", () => {
     const read = readTakes(reply(200, TAKES))
     expect(read.kind === "read" && read.page.takes.map((t) => t.id)).toEqual([

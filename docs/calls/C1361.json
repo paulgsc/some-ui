@@ -1,0 +1,20 @@
+{
+  "id": "C1361",
+  "made": "2026-11-23",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/components/take-uses",
+    "apps/www/src/components/settings/device-my-data.tsx",
+    "apps/www/src/routes/_dashboard/_apk/journal/takes/$kind.tsx",
+    "packages/ui/soundbites/src/components/take-library"
+  ],
+  "chose": "The owner (2026-11-22, relayed by the coordinator), verbatim: \"I agree with the lot that you get when you try to delete something, but I disagree with the budge. The budge should be one uniform visual algebra, but it should be a context menu where you can click it and then it basically gives you the same kind of information as the lot you get when you try to delete. It tells you what it is part of. That way you don't have to try and fit a bunch of text in a very small area, right? You get the avoidance of the dialogue when you press on the badge. So the badge is a context menu. That way we get one uniform visual algebra.\" So a take something uses carries one mark, the same for every kind of use: an icon and how many things use it (its name \"In use: n things\"), or a distinct dashed mark when this phone couldn't check. Tapping it opens a popover (the shared Popover) holding UsesPanel, the very component the delete sheet's In use panel is, over the same TakeUse list. This moves C1360's \"In use · <what>\" text badge; the sheet stands.",
+  "options": [
+    "one uniform mark that opens the sheet's own panel (chosen)",
+    "a text badge naming what uses it (C1360)"
+  ],
+  "gray": "How a list shows that a take is in use is how the owner reads the screen; no check settles it.",
+  "undo": "Record a call that moves this one, and draw a text line from whatLoses in the row in place of UseMark.",
+  "refs": ["#3447"],
+  "moves": "C1360"
+}
