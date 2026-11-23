@@ -47,6 +47,7 @@ type EpisodeTracks = {
    * pair has gone), giving way as the pair turns in.
    */
   readonly skeleton: Track
+  readonly skeletonSweepS: number
   /** The episode's pair of cubes: in view for its episode only. */
   readonly pair: Track
   readonly cubes: readonly [Track, Track]
@@ -317,7 +318,7 @@ export function showTimeline(
         labels: [label(0), label(1)],
       }
     })
-    return { skeleton, pair, cubes, scenes }
+    return { skeleton, skeletonSweepS: e.start, pair, cubes, scenes }
   })
   return { cycleS, copy, episodes: episodeTracks }
 }

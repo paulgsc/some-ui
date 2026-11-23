@@ -25,9 +25,23 @@ project each. Each episode is one to four scenes, and each scene is some copy an
   cubes turn.
 - **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the two producer
   jobs: each still copied from a walk's screens, each cut taken silent from a rendered
-  video by shot. A face the build doesn't have shows its title card.
-- **Skeletons.** Until an episode's pair turns in, each of its places stands as a skeleton
-  of what is coming, a clip's frame or a still's, by the face's slot (`slotOf`, C1185).
+  video by shot. The producer also writes 40 px WebP previews. The Pages build serves
+  up to 2 KiB per preview and 24 KiB total. A missing preview uses a theme-colored
+  screen and shared grain tile. A missing asset shows its title card. On desktop each
+  media block is a closed, tilted rectangular prism. Its aperture uses the still or
+  clip's display ratio inside the shell.
+- **Previews.** The episode's two waiting screens use the same previews as the faces,
+  with one brief sheen on their first appearance. Each face keeps its preview underneath
+  the image or native video poster. The landing's script-free build rule means reveal
+  is browser-native. Decode-driven fades, request-error replacement and pausing a video
+  as its face leaves the stage require a controller.
+- **Narrow screens.** The same resolved scenes form a native horizontal scroll-snap deck,
+  with bounded previous and next links and positions in published order. On browsers with
+  scroll-driven CSS, all three cards turn together as the deck scrolls. The browser owns
+  gesture thresholds and settling. Scroll-state queries suppress offscreen card focus
+  where supported. The deck reserves room for its tallest scene. Browsers without scroll
+  snap and wide screens in reduced-motion mode show the same markup as a static list.
+  Narrow reduced-motion mode keeps the deck without the turns or video playback.
 
 ## Themes
 

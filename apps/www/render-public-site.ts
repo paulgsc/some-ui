@@ -31,7 +31,7 @@ import type { RenderedSite, SitePage } from "./src/landing/output.ts"
 import { SITE_FILE, SITE_MEDIA_DIR } from "./src/landing/output.ts"
 import type { ResumeVersion } from "./src/landing/pages.ts"
 import { renderNotFound, renderResumePages } from "./src/landing/pages.ts"
-import type { LandingMedia } from "./src/landing/render.ts"
+import type { LandingAsset } from "./src/landing/render.ts"
 import {
   landingMediaKeys,
   PHOTO,
@@ -116,12 +116,33 @@ const themes = landingThemes(SESSION_THEMES, sessionColours)
 // The picker wears the app's own theme switcher's icons (theme-icons.ts).
 const picker: ThemePicker = { themes, icons: THEME_ICONS }
 
-const media: LandingMedia = new Map(
-  landingMediaKeys(undefined, episodes).flatMap((key) => {
-    const found = mediaFor(key)
-    return found === undefined ? [] : [[key, found] as const]
-  })
-)
+const previewKeys: Array<string> = []
+const previewLimit = 2 * 1024
+let previewBudget = 24 * 1024
+const media = new Map<string, LandingAsset | null>()
+for (const key of landingMediaKeys(undefined, episodes)) {
+  const found = mediaFor(key)
+  if (found === undefined) continue
+  if (found === null) {
+    media.set(key, null)
+    continue
+  }
+
+  const preview = `${key}.preview.webp`
+  const file = resolve(import.meta.dirname, SITE_MEDIA_DIR, preview)
+  const stat = lstatSync(file, { throwIfNoEntry: false })
+  if (
+    stat?.isFile() === true &&
+    stat.size > 0 &&
+    stat.size <= Math.min(previewLimit, previewBudget)
+  ) {
+    previewBudget -= stat.size
+    previewKeys.push(preview)
+    media.set(key, { ...found, preview })
+  } else {
+    media.set(key, found)
+  }
+}
 
 const pages: ReadonlyArray<SitePage> = [
   {
@@ -146,7 +167,10 @@ const out = resolve(import.meta.dirname, SITE_FILE)
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(
   out,
-  JSON.stringify({ pages, media: [...media.keys()] } satisfies RenderedSite)
+  JSON.stringify({
+    pages,
+    media: [...media.keys(), ...previewKeys],
+  } satisfies RenderedSite)
 )
 process.stdout.write(
   `[www] rendered the public site's ${pages.length} pages, with ${media.size} of its ${landingMediaKeys(undefined, episodes).length} media, into ${SITE_FILE}\n`

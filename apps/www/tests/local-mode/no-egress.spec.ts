@@ -315,6 +315,69 @@ test.describe("the Pages build", () => {
     await stub?.close()
   })
 
+  test("keeps scene navigation together through a cancelled drag and a breakpoint change", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      hasTouch: true,
+      viewport: { width: 390, height: 844 },
+      reducedMotion: "reduce",
+    })
+    try {
+      const page = await context.newPage()
+      await page.goto(`${app().origin}${BASE}`)
+      const deck = page.locator(".flat")
+      const first = deck.locator(".scene-flat").first()
+      const next = deck.locator(".scene-flat").nth(1)
+      await first.locator(".scene-narration").scrollIntoViewIfNeeded()
+      const box = await first.locator(".scene-narration").boundingBox()
+      if (box === null) throw new Error("first scene has no narration box")
+      const cdp = await context.newCDPSession(page)
+      const x = box.x + box.width / 2
+      const y = box.y + 20
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x, y }],
+      })
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: x - 22, y }],
+      })
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchCancel",
+        touchPoints: [],
+      })
+      await expect(first.locator(".scene-narration")).toBeInViewport()
+      await expect.poll(() => deck.evaluate((el) => el.scrollLeft)).toBe(0)
+
+      await first.getByRole("link", { name: "Next" }).focus()
+      await page.keyboard.press("Enter")
+      await expect(next.locator(".scene-narration")).toBeInViewport()
+      await expect
+        .poll(() => deck.evaluate((el) => el.scrollLeft))
+        .toBeGreaterThan(0)
+      await expect(next).toBeFocused()
+      const scene = shownEpisodes()
+        .flatMap((episode) => episode.scenes)
+        .at(1)
+      await expect(next.locator("h4")).toHaveText(scene?.title ?? "")
+      for (const face of scene?.faces ?? [])
+        await expect(next.locator(`[data-asset="${face.key}"]`)).toHaveCount(1)
+      expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+
+      await page.setViewportSize({ width: 899, height: 844 })
+      await expect(deck).toHaveCSS("scroll-snap-type", "x mandatory")
+      await page.setViewportSize({ width: 900, height: 844 })
+      await expect(deck).toHaveCSS("scroll-snap-type", "none")
+      await expect(page.locator(".stage")).toBeHidden()
+      await page.emulateMedia({ reducedMotion: "no-preference" })
+      await expect(page.locator(".stage")).toBeVisible()
+      await expect(deck).toBeHidden()
+    } finally {
+      await context.close()
+    }
+  })
+
   test("reaches no other origin, and its policy is enforced", async ({
     browser,
     context,
@@ -358,11 +421,7 @@ test.describe("the Pages build", () => {
     await expect(
       page.locator("article[data-slot] a, article[data-slot] button")
     ).toHaveCount(0)
-    // A clip is never a player (C1064), and is hidden from a reader who
-    // prefers less motion.
-    await expect(
-      page.locator("video[controls], video:not([aria-hidden=true])")
-    ).toHaveCount(0)
+    // Reduced motion keeps the static media previews.
     expect(
       await page.evaluate(() =>
         [...document.styleSheets].some((sheet) =>

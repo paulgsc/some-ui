@@ -54,7 +54,7 @@
       }
       .photo {
         width: 132px;
-        height: 132px;
+        aspect-ratio: 1;
         border-radius: 50%;
         overflow: hidden;
         flex: none;
@@ -62,7 +62,11 @@
         border: 1px solid var(--line);
         margin: 0;
       }
-      .photo .hug-body svg,
+      .photo .hug-body svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
       .photo img {
         width: 100%;
         height: 100%;
@@ -200,29 +204,21 @@
       /* The show (C1180-C1183). Laid flat unless WIDE_MOTION (render.ts):
          each episode, its scenes' copy, and each scene's two faces as cards.
          Where it moves, the stage instead (below). */
-      .stage {
+      .stage,
+      .scene-nav {
         display: none;
       }
-      .episode {
-        margin: 0 0 28px;
-      }
-      .episode h3 {
-        margin: 0 0 10px;
-        font-size: 1.2rem;
-      }
       .scene-flat {
-        margin: 0 0 22px;
+        margin: 0 0 24px;
       }
+      .scene-flat h3,
       .scene-flat h4 {
         margin: 0 0 4px;
-        font-size: 1.02rem;
       }
-      .scene-flat > p {
+      .scene-narration > p {
         margin: 0.2rem 0;
         max-width: 64ch;
       }
-      /* A scene's two faces are a pair, not a gallery: a tall clip stays
-         a size a reader takes in at once. */
       .scene-flat .grid {
         margin-top: 12px;
         max-width: 36rem;
@@ -235,9 +231,7 @@
         text-transform: uppercase;
         color: var(--accent);
       }
-      /* A face's title card: what its screen shows when the build has no
-         clip or still for it, and under a clip a reader who prefers less
-         motion doesn't see. */
+      /* A face's title card when the build has no asset. */
       .title-card {
         position: absolute;
         inset: 0;
@@ -250,10 +244,7 @@
         font-weight: 600;
         line-height: 1.2;
       }
-      /* A slot's clip or still, whole inside its screen or filling its
-         card exactly: never cropped, never something to click. Its own box
-         is the screen's dark, so the title card under it never shows
-         through. */
+      /* Keep the full image or video within its source-shaped aperture. */
       .media {
         position: absolute;
         inset: 0;
@@ -261,8 +252,57 @@
         height: 100%;
         object-fit: contain;
         display: block;
+      }
+      .media-preview {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background: radial-gradient(
+            ellipse at 25% 20%,
+            color-mix(in oklab, var(--accent) 34%, transparent),
+            transparent 64%
+          ),
+          radial-gradient(
+            ellipse at 80% 88%,
+            color-mix(in oklab, var(--screen-fg) 23%, transparent),
+            transparent 65%
+          ),
+          var(--screen);
+      }
+      .media-preview::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: url("data:image/webp;base64,UklGRu4BAABXRUJQVlA4IOIBAADwCACdASogACAAAwBSJaQAUYHSD4K/gxgVoMsDiN/wHgDHPP4T9jvMR8++wH+tvpEetD9dPYr/cIRo4UqoOjdWHIZJUA3wVR9ryAgxhPoIAADq7Jo5sNhVPilTmjqzzQvMd5gaxJ5mpU6XVZ9h2IZaiEQ455JzgcIPdj+wA5McZENsVpGTlpu+VK828tZ3N0Pb5ktlVSBwTIQ+xpXVK2awzUxsAnKvfUZNrtwm7+Jy4XRqNEYyzwST/G1DGUZeXYDD2GSIRmkThavgpA6IkQcvz0IJM93aw8ApgSuR2LJcCl7krAMhZJF1usCn7t8t/kfgN5bVYKezuOkWBn8iRk7UdhZ2LgsJBH5E0a8OqMzeB1Gt+Cg8AdNPK+b/ojCbobsB5oLoZNJsLXO93DLldwQJITdYm9NyL93zxTr/LXQbmv93W4SO4qa0d3slFBGY3YhmVq8oZqoFRI49lK2Sq5jIvI2DxjZOu7YTpQI8N83PFAX25Y+l485mbP09Yh/bus65lnOrpWaLuzFfXn7Fdn9IdvvWuaNoBqXMYly8WHdyOlW3LerbuY0a9oDJm4d/L/s+AcAh4L2qidXGaYS791YOY3Zun9NwWc7KYCqtolSpvz0/lKJY5UeBEQY3U4Plc6pAAA==");
+        opacity: 0.19;
+        mix-blend-mode: overlay;
+      }
+      .media-preview img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .media-preview span {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        aspect-ratio: 1;
+        border-radius: 8px;
         background: var(--screen);
-        pointer-events: none;
+        color: var(--screen-fg);
+      }
+      .media-preview svg {
+        width: 24px;
+      }
+      .title-card span {
+        background: var(--screen);
+        border-radius: 8px;
+        padding: 4px 8px;
       }
       /* A card's words, below its picture. */
       .caption {
@@ -276,9 +316,6 @@
         margin: 0.2rem 0;
         font-size: 0.95rem;
       }
-      /* The clip still loads and plays out of sight (autoplay outranks
-         preload, and a video takes no media-chosen source): stopping it
-         would take a script, which this page has none of. */
       @media (prefers-reduced-motion: reduce) {
         video.media {
           display: none;
@@ -315,7 +352,98 @@
         background: var(--stage);
       }
       .screen {
+        overflow: hidden;
         background: var(--screen);
+      }
+      @media (width < 900px) {
+        @supports (scroll-snap-type: x mandatory) {
+          .flat {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            touch-action: pan-x pan-y pinch-zoom;
+          }
+          .scene-flat {
+            flex: 0 0 100%;
+            min-width: 0;
+            margin: 0;
+            padding: 4px 0 12px;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            scroll-margin-block-start: 12px;
+          }
+          .scene-flat .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            margin-inline: auto;
+          }
+          .scene-nav {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: var(--muted);
+            font-size: 0.875rem;
+          }
+          .scene-nav > :first-child {
+            justify-self: start;
+          }
+          .scene-nav > :last-child {
+            justify-self: end;
+          }
+          .scene-nav a,
+          .scene-nav [aria-disabled] {
+            display: grid;
+            place-items: center;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0 8px;
+          }
+          .scene-nav a {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+          }
+          .scene-flat:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+          }
+        }
+        @supports (container-type: scroll-state) and (interactivity: inert) {
+          .scene-flat {
+            container-type: scroll-state;
+          }
+          @container not scroll-state(snapped: x) {
+            .scene-flat > * {
+              interactivity: inert;
+            }
+          }
+        }
+      }
+      @media (width < 900px) and (prefers-reduced-motion: no-preference) {
+        @supports (animation-timeline: view(inline)) {
+          .scene-flat {
+            view-timeline: --scene inline;
+            perspective: 1100px;
+          }
+          .scene-narration,
+          .scene-flat .card {
+            animation: scene-turn linear both;
+            animation-timeline: --scene;
+          }
+        }
+      }
+      @keyframes scene-turn {
+        0% {
+          transform: rotateY(-58deg);
+        }
+        50% {
+          transform: rotateY(0);
+        }
+        100% {
+          transform: rotateY(58deg);
+        }
       }
       /* WIDE_MOTION: the stage. The copy block (an episode a face, about Y)
          beside the episode's pair of cubes (a scene a face, about X), the
@@ -329,13 +457,13 @@
           display: none;
         }
         .stage {
+          --media-depth: 1.48;
           display: grid;
-          grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
-          gap: 20px;
+          grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
+          column-gap: 68px;
+          padding: 42px 24px 65px;
           align-items: start;
         }
-        /* The copy is as tall as its longest scene needs; the cubes stay
-           square beside it. */
         .block--copy {
           grid-area: 1 / 1;
           align-self: stretch;
@@ -346,36 +474,17 @@
           grid-area: 1 / 2 / 2 / 4;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 20px;
+          gap: 36px;
         }
-        /* Where an episode's pair will turn in, while its copy streams
-           (C1185): a calm frame in the face's own shape, its glyph telling
-           a clip from a still. One slow sweep of light passes over it, low
-           in contrast and seconds long, never a flash or a flicker. */
         .skeleton {
-          position: relative;
-          aspect-ratio: 1;
-          display: flex;
-          flex-direction: column;
+          container-type: inline-size;
+          display: grid;
+          align-content: center;
+          aspect-ratio: 1 / var(--media-depth);
           border-radius: 12px;
           overflow: hidden;
           background: var(--card);
           box-shadow: 0 0 0 1px var(--line);
-        }
-        .skeleton-screen {
-          flex: 1;
-          display: grid;
-          place-items: center;
-          --skeleton-ground: color-mix(
-            in oklab,
-            var(--stage) 92%,
-            var(--screen)
-          );
-          background: var(--skeleton-ground);
-          color: color-mix(in oklab, var(--muted) 55%, var(--skeleton-ground));
-        }
-        .skeleton-screen svg {
-          width: 26%;
         }
         .skeleton-band {
           padding: 12px;
@@ -387,18 +496,18 @@
           border-radius: 999px;
           background: color-mix(in oklab, var(--muted) 22%, var(--card));
         }
-        .skeleton::after {
+        .skeleton[data-pending] .screen::after {
           content: "";
           position: absolute;
           inset: 0;
+          pointer-events: none;
           background: linear-gradient(
-            100deg,
-            transparent 35%,
-            color-mix(in oklab, var(--screen-fg) 18%, transparent) 50%,
-            transparent 65%
+            112deg,
+            transparent 30%,
+            color-mix(in oklab, var(--screen-fg) 27%, transparent) 50%,
+            transparent 70%
           );
-          background-size: 300% 100%;
-          animation: shimmer 3.2s ease-in-out infinite;
+          animation: preview-sweep 1.3s ease-out var(--sweep-at) both;
         }
         /* Every track on the one clock, started just past the copy block's
            first turn (--show-start, render.ts), so the show opens on its
@@ -501,7 +610,7 @@
         }
         .show:hover .tk,
         .show:hover .block,
-        .show:hover .skeleton::after {
+        .show:hover .skeleton[data-pending] .screen::after {
           animation-play-state: paused;
         }
         .ring {
@@ -509,16 +618,31 @@
           height: 100%;
           perspective: 1400px;
         }
+        .block--cube {
+          container-type: inline-size;
+        }
         .ring--cube {
-          --faces: 4;
-          aspect-ratio: 1;
+          height: auto;
+          aspect-ratio: 1 / var(--media-depth);
+          perspective: 380cqi;
         }
         .block .ring .ring-turn {
-          --depth: calc(50cqi / tan(180deg / var(--faces)));
           position: relative;
           height: 100%;
           transform-style: preserve-3d;
           transform: translateZ(calc(-1 * var(--depth)));
+        }
+        .ring--copy .ring-turn {
+          --depth: calc(50cqi / tan(180deg / var(--faces)));
+        }
+        .cube-camera {
+          --edge: calc(100cqi * var(--media-depth));
+          --depth: calc(var(--edge) / 2);
+          --shell-radius: clamp(7px, 4cqi, 11px);
+          height: 100%;
+          transform-origin: center center calc(-1 * var(--depth));
+          transform: rotateX(12deg) rotateY(-10deg);
+          transform-style: preserve-3d;
         }
         .ring .face {
           position: absolute;
@@ -532,12 +656,53 @@
             translateZ(var(--depth));
         }
         .ring--cube .face {
+          display: grid;
+          align-content: center;
+          --panel: var(--card);
           transform: rotateX(calc(var(--i) * -90deg)) translateZ(var(--depth));
         }
-        .ring--cube .screen {
-          flex: 1;
-          min-height: 0;
-          aspect-ratio: auto;
+        .ring--cube .face:nth-child(even) {
+          --panel: color-mix(in oklab, var(--card) 92%, var(--screen));
+        }
+        .ring--cube .face,
+        .cube-cap {
+          border-radius: var(--shell-radius);
+          background: linear-gradient(
+            145deg,
+            color-mix(in oklab, var(--panel) 93%, var(--screen-fg)),
+            var(--panel) 45%,
+            color-mix(in oklab, var(--panel) 96%, var(--screen))
+          );
+          box-shadow:
+            inset 0 0 0 1px var(--line),
+            inset 0 1px 2px
+              color-mix(in oklab, var(--screen-fg) 12%, transparent);
+        }
+        .cube-cap {
+          --panel: color-mix(in oklab, var(--card) 78%, var(--screen));
+          position: absolute;
+          inset-block: 0;
+          left: 50%;
+          width: var(--edge);
+          backface-visibility: hidden;
+          transform: translateX(-50%) rotateY(var(--cap-turn)) translateZ(50cqi);
+        }
+        .cube-cap--left {
+          --cap-turn: -90deg;
+        }
+        .cube-cap--right {
+          --cap-turn: 90deg;
+        }
+        .ring--cube .screen,
+        .skeleton .screen {
+          width: min(
+            100%,
+            calc((100cqi * var(--media-depth) - 2.5rem) * var(--r))
+          );
+          margin-inline: auto;
+        }
+        .ring--cube .media {
+          pointer-events: none;
         }
         .ring--cube .title-card {
           font-size: clamp(1rem, 7cqi, 1.4rem);
@@ -608,12 +773,18 @@
           transform: scale(1.015);
         }
       }
-      @keyframes shimmer {
+      @keyframes preview-sweep {
         from {
-          background-position: 100% 0;
+          transform: translateX(-100%);
+          opacity: 0;
+        }
+        20%,
+        75% {
+          opacity: 1;
         }
         to {
-          background-position: 0% 0;
+          transform: translateX(100%);
+          opacity: 0;
         }
       }
       @keyframes sheen {
@@ -849,7 +1020,7 @@
         color: var(--muted);
         font-size: 0.85rem;
       }
-      @media (max-width: 900px) {
+      @media (width < 900px) {
         .two {
           grid-template-columns: 1fr;
         }
@@ -865,7 +1036,23 @@
         }
         .photo {
           width: 96px;
-          height: 96px;
+        }
+        .photo:has(.hug) {
+          width: clamp(72px, 20vw, 88px);
+        }
+        .hug {
+          display: grid;
+          place-items: center;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .hug-body {
+          width: 83%;
+          height: 83%;
+        }
+        .hug-heart {
+          top: 10%;
+          transition-delay: 0.35s;
         }
         main {
           padding: 22px 20px 56px;
