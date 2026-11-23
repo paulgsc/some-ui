@@ -351,6 +351,26 @@ type EssayRefusal = keyof typeof ESSAY_REFUSAL_WORDS
 const isEssayRefusal = (reason: string): reason is EssayRefusal =>
   Object.hasOwn(ESSAY_REFUSAL_WORDS, reason)
 
+/**
+ * Names home gives a refusal's items, when it names every one of them (home
+ * names a list whole or not at all); null otherwise.
+ */
+function namesOf(
+  items: ReadonlyArray<string> | undefined,
+  names: ReadonlyArray<string> | undefined
+): ReadonlyArray<string> | null {
+  if (items === undefined || names === undefined) return null
+  return names.length === items.length && names.length > 0 ? names : null
+}
+
+/** Names as a person reads a list: "“A”", "“A” and “B”", "“A”, “B” and “C”". */
+function namesSaid(names: ReadonlyArray<string>): string {
+  const quoted = names.map((name) => `“${name}”`)
+  return quoted.length <= 1
+    ? quoted.join("")
+    : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1) ?? ""}`
+}
+
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
   // A preview is made once a person asks, never again on its own.
@@ -362,9 +382,16 @@ export function failedLine(failed: RenderFailed): string {
     failed.feed === "cards-essay" &&
     failed.reason !== undefined &&
     isEssayRefusal(failed.reason)
-  )
-    // Counted, never named: home names them only by their ids.
+  ) {
+    // The takes by the names home gives (`itemNames`), else counted: never
+    // by their ids.
+    const names = namesOf(failed.items, failed.itemNames)
+    if (names !== null && failed.reason === "take-unheard")
+      return `Home couldn't make out the ${names.length === 1 ? "take" : "takes"} for ${namesSaid(names)}, so it holds the essay until it can hear ${names.length === 1 ? "it" : "them"}.`
+    if (names !== null && failed.reason === "take-missing")
+      return `Home doesn't have the ${names.length === 1 ? "take" : "takes"} for ${namesSaid(names)}. Home holds it, and makes it by itself once the essay names ${names.length === 1 ? "one" : "recordings"} home keeps.`
     return ESSAY_REFUSAL_WORDS[failed.reason](failed.items?.length ?? 0)
+  }
   const refusal = refusalOf(failed)
   if (refusal !== null)
     return refusalLine(failed.feed, refusal, failed.sceneNames ?? [])

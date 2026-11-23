@@ -105,6 +105,12 @@ const FailedSchema = EpisodeSchema.extend({
    * and then the scenes are counted, never named by id.
    */
   sceneNames: z.array(z.string().min(1).max(200)).optional().catch(undefined),
+  /**
+   * The names of a refusal's takes (`take-unheard`, `take-missing`), in
+   * `items`' order: the card and exchange each was said for (RETRY). Named
+   * whole or not at all; read leniently.
+   */
+  itemNames: z.array(z.string().min(1).max(200)).optional().catch(undefined),
 })
 
 const ComingSchema = z.object({

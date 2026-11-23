@@ -584,6 +584,29 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
       /^It shows a picture of the app that home couldn't get from its capture/
     )
     expect(failedLine(row("clip-missing", 2))).toMatch(/^It shows 2 clips/)
+    // Named, where home names every take (itemNames): never by id.
+    const named = {
+      ...row("take-unheard", 2),
+      itemNames: [
+        "How a round opens, exchange 1, your answer",
+        "exchange 2, your question",
+      ],
+    }
+    expect(failedLine(named)).toBe(
+      "Home couldn't make out the takes for “How a round opens, exchange 1, your answer” and “exchange 2, your question”, so it holds the essay until it can hear them."
+    )
+    expect(
+      failedLine({
+        ...row("take-missing", 1),
+        itemNames: ["exchange 3, your answer"],
+      })
+    ).toBe(
+      "Home doesn't have the take for “exchange 3, your answer”. Home holds it, and makes it by itself once the essay names one home keeps."
+    )
+    // A list named in part is counted, as home never sends one.
+    expect(
+      failedLine({ ...row("take-unheard", 2), itemNames: ["only one"] })
+    ).toMatch(/^Home couldn't make out 2 recordings/)
     for (const reason of [
       "take-unheard",
       "take-missing",
