@@ -394,7 +394,12 @@ export function failedLine(failed: RenderFailed): string {
   }
   const refusal = refusalOf(failed)
   if (refusal !== null)
-    return refusalLine(failed.feed, refusal, failed.sceneNames ?? [])
+    return refusalLine(
+      failed.feed,
+      refusal,
+      // Whole or not at all: a name is never said against another scene.
+      namesOf(failed.scenes, failed.sceneNames) ?? []
+    )
   return failed.by === "home"
     ? "Home couldn't keep its files. It tries again in an hour."
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."

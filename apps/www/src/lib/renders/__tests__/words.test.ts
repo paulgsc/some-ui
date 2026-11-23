@@ -508,6 +508,16 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     ).toBe(
       "The scene “The dive” is too full for its frame, so the video would cut it off. Home doesn't try it again as it is."
     )
+    // A list named only in part is counted, so no name lands on another scene.
+    expect(
+      line({
+        scenes: ["dive-2", "beside-2", "dive-3"],
+        sceneCount: 3,
+        sceneNames: ["The dive", "Beside it"],
+      })
+    ).toBe(
+      "3 scenes are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
+    )
     expect(line({ scenes: ["dive-2"], sceneCount: 1 })).toBe(
       "One scene is too full for its frame, so the video would cut it off. Home doesn't try it again as it is."
     )
