@@ -536,6 +536,25 @@ describe("the game essay's scenes and cut list", () => {
     ])
   })
 
+  it("counts a single bite as one", () => {
+    const essay = sample()
+    const [game] = essay.games
+    const [first] = game?.halves ?? []
+    if (game === undefined || first === undefined)
+      throw new Error("the sample has a first half")
+    const one = {
+      ...essay,
+      games: [
+        {
+          ...game,
+          halves: [{ ...first, bites: first.bites.slice(0, 1) }],
+          halftime: undefined,
+        },
+      ],
+    }
+    expect(gameEssayIntro(one).said).toMatch(/1 bite on 1 game/)
+  })
+
   it("says in its intro how many bites are read aloud", () => {
     const intro = gameEssayIntro(sample())
     expect(intro.rows.find((row) => row.label === "Voices")?.says).toMatch(
@@ -544,8 +563,9 @@ describe("the game essay's scenes and cut list", () => {
   })
 })
 
-describe("the game essay's chapters, as a render times them (SFEED4)", () => {
-  // Each scene timed as its words read, as the cut list holds it with no take.
+describe("the game essay's chapters, by its scenes' held times (SFEED4)", () => {
+  // Each scene timed as its words read, back to back as the cut list holds
+  // them with no take; a render's crossfades start each a little earlier.
   const timed = (essay: GameEssay): Array<ShotTime> => {
     const cut = gameEssayCutList(
       essay,
@@ -568,30 +588,11 @@ describe("the game essay's chapters, as a render times them (SFEED4)", () => {
     const essay = sample()
     expect(
       chaptersOf(timed(essay), gameEssayChapterMarks(essay)).map((c) => c.title)
-    ).toHaveLength(3)
+    ).toEqual(["Opening", "NE at CHI", "The week, closed"])
   })
 
   it("gives none when a one-game week's close runs under ten seconds, as C1243 says", () => {
     const essay = { ...sample(), close: { said: "That was the week." } }
     expect(chaptersOf(timed(essay), gameEssayChapterMarks(essay))).toEqual([])
-  })
-
-  it("counts a single bite as one", () => {
-    const essay = sample()
-    const [game] = essay.games
-    const [first] = game?.halves ?? []
-    if (game === undefined || first === undefined)
-      throw new Error("the sample has a first half")
-    const one = {
-      ...essay,
-      games: [
-        {
-          ...game,
-          halves: [{ ...first, bites: first.bites.slice(0, 1) }],
-          halftime: undefined,
-        },
-      ],
-    }
-    expect(gameEssayIntro(one).said).toMatch(/1 bite on 1 game/)
   })
 })
