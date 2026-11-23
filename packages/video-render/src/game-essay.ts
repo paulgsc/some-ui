@@ -54,12 +54,20 @@ import {
 } from "@some-ui/game-scenarios"
 import { z } from "zod"
 
-import { CALL_ID, CALL_STAGE_WIDTH, day, nightInMotion } from "./call"
+import { CALL_ID, CALL_STAGE_WIDTH, day, nightInMotion, sayDay } from "./call"
+import type { LockedIntro } from "./call"
+import type { ChapterMark } from "./chapters"
+import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
-import type { Parsed } from "./cut-list"
+import type { CutList, Parsed } from "./cut-list"
 import { weekId } from "./essay"
-import { FORMAT_SCHEMA, versionRefusal, words } from "./format"
+import type { Speaker, Voicing } from "./essay"
+import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
+import { hasCaptions, stillFile, stillsCutList } from "./stills"
+import type { StillTake } from "./stills"
+import { takeFilesOf } from "./take-files"
+import type { TakeFiles } from "./take-files"
 import sample from "./templates/game-essay/sample-essay.json" with { type: "json" }
 
 export const GAME_ESSAY_SCHEMA = "some-ui.game-essay/1"
@@ -157,12 +165,25 @@ export const STANCE_ANSWERS: Readonly<Record<Stance, string>> = {
   injury: "What it changes for the game, never speculation",
 }
 
-type Section = "open" | "game" | "bite" | "halftime" | "close"
+type Section =
+  | "open"
+  | "game"
+  | "setup"
+  | "bite"
+  | "happened"
+  | "answer"
+  | "halftime"
+  | "close"
+
+type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
 
 const MOST: Readonly<Record<Section, number | null>> = {
   open: null,
   game: GAMES_MOST,
+  setup: BITES_MOST,
   bite: BITES_MOST,
+  happened: BITES_MOST,
+  answer: BITES_MOST,
   halftime: GAMES_MOST,
   close: null,
 }
@@ -224,10 +245,28 @@ export function gameEssayFormat(version: number = GAME_ESSAY_VERSION): Format {
         15_000
       ),
       scene(
+        "setup",
+        "The moment",
+        "The game at the bite's moment as one still, and the host's setup",
+        15_000
+      ),
+      scene(
         "bite",
-        "A bite",
-        "The game at that moment as one still, the host's setup, your bite, and the host's answer in its stance's way",
+        "Your bite",
+        "Your bite, in your own voice or read aloud by the second voice",
         60_000
+      ),
+      scene(
+        "happened",
+        "What happened",
+        "What came of it, only when the still doesn't already show it",
+        10_000
+      ),
+      scene(
+        "answer",
+        "The host's answer",
+        "The host's answer, in its stance's way",
+        30_000
       ),
       scene(
         "halftime",
@@ -355,6 +394,7 @@ export const GameEssaySchema = z.strictObject({
 
 export type GameEssay = z.infer<typeof GameEssaySchema>
 type GameEssayGame = GameEssay["games"][number]
+type GameEssayBite = GameEssayGame["halves"][number]["bites"][number]
 
 const isWordChar = (c: string): boolean =>
   (c >= "a" && c <= "z") || (c >= "0" && c <= "9")
@@ -546,3 +586,279 @@ export function parseGameEssay(raw: unknown): Parsed<GameEssay> {
 
 /** The template's sample essay: NE at CHI, with a bite in each half and one unmatched. */
 export const sampleGameEssay = (): Parsed<GameEssay> => parseGameEssay(sample)
+
+/** One scene of a game essay: its section, its id in the video, who says it and what. */
+export type GameEssayScene =
+  | {
+      readonly section: Exclude<Section | Framing, "chapter">
+      /** Its section's id, or `<section>-<n>` for a repeated one's nth. */
+      readonly id: string
+      /** The game it belongs to, by ESPN's id. */
+      readonly game?: string
+      /** The bite it belongs to, by its take. */
+      readonly take?: string
+      readonly speaker: Speaker
+      /** What is said over it; empty for a brand slide. */
+      readonly said: string
+    }
+  | {
+      readonly section: "chapter"
+      readonly id: string
+      /** The scene the chapter slide opens. */
+      readonly of: Section
+      readonly game: string
+      readonly title: string
+      readonly speaker: Speaker
+      readonly said: string
+    }
+
+/** Every bite of the essay, in its order. */
+const bitesOf = (essay: GameEssay): Array<GameEssayBite> =>
+  essay.games.flatMap((game) => game.halves.flatMap((half) => half.bites))
+
+/**
+ * The locked intro (SFEED2): who wrote it, what drew it, whose voices are
+ * in it and where the game's facts come from, filled by code from the
+ * essay alone.
+ */
+export function gameEssayIntro(
+  essay: GameEssay,
+  voicing: Voicing = "owner"
+): LockedIntro {
+  const bites = bitesOf(essay)
+  const aloud = bites.filter((bite) => bite.voice === "read-aloud").length
+  const sample = voicing === "sample"
+  const games = essay.games.length
+  const of = `${bites.length} bites on ${games} ${games === 1 ? "game" : "games"}`
+  return {
+    rows: [
+      {
+        label: "Written by",
+        says: sample
+          ? "Claude, as the template's sample: the bites and the host's words are made up"
+          : "Claude, from the week's bites and the plays home matched them to",
+      },
+      {
+        label: "Drawn by",
+        says: `Code: the Game Week essay's template, version ${essay.template.version}, in paulgsc/some-ui`,
+      },
+      {
+        label: "Voices",
+        says: sample
+          ? "The host is Kokoro, a synthetic speaker, in a voice that changes with each game. In a sample, a second synthetic voice reads the made-up bites"
+          : aloud === 0
+            ? "The host is Kokoro, a synthetic speaker, in a voice that changes with each game. Every bite is the owner's own voice"
+            : `The host is Kokoro, a synthetic speaker, in a voice that changes with each game. ${aloud} of ${bites.length} bites are the owner's words read by a second synthetic voice, where home heard them unclearly or the owner chose; the rest are the owner's own voice`,
+      },
+      {
+        label: "The games",
+        says: "ESPN's public play-by-play, read by home's scenario engine, drawn as one still per bite and never read out",
+      },
+      { label: "Said", says: of },
+    ],
+    said: [
+      `This is the Game Week essay for ${essay.week.id}, ${sayDay(essay.week.from)} to ${sayDay(essay.week.to)}.`,
+      "Claude wrote the host's words, and code drew every frame.",
+      sample
+        ? "This is a sample: every voice is synthetic, and one reads made-up bites."
+        : aloud === 0
+          ? "The host's voice is synthetic; every bite is the owner's own."
+          : "The host's voice is synthetic; each bite is the owner's own voice, or the owner's words read by a second synthetic voice where marked.",
+      "Each game is shown only where a bite was said about it, as one still of that moment.",
+      sample ? `It covers ${of}.` : `The owner said ${of}.`,
+    ].join(" "),
+  }
+}
+
+/** A game's chapter title: "NE at CHI". */
+const gameTitle = (game: GameEssay["games"][number]): string =>
+  `${game.away} at ${game.home}`
+
+/**
+ * The essay's scenes in the order said: the intro and the brand, the open,
+ * each game's group (its chapter slide and card, then each bite's setup,
+ * the bite, what happened where said, and the host's answer, with
+ * halftime between the first half and the second), then the close.
+ */
+export function gameEssayScenes(
+  essay: GameEssay,
+  voicing: Voicing = "owner"
+): ReadonlyArray<GameEssayScene> {
+  const shape = gameEssayFormat(essay.template.version).shape ?? SHAPE
+  const scenes: Array<GameEssayScene> = [
+    {
+      section: "intro",
+      id: "intro",
+      speaker: "tutor",
+      said: gameEssayIntro(essay, voicing).said,
+    },
+  ]
+  if (shape.brand.intro)
+    scenes.push({
+      section: "brand-in",
+      id: "brand-in",
+      speaker: "tutor",
+      said: "",
+    })
+  scenes.push({
+    section: "open",
+    id: "open",
+    speaker: "tutor",
+    said: essay.open.said,
+  })
+  const counts = new Map<Section, number>()
+  const next = (section: Section): string => {
+    const n = (counts.get(section) ?? 0) + 1
+    counts.set(section, n)
+    return repeatedId(section, n)
+  }
+  for (const game of essay.games) {
+    const of = { game: game.id }
+    if (shape.chapters.includes("game")) {
+      const title = gameTitle(game)
+      scenes.push({
+        section: "chapter",
+        id: repeatedId("chapter-game", (counts.get("game") ?? 0) + 1),
+        of: "game",
+        ...of,
+        title,
+        speaker: "tutor",
+        said: `${title}.`,
+      })
+    }
+    scenes.push({
+      section: "game",
+      id: next("game"),
+      ...of,
+      speaker: "tutor",
+      said: game.game.said,
+    })
+    for (const half of game.halves) {
+      if (half.half === "second" && game.halftime !== undefined)
+        scenes.push({
+          section: "halftime",
+          id: next("halftime"),
+          ...of,
+          speaker: "tutor",
+          said: game.halftime.said,
+        })
+      for (const bite of half.bites) {
+        const at = { ...of, take: bite.take }
+        scenes.push(
+          {
+            section: "setup",
+            id: next("setup"),
+            ...at,
+            speaker: "tutor",
+            said: bite.setup.said,
+          },
+          {
+            section: "bite",
+            id: next("bite"),
+            ...at,
+            speaker: "you",
+            said: bite.transcript,
+          }
+        )
+        if (bite.happened !== undefined)
+          scenes.push({
+            section: "happened",
+            id: next("happened"),
+            ...at,
+            speaker: "tutor",
+            said: bite.happened.said,
+          })
+        scenes.push({
+          section: "answer",
+          id: next("answer"),
+          ...at,
+          speaker: "tutor",
+          said: bite.answer.said,
+        })
+      }
+    }
+  }
+  scenes.push({
+    section: "close",
+    id: "close",
+    speaker: "tutor",
+    said: essay.close.said,
+  })
+  if (shape.brand.outro)
+    scenes.push({
+      section: "brand-out",
+      id: "brand-out",
+      speaker: "tutor",
+      said: "",
+    })
+  return scenes
+}
+
+/** The essay as a cut list the renderer draws, one still per scene, as its siblings'. */
+export function gameEssayCutList(
+  essay: GameEssay,
+  takes: ReadonlyArray<StillTake | null>,
+  {
+    bed = false,
+    voicing = "owner",
+  }: { readonly bed?: boolean; readonly voicing?: Voicing } = {}
+): CutList {
+  const format = gameEssayFormat(essay.template.version)
+  return stillsCutList(
+    {
+      title: `The Game Week essay, ${essay.week.id}`,
+      series: format.series,
+      look: "calm",
+      captions: hasCaptions(format),
+      bed,
+      ...(format.shape ? { shape: format.shape } : {}),
+    },
+    gameEssayScenes(essay, voicing).map((s, i) => ({
+      id: s.id,
+      file: stillFile(i, s.id),
+      said: s.said,
+    })),
+    takes
+  )
+}
+
+/** Where the essay's chapters start (SFEED4): each game. */
+export const gameEssayChapterMarks = (essay: GameEssay): Array<ChapterMark> =>
+  chapterSlides(gameEssayScenes(essay).filter((s) => s.section === "chapter"))
+
+/**
+ * Which of `names`, the files in the folder home hands the recorder, is
+ * each bite's take in the owner's voice, `<take>.<ext>`, with its word
+ * times beside it where home kept them (`takeFilesOf`). A bite read aloud
+ * plays no take of its own, so its file, if home hands it over, is set
+ * aside. Keyed by those names.
+ */
+export const gameEssayTakeFiles = (
+  essay: GameEssay,
+  names: ReadonlyArray<string>
+): Parsed<Readonly<Record<string, TakeFiles>>> => {
+  const bites = bitesOf(essay)
+  return takeFilesOf(
+    {
+      answered: bites.filter((b) => b.voice === "owner").map((b) => b.take),
+      silent: [],
+      unheard: bites.filter((b) => b.voice === "read-aloud").map((b) => b.take),
+      noun: "bite",
+    },
+    names
+  )
+}
+
+/**
+ * The take a scene plays, by its name in the takes folder: a bite's in the
+ * owner's own voice. A bite read aloud plays none: the second voice says
+ * its words, as Kokoro says every scene with no take.
+ */
+export const gameTakeOf = (
+  essay: GameEssay,
+  scene: GameEssayScene
+): string | null => {
+  if (scene.section !== "bite" || scene.take === undefined) return null
+  const bite = bitesOf(essay).find((b) => b.take === scene.take)
+  return bite?.voice === "owner" ? bite.take : null
+}

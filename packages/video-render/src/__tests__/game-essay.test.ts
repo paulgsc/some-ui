@@ -10,7 +10,13 @@ import { parseFormat } from "@video-render/format"
 import {
   GAME_ESSAY_ID,
   GAME_ESSAY_VERSION,
+  gameEssayChapterMarks,
+  gameEssayCutList,
   gameEssayFormat,
+  gameEssayIntro,
+  gameEssayScenes,
+  gameEssayTakeFiles,
+  gameTakeOf,
   gameVoiceOf,
   parseGameEssay,
   QUOTE_RUN,
@@ -67,7 +73,10 @@ describe("the game essay's format", () => {
     expect(gameEssayFormat().scenes.map((scene) => scene.id)).toEqual([
       "open",
       "game",
+      "setup",
       "bite",
+      "happened",
+      "answer",
       "halftime",
       "close",
     ])
@@ -447,5 +456,84 @@ describe("home's week file, as the essay files it (C1241, C1242)", () => {
     expect(gameVoiceOf(null, null)).toBe("owner")
     expect(gameVoiceOf(0.58, "owner")).toBe("owner")
     expect(gameVoiceOf(0.95, "read-aloud")).toBe("read-aloud")
+  })
+})
+
+describe("the game essay's scenes and cut list", () => {
+  it("says them in order: the intro and brand, the open, each game's chapter and card, each bite's setup, bite, what happened and answer, halftime between the halves, the close", () => {
+    expect(gameEssayScenes(sample()).map((s) => s.id)).toEqual([
+      "intro",
+      "brand-in",
+      "open",
+      "chapter-game-1",
+      "game-1",
+      "setup-1",
+      "bite-1",
+      "happened-1",
+      "answer-1",
+      "halftime-1",
+      "setup-2",
+      "bite-2",
+      "answer-2",
+      "setup-3",
+      "bite-3",
+      "answer-3",
+      "close",
+      "brand-out",
+    ])
+  })
+
+  it("has the owner speak only a bite, and the host every other line", () => {
+    for (const scene of gameEssayScenes(sample()))
+      expect(scene.speaker).toBe(scene.section === "bite" ? "you" : "tutor")
+  })
+
+  it("plays a take only for a bite in the owner's own voice", () => {
+    const essay = sample()
+    const played = gameEssayScenes(essay)
+      .map((scene) => gameTakeOf(essay, scene))
+      .filter((take) => take !== null)
+    expect(played).toEqual(["sample-bite-1", "sample-bite-3"])
+  })
+
+  it("takes each owner-voiced bite's take from home's folder, and sets aside one read aloud", () => {
+    const essay = sample()
+    const files = gameEssayTakeFiles(essay, [
+      "sample-bite-1.ogg",
+      "sample-bite-1.words.json",
+      "sample-bite-2.ogg",
+      "sample-bite-3.ogg",
+    ])
+    expect(files).toEqual({
+      ok: true,
+      value: {
+        "sample-bite-1": {
+          audio: "sample-bite-1.ogg",
+          words: "sample-bite-1.words.json",
+        },
+        "sample-bite-3": { audio: "sample-bite-3.ogg", words: null },
+      },
+    })
+    expect(gameEssayTakeFiles(essay, ["sample-bite-1.ogg"]).ok).toBe(false)
+  })
+
+  it("is a cut list of one still per scene, and marks a chapter at each game", () => {
+    const essay = sample()
+    const scenes = gameEssayScenes(essay)
+    const cut = gameEssayCutList(
+      essay,
+      scenes.map(() => null)
+    )
+    expect(cut.shots).toHaveLength(scenes.length)
+    expect(gameEssayChapterMarks(essay).map((mark) => mark.title)).toEqual([
+      "NE at CHI",
+    ])
+  })
+
+  it("says in its intro how many bites are read aloud", () => {
+    const intro = gameEssayIntro(sample())
+    expect(intro.rows.find((row) => row.label === "Voices")?.says).toMatch(
+      /1 of 3 bites are the owner's words read by a second synthetic voice/
+    )
   })
 })

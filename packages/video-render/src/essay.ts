@@ -68,7 +68,6 @@ import {
   words,
 } from "./format"
 import type { Format, Shape } from "./format"
-import type { InterviewEssayScene } from "./interview-essay"
 import { CONVERSATION_MOST } from "./opening"
 import type { RegionRef, Screens } from "./screen"
 import { regionRef, TICKET_KEY_PATTERN } from "./screen"
@@ -1104,9 +1103,7 @@ export const ESSAY_VOICE_ROLES: Readonly<Record<Speaker, VoiceRole>> = {
  */
 export const essaySceneVoices = (
   shape: Shape | undefined,
-  scenes: ReadonlyArray<
-    Pick<EssayScene | InterviewEssayScene, "section" | "speaker">
-  >
+  scenes: ReadonlyArray<{ readonly section: string; readonly speaker: Speaker }>
 ): Array<KokoroVoice> =>
   chapterVoices(
     voicePolicyOf(shape?.voices, ESSAY_VOICES, ESSAY_VOICE_ROLES),
