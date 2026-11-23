@@ -259,7 +259,7 @@ page is live and a capture is never made again the same.
      successful, and checks `SHA256SUMS` and the schema: a mismatch refuses
      the whole bundle. A run attempted again keeps its id and uploads new
      pictures under the same name, and retention keeps only the newest
-     attempt's; home takes that one, and the scene check below refuses an
+     attempt's; home takes the newest attempt's bundle itself, even while an older one is still listed, and the scene check below refuses an
      essay naming an earlier attempt's files;
    - checks that each scene's file is in its run's `pages.json`, with the
      scene's address and moment;
@@ -271,7 +271,7 @@ page is live and a capture is never made again the same.
      so the copy is held for the essay's life on home, never longer.
 
    **When a bundle can't be had.** A bundle lives one day, each run its own
-   (the name holds the run, so no later capture supersedes it). An essay
+   (the name holds the run, so no later run supersedes it). An essay
    naming a run whose bundle has expired, or was refused, is refused
    (`page-gone`), naming the run. The recovery is a new
    dispatch of the same list and a cut list naming the new run's pictures:

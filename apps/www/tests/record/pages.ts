@@ -59,7 +59,8 @@ const ListSchema = z.strictObject({
 })
 
 /** A page that asks the visitor to sign in, by its title: never a picture. */
-const SIGN_IN = /^(sign in|log in) to\b|^(sign in|log in|login)\s*([·|-]|$)/i
+const SIGN_IN =
+  /^(sign in|log in|login) to\b|^(sign in|log in|login)\s*([·|\-–—]|$)/i
 
 /** How long a page may take to settle, and how long it is given after. */
 const LOAD_MS = 60_000
