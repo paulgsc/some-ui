@@ -1,0 +1,18 @@
+{
+  "id": "C1261",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/mailbox/index/game_week.rs",
+    "server:docs/identity.md"
+  ],
+  "chose": "Home's week file for the Game Week essay is a routine index (`index-game-week-<stamp>.json`, routine `game-week`), a view put when its bytes change: the four newest ended Tuesday-to-Monday weeks that are ready (ended, every game with a bite final, every bite matched under this engine or later and under its current scenario, every take with an ending), each game's teams, kickoff, final, halftime and wanted side, and each bite's placement, scenario, how, unit, watching, verdict, transcript, mean word probability and matched play with its still. A week not ready is left out whole rather than listed in part.",
+  "options": [
+    "A routine index in the existing index folder, ready weeks only (chosen, folder pending #3441): the writer reads one small file that never shows a week still moving, as the Rust Rounds and interview essays' writers do.",
+    "A new bites folder with one file per week, kept (decision 2 of Oct 26 as first worded): a new folder and role in the mailbox, and every week's bytes kept twice.",
+    "List every ended week with each bite's state, ready or not: the writer would have to decide readiness, which is bookkeeping a model should not do (#2162)."
+  ],
+  "gray": "What counts as ready (a final, a match under the current engine and scenario, a take's ending) is a judgement of when a week stops moving; a bite reaching home after its week was listed changes the file again.",
+  "undo": "Remove put_game_week_index from the mailbox pass and delete mailbox/index/game_week.rs; the mailbox keeps only the latest index, so the last one put stays until the Worker drops the routine.",
+  "refs": ["#2074", "#2082", "#3441"]
+}

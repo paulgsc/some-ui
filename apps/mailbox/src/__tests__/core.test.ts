@@ -13,6 +13,7 @@ import {
 import type { Folder, Store } from "@mailbox/store"
 import { describe, expect, it } from "vitest"
 
+import HOME_WEEK_FILE from "./game-week-index.json" with { type: "json" }
 import { failing, memoryStore, untouchable } from "./stores"
 
 const ROUTINE = "test-routine-token"
@@ -2050,6 +2051,17 @@ describe("the Game Week index", () => {
   const withBite = (change: Readonly<Record<string, unknown>>): unknown => ({
     ...INDEX,
     weeks: [{ ...W48, games: [{ ...GAME, bites: [{ ...BITE, ...change }] }] }],
+  })
+
+  it("takes home's own week file, as paulgsc/server b0911d0 makes it of NE at CHI (C1261)", async () => {
+    expect(
+      (
+        await put(deps(), "index", NAME, {
+          token: HOME,
+          body: JSON.stringify(HOME_WEEK_FILE),
+        })
+      ).status
+    ).toBe(201)
   })
 
   it("home puts it, with no week too", async () => {

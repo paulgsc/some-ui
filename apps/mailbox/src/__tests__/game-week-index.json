@@ -1,0 +1,94 @@
+{
+  "schema": "some-ui.routine-index/1",
+  "routine": "game-week",
+  "asOf": "2026-10-27T07:00:00.000Z",
+  "weeks": [
+    {
+      "id": "2026-w43",
+      "from": "2026-10-20",
+      "to": "2026-10-26",
+      "for": "SF",
+      "games": [
+        {
+          "id": "401873010",
+          "away": "NE",
+          "home": "CHI",
+          "kickoff": "2026-10-23T00:15:00.000Z",
+          "final": { "away": 24, "home": 30 },
+          "halftime": { "away": 14, "home": 20 },
+          "wants": null,
+          "bites": [
+            {
+              "take": "b1",
+              "saidAt": "2026-10-23T00:26:20.000Z",
+              "placement": "first",
+              "scenario": "in.third-long",
+              "how": "just-happened",
+              "unit": "coaching",
+              "unitSide": "NE",
+              "watching": true,
+              "heard": "heard",
+              "transcript": "They have to throw it there.",
+              "confidence": 0.8000000000000002,
+              "play": {
+                "id": "401873010321",
+                "text": "(Shotgun) C.Williams pass incomplete short right to K.Raymond.",
+                "still": {
+                  "period": 1,
+                  "clock": "10:02",
+                  "possession": "CHI",
+                  "down": 3,
+                  "distance": 7,
+                  "spot": { "side": "NE", "yard": 25 },
+                  "score": { "away": 0, "home": 0 }
+                }
+              }
+            },
+            {
+              "take": "b2",
+              "saidAt": "2026-10-23T00:56:16.000Z",
+              "placement": "first",
+              "scenario": null,
+              "how": "said-first",
+              "unit": "coaching",
+              "unitSide": "NE",
+              "watching": true,
+              "heard": "heard",
+              "transcript": "Something about the clock.",
+              "confidence": null,
+              "play": null
+            },
+            {
+              "take": "b5",
+              "saidAt": "2026-10-23T03:30:16.000Z",
+              "placement": "after",
+              "scenario": null,
+              "how": "said-first",
+              "unit": "coaching",
+              "unitSide": "NE",
+              "watching": true,
+              "heard": "heard",
+              "transcript": "What a finish.",
+              "confidence": 1.0,
+              "play": null
+            },
+            {
+              "take": "b3",
+              "saidAt": "2026-10-23T03:32:16.000Z",
+              "placement": "after",
+              "scenario": "post.result",
+              "how": "every-scenario",
+              "unit": "coaching",
+              "unitSide": "NE",
+              "watching": true,
+              "heard": "garbled",
+              "transcript": null,
+              "confidence": null,
+              "play": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
