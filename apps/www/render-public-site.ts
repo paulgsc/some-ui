@@ -39,6 +39,8 @@ import {
   renderLandingHead,
 } from "./src/landing/render.ts"
 import { SHOW, showFor } from "./src/landing/show.ts"
+import { THEME_ICONS } from "./src/landing/theme-icons.ts"
+import type { ThemePicker } from "./src/landing/themes.ts"
 import { landingThemes } from "./src/landing/themes.ts"
 import type { ResumeComposition } from "./src/lib/resume-files.ts"
 import {
@@ -111,6 +113,8 @@ if (drafts > 0) {
 // Every session theme the repo offers, its colours read from
 // @some-ui/styles' own CSS (C1184), so the landing keeps no palette.
 const themes = landingThemes(SESSION_THEMES, sessionColours)
+// The picker wears the app's own theme switcher's icons (theme-icons.ts).
+const picker: ThemePicker = { themes, icons: THEME_ICONS }
 
 const media: LandingMedia = new Map(
   landingMediaKeys(undefined, episodes).flatMap((key) => {
@@ -130,7 +134,7 @@ const pages: ReadonlyArray<SitePage> = [
       undefined,
       media,
       episodes,
-      themes
+      picker
     ),
   },
   ...renderResumePages(versions),

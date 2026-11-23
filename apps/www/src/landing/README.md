@@ -33,8 +33,10 @@ project each. Each episode is one to four scenes, and each scene is some copy an
 
 The landing wears the repo's session themes (C1184): `themes.ts` takes each one's colours
 from `@some-ui/styles` when the site is built, and the page names no colour of its own.
-The device's light or dark setting picks Mochi or Mochi Night, and the header's "Theme"
-picker (radios, no script) tries any other; the page keeps nothing about the choice.
+The device's light or dark setting picks Mochi or Mochi Night, and the header's theme
+picker (radios, no script) tries any other; the page keeps nothing about the choice. It
+opens behind the app's own palette icon, drawn from lucide at build time
+(`theme-icons.ts`), as the app's theme switcher shows it.
 
 ## Previewing a branch on your machine
 

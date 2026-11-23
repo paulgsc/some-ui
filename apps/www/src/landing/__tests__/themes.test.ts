@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { mochiSvg } from "@/landing/mochi"
 import { renderLanding, renderLandingHead } from "@/landing/render"
+import { THEME_ICONS } from "@/landing/theme-icons"
 import {
   DEVICE_THEMES,
   landingThemes,
@@ -149,7 +150,7 @@ describe("the landing's colours", () => {
       LANDING_WORDS,
       new Map(),
       [],
-      THEMES
+      { themes: THEMES, icons: THEME_ICONS }
     )
     const header = page.slice(0, page.indexOf("</header>"))
     const radios = [
@@ -165,7 +166,19 @@ describe("the landing's colours", () => {
     expect(radios.filter((r) => r[2] === " checked").map((r) => r[1])).toEqual([
       "device",
     ])
-    expect(header).toContain(`<summary>${LANDING_WORDS.theme}</summary>`)
+    // The app's switcher's own marks (lucide's Palette and Monitor), as the
+    // build draws them: the palette opens the picker, and the monitor marks
+    // the device's choice.
+    const summary = header.slice(
+      header.indexOf("<summary"),
+      header.indexOf("</summary>")
+    )
+    expect(summary).toContain(THEME_ICONS.palette)
+    expect(summary).toContain(LANDING_WORDS.theme)
+    expect(header).toMatch(
+      /id="theme-device"[^>]*\/><span class="swatch swatch--icon"/
+    )
+    expect(header).toContain(THEME_ICONS.device)
     expect(page + head).not.toMatch(/<script|onchange|onclick/i)
   })
 })

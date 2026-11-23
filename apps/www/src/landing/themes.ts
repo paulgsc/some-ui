@@ -140,8 +140,24 @@ type Escape = (text: string) => string
  * The picker: a disclosure of radios, one a theme, the first following the
  * device. Each shows the theme's ground and accent beside its name.
  */
+/**
+ * The picker as the site draws it: the session themes, and the two icons the
+ * app's own theme switcher shows (components/theme-switcher.tsx: lucide's
+ * Palette on its button, Monitor beside "System"), drawn where the site is
+ * built so the page and the app wear the same marks.
+ */
+export type ThemePicker = {
+  readonly themes: ReadonlyArray<LandingTheme>
+  readonly icons: { readonly palette: string; readonly device: string }
+}
+
+/**
+ * The picker: a disclosure of radios behind the palette icon, one a theme,
+ * the first following the device. Each theme shows its ground and accent
+ * beside its name; the device's shows the monitor.
+ */
 export function themePicker(
-  themes: ReadonlyArray<LandingTheme>,
+  { themes, icons }: ThemePicker,
   words: { readonly theme: string; readonly themeDevice: string },
   e: Escape
 ): string {
@@ -155,19 +171,15 @@ export function themePicker(
     // autocomplete off: a browser restoring the last pick on reload would
     // keep something about the reader.
     `<label><input type="radio" name="theme" id="${pickId(id)}" autocomplete="off"${id === "device" ? " checked" : ""} />${mark}<span>${e(label)}</span></label>`
-  const device = (mode: "light" | "dark"): string =>
-    themes.find((t) => t.id === DEVICE_THEMES[mode])?.colours["--background"] ??
-    ""
   return `<details class="themes">
-          <summary>${e(words.theme)}</summary>
+          <summary title="${e(words.theme)}"><span class="theme-icon" aria-hidden="true">${icons.palette}</span><span class="theme-name">${e(words.theme)}</span></summary>
           <fieldset>
             <legend>${e(words.theme)}</legend>
             ${[
-              // The device's: its light theme's ground beside its dark one's.
               option(
                 "device",
                 words.themeDevice,
-                swatch(device("light"), device("dark"))
+                `<span class="swatch swatch--icon" aria-hidden="true">${icons.device}</span>`
               ),
               ...themes.map((t) =>
                 option(

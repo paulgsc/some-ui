@@ -608,11 +608,33 @@
         position: relative;
         font-size: 0.88rem;
       }
+      /* The app's palette, in place of the disclosure's marker; its name is
+         read out, as the app's icon button's label is. */
       .themes summary {
+        list-style: none;
+        display: grid;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
         cursor: pointer;
         color: var(--muted);
-        padding: 0.2rem 0.5rem;
-        border-radius: 6px;
+        border-radius: 8px;
+      }
+      .themes summary:hover,
+      .themes[open] summary {
+        color: var(--fg);
+        background: var(--stage);
+      }
+      .themes .theme-icon svg {
+        display: block;
+      }
+      .themes .theme-name {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
       }
       .themes summary:focus-visible,
       .themes input:focus-visible ~ span:last-child {
@@ -664,6 +686,13 @@
         );
         flex: none;
         box-shadow: 0 0 0 1px var(--line);
+      }
+      .swatch--icon {
+        display: grid;
+        place-items: center;
+        background: none;
+        box-shadow: none;
+        color: var(--muted);
       }
       h2 {
         font-size: 0.85rem;
