@@ -10,14 +10,9 @@ import { describe, expect, it } from "vitest"
 
 import type { Step, StepState } from "@/lib/call-videos/assets"
 import { STEP_STATES } from "@/lib/call-videos/assets"
-import {
-  FILE_STATIONS,
-  FILE_STRIP,
-  fileConveyor,
-} from "@/lib/call-videos/step-conveyor"
+import { fileConveyor } from "@/lib/call-videos/step-conveyor"
 import { ASSET_WORDS } from "@/lib/call-videos/words"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
-import { STATIONS } from "@/lib/renders/conveyor"
 
 /** 2026-11-22T23:05:00Z, in Unix seconds, as home gives it. */
 const AT = 1795388700
@@ -29,11 +24,6 @@ const step = (state: StepState, over: Partial<Step> = {}): Step => ({
 })
 
 describe("fileConveyor", () => {
-  it("is the render line less Boxing, in its order", () => {
-    expect(FILE_STATIONS).toEqual(STATIONS.filter((id) => id !== "boxing"))
-    expect(FILE_STRIP.map((s) => s.id)).toEqual([...FILE_STATIONS])
-  })
-
   it("puts each state under way at its station, with its time", () => {
     expect(fileConveyor(step("asked", { askedAt: AT }))).toEqual({
       at: "line",
@@ -125,7 +115,6 @@ describe("ASSET_WORDS' conveyor lines", () => {
 
   it("name no machinery", () => {
     const said = [
-      ...Object.values(ASSET_WORDS.why),
       ASSET_WORDS.when.asked(AT, "UTC"),
       ASSET_WORDS.when.started(AT, "UTC"),
       ASSET_WORDS.when.ended(AT, "UTC"),

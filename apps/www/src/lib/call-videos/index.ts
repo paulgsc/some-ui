@@ -17,7 +17,6 @@ import {
 } from "@/lib/home-link/call-videos"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
-import { WHILE_UNDER_WAY_MS } from "@/lib/renders/model"
 import { shareFiles, shareUris } from "@/lib/share-files"
 
 import type { AssetRead, Produced, ShownAsset } from "./assets"
@@ -143,17 +142,10 @@ export async function produceAsset(
 }
 
 /**
- * When an episode's page reads its feed's list again on its own: every
- * `WHILE_UNDER_WAY_MS` while a file it shows is under way, as Studio ›
- * Renders reads its board (`rendersAgainIn`), never while nothing moves.
- * The page's query holds the interval while the page is hidden.
- */
-export const listAgainIn = (underWay: boolean): number | false =>
-  underWay ? WHILE_UNDER_WAY_MS : false
-
-/**
- * `feed`'s list read again, as a drag down reads it, for that query; it
- * keeps no answer of its own (`null`), since the list is the runtime's.
+ * `feed`'s list read again, as a drag down reads it, for the episode page's
+ * read while a file is under way (`components/episode-files.tsx`); it keeps
+ * no answer of its own (`null`), since the list is the runtime's, which keeps
+ * the read asked last.
  */
 export async function readListAgain(feed: Feed): Promise<null> {
   await feedVideos(feed).open()

@@ -259,3 +259,16 @@ export function formatTimecode(ms: number): string {
   const seconds = totalSeconds % 60
   return `${minutes}:${String(seconds).padStart(2, "0")}`
 }
+
+/**
+ * A moment home stamped, in Unix seconds, as a weekday and a clock time:
+ * "Mon 2:05 PM", in `timeZone` where given, else the phone's.
+ */
+export function clockOf(unixSeconds: number, timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    ...(timeZone === undefined ? {} : { timeZone }),
+  }).format(new Date(unixSeconds * 1000))
+}

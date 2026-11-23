@@ -488,7 +488,8 @@ declared (checked by reading every call site and by the tests named).
   time a feed's screen opens, on a drag down, on Try again, once after a
   Save home kept, once after a Generate home took, and every
   `WHILE_UNDER_WAY_MS` while a file an episode's page shows is under way
-  there and the page is shown (`listAgainIn`, as Studio › Renders
+  there and the page is shown (`components/episode-files.tsx`'s one
+  static query, its interval `againWhileUnderWay`, as Studio › Renders
   reads its board); on Watch, one
   `GET /feeds/:feed/videos/:key/video` per part
   of the episode's video, each a range of at most `PART_BYTES`, into the
@@ -691,7 +692,9 @@ declared (checked by reading every call site and by the tests named).
   list but on the screen opening, a drag down, Try again, once after a
   Save home kept, once after a Generate home took or every
   `WHILE_UNDER_WAY_MS` while a file its episode's page shows is under way
-  and the page is shown, fetch a video but
+  and the page is shown (or has `components/episode-files.tsx`'s query read
+  but on that interval: not `staleTime: "static"`, an `enabled`, a
+  `refetchOn*` or another `refetchInterval`), fetch a video but
   on Watch, read a file beside it but on its page opening or its step
   moving, send a link but on Save and once it reads as a `YouTube`
   video (`youtubeLink` (`@some-ui/core-utils`)), or ask for a file but on

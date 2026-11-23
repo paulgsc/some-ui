@@ -123,7 +123,7 @@ export function refusalAside(kind: Refusal["kind"]): Aside {
 /**
  * The side track a failed row sits on (C502): one the render policy refused
  * was never burnt, and sits where `refusalAside` puts it; any other failure
- * is burnt, as before.
+ * is burnt.
  */
 export function failedAside(failed: RenderFailed): Aside {
   const refusal = refusalOf(failed)

@@ -30,6 +30,7 @@ import type {
 import type { Episode } from "@/lib/call-videos/model"
 import { ASSET_WORDS } from "@/lib/call-videos/words"
 import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
+import { WHILE_UNDER_WAY_MS } from "@/lib/renders/model"
 
 /** 2026-11-22T23:05:00Z, in Unix seconds, as home gives it. */
 const ASKED_AT = 1795388700
@@ -45,8 +46,8 @@ const home = vi.hoisted(
     reads: Map<string, AssetRead<ShownAsset>>
     produced: Array<string>
     read: Array<string>
-    underWay: Array<boolean>
-  } => ({ reads: new Map(), produced: [], read: [], underWay: [] })
+    listed: number
+  } => ({ reads: new Map(), produced: [], read: [], listed: 0 })
 )
 
 vi.mock("@/lib/call-videos", async (importOriginal) => {
@@ -73,9 +74,9 @@ vi.mock("@/lib/call-videos", async (importOriginal) => {
       })
     },
     saveThumbnail: (): Promise<string> => Promise.resolve("opened"),
-    listAgainIn: (underWay: boolean): number | false => {
-      home.underWay.push(underWay)
-      return false
+    readListAgain: (): Promise<null> => {
+      home.listed += 1
+      return Promise.resolve(null)
     },
   }
 })
@@ -113,7 +114,8 @@ afterEach(() => {
   home.reads.clear()
   home.produced.length = 0
   home.read.length = 0
-  home.underWay.length = 0
+  home.listed = 0
+  vi.useRealTimers()
 })
 
 describe("EpisodeFiles", () => {
@@ -184,19 +186,24 @@ describe("EpisodeFiles", () => {
     expect(screen.queryByRole("button")).toBeNull()
   })
 
-  it("reads the list again on its own only while a file is on the line", () => {
-    show(episode({ assets: { thumbnail: step("thumbnail", "waiting") } }))
-    expect(home.underWay.at(-1)).toBe(true)
-    cleanup()
-    show(
-      episode({
-        assets: {
-          thumbnail: step("thumbnail", "failed"),
-          description: step("description", "missing"),
-        },
-      })
-    )
-    expect(home.underWay.at(-1)).toBe(false)
+  it("reads the list again every half minute while a file is on the line, and only then", async () => {
+    vi.useFakeTimers()
+    const at = (state: StepState): Episode =>
+      episode({ assets: { thumbnail: step("thumbnail", state) } })
+    const { rerender } = showing(at("waiting"))
+    // Not on mount: the page has just read the list.
+    expect(home.listed).toBe(0)
+    await vi.advanceTimersByTimeAsync(WHILE_UNDER_WAY_MS)
+    expect(home.listed).toBe(1)
+    rerender(at("failed"))
+    await vi.advanceTimersByTimeAsync(3 * WHILE_UNDER_WAY_MS)
+    expect(home.listed).toBe(1)
+    // On the line again, long after: not at once, then on the interval.
+    rerender(at("asked"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(home.listed).toBe(1)
+    await vi.advanceTimersByTimeAsync(WHILE_UNDER_WAY_MS)
+    expect(home.listed).toBe(2)
   })
 
   it("shows nothing of a file an older home neither serves nor lists", async () => {

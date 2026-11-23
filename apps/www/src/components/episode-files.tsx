@@ -19,7 +19,6 @@ import type { Feed } from "@/lib/call-videos"
 import {
   ASSET_WORDS,
   episodeAsset,
-  listAgainIn,
   produceAsset,
   readListAgain,
   saveThumbnail,
@@ -40,7 +39,7 @@ import type { Episode } from "@/lib/call-videos/model"
 import { FILE_STRIP, fileConveyor } from "@/lib/call-videos/step-conveyor"
 import { useAsyncIntent } from "@/lib/intent"
 import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
-import { WHILE_UNDER_WAY_MS } from "@/lib/renders/model"
+import { againWhileUnderWay } from "@/lib/renders/model"
 import { CopyButton } from "@/components/copy-button"
 
 /**
@@ -161,8 +160,8 @@ function lineOf(asset: ShownAsset, view: AssetView<ShownAsset>): string | null {
 
 /**
  * One file's block: shown; not made, with Generate where home can make it
- * alone; or on the line, from the list's step or the step home answered
- * Generate with, whichever is further along.
+ * alone; or on the line, from the step home answered Generate with until
+ * the list is read again, then the list's.
  */
 const AssetBlock = ({
   feed,
@@ -191,8 +190,7 @@ const AssetBlock = ({
     (alone: AloneAsset) => produceAsset(feed, episode.key, alone),
     { presentation: "interactive" }
   )
-  // The list Generate was tapped over: home's answer stands only until the
-  // list is read again after it, then the list's word is the newer one.
+  // The list Generate was tapped over (`latestStep`).
   const [askedOver, setAskedOver] = useState<Episode | null>(null)
   const { state } = produce
   const answered =
@@ -248,18 +246,18 @@ export const EpisodeFiles = ({
   episode: Episode
 }): JSX.Element => {
   // The conveyor moves on its own while a file is on the line (the owner,
-  // 2026-11-22): the list is read again as Studio › Renders reads its board,
-  // not at once (the page has just read it), and not while hidden.
-  const underWay = SHOWN_ASSETS.some((asset) =>
-    stepUnderWay(episode.assets?.[asset])
-  )
+  // 2026-11-22): the list is read again as Studio › Renders reads its board.
+  // Only the interval reads: a static query is never read on mount, on the
+  // read turning on, on reconnect or on a drag down (which reads the list
+  // itself), and the interval holds while the page is hidden.
   useQuery({
     queryKey: ["feeds", feed, "under-way", episode.key],
     queryFn: () => readListAgain(feed),
     initialData: null,
-    staleTime: WHILE_UNDER_WAY_MS,
-    enabled: underWay,
-    refetchInterval: listAgainIn(underWay),
+    staleTime: "static",
+    refetchInterval: againWhileUnderWay(
+      SHOWN_ASSETS.some((asset) => stepUnderWay(episode.assets?.[asset]))
+    ),
     retry: false,
   })
   return (

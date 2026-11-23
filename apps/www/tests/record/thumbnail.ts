@@ -26,9 +26,6 @@ import type {
   TitleMeasure,
 } from "@some-ui/video-render/thumbnail"
 
-/** The thumbnail's file in an episode's folder, beside its video. */
-const THUMBNAIL_FILE = ASSET_FILE.thumbnail
-
 /** video-motion's pinned Barlow Condensed, each as a `data:` URL. */
 async function thumbnailFonts(): Promise<ThumbnailFonts> {
   const files = new Map(fontFiles())
@@ -96,7 +93,7 @@ export async function drawThumbnail(
  * fails leaves no thumbnail of an earlier run beside it.
  */
 export async function clearThumbnail(root: string): Promise<void> {
-  await rm(join(root, THUMBNAIL_FILE), { force: true })
+  await rm(join(root, ASSET_FILE.thumbnail), { force: true })
 }
 
 /**
@@ -109,7 +106,7 @@ export async function writeThumbnail(
   root: string,
   input: ThumbnailInput
 ): Promise<void> {
-  const file = join(root, THUMBNAIL_FILE)
+  const file = join(root, ASSET_FILE.thumbnail)
   await clearThumbnail(root)
   const drawn = await drawThumbnail(browser, input)
   if (!drawn.ok) {

@@ -12,20 +12,17 @@
 import { assertNever } from "@some-ui/core-utils"
 
 import type { Aside, StationId } from "@/lib/renders/conveyor"
-import { CONVEYOR_WORDS, refusalAside } from "@/lib/renders/conveyor"
+import { CONVEYOR_WORDS, refusalAside, STATIONS } from "@/lib/renders/conveyor"
 
 import type { Step, StepReason } from "./assets"
 import { isStepReason } from "./assets"
 
 /** A file's line: the render's, less Boxing. */
-export const FILE_STATIONS = [
-  "line",
-  "room",
-  "oven",
-  "ready",
-] as const satisfies ReadonlyArray<StationId>
+export type FileStation = Exclude<StationId, "boxing">
 
-export type FileStation = (typeof FILE_STATIONS)[number]
+export const FILE_STATIONS: ReadonlyArray<FileStation> = STATIONS.filter(
+  (id): id is FileStation => id !== "boxing"
+)
 
 /** The strip's stations, in the render conveyor's own words. */
 export const FILE_STRIP = FILE_STATIONS.map((id) => ({
@@ -88,49 +85,31 @@ function stoppedOf(step: Step): {
     : { aside: "counter", why: "held" }
 }
 
+/** A time home gave, as its kind of moment; none where home gave none. */
+const stamp = (
+  kind: "asked" | "started" | "ended",
+  at: number | undefined
+): FileConveyor["when"] => (at === undefined ? null : { kind, at })
+
 /** Where `step` stands: a station, a side track where it stopped, a time. */
 export function fileConveyor(step: Step): FileConveyor {
   switch (step.state) {
     case "missing":
     case "asked": {
-      return {
-        at: "line",
-        aside: null,
-        when:
-          step.askedAt === undefined
-            ? null
-            : { kind: "asked", at: step.askedAt },
-      }
+      return { at: "line", aside: null, when: stamp("asked", step.askedAt) }
     }
     case "waiting": {
-      return {
-        at: "room",
-        aside: null,
-        when:
-          step.askedAt === undefined
-            ? null
-            : { kind: "asked", at: step.askedAt },
-      }
+      return { at: "room", aside: null, when: stamp("asked", step.askedAt) }
     }
     case "rendering": {
       return {
         at: "oven",
         aside: null,
-        when:
-          step.startedAt === undefined
-            ? null
-            : { kind: "started", at: step.startedAt },
+        when: stamp("started", step.startedAt),
       }
     }
     case "done": {
-      return {
-        at: "ready",
-        aside: null,
-        when:
-          step.endedAt === undefined
-            ? null
-            : { kind: "ended", at: step.endedAt },
-      }
+      return { at: "ready", aside: null, when: stamp("ended", step.endedAt) }
     }
     case "failed":
     case "blocked": {
@@ -138,10 +117,7 @@ export function fileConveyor(step: Step): FileConveyor {
         // Held before the oven: no step of it ran.
         at: step.startedAt === undefined ? "line" : "oven",
         aside: stoppedOf(step),
-        when:
-          step.endedAt === undefined
-            ? null
-            : { kind: "ended", at: step.endedAt },
+        when: stamp("ended", step.endedAt),
       }
     }
     default: {

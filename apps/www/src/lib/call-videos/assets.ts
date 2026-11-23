@@ -15,14 +15,17 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
-import { isAloneAsset } from "@some-ui/video-render/assets"
+import { EPISODE_ASSETS, isAloneAsset } from "@some-ui/video-render/assets"
 import type { AloneAsset, EpisodeAsset } from "@some-ui/video-render/assets"
 import { z } from "zod"
 
-/** The files the page shows beside the video, in its order. */
-export const SHOWN_ASSETS = ["thumbnail", "description"] as const
+/** The files the page shows beside the video: every asset but the video. */
+export type ShownAsset = Exclude<EpisodeAsset, "video">
 
-export type ShownAsset = (typeof SHOWN_ASSETS)[number]
+/** Those files, in the asset union's order. */
+export const SHOWN_ASSETS: ReadonlyArray<ShownAsset> = EPISODE_ASSETS.filter(
+  (asset): asset is ShownAsset => asset !== "video"
+)
 
 /**
  * Where a file stands, as home says (`Step`): not made; asked for; waiting
@@ -45,9 +48,8 @@ export type StepState = (typeof STEP_STATES)[number]
 /**
  * Why home holds a step (`reason`): its render policy refused the video, a
  * cards essay's input isn't on home, there's no video yet, or the recorder
- * made nothing. A step reads by its reason, failed or held alike; with a
- * reason this phone doesn't know, a failed step reads as made nothing and a
- * held one as held until something changes (`./step-conveyor`).
+ * made nothing. A step reads by its reason, failed or held alike
+ * (`./step-conveyor`).
  */
 export const STEP_REASONS = [
   "too-long",
@@ -74,11 +76,7 @@ export const isStepReason = (value: string): value is StepReason =>
  * when it ended once it has.
  */
 export const StepSchema = z.object({
-  asset: z.enum([
-    "video",
-    "thumbnail",
-    "description",
-  ] satisfies ReadonlyArray<EpisodeAsset>),
+  asset: z.enum(EPISODE_ASSETS),
   state: z.enum(STEP_STATES),
   askedAt: z.number().int().nonnegative().optional(),
   startedAt: z.number().int().nonnegative().optional(),
@@ -89,11 +87,20 @@ export const StepSchema = z.object({
 
 export type Step = z.infer<typeof StepSchema>
 
+/** Which steps are on the line and can still move by themselves. */
+const UNDER_WAY = {
+  missing: false,
+  asked: true,
+  waiting: true,
+  rendering: true,
+  done: false,
+  failed: false,
+  blocked: false,
+} as const satisfies Record<StepState, boolean>
+
 /** Whether a step is on the line and can still move: asked, waiting or being made. */
 export const stepUnderWay = (step: Step | undefined): boolean =>
-  step?.state === "asked" ||
-  step?.state === "waiting" ||
-  step?.state === "rendering"
+  step === undefined ? false : UNDER_WAY[step.state]
 
 /**
  * Each file's step, as far as home's list says: absent from an older home. A

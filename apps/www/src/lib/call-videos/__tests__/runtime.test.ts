@@ -103,6 +103,33 @@ describe("createFeedVideos", () => {
     expect(calls.getSnapshot().fetches).toEqual({})
   })
 
+  it("keeps the list read last when an earlier read's answer lands after it", async () => {
+    const { ports } = fakes()
+    const older: ListState = {
+      kind: "read",
+      episodes: [episode({ key: "old" })],
+    }
+    const newer: ListState = {
+      kind: "read",
+      episodes: [episode({ key: "new" })],
+    }
+    let answerFirst: (list: ListState) => void = () => undefined
+    ports.list
+      .mockImplementationOnce(
+        () =>
+          new Promise<ListState>((answer) => {
+            answerFirst = answer
+          })
+      )
+      .mockImplementationOnce(() => Promise.resolve(newer))
+    const calls = createFeedVideos(ports)
+    const first = calls.open()
+    await calls.open()
+    answerFirst(older)
+    await first
+    expect(calls.getSnapshot().list).toEqual(newer)
+  })
+
   it("brings a video to the phone a part at a time, then hands its address", async () => {
     const { ports } = fakes()
     const calls = createFeedVideos(ports)

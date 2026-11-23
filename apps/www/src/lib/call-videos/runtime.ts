@@ -117,9 +117,14 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
     dispatch({ type: "fetchMoved", key, fetch: { kind: "failed", why } })
   }
 
+  // The list asked for last: an answer to an earlier read that lands after a
+  // later one's is stale, and dropped, so the screen never steps back.
+  let listReads = 0
   const open = async (): Promise<void> => {
+    const read = ++listReads
     dispatch({ type: "listAsked" })
     const list = await ports.list()
+    if (read !== listReads) return
     dispatch({ type: "listEnded", list })
     if (list.kind !== "read") return
     for (const episode of list.episodes) {

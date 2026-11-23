@@ -4,21 +4,13 @@
  * no machinery (`MACHINERY`). What bringing a video to the phone says is
  * Studio's feed videos' (`VIDEOS_WORDS`), shared.
  */
+import { clockOf } from "@some-ui/core-utils"
+
 import { VIDEOS_WORDS } from "@/lib/call-videos/words"
 
 import type { MakeFailure, PreviewStanding, ReadFailure } from "./model"
 
 const OLDER = "Home doesn't make previews yet. Update home, then try again."
-
-/** A moment, as the phone's clock reads it: "Sun 9:05 AM". */
-function moment(unixSeconds: number, timeZone?: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    ...(timeZone === undefined ? {} : { timeZone }),
-  }).format(new Date(unixSeconds * 1000))
-}
 
 /**
  * Home's reasons a preview failed that say something the person can act on
@@ -87,7 +79,7 @@ export const PREVIEW_WORDS = {
     (reason === undefined ? undefined : FAILED_WHY.get(reason)) ?? null,
   /** When a ready preview was made, and when home lets it go. */
   kept: (madeAt: number, expiresAt: number, timeZone?: string): string =>
-    `Made ${moment(madeAt, timeZone)}. Home lets it go ${moment(expiresAt, timeZone)}.`,
+    `Made ${clockOf(madeAt, timeZone)}. Home lets it go ${clockOf(expiresAt, timeZone)}.`,
   makeFailed: {
     unpaired: "Pair this phone with home to make a preview.",
     away: "Home didn't answer, so no preview was asked for. Try again.",

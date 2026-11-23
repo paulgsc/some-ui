@@ -4,7 +4,7 @@
  * every feed's screen says is `VIDEOS_WORDS`; what differs by feed (its name,
  * what an episode is called, how one is labelled) is `FEED_WORDS`.
  */
-import { addDays, isoWeeksIn } from "@some-ui/core-utils"
+import { addDays, clockOf, isoWeeksIn } from "@some-ui/core-utils"
 import { WEEK_ID, weekNumber } from "@some-ui/rust-rounds/entry"
 
 import { essayName, isEssayKey } from "@/lib/cards-essay-key"
@@ -269,16 +269,6 @@ export const VIDEOS_WORDS = {
   linkOlder: "Home didn't keep the link. Update home, then try again.",
   onYouTube: "Watch on YouTube",
 } as const
-
-/** A moment home stamped, in Unix seconds, on the clock: "Mon 2:05 PM". */
-function clockOf(unixSeconds: number, timeZone?: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    ...(timeZone === undefined ? {} : { timeZone }),
-  }).format(new Date(unixSeconds * 1000))
-}
 
 /**
  * What an episode's page says of each file its render left beside the video

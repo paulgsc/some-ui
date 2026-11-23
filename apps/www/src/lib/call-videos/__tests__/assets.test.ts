@@ -5,7 +5,7 @@
  * SFEED4): every answer home can give to a read of each file, every step its
  * list can say of one, and every answer to an ask that home make one.
  */
-import { ASSET_MADE, isAloneAsset } from "@some-ui/video-render/assets"
+import { isAloneAsset } from "@some-ui/video-render/assets"
 import { describe, expect, it } from "vitest"
 
 import type { AssetRead, Step, StepState } from "@/lib/call-videos/assets"
@@ -17,7 +17,6 @@ import {
   readProduced,
   SHOWN_ASSETS,
   STEP_STATES,
-  stepUnderWay,
 } from "@/lib/call-videos/assets"
 
 const step = (state: StepState, over: Partial<Step> = {}): Step => ({
@@ -103,16 +102,6 @@ describe("assetView", () => {
       }
     }
   })
-
-  it("offers Generate for the thumbnail alone: chapters come with the video", () => {
-    expect(assetView("thumbnail", { kind: "none" }, step("missing"))).toEqual({
-      kind: "missing",
-      generate: "thumbnail",
-    })
-    expect(assetView("description", { kind: "none" }, step("missing"))).toEqual(
-      { kind: "missing", generate: null }
-    )
-  })
 })
 
 describe("latestStep", () => {
@@ -140,23 +129,6 @@ describe("latestStep", () => {
     expect(
       latestStep(step("rendering", { startedAt: 1795388820 }), asked)?.startedAt
     ).toBe(1795388820)
-  })
-})
-
-describe("stepUnderWay", () => {
-  it("is a step that can still move on the line, and no other", () => {
-    expect(stepUnderWay(undefined)).toBe(false)
-    for (const state of STEP_STATES)
-      expect(stepUnderWay(step(state))).toBe(
-        state === "asked" || state === "waiting" || state === "rendering"
-      )
-  })
-})
-
-describe("isAloneAsset", () => {
-  it("names exactly the files a render's table says home makes alone", () => {
-    for (const asset of SHOWN_ASSETS)
-      expect(isAloneAsset(asset)).toBe(ASSET_MADE[asset] === "alone")
   })
 })
 

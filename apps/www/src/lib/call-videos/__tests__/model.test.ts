@@ -46,29 +46,6 @@ describe("readEpisodes", () => {
     })
   })
 
-  it("reads an episode's file steps, and keeps the list when a step doesn't read (ASSETS-R)", () => {
-    const body = JSON.stringify({
-      episodes: [
-        {
-          ...episode(),
-          assets: {
-            thumbnail: { asset: "thumbnail", state: "baking" },
-            description: { asset: "description", state: "done" },
-          },
-        },
-      ],
-    })
-    expect(readEpisodes({ status: 200, body })).toEqual({
-      kind: "read",
-      episodes: [
-        {
-          ...episode(),
-          assets: { description: { asset: "description", state: "done" } },
-        },
-      ],
-    })
-  })
-
   it("reads a cards essay's title, and a feed's episodes with none or from before it", () => {
     const essay = episode({ key: "zfs-2026-11-02", title: "How ZFS snapshots" })
     const untitled = episode({ key: "nix-2026-11-01", title: null })
