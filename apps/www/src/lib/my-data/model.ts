@@ -23,6 +23,7 @@ import { readAs } from "@some-ui/core-utils"
 import type { TakePlace } from "@some-ui/voice-capture"
 import { z } from "zod"
 
+import { UsedBySchema } from "@/lib/take-uses/model"
 import type { VoiceOut } from "@/lib/voice-home/model"
 import { VOICE_OFS } from "@/lib/voice-home/model"
 
@@ -97,6 +98,11 @@ const Kept = z.object({
          * home says nothing, which is held.
          */
         recordingLetGoAt: z.string().nullable().default(null),
+        /**
+         * The videos home holds that play it (INUSE, `lib/take-uses`). An
+         * older home says nothing, which is not known.
+         */
+        usedBy: UsedBySchema,
       })
     )
     .nullable(),

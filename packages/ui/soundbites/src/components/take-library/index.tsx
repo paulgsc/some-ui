@@ -112,7 +112,23 @@ const WORDS = LIBRARY_WORDS
 
 type Dispatch = (intent: LibraryIntent) => void
 
+/**
+ * What uses each take (INUSE): the build's own mark for a take something
+ * uses, which opens what uses it, from the stores the phone keeps, drawn
+ * again on each change it tells of. A take it draws nothing for is one it
+ * knows no use of, never one it calls unused.
+ */
+export type LibraryUses = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `mark` draws may have. */
+  readonly getSnapshot: () => unknown
+  /** Take `id`'s mark; null for none. */
+  readonly mark: (id: string) => ReactNode
+}
+
 export type TakeLibraryProps = {
+  /** What uses each take, as the build marks it (INUSE); absent, none. */
+  uses?: LibraryUses | undefined
   /** Home, as the build reaches it, and a player. Read once. */
   ports: LibraryPorts
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
@@ -299,12 +315,15 @@ const HomeCard = ({
   item,
   state,
   stations,
+  mark,
   row,
   dispatch,
 }: {
   item: HomeRow
   state: LibraryState
   stations: LibraryStations | undefined
+  /** The build's mark for what uses it (INUSE); null for none. */
+  mark: ReactNode
   row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
@@ -350,6 +369,7 @@ const HomeCard = ({
               <Pill dot="home">{WORDS.onHomeSince(take.storedAt)}</Pill>
             )}
             {standing !== null && <Pill>{standing}</Pill>}
+            {gone !== "deleted" && mark}
             {/* A take on the conveyor says Canned there; set aside is said
                 only of one on none (C423). */}
             {standing === null && take.setAsideAt !== null && (
@@ -478,6 +498,7 @@ const Listed = ({
   order,
   state,
   stations,
+  uses,
   row,
   dispatch,
 }: {
@@ -494,6 +515,7 @@ const Listed = ({
   chips: Chips
   state: LibraryState
   stations: LibraryStations | undefined
+  uses: LibraryUses | undefined
   row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element | null => {
@@ -515,6 +537,7 @@ const Listed = ({
         item={each}
         state={state}
         stations={stations}
+        mark={uses?.mark(each.take.id) ?? null}
         row={row}
         dispatch={dispatch}
       />
@@ -976,6 +999,7 @@ export const TakeLibrary = ({
   row,
   initialChips,
   gaps,
+  uses,
 }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are; the first read asks for what the page opens on */
   const [library] = useState(() =>
@@ -997,6 +1021,10 @@ export const TakeLibrary = ({
   useSyncExternalStore(
     stations?.subscribe ?? unsubscribed,
     stations?.getSnapshot ?? nothing
+  )
+  useSyncExternalStore(
+    uses?.subscribe ?? unsubscribed,
+    uses?.getSnapshot ?? nothing
   )
   useSyncExternalStore(
     about?.subscribe ?? unsubscribed,
@@ -1225,6 +1253,7 @@ export const TakeLibrary = ({
         order={order}
         state={state}
         stations={stations}
+        uses={uses}
         row={row}
         dispatch={dispatch}
       />
