@@ -135,7 +135,7 @@ const PRODUCES = [
   "report",
 ] as const
 
-const produces = (feed: string): boolean =>
+export const produces = (feed: string): boolean =>
   PRODUCES.some((each) => each === feed)
 
 /**

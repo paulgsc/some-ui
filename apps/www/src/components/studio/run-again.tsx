@@ -26,7 +26,7 @@ import {
   rendersQuery,
   WHILE_UNDER_WAY_MS,
 } from "@/lib/renders"
-import type { AgainState, Plan, Said, Step, Stop } from "@/lib/renders/again"
+import type { AgainState, Plan, Said, Step } from "@/lib/renders/again"
 import {
   AGAIN_CONVEYOR_WORDS,
   AGAIN_STATIONS,
@@ -35,7 +35,6 @@ import {
   answerLine,
   canRun,
   createAgain,
-  elsewhereLine,
   FOLLOW_FOR,
   planOf,
   runAgainHome,
@@ -44,10 +43,10 @@ import {
   stepLine,
   stepLog,
   stepStation,
-  stopLine,
   stopOf,
   takesStep,
   toTakes,
+  youLine,
 } from "@/lib/renders/again"
 
 import { ReadList, StudioPage } from "./layout"
@@ -56,6 +55,28 @@ const WORDS = AGAIN_WORDS
 
 const LINK =
   "text-brand self-start text-sm font-semibold underline underline-offset-4"
+
+/**
+ * What happened, where, and what home does about it (`failedLine`), then
+ * what the owner can do (`youLine`): the owner's "immediate understanding"
+ * of a render that couldn't finish, said before any step.
+ */
+const WhatHappened = ({ row }: { row: RenderFailed }): JSX.Element => (
+  <dl className="flex flex-col gap-3">
+    <div className="flex flex-col gap-1">
+      <dt className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+        {WORDS.whatHappened}
+      </dt>
+      <dd className="text-sm">{failedLine(row)}</dd>
+    </div>
+    <div className="flex flex-col gap-1">
+      <dt className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+        {WORDS.whatYouCanDo}
+      </dt>
+      <dd className="text-sm">{youLine(row)}</dd>
+    </div>
+  </dl>
+)
 
 /** A step's mark: done, the owner's to take, or waiting on another. */
 const Mark = ({
@@ -193,16 +214,13 @@ const ToTakes = ({
 /** The steps, then the button, for `row`. */
 const Steps = ({
   row,
-  stop,
   plan,
   run,
 }: {
   row: RenderFailed
-  stop: Stop
   plan: Plan
   run: ReactNode
-}): JSX.Element => {
-  const elsewhere = elsewhereLine(stop)
+}): JSX.Element | null => {
   switch (plan.kind) {
     case "ready": {
       return (
@@ -237,21 +255,11 @@ const Steps = ({
         </ol>
       )
     }
-    case "elsewhere": {
-      return (
-        <ol className="flex flex-col gap-4">
-          <StepItem
-            tone="wait"
-            mark="·"
-            title={WORDS.openElsewhere}
-            line={elsewhere ?? runLine(plan)}
-          />
-        </ol>
-      )
-    }
+    // What the owner can do is said above, by `youLine`: no step here.
+    case "elsewhere":
     case "byItself":
     case "preview": {
-      return <p className="text-muted-foreground text-sm">{runLine(plan)}</p>
+      return null
     }
     default: {
       return assertNever(plan)
@@ -298,11 +306,8 @@ const Again = ({
   return (
     <div className="flex flex-col gap-4">
       {named && <p className="text-sm font-medium">{renderName(row)}</p>}
-      <p className="text-sm">{stopLine(stop)}</p>
-      {stop.kind === "policy" && (
-        <p className="text-muted-foreground text-sm">{failedLine(row)}</p>
-      )}
-      <Steps row={row} stop={stop} plan={plan} run={run} />
+      <WhatHappened row={row} />
+      <Steps row={row} plan={plan} run={run} />
     </div>
   )
 }

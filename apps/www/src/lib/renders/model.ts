@@ -98,6 +98,13 @@ const FailedSchema = EpisodeSchema.extend({
    * `take-missing`, the takes. Read leniently, as `scenes` is.
    */
   items: z.array(z.string().min(1)).optional().catch(undefined),
+  /**
+   * The names of the scenes that don't fit (`overflow`), in `scenes`' order,
+   * from the essay home holds (RETRY, the owner: "which scene, by its name,
+   * not an id"). Read leniently; absent from a home that doesn't send them,
+   * and then the scenes are counted, never named by id.
+   */
+  sceneNames: z.array(z.string().min(1).max(200)).optional().catch(undefined),
 })
 
 const ComingSchema = z.object({

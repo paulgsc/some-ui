@@ -478,16 +478,38 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
           ...row,
         })
       )
+    // Never by the recorder's ids (the owner, 2026-11-23): counted, or by
+    // the names home gives.
     expect(
       line({ scenes: ["dive-2", "beside-2", "dive-3"], sceneCount: 5 })
     ).toBe(
-      "Some scenes don't fit the frame: dive-2, beside-2, dive-3 and 2 more. Home doesn't try it again as it is."
+      "5 scenes are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
     )
-    expect(line({ scenes: ["dive-2", "beside-2"], sceneCount: 2 })).toBe(
-      "Some scenes don't fit the frame: dive-2, beside-2. Home doesn't try it again as it is."
+    expect(
+      line({
+        scenes: ["dive-2", "beside-2", "dive-3"],
+        sceneCount: 5,
+        sceneNames: ["The dive", "Beside it", "The second dive"],
+      })
+    ).toBe(
+      "The scenes “The dive”, “Beside it”, “The second dive” and 2 more are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
+    )
+    expect(
+      line({
+        scenes: ["dive-2", "beside-2"],
+        sceneCount: 2,
+        sceneNames: ["The dive", "Beside it"],
+      })
+    ).toBe(
+      "The scenes “The dive” and “Beside it” are too full for their frame, so the video would cut them off. Home doesn't try it again as it is."
+    )
+    expect(
+      line({ scenes: ["dive-2"], sceneCount: 1, sceneNames: ["The dive"] })
+    ).toBe(
+      "The scene “The dive” is too full for its frame, so the video would cut it off. Home doesn't try it again as it is."
     )
     expect(line({ scenes: ["dive-2"], sceneCount: 1 })).toBe(
-      "dive-2 doesn't fit the frame. Home doesn't try it again as it is."
+      "One scene is too full for its frame, so the video would cut it off. Home doesn't try it again as it is."
     )
     // No scene named is no refusal it can say.
     expect(line({ scenes: [], sceneCount: 3 })).toBe(
@@ -548,7 +570,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     // A take you deleted withdraws the essay, which leaves the list
     // (paulgsc/server#1055): no row says it.
     expect(missing).not.toMatch(/deleted/)
-    expect(unheard).toMatch(/^Home couldn't make out a recording/)
+    expect(unheard).toMatch(/^Home couldn't make out recordings/)
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))
     const clipMissing = failedLine(row("clip-missing"))

@@ -6,9 +6,11 @@
 import { assertNever } from "@some-ui/core-utils"
 
 import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
+import type { RenderFailed } from "@/lib/renders/model"
 import { roughly } from "@/lib/renders/words"
 
-import type { AgainAnswer, Plan, Step, Stop } from "./model"
+import type { AgainAnswer, Plan, Step } from "./model"
+import { produces, stopOf } from "./model"
 
 const count = (n: number, one: string, many: string): string =>
   n === 1 ? `1 ${one}` : `${String(n)} ${many}`
@@ -20,61 +22,52 @@ function onceAnswered(n: number): string {
   return `Once home is asked to hear ${n === 2 ? "both" : `all ${String(n)}`} again.`
 }
 
-/** Why it stopped, said once at the top of its page. */
-export function stopLine(stop: Stop): string {
+/**
+ * What the owner can do about a render that couldn't finish, or that nothing
+ * on the phone changes it (the owner, 2026-11-23: "when it says it failed, it
+ * should surface that clearly so that I have immediate understanding of
+ * what's going on"). What happened, where by name, and what home does about
+ * it are `failedLine`'s, on the row and on Run it again alike.
+ */
+export function youLine(failed: RenderFailed): string {
+  const stop = stopOf(failed)
   switch (stop.kind) {
     case "burnt": {
-      return stop.by === "home"
-        ? "Home couldn't keep its files last time. It tries again by itself an hour after; you can send it back in line now."
-        : "It couldn't be made last time. Home tries again by itself an hour after; you can send it back in line now."
+      return produces(failed.feed)
+        ? "You can send it back in line now with Run it again."
+        : "Nothing on this phone changes it; home's own try is the way."
     }
     case "takes-unheard": {
-      return stop.takes.length === 0
-        ? "Home couldn't make out recordings its spoken cards play, so it set the essay aside."
-        : `Home couldn't make out ${count(stop.takes.length, "recording", "recordings")} its spoken cards play, so it set the essay aside.`
+      return "Ask home to hear each recording again. A new recording doesn't stand in for one: the essay plays these very takes."
     }
     case "policy": {
-      return "Home's limits on a video stopped it, and it would stop the same way again."
+      switch (stop.refusal.kind) {
+        case "too-long": {
+          return "Nothing on this phone changes it: the essay itself has to be shorter."
+        }
+        case "too-large": {
+          return "Nothing on this phone changes it: the essay itself has to make a smaller video."
+        }
+        case "overflow": {
+          return "Nothing on this phone changes it: the words or pictures of those scenes have to be shorter."
+        }
+        default: {
+          return assertNever(stop.refusal)
+        }
+      }
     }
     case "missing": {
       return stop.what === "take"
-        ? "A spoken card in it plays a recording home doesn't keep."
-        : "It shows a clip home doesn't keep."
+        ? "Nothing on this phone changes it: the essay has to name a take home keeps."
+        : "Nothing on this phone changes it: the essay has to name a clip home keeps."
     }
     case "snips": {
       return stop.gone
-        ? "It shows pictures of the app that home couldn't get from their capture."
-        : "It shows a picture of the app that home couldn't get."
+        ? "Nothing on this phone changes it: run that Snips Capture again, and home makes it then."
+        : "Nothing on this phone changes it: the essay has to name a picture its capture holds."
     }
     case "preview": {
-      return "A preview is made once, when you ask for it."
-    }
-    default: {
-      return assertNever(stop)
-    }
-  }
-}
-
-/** What changes it, where that isn't this phone. */
-export function elsewhereLine(stop: Stop): string | null {
-  switch (stop.kind) {
-    case "policy": {
-      return "The essay itself has to change. Home tries it again by itself as soon as it does, or when its limit or its way of making videos changes."
-    }
-    case "missing": {
-      return stop.what === "take"
-        ? "The essay has to name a recording home keeps. Home tries it again by itself once it does."
-        : "The essay has to name a clip home keeps. Home tries it again by itself once it does."
-    }
-    case "snips": {
-      return stop.gone
-        ? "Run that Snips Capture again, or one for the commit the essay names, and home makes it then."
-        : "The essay has to name a picture its capture holds, and home has to be able to fetch it."
-    }
-    case "burnt":
-    case "takes-unheard":
-    case "preview": {
-      return null
+      return "Ask for another on the template's page."
     }
     default: {
       return assertNever(stop)
@@ -324,6 +317,8 @@ export function stepLog(
 
 export const AGAIN_WORDS = {
   heading: "Run it again",
+  whatHappened: "What happened",
+  whatYouCanDo: "What you can do",
   open: "Run it again",
   openElsewhere: "What it needs",
   /** On the row, beside the way in, what waits on the owner. */

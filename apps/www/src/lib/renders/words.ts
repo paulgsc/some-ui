@@ -276,18 +276,34 @@ const REFUSAL_WORDS = {
   },
   tooLarge: (mb: number, capMb: number): string =>
     `Too large to keep: it came out ${largerSaid(mb, capMb)} home keeps a video. Home doesn't try it again as it is.`,
-  /** Scenes too full for their frame, by name, the rest counted. */
-  overflow: (scenes: ReadonlyArray<string>, sceneCount: number): string => {
-    const more = sceneCount - scenes.length
-    if (more <= 0 && scenes.length === 1)
-      return `${scenes.join("")} doesn't fit the frame. Home doesn't try it again as it is.`
+  /**
+   * Scenes too full for their frame, by the names home gives (`sceneNames`),
+   * the rest counted; by count alone where home names none, never by the
+   * recorder's ids (the owner, 2026-11-23: "which scene, by its name").
+   */
+  overflow: (names: ReadonlyArray<string>, sceneCount: number): string => {
+    const quoted = names.map((name) => `“${name}”`)
+    const more = sceneCount - quoted.length
+    const held = "Home doesn't try it again as it is."
+    if (quoted.length === 0)
+      return sceneCount === 1
+        ? `One scene is too full for its frame, so the video would cut it off. ${held}`
+        : `${String(sceneCount)} scenes are too full for their frame, so the video would cut them off. ${held}`
+    if (more <= 0 && quoted.length === 1)
+      return `The scene ${quoted.join("")} is too full for its frame, so the video would cut it off. ${held}`
     const named =
-      more > 0 ? `${scenes.join(", ")} and ${more} more` : scenes.join(", ")
-    return `Some scenes don't fit the frame: ${named}. Home doesn't try it again as it is.`
+      more > 0
+        ? `${quoted.join(", ")} and ${String(more)} more`
+        : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1) ?? ""}`
+    return `The scenes ${named} are too full for their frame, so the video would cut them off. ${held}`
   },
 } as const
 
-function refusalLine(feed: string, refusal: Refusal): string {
+function refusalLine(
+  feed: string,
+  refusal: Refusal,
+  names: ReadonlyArray<string>
+): string {
   switch (refusal.kind) {
     case "too-long": {
       return REFUSAL_WORDS.tooLong(feed, refusal.minutes, refusal.capMinutes)
@@ -296,7 +312,7 @@ function refusalLine(feed: string, refusal: Refusal): string {
       return REFUSAL_WORDS.tooLarge(refusal.mb, refusal.capMb)
     }
     case "overflow": {
-      return REFUSAL_WORDS.overflow(refusal.scenes, refusal.sceneCount)
+      return REFUSAL_WORDS.overflow(names, refusal.sceneCount)
     }
     default: {
       return assertNever(refusal)
@@ -318,7 +334,7 @@ const ESSAY_REFUSAL_WORDS = {
   "take-missing":
     "A spoken card in it plays a recording home doesn't have. It isn't made until the essay names one home keeps.",
   "take-unheard":
-    "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
+    "Home couldn't make out recordings its spoken cards play, so it holds the essay until it can hear them.",
   "snip-missing":
     "It shows a picture of the app that home couldn't get. It isn't made until the essay names a picture its capture holds, and home can fetch it.",
   // C875: home never captures pictures itself; the owner runs it again.
@@ -347,7 +363,8 @@ export function failedLine(failed: RenderFailed): string {
   )
     return ESSAY_REFUSAL_WORDS[failed.reason]
   const refusal = refusalOf(failed)
-  if (refusal !== null) return refusalLine(failed.feed, refusal)
+  if (refusal !== null)
+    return refusalLine(failed.feed, refusal, failed.sceneNames ?? [])
   return failed.by === "home"
     ? "Home couldn't keep its files. It tries again in an hour."
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."
