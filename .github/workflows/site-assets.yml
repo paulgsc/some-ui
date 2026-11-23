@@ -170,6 +170,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/site-assets/stills"
           cp "$RUNNER_TEMP/walks/walk-home-cores/snips/01.png" "$RUNNER_TEMP/site-assets/stills/cores.png"
           echo "Drawn from paulgsc/server at $(git -C server-checkout rev-parse HEAD), on sample telemetry." >> "$GITHUB_STEP_SUMMARY"
+      # The job is continue-on-error, so the run stays green when this fails:
+      # say it on the run, where the run's summary and its annotations show
+      # it, and the landing keeps the last stills until theirs expire.
+      - name: Say the dashboards were not drawn
+        if: failure()
+        run: |
+          echo "::error title=Server dashboards not drawn::The server's dashboards were not drawn in this run; the landing keeps the last stills fetched, until their artifact expires 30 days after it was made."
+          echo "- **The server's dashboards were not drawn in this run.** The landing keeps the last stills, until their artifact expires." >> "$GITHUB_STEP_SUMMARY"
       # Retention: pages.yml reads the newest of this family at the next
       # deploy, which waits on an approval and can come weeks after this
       # push. 30 days outlives that gap; its family keeps one

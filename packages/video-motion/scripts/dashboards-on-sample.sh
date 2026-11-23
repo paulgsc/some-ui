@@ -84,8 +84,19 @@ docker run -d --name "$net-grafana" --network "$net" -p "127.0.0.1::3000" \
   -e GF_ANALYTICS_CHECK_FOR_UPDATES=false -e GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false \
   -e GF_NEWS_NEWS_FEED_ENABLED=false \
   "$grafana" > /dev/null
-# A free port on this machine's loopback, which docker chose.
-origin="http://$(docker port "$net-grafana" 3000/tcp | grep -m 1 '^127\.0\.0\.1:')"
+# A free port on this machine's loopback, which docker chose. None means
+# Grafana already stopped: say why, with both containers' logs.
+logs() {
+  docker logs "$net-prometheus" 2>&1 | tail -n 40 >&2 || true
+  docker logs "$net-grafana" 2>&1 | tail -n 60 >&2 || true
+}
+bound=$(docker port "$net-grafana" 3000/tcp 2> /dev/null | grep -m 1 '^127\.0\.0\.1:' || true)
+if [ -z "$bound" ]; then
+  echo "Grafana stopped before it took a port" >&2
+  logs
+  exit 1
+fi
+origin="http://$bound"
 jq --arg origin "$origin" '.origin = $origin' "$work/sample/sample.json" > "$work/sample/walk.json"
 
 # Both answer, and Grafana has loaded both dashboards, or the run stops here
@@ -101,8 +112,7 @@ for _ in $(seq 1 90); do
 done
 if ! ready; then
   echo "Grafana or Prometheus did not come up in 3 minutes" >&2
-  docker logs "$net-prometheus" 2>&1 | tail -n 40 >&2
-  docker logs "$net-grafana" 2>&1 | tail -n 60 >&2
+  logs
   exit 1
 fi
 

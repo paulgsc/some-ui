@@ -27,6 +27,7 @@ import { writeFile } from "node:fs/promises"
 import type { Page, Request } from "playwright-core"
 import { chromium } from "playwright-core"
 
+import { heldStill } from "./held-still"
 import type { Stage } from "./run"
 import { settlePage } from "./stage-sandbox"
 
@@ -63,6 +64,40 @@ const STILL_GAP_MS = 250
 
 /** What Grafana draws in a panel whose query answered nothing, in either case. */
 const NO_DATA = /^\s*no data\s*$/i
+
+/** Grafana's Inter, as its theme declares it (normal, 400 and 500), by file. */
+const INTER = [
+  { weight: "400", file: "Inter-Regular.woff2" },
+  { weight: "500", file: "Inter-Medium.woff2" },
+] as const
+
+/**
+ * A script that adds Grafana's own Inter files to a page's fonts from their
+ * bytes, which a page has at once: a font made from bytes is loaded when it
+ * is made, so the page's first measure of its text uses it.
+ */
+async function interFaces(page: Page, origin: string): Promise<string> {
+  const faces: Array<{ weight: string; data: string }> = []
+  for (const { weight, file } of INTER) {
+    const answer = await page.request.get(
+      `${origin}/public/fonts/inter/${file}`,
+      { maxRedirects: 0 }
+    )
+    if (!answer.ok()) {
+      throw new Error(`Grafana's ${file} answered ${String(answer.status())}`)
+    }
+    faces.push({ weight, data: (await answer.body()).toString("base64") })
+  }
+  return `(() => {
+    for (const { weight, data } of ${JSON.stringify(faces)}) {
+      const text = atob(data)
+      const bytes = new Uint8Array(text.length)
+      for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i)
+      const face = new FontFace("Inter", bytes.buffer, { weight, style: "normal" })
+      document.fonts.add(face)
+    }
+  })()`
+}
 
 export async function openGrafanaStage(
   spec: GrafanaStageSpec,
@@ -158,15 +193,6 @@ export async function openGrafanaStage(
         .first()
         .waitFor({ state: "detached", timeout: DRAWN_MS })
       await settlePage(page)
-      // A stat measures its text once, when it draws, which can be before
-      // Grafana's web font has loaded: a resize makes every panel measure
-      // again, now with the font, so its size does not depend on timing.
-      await page.setViewportSize({
-        width: spec.viewport.width,
-        height: spec.viewport.height + 1,
-      })
-      await page.setViewportSize(spec.viewport)
-      await settlePage(page)
       // A panel whose series the telemetry lacks draws this, not the panel
       // ("No data" by default, "no data" where a panel sets its own).
       if ((await page.getByText(NO_DATA).count()) > 0) {
@@ -181,29 +207,34 @@ export async function openGrafanaStage(
       origin,
       place: (x, y) => ({ x, y }),
       open: async (init): Promise<void> => {
+        // A stat measures its text on a canvas when it first draws, and
+        // keeps that for the page's life; a canvas does not wait for a web
+        // font, so one drawn before Grafana's Inter arrived would keep the
+        // fallback font's size, by timing. So Grafana's own Inter files are
+        // given to every page before its scripts run, already loaded.
+        await page.addInitScript({ content: await interFaces(page, origin) })
         for (const content of init) await page.addInitScript({ content })
         await page.goto(`${origin}${spec.page}`)
       },
       settle: drawn,
-      shoot: async (path): Promise<void> => {
-        // Grafana sizes a stat's text after it draws, a frame or more late:
-        // a screen is kept once two in a row are the same, so the same
-        // telemetry gives the same bytes.
+      shoot: async (path, moving): Promise<void> => {
         const take = (): Promise<Buffer> =>
           page.screenshot({ animations: "disabled", caret: "hide" })
-        let last = await take()
-        for (let i = 0; i < STILL_TRIES; i += 1) {
-          await page.waitForTimeout(STILL_GAP_MS)
-          const next = await take()
-          if (next.equals(last)) {
-            await writeFile(path, next)
-            return
-          }
-          last = next
+        // A failed walk's last screen is taken as it is.
+        if (moving) {
+          await writeFile(path, await take())
+          return
         }
-        throw new Error(
-          `${page.url()} was still changing after ${String(STILL_TRIES)} screens`
-        )
+        // Grafana sizes a stat's text after it draws, a frame or more late:
+        // a screen is kept once two in a row are the same, so the same
+        // telemetry gives the same bytes, and one that never holds fails.
+        const { png, held } = await heldStill(take, STILL_TRIES, STILL_GAP_MS)
+        if (!held) {
+          throw new Error(
+            `${page.url()} was still changing after ${String(STILL_TRIES)} screens`
+          )
+        }
+        await writeFile(path, png)
       },
       problems: (): ReadonlyArray<string> => problems,
       close: () => browser.close(),
