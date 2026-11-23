@@ -1,0 +1,18 @@
+{
+  "id": "C1221",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/renders/again/model.ts",
+    "apps/www/src/lib/renders/again/words.ts"
+  ],
+  "chose": "The takes step counts a take as answered once home is hearing it again (the attention list marks it so and keeps it listed, #3339) or it has left the list; until the list is read, or when home cut it short, every take the essay names counts as waiting, so the button is never on a guess. Its words ask the owner to have home hear each again, not to record it again: a cards essay plays the very take ids its cut list names, so a new recording does not unblock it (paulgsc/server `essay_media::takes::hold`). Home's answer to the tap stays the authority (409 with the takes that still block).",
+  "options": [
+    "hear again unblocks, record again doesn't, never on a guess (taken)",
+    "any act that takes a take off the list unblocks it, as the owner's words say (\"retry them again or speak them again\")",
+    "no gate on the phone: the button is always on and home refuses"
+  ],
+  "gray": "The owner's words name both hearing again and speaking again; home's code shows only hearing again lets a cards essay through, which the owner would notice on the screen.",
+  "undo": "Change `attentionOf` and the takes words in `lib/renders/again`; a later story could make a re-recorded take stand in for the old one on home, which would make record again count too.",
+  "refs": ["#3445", "#3070"]
+}

@@ -56,6 +56,19 @@ export type TakeReconcileProps = {
    * build links it; null or absent for none.
    */
   source?: ((take: AttentionTake) => ReactNode) | undefined
+  /**
+   * Only these takes, by id (RETRY: the ones a render that couldn't finish
+   * waits on), with a line over them (`banner`, its way to show all) and
+   * what is said once none of them waits any more (`empty`). Absent, every
+   * take needing attention.
+   */
+  only?:
+    | {
+        readonly ids: ReadonlySet<string>
+        readonly banner: ReactNode
+        readonly empty: ReactNode
+      }
+    | undefined
 }
 
 const codesOfTake = (take: AttentionTake): ReadonlyArray<ProblemCode> =>
@@ -292,6 +305,7 @@ export const TakeReconcile = ({
   deletable,
   onDelete,
   source,
+  only,
 }: TakeReconcileProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [runtime] = useState(() => createReconcile(ports))
@@ -300,7 +314,9 @@ export const TakeReconcile = ({
   const [picked, setPicked] = useState<ProblemCode | null>(null)
   const { dispatch } = runtime
   const page = state.read.kind === "read" ? state.read.page : null
-  const takes = page?.takes ?? []
+  const listed = page?.takes ?? []
+  const takes =
+    only === undefined ? listed : listed.filter(({ id }) => only.ids.has(id))
   const counts = codeCounts(takes, codesOfTake)
   // A code picked that no take carries any more shows them all again.
   const pick = counts.some(({ code }) => code === picked) ? picked : null
@@ -318,27 +334,37 @@ export const TakeReconcile = ({
   return (
     <div className="flex flex-col gap-4">
       <Unread state={state} dispatch={dispatch} pair={pair} />
-      {page !== null && takes.length === 0 && page.total === 0 && (
-        <p className="text-muted-foreground text-sm">{WORDS.none}</p>
-      )}
-      {page !== null && takes.length === 0 && page.total > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm">{WORDS.noneShown(page.total)}</p>
-          <Button
-            type="button"
-            variant="outline"
-            className="self-start"
-            onClick={() => dispatch({ type: "readAgain" })}
-          >
-            {LIBRARY_WORDS.readAgain}
-          </Button>
-        </div>
-      )}
+      {page !== null && only?.banner}
+      {page !== null && only !== undefined && takes.length === 0 && only.empty}
+      {page !== null &&
+        only === undefined &&
+        takes.length === 0 &&
+        page.total === 0 && (
+          <p className="text-muted-foreground text-sm">{WORDS.none}</p>
+        )}
+      {page !== null &&
+        only === undefined &&
+        takes.length === 0 &&
+        page.total > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">{WORDS.noneShown(page.total)}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start"
+              onClick={() => dispatch({ type: "readAgain" })}
+            >
+              {LIBRARY_WORDS.readAgain}
+            </Button>
+          </div>
+        )}
       {page !== null && takes.length > 0 && (
         <>
-          <p className="text-muted-foreground text-sm" aria-live="polite">
-            {WORDS.shown(takes.length, page.total)}
-          </p>
+          {only === undefined && (
+            <p className="text-muted-foreground text-sm" aria-live="polite">
+              {WORDS.shown(takes.length, page.total)}
+            </p>
+          )}
           <CodeChips
             counts={counts}
             picked={pick}

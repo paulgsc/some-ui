@@ -92,6 +92,12 @@ const FailedSchema = EpisodeSchema.extend({
    */
   scenes: z.array(z.string().min(1)).optional().catch(undefined),
   sceneCount: z.number().int().positive().optional().catch(undefined),
+  /**
+   * What home's refusal of an essay names, by id (RETRY,
+   * paulgsc/server `essay_media::Refusal`'s items): for `take-unheard` and
+   * `take-missing`, the takes. Read leniently, as `scenes` is.
+   */
+  items: z.array(z.string().min(1)).optional().catch(undefined),
 })
 
 const ComingSchema = z.object({

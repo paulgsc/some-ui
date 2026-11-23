@@ -2627,7 +2627,8 @@
         "some-ui:apps/www/tests/record/call-recording.ts",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
-        "server:apps/servers/file_host/src/routes/feed_videos.rs"
+        "server:apps/servers/file_host/src/routes/feed_videos.rs",
+        "some-ui:apps/www/src/lib/renders/again"
       ],
       "modules": ["feed_videos", "renders"],
       "objectives": [
@@ -3038,6 +3039,27 @@
             "server:apps/servers/file_host/src/call_weeks/pass.rs#every_week_held_is_written_for_the_render_worker_once",
             "server:apps/servers/file_host/src/call_weeks/render.rs#each_week_held_reads_as_rendered_waiting_or_failed"
           ]
+        },
+        {
+          "id": "CW9",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "Running a render that couldn't finish again from the phone has at most one effect however often it is tapped, says where it stands from asked to made or stopped, and is refused, saying what still stops it, while something does.",
+          "requirement": "POST /feeds/:feed/videos/:key/produce with asset video, a paired phone's only, answers with the episode's Step: a burnt episode is put back in line for the render worker's next look, and asking again while it is asked, waiting or rendering answers the same and does nothing more; a cards essay home refused for takes it couldn't make out is looked at again by the cards pass only once none of its takes is still unheard, else 409 names those takes; a refusal by the render policy or for an item the essay names that home doesn't keep answers 409 and changes nothing; a made video is never made again. The phone offers the tap only once the takes needing attention are read and none the essay plays still waits, and follows the Step on the board until it is made or stops.",
+          "verdict": "unproven",
+          "conclusion": "The phone's half is held by its tests: the gate, every answer read, and the Step followed on the board. Home's half (REDO-S, paulgsc/server claude/redo-s-again) is not on home's main yet; this holds once its tests are.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The phone's Run it again offers the tap only once the takes needing attention are read and none the essay plays still waits, reads every Step home can answer, and follows it on the board, keeping every time home said; tested.",
+              "ref": "some-ui:apps/www/src/lib/renders/again/model.ts"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#3445"
         }
       ]
     },

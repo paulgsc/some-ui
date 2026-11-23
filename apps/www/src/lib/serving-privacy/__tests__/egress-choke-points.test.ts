@@ -201,8 +201,10 @@ const HOME_LINK_CALLERS = new Set([
   // LA8 (SFEED13): Studio › Renders, which asks home what it is making as
   // Studio's index or the page opens, on a drag down, on Try again, and every
   // half minute while home has something under way. It sends nothing of its
-  // own.
+  // own; Run it again (RETRY) sends one POST per tap, naming only which
+  // render, and reads the takes needing attention as that page does.
   "lib/renders/read.ts",
+  "lib/renders/again/ask.ts",
   // LA8 (GWB14 D15): Takes opened on a game, which asks home for that
   // game's moment log as it opens and each minute while the game is on. It
   // sends nothing of its own but the game's id.
@@ -272,9 +274,12 @@ const KEEPERS = new Set([
 /** LA8, #2843: whether home works with this build, its one ask through `look`. */
 const COMPAT_READ = "lib/home-link/compat-read.ts"
 
-/** SFEED13: Studio › Renders' read, and the one request it may send. */
+/** SFEED13: Studio › Renders' read and run again (RETRY), and the requests they may send. */
 const RENDERS_READ = "lib/home-link/renders.ts"
-const RENDERS_SENDS = [['"GET"', '"/renders"']]
+const RENDERS_SENDS = [
+  ['"GET"', '"/renders"'],
+  ['"POST"', "producePath(feed, key)", 'JSON.stringify({ asset: "video" })'],
+]
 
 /** GWB14 D15: a game's moment log, and the one request it may send. */
 const MOMENTS_READ = "lib/home-link/game-moments.ts"
@@ -1016,14 +1021,14 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/episode-feedback/home-read.ts"])
   })
 
-  it("sends nothing from Studio › Renders but one GET of /renders, and only Studio › Renders asks it (SFEED13)", () => {
+  it("sends nothing from Studio › Renders but one GET of /renders and a run again's POST, and only Studio › Renders asks them (SFEED13, RETRY)", () => {
     expect(sendCalls(RENDERS_READ, read(RENDERS_READ))).toEqual(RENDERS_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>
         /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
       )
-    expect(readers).toEqual(["lib/renders/read.ts"])
+    expect(readers).toEqual(["lib/renders/again/ask.ts", "lib/renders/read.ts"])
   })
 
   it("sends nothing from a game's moments but one GET of its log, and only Takes' read of it asks it (GWB14 D15)", () => {

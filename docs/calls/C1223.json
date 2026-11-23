@@ -1,0 +1,18 @@
+{
+  "id": "C1223",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/ui/soundbites/src/components/take-reconcile/index.tsx",
+    "apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx"
+  ],
+  "chose": "The takes a render waits on open on Needs your attention itself, filtered by the address (`takes`, `feed`, `key`) through a generic `only` on `TakeReconcile` (a set of ids, a line over them with Show all, and what is said once none is left with the way back), rather than a second list of takes on the Run it again page.",
+  "options": [
+    "filter the existing page by ids (taken)",
+    "list and act on the takes on the Run it again page",
+    "link to the whole page unfiltered"
+  ],
+  "gray": "The owner asked to be cycled to the subset; whether that is the existing page filtered or a list of its own is a choice of shape no check settles.",
+  "undo": "Drop `only` from `TakeReconcile` and the route's `validateSearch`, and link to the whole page.",
+  "refs": ["#3445", "#3070"]
+}
