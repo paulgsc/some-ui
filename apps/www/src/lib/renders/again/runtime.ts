@@ -7,7 +7,19 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { AgainAnswer } from "./model"
+import type { Board } from "@/lib/renders/model"
+
+import type { AgainAnswer, Step } from "./model"
+import { follow } from "./model"
+
+/** Whether two steps say the same, so a read that moved nothing changes nothing. */
+const sameStep = (a: Step, b: Step): boolean =>
+  a.state === b.state &&
+  a.askedAt === b.askedAt &&
+  a.startedAt === b.startedAt &&
+  a.endedAt === b.endedAt &&
+  a.reason === b.reason &&
+  a.items.join("\n") === b.items.join("\n")
 
 /** What the last tap came to, said in a Notice. */
 export type Said =
@@ -39,6 +51,11 @@ export type AgainEvent =
   | { readonly type: "tap"; readonly target: Target; readonly at: number }
   | { readonly type: "answered"; readonly said: Said }
   | { readonly type: "dismissed" }
+  /**
+   * The board was read: a step being followed moves by it, keeping every
+   * time an earlier read gave (`follow`).
+   */
+  | { readonly type: "board"; readonly board: Board }
 
 export const IDLE: AgainState = { kind: "idle" }
 
@@ -56,6 +73,26 @@ export function step(state: AgainState, event: AgainEvent): AgainState {
     }
     case "dismissed": {
       return state.kind === "said" ? IDLE : state
+    }
+    case "board": {
+      if (state.kind !== "said" || state.said.kind !== "answer") return state
+      const answer = state.said.answer
+      if (answer.kind !== "step") return state
+      const { feed, key, stoppedAt } = state.target
+      const next = follow(
+        answer.step,
+        event.board,
+        feed,
+        key,
+        state.at,
+        stoppedAt
+      )
+      return sameStep(next, answer.step)
+        ? state
+        : {
+            ...state,
+            said: { kind: "answer", answer: { kind: "step", step: next } },
+          }
     }
     default: {
       return assertNever(event)
@@ -82,7 +119,7 @@ export type AgainRuntime = {
   readonly dispatch: (
     event:
       | Omit<Extract<AgainEvent, { type: "tap" }>, "at">
-      | Extract<AgainEvent, { type: "dismissed" }>
+      | Extract<AgainEvent, { type: "dismissed" | "board" }>
   ) => void
   /** Starts the runtime; the returned call ends it, and a later answer is dropped. */
   readonly attach: () => () => void

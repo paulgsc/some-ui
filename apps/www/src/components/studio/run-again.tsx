@@ -36,7 +36,6 @@ import {
   canRun,
   createAgain,
   elsewhereLine,
-  follow,
   FOLLOW_FOR,
   planOf,
   runAgainHome,
@@ -348,33 +347,36 @@ export const RunAgainPage = ({
   )
   useEffect(() => runtime.attach(), [runtime])
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+  // The step the tap is following, each board read folded into it by the
+  // runtime, so a time one read gave is kept by the next.
   const asked = stepOfSaid(state)
   const tappedAt = state.kind === "said" ? state.at : 0
-  const stoppedAt = state.kind === "said" ? state.target.stoppedAt : undefined
-  /** Where the run is on `board`, once tapped. */
-  const followed = (board: Board): Step | null =>
-    asked === null
-      ? null
-      : follow(asked, board, feed, rowKey, tappedAt, stoppedAt)
   const query = {
     ...rendersQuery,
-    // Followed while the run moves: the board is read every half minute
-    // until it is made or stops, whatever else it holds.
+    // Followed while the run moves and home answers: the board is read every
+    // half minute until it is made or stops, for at most FOLLOW_FOR; a read
+    // that failed waits for a pull or Try again, as Renders does.
     refetchInterval: (read: {
       readonly state: Parameters<typeof rendersAgainIn>[0]
     }): number | false => {
-      const data = read.state.data
-      // Only while home answers, and for at most FOLLOW_FOR after the tap.
-      const step = data?.kind === "read" ? followed(data.board) : null
       const fresh = Date.now() / 1000 - tappedAt < FOLLOW_FOR
-      return step !== null && !settled(step) && fresh
+      return read.state.error === null &&
+        read.state.data?.kind === "read" &&
+        asked !== null &&
+        !settled(asked) &&
+        fresh
         ? WHILE_UNDER_WAY_MS
         : rendersAgainIn(read.state)
     },
   }
+  const board = useQuery(query)
+  useEffect(() => {
+    if (board.data?.kind === "read")
+      runtime.dispatch({ type: "board", board: board.data.board })
+  }, [board.data, runtime])
   const notice = state.kind === "said" ? saidLine(state.said) : null
   // How long each step took is said as of the board's last read.
-  const readAt = Math.floor(useQuery(query).dataUpdatedAt / 1000)
+  const readAt = Math.floor(board.dataUpdatedAt / 1000)
   return (
     <StudioPage heading={WORDS.heading}>
       <ReadList query={query} words={RENDERS_WORDS}>
@@ -387,7 +389,7 @@ export const RunAgainPage = ({
                   : RENDERS_WORDS.older}
               </p>
             )
-          const step = followed(outcome.board)
+          const step = asked
           const row = rowOf(outcome.board, feed, rowKey)
           if (step !== null)
             return (

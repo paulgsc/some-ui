@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from "vitest"
 
-import type { Said } from "@/lib/renders/again/runtime"
+import type { AgainState, Said } from "@/lib/renders/again/runtime"
 import { createAgain, IDLE, moved, step } from "@/lib/renders/again/runtime"
 
 const TARGET = { feed: "cards-essay", key: "home-database-safety-2026-11-21" }
@@ -56,6 +56,53 @@ const ASKED = {
     },
   },
 } as const satisfies Said
+
+describe("step on a board read", () => {
+  const EMPTY = { now: null, waiting: [], failed: [], done: [], coming: [] }
+  const said = {
+    kind: "said",
+    said: ASKED,
+    at: 1,
+    target: TARGET,
+  } as const satisfies AgainState
+
+  it("keeps a time one read gave when the next read no longer gives it", () => {
+    const rendering = step(said, {
+      type: "board",
+      board: {
+        ...EMPTY,
+        now: {
+          feed: TARGET.feed,
+          key: TARGET.key,
+          state: "rendering",
+          since: 100,
+          stateSince: 200,
+          gaveWay: 0,
+          heldBy: null,
+          stuck: false,
+          estimate: null,
+        },
+      },
+    })
+    const done = step(rendering, {
+      type: "board",
+      board: {
+        ...EMPTY,
+        done: [{ feed: TARGET.feed, key: TARGET.key, at: 900 }],
+      },
+    })
+    expect(done).toMatchObject({
+      said: {
+        answer: { step: { state: "done", startedAt: 200, endedAt: 900 } },
+      },
+    })
+  })
+
+  it("changes nothing for a read that moved nothing, or with no step to follow", () => {
+    expect(step(said, { type: "board", board: EMPTY })).toBe(said)
+    expect(step(IDLE, { type: "board", board: EMPTY })).toBe(IDLE)
+  })
+})
 
 describe("moved", () => {
   it("reads the board again for every step home answers, and for nothing else", () => {
