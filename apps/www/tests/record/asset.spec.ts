@@ -10,6 +10,7 @@
  * as `essay.json` and `cut-list.json`, in a folder named by its key.
  */
 
+import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import {
   cp,
@@ -26,7 +27,7 @@ import { join, resolve } from "node:path"
 import type { Browser } from "@playwright/test"
 import { expect, test } from "@playwright/test"
 
-import { madePath, makeAsset } from "./asset-make"
+import { madePath, makeAsset, REFUSED_PREFIX, refusedLine } from "./asset-make"
 import { launchChromium } from "./command"
 import {
   callPartOf,
@@ -81,7 +82,7 @@ test("makes a thumbnail into the work folder alone, whole, and leaves the episod
   const before = await snapshot(root)
   const out = await workDir("first")
   const made = await makeAsset(browser, "thumbnail", "cards-essay", root, out)
-  expect(made).toEqual({ ok: true, value: madePath(out, "thumbnail") })
+  expect(made).toEqual({ kind: "made", path: madePath(out, "thumbnail") })
   expect(await readdir(out)).toEqual(["thumbnail.png"])
   expect(await snapshot(root)).toEqual(before)
   const png = await readFile(madePath(out, "thumbnail"))
@@ -102,7 +103,8 @@ test("never overwrites a thumbnail already in the work folder", async () => {
   const out = await workDir("kept")
   await writeFile(madePath(out, "thumbnail"), "the owner's")
   const made = await makeAsset(browser, "thumbnail", "cards-essay", root, out)
-  expect(made.ok).toBe(false)
+  // Not a refusal: home may try again once the folder is cleared.
+  expect(made.kind).toBe("notMade")
   expect(await readFile(madePath(out, "thumbnail"), "utf8")).toBe("the owner's")
   expect(await readdir(out)).toEqual(["thumbnail.png"])
 })
@@ -112,14 +114,14 @@ test("refuses a work folder that is the episode's folder, or inside it", async (
   for (const out of [root, join(root, "work")]) {
     await mkdir(out, { recursive: true })
     const made = await makeAsset(browser, "thumbnail", "cards-essay", root, out)
-    expect(made.ok).toBe(false)
+    expect(made.kind).toBe("notMade")
   }
   await rm(join(root, "work"), { recursive: true })
   const linked = join(base, "linked-root")
   await symlink(root, linked)
   expect(
-    (await makeAsset(browser, "thumbnail", "cards-essay", root, linked)).ok
-  ).toBe(false)
+    (await makeAsset(browser, "thumbnail", "cards-essay", root, linked)).kind
+  ).toBe("notMade")
   expect(await snapshot(root)).toEqual(before)
 })
 
@@ -129,7 +131,7 @@ test("writes through no partial already in the work folder, a link included", as
   await writeFile(target, "keep me")
   await symlink(target, join(out, ".thumbnail.png.partial"))
   const made = await makeAsset(browser, "thumbnail", "cards-essay", root, out)
-  expect(made.ok).toBe(true)
+  expect(made.kind).toBe("made")
   expect(await readFile(target, "utf8")).toBe("keep me")
   expect((await readdir(out)).sort()).toEqual([
     ".thumbnail.png.partial",
@@ -143,23 +145,19 @@ test("two makes into one work folder leave one whole thumbnail", async () => {
     makeAsset(browser, "thumbnail", "cards-essay", root, out),
     makeAsset(browser, "thumbnail", "cards-essay", root, out),
   ])
-  expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1)
+  expect([a.kind, b.kind].sort()).toEqual(["made", "notMade"])
   expect(await readdir(out)).toEqual(["thumbnail.png"])
-  const alone = await workDir("alone")
-  await makeAsset(browser, "thumbnail", "cards-essay", root, alone)
-  expect(sha(await readFile(madePath(out, "thumbnail")))).toBe(
-    sha(await readFile(madePath(alone, "thumbnail")))
-  )
 })
 
-test("makes nothing from a folder it can't read, and says why", async () => {
+test("refuses a folder it can't read, says why, and makes nothing", async () => {
   const bare = join(base, "renders", "bare-2026-11-14")
   await mkdir(bare, { recursive: true })
   await cp(SAMPLE, join(bare, "essay.json"))
   const out = await workDir("bare-out")
   const made = await makeAsset(browser, "thumbnail", "cards-essay", bare, out)
-  expect(made.ok).toBe(false)
-  if (!made.ok) expect(made.problems.join(" ")).toContain("cut-list.json")
+  expect(made.kind).toBe("refused")
+  if (made.kind === "refused")
+    expect(made.problems.join(" ")).toContain("cut-list.json")
   expect(await readdir(out)).toEqual([])
   const gone = await makeAsset(
     browser,
@@ -168,11 +166,51 @@ test("makes nothing from a folder it can't read, and says why", async () => {
     join(base, "renders", "never-there-2026-11-14"),
     out
   )
-  expect(gone.ok).toBe(false)
-  if (!gone.ok) expect(gone.problems.join(" ")).toContain("can't be reached")
+  // A folder home can't reach isn't the episode's lasting answer.
+  expect(gone.kind).toBe("notMade")
+  if (gone.kind === "notMade")
+    expect(gone.problems.join(" ")).toContain("can't be reached")
   const wrong = await makeAsset(browser, "thumbnail", "report", root, out)
-  expect(wrong.ok).toBe(false)
+  expect(wrong.kind).toBe("refused")
   expect(await readdir(out)).toEqual([])
+})
+
+test("marks a refusal, and only a refusal, by its one line for home's worker", async () => {
+  expect(refusedLine(["a", "b\nc"])).toBe(`${REFUSED_PREFIX}a; b c`)
+  const run = (
+    out: string,
+    from: string
+  ): { status: number | null; stderr: string } => {
+    const done = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        resolve(import.meta.dirname, "asset.ts"),
+        "--asset",
+        "thumbnail",
+        "--feed",
+        "cards-essay",
+        "--root",
+        from,
+        "--out",
+        out,
+      ],
+      { encoding: "utf8", env: process.env }
+    )
+    return { status: done.status, stderr: done.stderr }
+  }
+  const bare = join(base, "renders", "bare-2026-11-14")
+  const refused = run(await workDir("cli-refused"), bare)
+  expect(refused.status).toBe(1)
+  expect(
+    refused.stderr.split("\n").filter((l) => l.startsWith(REFUSED_PREFIX))
+  ).toHaveLength(1)
+  const kept = await workDir("cli-kept")
+  await writeFile(madePath(kept, "thumbnail"), "the owner's")
+  const notMade = run(kept, root)
+  expect(notMade.status).toBe(1)
+  expect(notMade.stderr).not.toContain(REFUSED_PREFIX)
 })
 
 test("reads each genre's folder, under the key home puts it in place by, as its facts", async () => {

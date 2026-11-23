@@ -95,9 +95,32 @@ const DRAW: {
 }
 
 /**
- * `asset` of the episode in `root`, made into `out`: the file it wrote, or
- * why it made none. Never rejects for a refusal; an error of the drive
- * itself (out not writable, say) rejects, and still leaves no partial.
+ * What a make came to: the file it wrote; refused, for a reason the same
+ * episode folder will always give (its facts or cut list missing or
+ * unreadable, a title no readable size fits), so asking again is no use; or
+ * not made, for a reason that can change (the work folder, a make that won
+ * a race, a file already there), which home may try again.
+ */
+export type Made =
+  | { readonly kind: "made"; readonly path: string }
+  | { readonly kind: "refused"; readonly problems: ReadonlyArray<string> }
+  | { readonly kind: "notMade"; readonly problems: ReadonlyArray<string> }
+
+/**
+ * How `record:asset` marks a refusal for home's worker, which holds an ask
+ * only on this line and tries any other failure again (REDO-S): one stderr
+ * line, this and the reasons, only for `refused`.
+ */
+export const REFUSED_PREFIX = "asset refused: "
+
+/** A refusal's one line: the prefix, then every reason on the same line. */
+export const refusedLine = (problems: ReadonlyArray<string>): string =>
+  `${REFUSED_PREFIX}${problems.join("; ").replace(/\s+/g, " ")}`
+
+/**
+ * `asset` of the episode in `root`, made into `out` (`Made`). Never rejects
+ * for a refusal; an error of the drive itself (out not writable, say)
+ * rejects, and still leaves no partial.
  */
 export async function makeAsset(
   browser: Browser,
@@ -105,29 +128,29 @@ export async function makeAsset(
   feed: Genre,
   root: string,
   out: string
-): Promise<Parsed<string>> {
+): Promise<Made> {
   const inRoot = await within(out, root)
-  if (!inRoot.ok) return inRoot
+  if (!inRoot.ok) return { kind: "notMade", problems: inRoot.problems }
   if (inRoot.value)
     return {
-      ok: false,
+      kind: "notMade",
       problems: [`${out} is in the episode's folder, which is only read`],
     }
   const made = madePath(out, asset)
   if (await exists(made))
-    return { ok: false, problems: [`${made} is already made`] }
+    return { kind: "notMade", problems: [`${made} is already made`] }
   const drawn = await DRAW[asset](browser, feed, root)
-  if (!drawn.ok) return drawn
+  if (!drawn.ok) return { kind: "refused", problems: drawn.problems }
   const partial = partialPath(out, asset)
   try {
     await writeFile(partial, drawn.value, { flag: "wx" })
     await link(partial, made)
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "EEXIST")
-      return { ok: false, problems: [`${made} was made meanwhile`] }
+      return { kind: "notMade", problems: [`${made} was made meanwhile`] }
     throw error
   } finally {
     await rm(partial, { force: true })
   }
-  return { ok: true, value: made }
+  return { kind: "made", path: made }
 }

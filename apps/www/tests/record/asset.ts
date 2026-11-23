@@ -14,17 +14,21 @@
  * only place it writes (`./asset-make`), and home puts the file beside the
  * video. A thumbnail is drawn as its recorder draws it (C1026), the same
  * bytes for the same folder. Exit 0 means `<out>/thumbnail.png` was written;
- * exit 1, with why on stderr, means none was: a folder that lacks either
- * file, a title no readable size fits, or a thumbnail already in `--out`,
- * which it never overwrites. Asking again would come out the same.
+ * exit 1, with why on stderr, means none was. A refusal the same folder
+ * will always give (a facts or cut-list file missing or unreadable, a title
+ * no readable size fits) is one stderr line starting `asset refused: `
+ * (`REFUSED_PREFIX`), which home's worker holds the ask on; any other exit 1
+ * (a work folder in the episode's, a thumbnail already in `--out`, which it
+ * never overwrites, or a crash) carries no such line, and home tries again.
  */
 
 import { parseArgs } from "node:util"
+import { assertNever } from "@some-ui/core-utils"
 import { GENRES } from "@some-ui/styles/brand/genres"
 import type { Genre } from "@some-ui/styles/brand/genres"
 import { ALONE_ASSETS, isAloneAsset } from "@some-ui/video-render/assets"
 
-import { makeAsset } from "./asset-make"
+import { makeAsset, refusedLine } from "./asset-make"
 import { fail, here, launchChromium, runCommand } from "./command"
 
 const { values } = parseArgs({
@@ -50,8 +54,21 @@ await runCommand(async () => {
   const browser = await launchChromium()
   try {
     const made = await makeAsset(browser, asset, feed, here(root), here(out))
-    if (!made.ok) fail([`No ${asset} made:`, ...made.problems])
-    console.log(`wrote ${made.value}`)
+    switch (made.kind) {
+      case "made": {
+        console.log(`wrote ${made.path}`)
+        return
+      }
+      case "refused": {
+        return fail([refusedLine(made.problems)])
+      }
+      case "notMade": {
+        return fail([`No ${asset} made:`, ...made.problems])
+      }
+      default: {
+        return assertNever(made)
+      }
+    }
   } finally {
     await browser.close()
   }
