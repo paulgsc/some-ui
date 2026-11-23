@@ -20,10 +20,12 @@
  *
  * CH1: up to `MOST_ROWS`, the schema's bound, a sheet whose rows are each
  * one that holds at every count in its frame (`holdsAtEveryCount`), at
- * their default times, is drawn. Its Tolerance: a sheet with any other row
- * may be refused, only by that row's number; and a sheet whose rows are
- * given times out of order is outside it (`__tests__/cheat-sheet.test.ts`,
- * "CH1").
+ * their default times, is never refused for fitting: a refusal it can still
+ * meet is its heading's or stamp's own, or a row's words (a value, a
+ * character the type lacks), the same at any count. Its Tolerance: a sheet
+ * with any other row may be refused for fitting, only by that row's
+ * number; and a sheet whose rows are given times out of order is outside
+ * it (`__tests__/cheat-sheet.test.ts`, "CH1").
  */
 
 import { z } from "zod"
