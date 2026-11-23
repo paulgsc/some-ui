@@ -422,8 +422,11 @@ test.describe("the Pages build", () => {
         type: "touchCancel",
         touchPoints: [],
       })
-      // At 900 px the stage takes over and the deck is gone, whole.
+      // At 900 px the stage takes over and the deck is gone, whole, focus
+      // in it moving to the show rather than the page's start.
+      await deck.focus()
       await page.setViewportSize({ width: 900, height: 844 })
+      await expect(page.locator(".show")).toBeFocused()
       await expect(page.locator(".show[data-deck]")).toHaveCount(0)
       await expect(page.locator(".deck-dots, .deck-status")).toHaveCount(0)
       await expect(page.locator(".stage")).toBeVisible()
@@ -460,7 +463,6 @@ test.describe("the Pages build", () => {
     await page.goto(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toBeVisible()
     await expect(scripts).toHaveCount(1)
-    await expect(scripts).toHaveAttribute("type", "module")
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)

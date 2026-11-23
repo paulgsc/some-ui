@@ -39,6 +39,7 @@ export type LandingWords = {
    */
   readonly deck: {
     readonly label: string
+    readonly dots: string
     readonly hint: string
     readonly landed: (scene: string, at: number, of: number) => string
   }
@@ -67,7 +68,8 @@ export const LANDING_WORDS: LandingWords = {
   projectsTitle: "What I built and use every day",
   deck: {
     label: "What I built, a scene at a time",
-    hint: "Swipe, or use the arrow keys, to turn to the next or the last scene",
+    dots: "Scenes",
+    hint: "Swipe, use the arrow keys, or pick a dot to turn to another scene",
     landed: (scene, at, of) => `${scene}, scene ${String(at)} of ${String(of)}`,
   },
   gapsTitle: "Gaps I'm working through",

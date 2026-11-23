@@ -409,10 +409,7 @@
         margin: 0.2rem 0;
         font-size: 0.95rem;
       }
-      /* A reader who prefers less motion sees each clip's preview, still.
-         With no script the hidden clip still loads and plays out of sight
-         (autoplay outranks preload); the enhancement pauses it, as it does
-         any clip out of view (C1422). */
+      /* A reader who prefers less motion sees each clip's preview, still. */
       @media (prefers-reduced-motion: reduce) {
         video.media {
           display: none;
@@ -431,7 +428,8 @@
         align-items: flex-start;
       }
       .card,
-      .face {
+      .face,
+      .show[data-deck] .scene-copy {
         border-radius: var(--radius);
         overflow: hidden;
         background: var(--card);
@@ -516,9 +514,6 @@
         .show[data-deck] .scene-copy {
           align-self: start;
           padding: 16px 18px 14px;
-          border-radius: var(--radius);
-          background: var(--card);
-          box-shadow: 0 0 0 1px var(--line);
         }
         .show[data-deck] .scene-copy > p:not(.scene-of) {
           margin: 0.25rem 0 0;
@@ -590,14 +585,6 @@
           text-align: center;
           font-size: 0.8rem;
           color: var(--muted);
-        }
-        .deck-status {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          overflow: hidden;
-          clip-path: inset(50%);
-          white-space: nowrap;
         }
       }
       /* WIDE_MOTION: the stage. The copy block (an episode a face, about Y)
@@ -808,9 +795,8 @@
            that, and the reader sees it a little from below and aside
            (the camera, C1422), so the next face's edge and one end
            show at rest and through every turn. Its perspective is about
-           three and a half of its edges. */
-        /* The cube's own width is what its perspective counts in (cqi on
-           .ring--cube itself reads the nearest container above it). */
+           three and a half of its edges, counted in the cube's own width
+           (its block is the container its cqi reads). */
         .block--cube {
           container-type: inline-size;
         }
@@ -1084,7 +1070,9 @@
       .themes .theme-icon svg {
         display: block;
       }
-      .themes .theme-name {
+      /* Read out, not seen: the picker's name, the deck's announcements. */
+      .themes .theme-name,
+      .deck-status {
         position: absolute;
         width: 1px;
         height: 1px;

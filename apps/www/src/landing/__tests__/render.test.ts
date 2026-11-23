@@ -5,6 +5,7 @@
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { DECK_QUERY } from "@/landing/deck"
 import { landingMochi, mochiSvg } from "@/landing/mochi"
 import { SITE_BASE } from "@/landing/output"
 import type { LandingMedia } from "@/landing/render"
@@ -425,7 +426,7 @@ describe("renderLanding", () => {
       expect(from, query).toBeGreaterThan(-1)
       return outside.slice(from, outside.indexOf("\n      }\n", from))
     }
-    const deck = blockAt("(width < 900px)")
+    const deck = blockAt(DECK_QUERY)
     const sheen = blockAt("(prefers-reduced-motion: no-preference)")
     expect(deck).toMatch(/\.show\[data-deck\] [^{]*\{[^}]*transform:/)
     expect(sheen).toMatch(/\.preview::after \{\s*animation: pass [^;]* 2;/)

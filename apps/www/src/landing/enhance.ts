@@ -63,7 +63,7 @@ function mountDeck(
   const dots = document.createElement("div")
   dots.className = "deck-dots"
   dots.setAttribute("role", "group")
-  dots.setAttribute("aria-label", words.label)
+  dots.setAttribute("aria-label", words.dots)
   dots.append(
     ...scenes.map((_, i) => {
       const dot = document.createElement("button")
@@ -145,8 +145,7 @@ function mountDeck(
     was = now.kind
   })
   const detach = pager.attach(flat, "horizontal")
-  // The pager leaves the page its vertical scroll; a pinch stays the
-  // reader's too (#3470 §3). Its detach puts back what was there before.
+  // Vertical scroll and a pinch stay the page's.
   flat.style.touchAction = "pan-y pinch-zoom"
 
   const onKey = (event: KeyboardEvent): void => {
@@ -160,6 +159,13 @@ function mountDeck(
   draw()
 
   return () => {
+    // Focus in the deck, its dots included, moves to the show as the deck
+    // goes, rather than falling to the page's start.
+    const focused =
+      flat.contains(document.activeElement) ||
+      dots.contains(document.activeElement)
+    // A turn in flight lands where it was going.
+    run({ type: "touch" })
     flat.removeEventListener("keydown", onKey)
     detach()
     unsubscribe()
@@ -177,15 +183,16 @@ function mountDeck(
       "data-moving",
     ])
       flat.removeAttribute(name)
-    // Focus on the deck as it goes stays where it was, out of the tab order,
-    // rather than falling to the page's start.
-    if (flat === document.activeElement) flat.tabIndex = -1
     flat.style.removeProperty("--p")
     flat.style.removeProperty("--side")
     delete show.dataset["deck"]
     dots.remove()
     hint.remove()
     status.remove()
+    if (focused) {
+      show.tabIndex = -1
+      show.focus({ preventScroll: true })
+    }
   }
 }
 
@@ -234,7 +241,6 @@ function reveal(aperture: HTMLElement): void {
       else failed()
     else media.addEventListener("load", decoded, { once: true })
   } else if (media instanceof HTMLVideoElement) {
-    // A frame to show, not only its size (HAVE_CURRENT_DATA).
     if (media.error !== null) failed()
     else if (media.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) ready()
     else media.addEventListener("loadeddata", ready, { once: true })
@@ -265,11 +271,10 @@ function clips(): void {
   const videos = [...document.querySelectorAll<HTMLVideoElement>("video.media")]
   if (videos.length === 0) return
   const seen = new Set<HTMLVideoElement>()
-  // Clips the browser refused to start: not asked again until they leave
-  // view and come back.
+  // Clips the browser refused to start (autoplay not allowed): not asked
+  // again until their face is out of view, on screen or on the show's clock.
   const refused = new Set<HTMLVideoElement>()
-  // The script plays them now: none starts because a copy of it in the
-  // other layout was told to.
+  // Each clip is in both layouts; only check() starts one.
   for (const video of videos) {
     video.autoplay = false
     video.pause()
@@ -289,23 +294,24 @@ function clips(): void {
         (face === null ||
           (t !== null && faceOn(face.dataset["on"] ?? "", t, cycle)))
       if (on && video.paused && !refused.has(video))
-        video.play().catch(() => {
-          refused.add(video)
-          // Ignored: a clip the browser won't start (autoplay refused, or
-          // paused again before it began) keeps its preview, which is what
-          // the face shows in its place; it is asked again once back in view.
+        video.play().catch((error: unknown) => {
+          // Ignored: a clip that doesn't start keeps its preview, which is
+          // what the face shows in its place. Only a refusal is remembered;
+          // a play our own pause cut short (AbortError) is asked again.
+          if (error instanceof DOMException && error.name === "NotAllowedError")
+            refused.add(video)
         })
-      if (!on && !video.paused) video.pause()
+      if (!on) {
+        refused.delete(video)
+        if (!video.paused) video.pause()
+      }
     }
   }
   const watcher = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (!(entry.target instanceof HTMLVideoElement)) continue
       if (entry.isIntersecting) seen.add(entry.target)
-      else {
-        seen.delete(entry.target)
-        refused.delete(entry.target)
-      }
+      else seen.delete(entry.target)
     }
     check()
   })

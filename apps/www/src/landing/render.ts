@@ -15,6 +15,7 @@
  */
 import type { ResumeData } from "@some-ui/resume"
 
+import { SHOW_BREAK_PX } from "./deck.ts"
 import type { MediaSize } from "./media.ts"
 import type { LandingMochi } from "./mochi.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
@@ -98,8 +99,7 @@ const mediaTag = (key: string, slot: SlotKind): string =>
  * that brings it in (a page opened narrow and then widened included), and
  * one clock keeps them together (`timeline.ts`).
  */
-export const WIDE_MOTION =
-  "(width >= 900px) and (prefers-reduced-motion: no-preference)"
+export const WIDE_MOTION = `(width >= ${String(SHOW_BREAK_PX)}px) and (prefers-reduced-motion: no-preference)`
 
 /** The show's tracks as CSS: every keyframes rule, each named only where the show moves. */
 function showCss(timeline: Timeline): string {

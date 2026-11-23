@@ -20,8 +20,10 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { Turn } from "@some-ui/shared"
 
-/** Where the deck is the show: the stage's other side (`WIDE_MOTION`, render.ts). */
-export const DECK_QUERY = "(width < 900px)"
+/** The width at which the show is the stage (`WIDE_MOTION`, render.ts) rather than the deck. */
+export const SHOW_BREAK_PX = 900
+/** Where the deck is the show. */
+export const DECK_QUERY = `(width < ${String(SHOW_BREAK_PX)}px)`
 /** How long a let-go turn eases into its face, or back. */
 export const SETTLE_MS = 260
 
@@ -68,7 +70,7 @@ export type DeckStep = readonly [DeckState, ReadonlyArray<DeckEffect>]
 export const restAt = (at: number): DeckState => ({ kind: "rest", at })
 
 /** Index `i` in a deck of `n`, wrapped round. */
-export const wrap = (i: number, n: number): number => ((i % n) + n) % n
+const wrap = (i: number, n: number): number => ((i % n) + n) % n
 
 const clamp = (v: number): number => Math.max(-1, Math.min(1, v))
 
@@ -111,7 +113,6 @@ export function step(
     case "drag": {
       if (!motion) return [state, []]
       if (state.kind === "settle") {
-        // A drag only follows a touch, which lands a settle first.
         const [rest, effects] = land(state, n)
         return [
           { kind: "drag", at: rest.at, progress: clamp(event.progress) },
@@ -125,7 +126,6 @@ export function step(
     }
     case "turn": {
       const to = toward(event.to)
-      // A turn under way lands first, so two quick turns are two scenes.
       const [base, effects] =
         state.kind === "settle" ? land(state, n) : [state, []]
       const from = base.kind === "drag" ? base.progress : 0

@@ -3,15 +3,7 @@
  * lands exactly once, and a swap with no motion.
  */
 import type { DeckEvent, DeckState } from "@/landing/deck"
-import {
-  DECK_QUERY,
-  restAt,
-  SETTLE_MS,
-  step,
-  viewOf,
-  wrap,
-} from "@/landing/deck"
-import { WIDE_MOTION } from "@/landing/render"
+import { restAt, SETTLE_MS, step, viewOf } from "@/landing/deck"
 import { describe, expect, it } from "vitest"
 
 const N = 5
@@ -33,12 +25,6 @@ function run(
 }
 
 describe("the deck", () => {
-  it("wraps every index round the deck", () => {
-    expect(wrap(N, N)).toBe(0)
-    expect(wrap(-1, N)).toBe(N - 1)
-    expect(wrap(2 * N + 3, N)).toBe(3)
-  })
-
   it("turns past the last scene to the first, and back from the first to the last", () => {
     const next = run(
       [
@@ -163,10 +149,5 @@ describe("the deck", () => {
     )
     expect(state).toEqual(restAt(0))
     expect(effects).toEqual([])
-  })
-
-  it("is the show's other side at 900 px, the stage's side meeting it there", () => {
-    expect(DECK_QUERY).toBe("(width < 900px)")
-    expect(WIDE_MOTION.startsWith("(width >= 900px)")).toBe(true)
   })
 })
