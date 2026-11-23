@@ -5,8 +5,9 @@ import { cn } from "../../../lib/utils"
 import { Dot } from "../../patterns/dot"
 
 /**
- * A chip that filters a list: what it shows, how many it shows, whether it
- * is picked, and an optional dot for what the items mean. Takes on home
+ * A chip that filters or orders a list: what it shows, how many it shows
+ * (none for an order), whether it is picked, and an optional dot for what
+ * the items mean. Takes on home
  * (TAKES3, TAKES20), its reconciling page and a Rust Rounds ticket's points
  * (RR24) draw their filters with it, in a `CHIP_BAR`.
  */
@@ -15,12 +16,15 @@ export const Chip = ({
   count,
   dot = null,
   onTap,
+  className,
   children,
 }: {
   picked: boolean
-  count: number
+  count?: number
   dot?: DotMeaning | null
   onTap: () => void
+  /** Classes beside its own: an edge, on a surface the same as its fill. */
+  className?: string
   children: ReactNode
 }): JSX.Element => (
   <button
@@ -29,12 +33,15 @@ export const Chip = ({
     onClick={onTap}
     className={cn(
       "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm",
-      picked ? "bg-foreground text-background" : "bg-card"
+      picked ? "bg-foreground text-background" : "bg-card",
+      className
     )}
   >
     {dot !== null && <Dot meaning={dot} className="size-2" />}
     {children}
-    <span className="tabular-nums opacity-75">{count}</span>
+    {count !== undefined && (
+      <span className="tabular-nums opacity-75">{count}</span>
+    )}
   </button>
 )
 

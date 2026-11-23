@@ -11,14 +11,7 @@ import type { AskFile, WorkRepo } from "@some-ui/video-render"
 import { readAskIssue } from "@some-ui/video-render"
 import { z } from "zod"
 
-/** One issue as GitHub lists it: a pull request carries `pull_request`. */
-const IssueSchema = z.object({
-  number: z.number().int().positive(),
-  title: z.string(),
-  html_url: z.url(),
-  body: z.string().nullable(),
-  pull_request: z.unknown().optional(),
-})
+import { askTitle, IssueSchema } from "@/lib/public-github"
 
 export const IssuesSchema = z.array(IssueSchema)
 
@@ -56,7 +49,7 @@ export function asksOf(repo: WorkRepo, issues: Issues): Array<OpenAsk> {
         repo,
         number: issue.number,
         url: issue.html_url,
-        title: issue.title.replace(/^\s*\[ASK\]\s*/i, ""),
+        title: askTitle(issue.title),
         ask,
       }
     })

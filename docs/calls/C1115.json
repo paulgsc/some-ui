@@ -1,0 +1,23 @@
+{
+  "id": "C1115",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/cooking",
+    "apps/www/src/routes/_dashboard/_lan/cooking.tsx",
+    "apps/www/src/lib/journey",
+    "apps/www/src/lib/asks/read.ts",
+    "packages/video-render/src/ask.ts",
+    "docs/asks.md"
+  ],
+  "chose": "The reach for the Cooking page (LEDGER-WEB #3425) stops at folding our own parts together and building only the join. GitHub stays the store for everything it already holds (pull requests, checks, workflow runs, releases, asks), read publicly as the page opens, as the Asks page reads asks. What GitHub can't know (the worker sessions, the live goals, and which work and which ask steps feed each goal) is one fenced json run block (some-ui.run/1) in the coordinator's existing [ORCH] record issue for the run, read by the ask reader's fence parsing made generic over its tag, with RefSchema and WORK_REPOS reused. The page's road is a second member of the journey family (stops, marks, legs, a closed set of states), never moved by hand, so the take conveyor (owner-moved stations) is not its shape. Nothing new is kept on home. Rungs: inward first, reusing the Asks page's public read, the ask block's fence parsing and the journey road; then rung 1, GitHub used as it is, as the store; rung 2 (running a board on home and writing only the wiring) is passed over because the board would be a second copy of what GitHub holds, kept current by a bot; then a small rung 3 for the gap. What is ours, in one sentence: the join of the owner's goals with the worker sessions, the pull requests and the ask steps that gate each goal, which no tool holds because the sessions live nowhere but the coordinator's record. The owner sets up nothing: the run block lives on a public issue, and nothing goes to a third party or to home.",
+  "options": [
+    "GitHub as the store plus one run block on the [ORCH] issue, and only the joining page built (taken)",
+    "a GitHub Projects board",
+    "a self-hosted kanban on home (Planka, Focalboard)",
+    "a new store on home for the run"
+  ],
+  "gray": "Whether an existing board tool already delivers the story is a reach verdict no check settles. Projects can't see the worker sessions or join a request to its bucket PR and release, a kanban on home would be a second copy written by a bot, and the owner said nothing about where the run's own facts live.",
+  "undo": "Record a call that moves this one, and point the page at the chosen tool instead of the run block.",
+  "refs": ["#3425"]
+}

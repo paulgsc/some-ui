@@ -32,8 +32,8 @@
 import { assertNever, isRecord } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
+import { parseFenced } from "./fence"
 import { words } from "./format"
 import { OptionSchema, RefSchema, WORK_REPOS } from "./refs"
 import type { Repo, WorkRepo } from "./refs"
@@ -194,38 +194,9 @@ export function callOptionsOf(ask: AskFile): CallOptions {
   }
 }
 
-/** The block, indented or not (under a list item, say), empty or not. */
-const FENCE =
-  /^[ \t]*```json ask[ \t]*\r?\n(?:([\s\S]*?)\r?\n)?[ \t]*```[ \t]*$/gm
-
 /** The ask an issue's body carries, or every reason it carries none. */
-export function parseAskBody(body: string): Parsed<AskFile> {
-  const blocks = [...body.matchAll(FENCE)].map((m) => m[1] ?? "")
-  if (blocks.length !== 1)
-    return {
-      ok: false,
-      problems: [
-        blocks.length === 0
-          ? "it has no ```json ask block"
-          : "it has more than one ```json ask block",
-      ],
-    }
-  if ((blocks[0] ?? "").trim() === "")
-    return { ok: false, problems: ["its ask block is empty"] }
-  let raw: unknown
-  try {
-    raw = JSON.parse(blocks[0] ?? "")
-  } catch (error) {
-    return {
-      ok: false,
-      problems: [`its ask block isn't JSON: ${String(error)}`],
-    }
-  }
-  const parsed = askSchemaOf(raw).safeParse(raw)
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : { ok: false, problems: problemsOf(parsed.error, "ask") }
-}
+export const parseAskBody = (body: string): Parsed<AskFile> =>
+  parseFenced<AskFile>(body, "ask", askSchemaOf)
 
 /** The id an ask's item takes in a call: its repository and number. */
 export const askId = (issue: {
