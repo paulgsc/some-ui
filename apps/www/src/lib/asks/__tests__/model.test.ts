@@ -37,6 +37,8 @@ const issue = (
   number,
   title,
   html_url: `https://github.com/paulgsc/some-ui/issues/${number}`,
+  created_at: "2026-11-20T09:00:00Z",
+  closed_at: null,
   body,
   ...extra,
 })
