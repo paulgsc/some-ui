@@ -110,6 +110,11 @@ const SERVER_PATHS: ReadonlyArray<readonly [string, string, string]> = [
     "/jobs",
     "GET /jobs, the server's Jobs record, under the home API base",
   ],
+  [
+    "src/components/settings/device-section.tsx",
+    "/cooking",
+    "a page of home's web app, opened in the browser from the paired base (C1163), not a route of this build",
+  ],
 ]
 
 const IMPORTS_HAS_AUDIENCE =

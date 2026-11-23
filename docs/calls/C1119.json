@@ -1,0 +1,18 @@
+{
+  "id": "C1119",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/cooking",
+    "apps/www/src/routes/_dashboard/_lan/cooking.tsx"
+  ],
+  "chose": "The Cooking page's alert bar and colours follow one algebra, at the owner's word (2026-11-22: \"It should be an alert, so it should arrest attention, but it shouldn't occupy too much space … a permanent nav bar at the very top of the viewport … We should have color themes for like who's blocking and the urgency. So we should have an algebra for that.\"). A blocking stop's theme is Holder × Urgency, one pure function onto the palette's tokens. Holder ∈ {you, claude, checks, home} sets the hue, and the holder's name is always written beside it, so colour is never the only sign. Urgency ∈ {now, today, whenever} sets the weight: a solid fill, a tint, or a dashed outline. Only a train's current stop (where it stands, not the stop the owner has made active in the card) has an urgency. It is now when another live train waits on this one, whenever when the goal kind's route marks that stop as one that can wait, and today otherwise: today is the rest, not a deadline, and whenever comes from the route, not from a clock. The bar is one line, pinned to the top of the viewport and truncated, never wrapped. It shows how many trains wait on the owner and the single most urgent blocker, ordered by urgency, then you before claude, checks and home, then the longest waiting. Tapping it makes that train and stop the card's. The same algebra colours the stops on the trains and the card. It adds to C1117 and replaces nothing of it: the bar sits above C1117's card, and C1117's layout stands.",
+  "options": [
+    "holder × {now, today, whenever}, with urgency derived from trains waiting and the route (taken)",
+    "holder × urgency read from a field the coordinator writes in the run record",
+    "holder hue only, with urgency shown as words (against the owner's \"color themes for … the urgency\", listed for completeness)"
+  ],
+  "gray": "The owner asked for an algebra over who blocks and how urgent, but named no urgency levels and no source for them; deriving them from the trains keeps the run record from carrying an opinion it would have to keep current.",
+  "undo": "Record a call that moves this one, and change urgencyOf or the order in the bar's pick.",
+  "refs": ["#3425"]
+}

@@ -12,18 +12,15 @@ import type { AskFile, WorkRepo } from "@some-ui/video-render"
 import { readAskIssue } from "@some-ui/video-render"
 import { z } from "zod"
 
-/** One issue as GitHub lists it: a pull request carries `pull_request`. */
-const IssueSchema = z.object({
-  number: z.number().int().positive(),
-  title: z.string(),
-  html_url: z.url(),
-  body: z.string().nullable(),
+import { askTitle, IssueSchema } from "@/lib/public-github"
+
+/** An ask's issue as GitHub lists it, with when it was filed and closed. */
+const AskIssueSchema = IssueSchema.extend({
   created_at: z.iso.datetime({ offset: true }),
   closed_at: z.iso.datetime({ offset: true }).nullable(),
-  pull_request: z.unknown().optional(),
 })
 
-export const IssuesSchema = z.array(IssueSchema)
+export const IssuesSchema = z.array(AskIssueSchema)
 
 export type Issues = z.infer<typeof IssuesSchema>
 
@@ -63,7 +60,7 @@ export function asksOf(repo: WorkRepo, issues: Issues): Array<AskIssue> {
         repo,
         number: issue.number,
         url: issue.html_url,
-        title: issue.title.replace(/^\s*\[ASK\]\s*/i, ""),
+        title: askTitle(issue.title),
         opened: issue.created_at,
         answered: issue.closed_at,
         ask,

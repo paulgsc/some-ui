@@ -43,6 +43,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "One kind of ask, or every ask counted by call and by who waits, at the same desk: not an offer.",
   },
   {
+    route: "/cooking",
+    why: "Where the work in flight stands (LEDGER-WEB, #3425): a board read from GitHub, not an offer.",
+  },
+  {
     route: "/burn-ins",
     why: "A preview of what every video carries, on sample data, and the recorder's page.",
   },
