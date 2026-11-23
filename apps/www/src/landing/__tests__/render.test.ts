@@ -52,7 +52,10 @@ if (clipScene === undefined)
 const firstFaces = clipScene.faces
 /** A build given that scene's two faces, the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
-  [firstFaces[0].key, { width: 1080, height: 1920 }],
+  [
+    firstFaces[0].key,
+    { width: 1080, height: 1920, preview: `${firstFaces[0].key}.preview.webp` },
+  ],
   [firstFaces[1].key, { width: 800, height: 600 }],
   [LANDING_WORDS.gaps[0].visual, { width: 800, height: 600 }],
   [PHOTO, null],
@@ -194,9 +197,11 @@ describe("renderLanding", () => {
         )
       )
       expect(cube.match(/<div class="face"/g)).toHaveLength(4)
+      expect(cube).toContain('class="cube-cap cube-cap--left"')
+      expect(cube).toContain('class="cube-cap cube-cap--right"')
       episode.scenes.forEach((scene, s) =>
         expect(cube).toContain(
-          `data-asset="${scene.faces[0].key}" style="--i: ${String(s)}"`
+          `data-asset="${scene.faces[0].key}" style="--i: ${String(s)};`
         )
       )
     }
@@ -218,7 +223,7 @@ describe("renderLanding", () => {
   it("stands a skeleton where each episode's first faces will come, telling a clip from a still", () => {
     const blocks = [
       ...stageOf(page).matchAll(
-        /<div class="skeletons tk s-\d+" data-episode="([a-z]+)" aria-hidden="true">([\s\S]*?)<div class="pair /g
+        /<div class="skeletons tk s-\d+" data-episode="([a-z]+)" aria-hidden="true" style="--sweep-at: [^"]+">([\s\S]*?)<div class="pair /g
       ),
     ]
     expect(blocks.map((b) => b[1])).toEqual(EPISODES.map((e) => e.id))
@@ -237,30 +242,42 @@ describe("renderLanding", () => {
     }
   })
 
-  it("lays every scene flat for a phone and less motion: its copy, then its two faces", () => {
+  it("gives each scene one bounded snap stop with the matching narration and two faces", () => {
+    const scenes = EPISODES.flatMap((episode) => episode.scenes)
     const flat = page.slice(page.indexOf('<div class="flat">'))
-    for (const episode of EPISODES)
-      for (const scene of episode.scenes) {
-        const at = flat.indexOf(`<h4>${escapeHtml(scene.title)}</h4>`)
-        expect(at).toBeGreaterThan(-1)
-        const block = flat.slice(
-          at,
-          flat.indexOf("</div>\n          </div>", at)
+    const stops = [
+      ...flat.matchAll(
+        /<section class="scene-flat" id="show-scene-(\d+)"[\s\S]*?<\/section>/g
+      ),
+    ]
+    expect(stops).toHaveLength(scenes.length)
+    scenes.forEach((scene, index) => {
+      const stop = stops.at(index)
+      if (stop === undefined) throw new Error("missing scene stop")
+      const [block, position] = stop
+      expect(position).toBe(String(index + 1))
+      expect(block).toContain(
+        `Scene ${String(index + 1)} of ${String(scenes.length)}`
+      )
+      expect(block).toContain(`${escapeHtml(scene.title)}</h4>`)
+      const links = [...block.matchAll(/href="#show-scene-(\d+)"/g)].map(
+        (match) => Number(match[1])
+      )
+      expect(links).toEqual(
+        [index, index + 2].filter((stop) => stop > 0 && stop <= scenes.length)
+      )
+      for (const face of scene.faces) {
+        expect(block).toContain(`data-asset="${face.key}"`)
+        expect(block).toContain(
+          `<div class="caption"><p>${escapeHtml(face.label)}</p></div>`
         )
-        for (const face of scene.faces) {
-          expect(block).toContain(`data-asset="${face.key}"`)
-          expect(block).toContain(
-            `<div class="caption"><p>${escapeHtml(face.label)}</p></div>`
-          )
-        }
       }
+    })
   })
 
   it("shows each slot's asset when the build carries it, and only then", () => {
     const [clip, still] = firstFaces
-    expect(withMedia).toContain(
-      `<video class="media" src="${SITE_BASE}media/${clip.key}"`
-    )
+    expect(withMedia).toContain(`<source src="${SITE_BASE}media/${clip.key}"`)
     expect(withMedia).toContain(
       `<img class="media" src="${SITE_BASE}media/${still.key}"`
     )
@@ -287,22 +304,44 @@ describe("renderLanding", () => {
         }
   })
 
-  it("lays a clip in its face as a background, never a player (C1064)", () => {
+  it("autoplays desktop clips and gives narrow clips a native player without autoplay", () => {
     const videos = [...withMedia.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
-    // The stage's face and the flat card's.
     expect(videos).toHaveLength(2)
+    const [desktop, narrow] = videos
+    expect(desktop).toContain('autoplay loop aria-hidden="true"')
+    expect(desktop).not.toContain("controls")
+    expect(narrow).toContain("controls aria-label=")
+    expect(narrow).not.toContain("autoplay")
+    expect(withMedia).toContain(`media="${WIDE_MOTION}"`)
+    expect(withMedia).toContain(
+      'media="(width < 900px) and (prefers-reduced-motion: no-preference)"'
+    )
     for (const video of videos) {
-      for (const attribute of [
-        "autoplay",
-        "muted",
-        "loop",
-        "playsinline",
-        "disablepictureinpicture",
-        'aria-hidden="true"',
-      ])
-        expect(video).toContain(attribute)
-      expect(video).not.toMatch(/\bcontrols\b|tabindex|aria-label/)
+      expect(video).toContain('preload="none"')
+      expect(video).toContain('poster="')
+      expect(video).toContain("muted playsinline")
     }
+  })
+
+  it("shares the same clip preview across both layouts and keeps its display ratio", () => {
+    const clip = firstFaces[0]
+    const preview = `${SITE_BASE}media/${clip.key}.preview.webp`
+    const posters = [...withMedia.matchAll(/<video[^>]+poster="([^"]+)"/g)]
+    expect(posters.map((match) => match[1])).toEqual([
+      expect.stringMatching(/^data:image\/gif;/),
+      preview,
+    ])
+    const underlays = [
+      ...withMedia.matchAll(
+        /class="media-preview" aria-hidden="true"><img src="([^"]+)"/g
+      ),
+    ]
+    // The episode’s waiting screen and both scene layouts use one preview.
+    expect(underlays.filter((match) => match[1] === preview)).toHaveLength(3)
+    expect(stageOf(withMedia)).toContain(
+      `data-asset="${clip.key}" style="--i: `
+    )
+    expect(stageOf(withMedia)).toContain("--ar: 1080 / 1920; --r: 0.5625")
   })
 
   it("gives each card laid flat its picture's own shape, and its placeholder's without one", () => {
@@ -319,11 +358,10 @@ describe("renderLanding", () => {
     expect(style(LANDING_WORDS.gaps[1].visual)).toBe("--ar: 4 / 3; --r: 1.3333")
   })
 
-  it("puts no link or control on a card: the page's header leads to the code", () => {
+  it("keeps navigation outside the media cards", () => {
     const cards = [...withMedia.matchAll(/<article\b[\s\S]*?<\/article>/g)]
     expect(cards.length).toBeGreaterThan(0)
-    for (const [card] of cards)
-      expect(card).not.toMatch(/<a\b|<button|controls/)
+    for (const [card] of cards) expect(card).not.toMatch(/<a\b|<button/)
   })
 
   it("names every track only where the show moves, on the show's one clock", () => {
@@ -354,28 +392,16 @@ describe("renderLanding", () => {
     )
   })
 
-  it("moves only on a wide screen with motion allowed", () => {
+  it("gates the desktop clock and the narrow scroll-driven turns on motion preference", () => {
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
-    const css = template.slice(template.indexOf("<style>"))
-    const start = css.indexOf(`@media ${WIDE_MOTION} {`)
-    expect(start).toBeGreaterThan(-1)
-    // The block ends where the next top-level rule starts.
-    const end = css.indexOf("\n      }\n", start)
-    const outside = css.slice(0, start) + css.slice(end)
-    // Outside the wide block nothing is set moving or turned: transforms
-    // live only in keyframes, which only the wide block runs.
-    const keyframes = /@keyframes [a-z-]+ \{(?:[^{}]*\{[^{}]*\})*\s*\}/g
-    const rules = outside.replace(keyframes, "")
-    expect(outside.match(keyframes)?.length).toBeGreaterThan(0)
-    expect(rules).not.toMatch(/\banimation(-name)?:/)
-    expect(rules).not.toMatch(/(^|\s)transform:/m)
-    // A slot's clip or still is never cropped and never something to click.
-    expect(css).toMatch(
-      /\.media\s*\{[^}]*object-fit:\s*contain;[^}]*pointer-events:\s*none;/
+    expect(template).toContain(`@media ${WIDE_MOTION} {`)
+    expect(template).toMatch(
+      /@media \(width < 900px\) and \(prefers-reduced-motion: no-preference\) \{\s*@supports \(animation-timeline: view\(inline\)\) \{[\s\S]*?animation-timeline: --scene;/
     )
+    expect(template).toMatch(/\.media\s*\{[^}]*object-fit:\s*contain;/)
   })
 
   it("names every slot's asset among the keys the build looks for", () => {
@@ -397,14 +423,14 @@ describe("renderLanding", () => {
     }
   })
 
-  it("carries no script and links nowhere but GitHub, mail and its own PDF", () => {
+  it("carries no script and links only to scenes, GitHub, mail and its own PDF", () => {
     const html = page + renderLandingHead()
     expect(html).not.toMatch(/<script/i)
     const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1])
     expect(hrefs.length).toBeGreaterThan(0)
     for (const href of hrefs) {
       expect(href).toMatch(
-        /^(https:\/\/github\.com\/paulgsc|https:\/\/paulgsc\.github\.io\/some-ui\/$|mailto:|resume\.pdf$)/
+        /^(https:\/\/github\.com\/paulgsc|https:\/\/paulgsc\.github\.io\/some-ui\/$|mailto:|#show-scene-\d+$|resume\.pdf$)/
       )
     }
   })

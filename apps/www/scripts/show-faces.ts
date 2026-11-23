@@ -10,8 +10,8 @@
 // Needs ffmpeg and ffprobe on the path. A face the render lacks fails the
 // run: the producer's own output, not the landing, is where that shows.
 
-import { execFileSync } from "node:child_process"
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs"
+import { execFileSync, spawnSync } from "node:child_process"
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import type { EpisodeId } from "@/landing/show"
 import { facesToMake, SHOW } from "@/landing/show"
@@ -29,6 +29,30 @@ const render = resolve(renderDir)
 const out = resolve(outDir)
 const { stills, cuts } = facesToMake(SHOW, known)
 
+// A tiny poster is optional. Keep the original asset if the encoder fails.
+function makePreview(file: string): void {
+  const preview = `${file}.preview.webp`
+  const result = spawnSync("ffmpeg", [
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    file,
+    "-frames:v",
+    "1",
+    "-vf",
+    "scale=40:40:force_original_aspect_ratio=decrease:flags=area",
+    "-c:v",
+    "libwebp",
+    "-quality",
+    "45",
+    preview,
+  ])
+  if (result.status === 0) return
+  rmSync(preview, { force: true })
+  process.stderr.write(`[show-faces] no preview for ${file}\n`)
+}
+
 for (const { snip, key } of stills) {
   const target = join(out, key)
   mkdirSync(dirname(target), { recursive: true })
@@ -36,6 +60,7 @@ for (const { snip, key } of stills) {
     join(render, "snips", `${String(snip).padStart(2, "0")}.png`),
     target
   )
+  makePreview(target)
   process.stdout.write(`[show-faces] ${key}: still ${String(snip)}\n`)
 }
 
@@ -105,5 +130,6 @@ for (const { shot, key } of cuts) {
     .toString()
     .trim()
   if (sound !== "") throw new Error(`${key} still has a sound track`)
+  makePreview(target)
   process.stdout.write(`[show-faces] ${key}: shot ${shot}\n`)
 }

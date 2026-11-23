@@ -43,8 +43,10 @@ const link = (label: string, href: string): string =>
 /** Where the build serves a slot's asset (vite.config.ts, `publicSite`). */
 const mediaSrc = (key: string): string => `${SITE_BASE}${MEDIA_PATH}${e(key)}`
 
+export type LandingAsset = MediaSize & { readonly preview?: string }
+
 /** The media the build carries, by key, each with its picture's size when it has one. */
-export type LandingMedia = ReadonlyMap<string, MediaSize | null>
+export type LandingMedia = ReadonlyMap<string, LandingAsset | null>
 
 /** A card's shape when it has no picture of its own: its placeholder's. */
 const PLACEHOLDER: MediaSize = { width: 4, height: 3 }
@@ -58,17 +60,8 @@ const shape = ({ width, height }: MediaSize): string =>
   `--ar: ${String(width)} / ${String(height)}; --r: ${(width / height).toFixed(4)}`
 
 /** The size of a slot's asset when the build carries it to show. */
-const shown = (media: LandingMedia, key: string): MediaSize | undefined =>
+const shown = (media: LandingMedia, key: string): LandingAsset | undefined =>
   media.get(key) ?? undefined
-
-/**
- * A slot's asset, as the background of its picture: a clip plays muted on a
- * loop, a still just sits there; neither is a control (C1064) nor read out.
- */
-const mediaTag = (key: string, slot: SlotKind): string =>
-  slot === "clip"
-    ? `<video class="media" src="${mediaSrc(key)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
-    : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" />`
 
 /**
  * Where the show moves: a wide screen whose reader allows motion. Every
@@ -87,18 +80,33 @@ function showCss(timeline: Timeline): string {
       @media ${WIDE_MOTION} { ${tracks.map((t) => `.${t.name} { animation-name: ${t.name}; }`).join(" ")} }`
 }
 
-/**
- * A face's picture: the face's title card under its clip or still when the
- * build carries one. Laid flat it takes the picture's own shape (C1064); on
- * a cube's square face the picture sits whole inside it (C1113).
- */
-const screen = (face: ResolvedFace, media: LandingMedia): string => `
-                <div class="title-card" aria-hidden="true"><span>${e(face.label)}</span></div>${
-                  shown(media, face.key) !== undefined
-                    ? `
-                ${mediaTag(face.key, face.slot)}`
-                    : ""
-                }`
+/** A transparent native poster keeps the themed preview visible until video paints. */
+const EMPTY_POSTER =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+
+function screen(
+  face: ResolvedFace,
+  media: LandingMedia,
+  desktop: boolean
+): string {
+  const asset = shown(media, face.key)
+  const poster =
+    desktop || asset?.preview === undefined
+      ? EMPTY_POSTER
+      : mediaSrc(asset.preview)
+  const preview = previewSlot(face, asset?.preview)
+  if (asset === undefined)
+    return `${preview}<div class="title-card" aria-hidden="true"><span>${e(face.label)}</span></div>`
+  if (face.slot === "still")
+    return `${preview}<img class="media" src="${mediaSrc(face.key)}" loading="lazy" decoding="async" alt="" />`
+  const playback = desktop
+    ? 'autoplay loop aria-hidden="true"'
+    : `controls aria-label="${e(face.label)}"`
+  const query = desktop
+    ? WIDE_MOTION
+    : "(width < 900px) and (prefers-reduced-motion: no-preference)"
+  return `${preview}<video class="media" ${playback} muted playsinline disablepictureinpicture disableremoteplayback preload="none" loading="lazy" poster="${poster}"><source src="${mediaSrc(face.key)}" type="video/mp4" media="${query}" /></video>`
+}
 
 /** A face on a cube: its picture, and its band, whose label types in as it arrives. */
 const cubeFace = (
@@ -108,11 +116,10 @@ const cubeFace = (
   media: LandingMedia
 ): string =>
   face === undefined || label === undefined
-    ? `
-              <div class="face" style="--i: ${String(at)}"></div>`
+    ? `<div class="face" style="--i: ${String(at)}"></div>`
     : `
-              <div class="face" data-slot="${face.slot}" data-asset="${e(face.key)}" style="--i: ${String(at)}">
-                <div class="screen">${screen(face, media)}
+              <div class="face" data-slot="${face.slot}" data-asset="${e(face.key)}" style="--i: ${String(at)}; ${shape(shown(media, face.key) ?? PLACEHOLDER)}">
+                <div class="screen">${screen(face, media, true)}
                 </div>
                 <div class="band">
                   <p class="band-title"><span class="tk ${label.name}">${e(face.label)}</span></p>
@@ -129,14 +136,15 @@ const SKELETON_GLYPH: Readonly<Record<SlotKind, string>> = {
   still: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><rect x="5" y="9" width="38" height="30" rx="5"/><circle cx="17" cy="19" r="3.5"/><path d="M8 35l11-11 8 8 5-5 9 9"/></svg>`,
 }
 
-/**
- * A face's place before it arrives: a skeleton in the face's own shape (a
- * screen above a band), telling what is coming by its glyph, with no words a
- * reader could take for content.
- */
-const skeletonSlot = (kind: SlotKind): string => `
-          <div class="skeleton" data-skeleton="${kind}">
-            <div class="skeleton-screen">${SKELETON_GLYPH[kind]}</div>
+/** Asset previews and their clip/still marks are decorative. */
+function previewSlot(face: ResolvedFace, preview?: string): string {
+  return `<div class="media-preview" aria-hidden="true">${preview === undefined ? "" : `<img src="${mediaSrc(preview)}" alt="" />`}<span>${SKELETON_GLYPH[face.slot]}</span></div>`
+}
+
+/** The pair's places before its first turn. */
+const skeletonSlot = (face: ResolvedFace, media: LandingMedia): string => `
+          <div class="skeleton" data-skeleton="${face.slot}"${shown(media, face.key) === undefined ? "" : " data-pending"} style="${shape(shown(media, face.key) ?? PLACEHOLDER)}">
+            <div class="screen">${previewSlot(face, shown(media, face.key)?.preview)}</div>
             <div class="skeleton-band"><span></span></div>
           </div>`
 
@@ -187,16 +195,20 @@ function stage(
           (j) => `
           <div class="block block--cube">
             <div class="ring ring--cube">
-              <div class="ring-turn tk ${tracks.cubes[j].name}">${Array.from(
-                { length: CUBE_FACES },
-                (_, s) =>
-                  cubeFace(
-                    episode.scenes[s]?.faces[j],
-                    s,
-                    tracks.scenes[s]?.labels[j],
-                    media
-                  )
-              ).join("")}
+              <div class="cube-camera">
+                <div class="ring-turn tk ${tracks.cubes[j].name}">${Array.from(
+                  { length: CUBE_FACES },
+                  (_, s) =>
+                    cubeFace(
+                      episode.scenes[s]?.faces[j],
+                      s,
+                      tracks.scenes[s]?.labels[j],
+                      media
+                    )
+                ).join("")}
+                  <div class="cube-cap cube-cap--left"></div>
+                  <div class="cube-cap cube-cap--right"></div>
+                </div>
               </div>
             </div>
           </div>`
@@ -204,8 +216,8 @@ function stage(
         .join("")
       const coming = episode.scenes[0]?.faces ?? []
       return `
-        <div class="skeletons tk ${tracks.skeleton.name}" data-episode="${episode.id}" aria-hidden="true">${coming
-          .map((face) => skeletonSlot(face.slot))
+        <div class="skeletons tk ${tracks.skeleton.name}" data-episode="${episode.id}" aria-hidden="true" style="--sweep-at: ${num(tracks.skeletonSweepS)}s">${coming
+          .map((face) => skeletonSlot(face, media))
           .join("")}
         </div>
         <div class="pair tk ${tracks.pair.name}" data-episode="${episode.id}" aria-hidden="true">${cubes}
@@ -226,46 +238,50 @@ function stage(
 /** A cube has four faces about X: an episode's scenes, and any left over blank. */
 const CUBE_FACES = 4
 
-/**
- * The show laid flat, on a phone and for a reader who prefers less motion:
- * each episode, each of its scenes' copy, and the scene's two faces as cards
- * in their own shapes, the label below each picture.
- */
+/** One scroll-snap stop per published scene. Its three blocks share its scroll position. */
 function flat(
   episodes: ReadonlyArray<ResolvedEpisode>,
   media: LandingMedia
 ): string {
-  return episodes
-    .map(
-      (episode) => `
-        <section class="episode" data-episode="${episode.id}">
-          <p class="kicker">${e(episode.kicker)}</p>
-          <h3>${e(episode.title)}</h3>${episode.scenes
-            .map(
-              (scene) => `
-          <div class="scene-flat">
-            <h4>${e(scene.title)}</h4>${scene.narration
-              .map(
-                (line) => `
-            <p>${e(line)}</p>`
-              )
-              .join("")}
+  const scenes = episodes.flatMap((episode) =>
+    episode.scenes.map((scene) => ({ episode, scene }))
+  )
+  const navigation = (index: number, label: string): string =>
+    index > 0 && index <= scenes.length
+      ? `<a href="#show-scene-${String(index)}">${label}</a>`
+      : `<span aria-disabled="true">${label}</span>`
+
+  return scenes
+    .map(({ episode, scene }, index) => {
+      const position = index + 1
+      const id = `show-scene-${String(position)}`
+      return `
+          <section class="scene-flat" id="${id}" data-episode="${episode.id}" tabindex="-1" aria-labelledby="${id}-title">
+            <nav class="scene-nav" aria-label="Project scenes">
+              ${navigation(position - 1, "Previous")}
+              <span>Scene ${String(position)} of ${String(scenes.length)}</span>
+              ${navigation(position + 1, "Next")}
+            </nav>
+            <div class="scene-narration">
+              <p class="kicker">${e(episode.kicker)}</p>
+              <h3>${e(episode.title)}</h3>
+              <h4 id="${id}-title">${e(scene.title)}</h4>${scene.narration
+                .map((line) => `<p>${e(line)}</p>`)
+                .join("")}
+            </div>
             <div class="grid">${scene.faces
               .map(
                 (face) => `
               <article class="card" data-slot="${face.slot}" data-asset="${e(face.key)}" style="${shape(shown(media, face.key) ?? PLACEHOLDER)}">
-                <div class="screen">${screen(face, media)}
+                <div class="screen">${screen(face, media, false)}
                 </div>
                 <div class="caption"><p>${e(face.label)}</p></div>
               </article>`
               )
               .join("")}
             </div>
-          </div>`
-            )
-            .join("")}
-        </section>`
-    )
+          </section>`
+    })
     .join("")
 }
 
@@ -299,7 +315,7 @@ const gapCard = (g: GapWords, media: LandingMedia): string => {
           <div class="pic">
             ${
               size !== undefined
-                ? mediaTag(g.visual, "still")
+                ? `<img class="media" src="${mediaSrc(g.visual)}" alt="" />`
                 : `${GAP_DRAWING[g.id]}
             <p class="note">${e(g.visualNote)}</p>`
             }
