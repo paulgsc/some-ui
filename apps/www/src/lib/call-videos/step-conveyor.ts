@@ -18,9 +18,9 @@ import type { Step, StepReason } from "./assets"
 import { isStepReason } from "./assets"
 
 /** A file's line: the render's, less Boxing. */
-export type FileStation = Exclude<StationId, "boxing">
+type FileStation = Exclude<StationId, "boxing">
 
-export const FILE_STATIONS: ReadonlyArray<FileStation> = STATIONS.filter(
+const FILE_STATIONS: ReadonlyArray<FileStation> = STATIONS.filter(
   (id): id is FileStation => id !== "boxing"
 )
 

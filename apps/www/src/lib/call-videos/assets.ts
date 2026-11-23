@@ -51,7 +51,7 @@ export type StepState = (typeof STEP_STATES)[number]
  * made nothing. A step reads by its reason, failed or held alike
  * (`./step-conveyor`).
  */
-export const STEP_REASONS = [
+const STEP_REASONS = [
   "too-long",
   "too-large",
   "overflow",
@@ -75,7 +75,7 @@ export const isStepReason = (value: string): value is StepReason =>
  * was asked for and when home started on it only while it is under way,
  * when it ended once it has.
  */
-export const StepSchema = z.object({
+const StepSchema = z.object({
   asset: z.enum(EPISODE_ASSETS),
   state: z.enum(STEP_STATES),
   askedAt: z.number().int().nonnegative().optional(),
@@ -114,8 +114,6 @@ export const AssetsSchema = z
     description: StepSchema.optional().catch(undefined),
   } satisfies Record<EpisodeAsset, z.ZodType<Step | undefined>>)
   .catch({})
-
-export type Assets = z.infer<typeof AssetsSchema>
 
 /** What each file's content is, once home sends it. */
 export type AssetContent = {
