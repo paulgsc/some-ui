@@ -97,17 +97,22 @@ describe("renderLanding", () => {
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
-    const wide = template.slice(
-      template.indexOf(`@media ${WIDE_MOTION} {`),
-      template.indexOf(
-        "@keyframes",
-        template.indexOf(`@media ${WIDE_MOTION} {`)
-      )
-    )
+    // The wide block, to its own closing brace.
+    const open = template.indexOf(`@media ${WIDE_MOTION} {`)
+    let depth = 0
+    let close = open
+    for (let i = template.indexOf("{", open); i < template.length; i++) {
+      if (template[i] === "{") depth++
+      else if (template[i] === "}" && --depth === 0) {
+        close = i
+        break
+      }
+    }
+    const wide = template.slice(open, close)
     const pressed = [...template.matchAll(/\.hug:active[^{]*\{([^}]*)\}/g)]
     expect(pressed.length).toBeGreaterThan(1)
     for (const [rule, body] of pressed) {
-      expect(body, rule).not.toMatch(/(^|\s)transform:/)
+      expect(body, rule).not.toMatch(/(^|[\s;{])transform\s*:/)
       if (/\b(scale|rotate|translate):/.test(body))
         expect(wide, rule).toContain(rule)
     }
