@@ -2800,7 +2800,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves each finished video's folder into renders/call/<key>/ on the same drive, whole, where a week of one video is keyed <from> and a week of several parts (template version 5) is one job a part, part 1 keyed <from> and part k <from>-p<k>, each failed, retried and resumed on its own; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); a week that fails is left without a folder and tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937), once the lane admits it, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named (a video refused once made is removed then, never moved into place); no video moved into renders/call is deleted but by the owner letting its week go (CW8).",
+          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves each finished video's folder into renders/call/<key>/ on the same drive, whole, where a week of one video is keyed <from> and a week of several parts (template version 5) is one job a part, part 1 keyed <from> and part k <from>-p<k>, each failed, retried and resumed on its own; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); a week that fails is left without a folder and tried again no sooner than an hour later, or, refused by the render policy (too long or too large) or because a scene or a burn-in doesn't fit the frame (overflow: the recorder names the scenes, server#977; a burn-in's, #3451), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937), once the lane admits it, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named (a video refused once made is removed then, never moved into place); no video moved into renders/call is deleted but by the owner letting its week go (CW8).",
           "verdict": "unproven",
           "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video; a render starts only once the lane has seen its job, a pause freezes the recorder and what it started, and a stop kills them and the render resumes from its kept steps with the same bytes. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The test also holds (server#755) that the worker hands the recorder the render policy's caps, the pinned stage and home's speaker, for a week and for a preview; that a video past the size cap fails its week's attempt with the cap named and leaves no folder; that the stage and the speaker's base are pinned by digest and the recorders by a whole commit; and that the worker's own loop tries a failed week again by itself, no sooner than RETRY_AFTER after it failed, on a test clock. Not yet proven: the lane's pauses and stops with the real recorder (the test's is a fake), which only home can show.",
           "tracked": "some-ui#2659",
@@ -2859,6 +2859,11 @@
               "class": "measured",
               "says": "render-calls.sh, with a fake recorder, keeps a refused attempt's reason and numbers beside its failed log and does not try it again while its input, its job's caps, the render image, the speaker's image, the worker script and the brand files are unchanged, trying it at once when any changes (the script's sum is read when the worker starts); any other failure keeps the hourly retry; CI runs it on every pull request.",
               "ref": "server:infra/render/render-calls.test.sh"
+            },
+            {
+              "class": "structural",
+              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them.",
+              "ref": "some-ui:packages/video-render/src/__tests__/render.test.ts"
             }
           ],
           "watch": {
@@ -2895,6 +2900,12 @@
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "A refusal is decided by the same input, caps and image each time, so the hourly retry got the same refusal every hour, and a too-large one rendered in full each hour to be refused again (C501).",
               "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
+            },
+            {
+              "on": "2026-11-23",
+              "change": "A video refused because a scene or a burn-in doesn't fit the frame is held until what it is made with changes, as server#977 has held a scene that doesn't fit since 2026-11-17; a burn-in that doesn't fit now says so with its scenes (#3451), so the same hold reaches it. Every other failure keeps the hourly retry.",
+              "why": "Whether a scene or a burn-in fits is the input's bytes and the image alone, so the hourly retry re-recorded every scene to get the same refusal; the recorder this job shares with the cards essay already holds it since #3451.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3452#issuecomment-7089630995"
             }
           ]
         },
@@ -3302,7 +3313,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every voiced fill of Playoff Delta home holds becomes a video within the render policy's caps, and one that hasn't is tried again.",
-          "requirement": "Each fill in pd_fill of a voiced version (2 on) is written with its season to playoff-delta-episodes beside home's database, on its drive (STORAGE), whole; once home's lane admits it, as the call's (server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it within the same caps as the call's, and moves the finished folder into renders/playoff-delta/<season>-<team>-<NN>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); an episode that fails is left without a folder and tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937), once the lane admits it, keeping its finished steps; a fill written for the owner's own voice (version 1) is kept and never rendered, never failed; no finished video is deleted.",
+          "requirement": "Each fill in pd_fill of a voiced version (2 on) is written with its season to playoff-delta-episodes beside home's database, on its drive (STORAGE), whole; once home's lane admits it, as the call's (server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it within the same caps as the call's, and moves the finished folder into renders/playoff-delta/<season>-<team>-<NN>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); an episode that fails is left without a folder and tried again no sooner than an hour later, or, refused by the render policy (too long or too large) or because a scene or a burn-in doesn't fit the frame (overflow: the recorder names the scenes, server#977; a burn-in's, #3451), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937), once the lane admits it, keeping its finished steps; a fill written for the owner's own voice (version 1) is kept and never rendered, never failed; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Shown in home's tests: each voiced fill is written for the worker once, whole, with its season, and one for your voice never is; each reads as rendered, waiting or failed, apart from yours. Slack says when an episode's attempt fails, naming the file that holds its whole output, and when one has waited 3 hours with no attempt, each tested by promtool. The worker's own job is rehearsed against a stand-in recorder, not tested, and no real week has rendered on home yet: the first voiced fill is the routine's of Tuesday Nov 10.",
           "tracked": "some-ui#2659",
@@ -3341,6 +3352,11 @@
               "class": "structural",
               "says": "Playoff Delta's job fails, is held and is tried again through the same render_one, failed_recently and held_by as the call's and the Rust Rounds essay's, which render-calls.test.sh measures: a refusal is held until its input, its caps, the render image, the speaker's image, the worker script or the brand files change, and every other failure keeps the hourly retry.",
               "ref": "server:infra/render/render-calls.sh"
+            },
+            {
+              "class": "structural",
+              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them.",
+              "ref": "some-ui:packages/video-render/src/__tests__/render.test.ts"
             }
           ],
           "watch": {
@@ -3359,6 +3375,12 @@
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "A refusal is decided by the same input, caps and image each time, so the hourly retry got the same refusal every hour, and a too-large one rendered in full each hour to be refused again (C501).",
               "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
+            },
+            {
+              "on": "2026-11-23",
+              "change": "A video refused because a scene or a burn-in doesn't fit the frame is held until what it is made with changes, as server#977 has held a scene that doesn't fit since 2026-11-17; a burn-in that doesn't fit now says so with its scenes (#3451), so the same hold reaches it. Every other failure keeps the hourly retry.",
+              "why": "Whether a scene or a burn-in fits is the input's bytes and the image alone, so the hourly retry re-recorded every scene to get the same refusal; the recorder this job shares with the cards essay already holds it since #3451.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3452#issuecomment-7089630995"
             }
           ]
         },
@@ -3588,7 +3610,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every essay home holds becomes a video within the render policy's caps, each answer playing exactly its take, whole, and a week that hasn't is tried again.",
-          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the render policy's caps (60 minutes, shared with the interview-essay job, C780, server#1024; 500 MB; a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
+          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the render policy's caps (60 minutes, shared with the interview-essay job, C780, server#1024; 500 MB; a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later, or, refused by the render policy (too long or too large) or because a scene or a burn-in doesn't fit the frame (overflow: the recorder names the scenes, server#977; a burn-in's, #3451), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
           "verdict": "unproven",
           "conclusion": "Structural and measured: the recorder is tested in paulgsc/some-ui and rendered once locally, and the worker's essay job with a fake recorder in CI; no essay has yet been rendered on home, which only home can show.",
           "tracked": "some-ui#2691",
@@ -3617,6 +3639,11 @@
               "class": "measured",
               "says": "render-calls.sh, with a fake recorder, keeps a refused attempt's reason and numbers beside its failed log and does not try it again while its input, its job's caps, the render image, the speaker's image, the worker script and the brand files are unchanged, trying it at once when any changes (the script's sum is read when the worker starts); any other failure keeps the hourly retry; CI runs it on every pull request.",
               "ref": "server:infra/render/render-calls.test.sh"
+            },
+            {
+              "class": "structural",
+              "says": "A burn-in refused for not fitting is said with the overflow line and the ids of the scenes it is drawn over (notDrawnLines), read as the worker's refusal() reads them.",
+              "ref": "some-ui:packages/video-render/src/__tests__/render.test.ts"
             }
           ],
           "watch": {
@@ -3646,6 +3673,12 @@
               "change": "Both essays, Rust Rounds and the mock interview, may run 60 minutes, one cap shared (C780, moving C500; server#1024); the size and step-cache caps are unchanged.",
               "why": "Interview takes now stop at 3 minutes (C735, #3289), so a full week of 10 takes runs about 45 minutes with its scenes, past the 15 minutes C500 kept for it. The owner ruled that duration limits are suggestions to move with the story: \"just update the duration limit or retire it altogether.\" At the measured rates an hour is about 280 MB finished and 990 MB of segments, under every cap.",
               "decision": "https://github.com/paulgsc/some-ui/issues/3197#issuecomment-7017379818"
+            },
+            {
+              "on": "2026-11-23",
+              "change": "A video refused because a scene or a burn-in doesn't fit the frame is held until what it is made with changes, as server#977 has held a scene that doesn't fit since 2026-11-17; a burn-in that doesn't fit now says so with its scenes (#3451), so the same hold reaches it. Every other failure keeps the hourly retry.",
+              "why": "Whether a scene or a burn-in fits is the input's bytes and the image alone, so the hourly retry re-recorded every scene to get the same refusal; the recorder this job shares with the cards essay already holds it since #3451.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3452#issuecomment-7089630995"
             }
           ]
         },
