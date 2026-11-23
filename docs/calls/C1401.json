@@ -1,0 +1,20 @@
+{
+  "id": "C1401",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "packages/assurance/src/ledger.json",
+    "apps/www/tests/record/burn-ins.ts",
+    "packages/video-render/src/render.ts",
+    "server:infra/render/render-calls.sh"
+  ],
+  "chose": "A cards essay refused because a scene or a burn-in doesn't fit the frame is held until what it is made with changes, as a render-policy refusal is; every other failure keeps the hourly retry. CE1's requirement is amended to say so. Claude recommended it and the owner agreed, verbatim: \"Yeah, go with the recommended A.\"",
+  "options": [
+    "Hold an overflow refusal until the essay's inputs change (taken)",
+    "Ship only the layout fix, keep the hourly retry for overflow, and decide the hold later in #3452"
+  ],
+  "gray": "CE1 promised the hourly retry for every failure but a render-policy refusal; holding a further kind of failure changes a promise, which is the owner's to change.",
+  "undo": "Remove the overflow lines from apps/www/tests/record/burn-ins.ts and render.ts so a burn-in that doesn't fit is an ordinary failure again, and add an amendment to CE1 that restores the hourly retry for it.",
+  "refs": ["#3451", "#3452", "server#977"],
+  "agreed": "2026-11-23"
+}
