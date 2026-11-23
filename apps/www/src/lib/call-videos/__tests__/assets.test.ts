@@ -183,22 +183,30 @@ describe("readProduced", () => {
       [200, step("done")],
       [409, step("failed", { reason: "recorder" })],
     ] as const)
-      expect(readProduced({ status, body: body(s) })).toEqual({
+      expect(readProduced("thumbnail", { status, body: body(s) })).toEqual({
         kind: "step",
         step: s,
       })
   })
 
-  it("reads an episode home doesn't hold, and anything else", () => {
-    expect(readProduced({ status: 404, body: "" })).toEqual({ kind: "older" })
-    expect(readProduced({ status: 405, body: "" })).toEqual({ kind: "older" })
-    expect(readProduced({ status: 202, body: "{}" })).toEqual({
+  it("refuses a step of another file than the one asked for", () => {
+    expect(
+      readProduced("thumbnail", {
+        status: 202,
+        body: body({ asset: "video", state: "waiting" }),
+      })
+    ).toEqual({ kind: "unreadable" })
+  })
+
+  it("reads an episode home doesn't hold, a file it won't make alone, and anything else", () => {
+    for (const status of [404, 405, 422])
+      expect(readProduced("thumbnail", { status, body: "" })).toEqual({
+        kind: "older",
+      })
+    expect(readProduced("thumbnail", { status: 202, body: "{}" })).toEqual({
       kind: "unreadable",
     })
-    expect(readProduced({ status: 422, body: "{}" })).toEqual({
-      kind: "unreadable",
-    })
-    expect(readProduced({ status: 500, body: "" })).toEqual({
+    expect(readProduced("thumbnail", { status: 500, body: "" })).toEqual({
       kind: "unreadable",
     })
   })

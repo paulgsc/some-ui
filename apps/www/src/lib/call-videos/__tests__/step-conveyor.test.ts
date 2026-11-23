@@ -92,6 +92,11 @@ describe("fileConveyor", () => {
       ],
       [
         step("blocked", { reason: "something-new" }),
+        { aside: "counter", why: "held" },
+      ],
+      [step("blocked"), { aside: "counter", why: "held" }],
+      [
+        step("failed", { reason: "something-new" }),
         { aside: "burnt", why: "couldNot" },
       ],
     ]

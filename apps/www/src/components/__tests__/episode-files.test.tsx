@@ -187,6 +187,23 @@ describe("EpisodeFiles", () => {
     expect(screen.queryByRole("heading")).toBeNull()
   })
 
+  it("offers Generate again once the list read after it says not made", async () => {
+    const before = episode({
+      assets: { thumbnail: step("thumbnail", "missing") },
+    })
+    const { rerender } = showing(before)
+    fireEvent.click(
+      await screen.findByRole("button", { name: ASSET_WORDS.generate })
+    )
+    await screen.findByRole("list", { name: ASSET_WORDS.conveyor })
+    // Home dropped the ask: the list read after the answer says not made.
+    rerender(episode({ assets: { thumbnail: step("thumbnail", "missing") } }))
+    await screen.findByRole("button", { name: ASSET_WORDS.generate })
+    expect(
+      screen.queryByRole("list", { name: ASSET_WORDS.conveyor })
+    ).toBeNull()
+  })
+
   it("reads a file again once home's list says it moved, and shows it", async () => {
     const { rerender } = showing(
       episode({ assets: { thumbnail: step("thumbnail", "rendering") } })

@@ -151,10 +151,11 @@ export type AssetView<A extends ShownAsset> =
   | { readonly kind: "hidden" }
 
 /**
- * The newer word on a file: the list's step, or the step home answered an
- * ask with (`asked`), whichever has moved further along; a stamp only the
- * earlier one carries is kept, since home keeps a step's earlier times only
- * while it is under way.
+ * The newer word on a file: the step home answered Generate with (`asked`),
+ * until the list is read again after it, then the list's (the page passes
+ * `asked` only while the list is the one it tapped Generate over). A stamp
+ * only the answer carries is kept, since home keeps a step's earlier times
+ * only while it is under way.
  */
 export function latestStep(
   listed: Step | undefined,
@@ -216,15 +217,20 @@ export type Produced =
   | { readonly kind: "unreadable" }
 
 /**
- * Home's answer to `POST …/produce`: a step on 202 (taken, or already under
- * way), 200 (made) and 409 (stopped, with why); 404 for an episode or ask
- * home doesn't know. A 422 is home declining to make chapters apart from
- * their video, which the page never asks.
+ * Home's answer to `POST …/produce` of `asset`: a step on 202 (taken, or
+ * already under way), 200 (made) and 409 (stopped, with why), so long as it
+ * is the step of the file asked for; 404 for an episode home doesn't hold,
+ * and 422 for a file home won't make on its own (chapters, which come with
+ * the video and the page never asks for), each said as home can't.
  */
-export function readProduced(answer: HomeAnswer): Produced {
-  if (answer.status === 404 || answer.status === 405) return { kind: "older" }
+export function readProduced(
+  asset: EpisodeAsset,
+  answer: HomeAnswer
+): Produced {
+  if (answer.status === 404 || answer.status === 405 || answer.status === 422)
+    return { kind: "older" }
   if (answer.status !== 200 && answer.status !== 202 && answer.status !== 409)
     return { kind: "unreadable" }
   const step = readAs(StepSchema, answer.body)
-  return step === null ? { kind: "unreadable" } : { kind: "step", step }
+  return step?.asset === asset ? { kind: "step", step } : { kind: "unreadable" }
 }

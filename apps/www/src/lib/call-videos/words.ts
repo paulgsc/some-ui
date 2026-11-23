@@ -296,7 +296,7 @@ export const ASSET_WORDS = {
     alt: "The episode's thumbnail",
     missing:
       "Home made none with this episode. It can make one now from the episode, and the video stays as it is.",
-    line: "Home is making it from the episode, one thing at a time, and keeps it with the episode.",
+    line: "Home makes it from the episode, after what it's making now, and keeps it with the episode.",
   },
   description: {
     heading: "Its chapters",
@@ -319,7 +319,10 @@ export const ASSET_WORDS = {
       "Something the episode uses isn't on home yet; it moves on by itself once it is.",
     couldNot:
       "Home tried and couldn't make it from this episode, and trying again would come out the same.",
+    held: "Home is holding it until something it needs changes; it moves on by itself.",
   } satisfies Record<StoppedWhy, string>,
+  /** Under a step still on the line: the page doesn't watch it move. */
+  checkAgain: "Drag down to see where it is now.",
   when: {
     asked: (at: string, timeZone?: string): string | null => {
       const clock = clockOf(at, timeZone)
@@ -339,11 +342,10 @@ export const ASSET_WORDS = {
   save: "Save",
   saveFailed: "The share sheet didn't open. Try again.",
   produced: {
-    step: "Asked. Home will make it when it's free.",
     older:
       "Home can't make this file for this episode: it no longer holds the episode, or it's from before it could.",
     unreadable: "Home didn't answer, so nothing was asked. Try again.",
-  } satisfies Record<Produced["kind"], string>,
+  } satisfies Record<Exclude<Produced["kind"], "step">, string>,
 } as const satisfies {
   readonly [A in ShownAsset]: {
     readonly heading: string

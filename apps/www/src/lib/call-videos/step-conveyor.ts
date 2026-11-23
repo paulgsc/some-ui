@@ -12,7 +12,7 @@
 import { assertNever } from "@some-ui/core-utils"
 
 import type { Aside, StationId } from "@/lib/renders/conveyor"
-import { CONVEYOR_WORDS } from "@/lib/renders/conveyor"
+import { CONVEYOR_WORDS, refusalAside } from "@/lib/renders/conveyor"
 
 import type { Step, StepReason } from "./assets"
 import { isStepReason } from "./assets"
@@ -41,6 +41,7 @@ export type StoppedWhy =
   | "noVideo"
   | "missingInput"
   | "couldNot"
+  | "held"
 
 /** Where a step is on the line, or beside it, and what its line says. */
 export type FileConveyor = {
@@ -61,9 +62,9 @@ const HELD: {
     readonly why: StoppedWhy
   }
 } = {
-  "too-long": { aside: "tooBigForOven", why: "tooLong" },
-  "too-large": { aside: "tooBigForBox", why: "tooLarge" },
-  overflow: { aside: "spilledOver", why: "overflow" },
+  "too-long": { aside: refusalAside("too-long"), why: "tooLong" },
+  "too-large": { aside: refusalAside("too-large"), why: "tooLarge" },
+  overflow: { aside: refusalAside("overflow"), why: "overflow" },
   "no-video": { aside: "counter", why: "noVideo" },
   "take-missing": { aside: "counter", why: "missingInput" },
   "take-unheard": { aside: "counter", why: "missingInput" },
@@ -73,17 +74,18 @@ const HELD: {
   recorder: { aside: "burnt", why: "couldNot" },
 }
 
-/** Tried and not made: what a failed step, or a reason it can't read, says. */
-const COULD_NOT = { aside: "burnt", why: "couldNot" } as const
-
 /** Where a stopped step sits beside the line, and why. */
 function stoppedOf(step: Step): {
   readonly aside: Aside
   readonly why: StoppedWhy
 } {
   const { reason } = step
-  if (step.state === "failed" || reason === undefined) return COULD_NOT
-  return isStepReason(reason) ? HELD[reason] : COULD_NOT
+  if (reason !== undefined && isStepReason(reason)) return HELD[reason]
+  // A reason this phone doesn't know yet: tried and not made, or held until
+  // something changes, as the state says.
+  return step.state === "failed"
+    ? { aside: "burnt", why: "couldNot" }
+    : { aside: "counter", why: "held" }
 }
 
 /** Where `step` stands: a station, a side track where it stopped, a time. */

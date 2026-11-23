@@ -18,6 +18,7 @@ import {
   readdir,
   readFile,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -104,6 +105,51 @@ test("never overwrites a thumbnail already in the work folder", async () => {
   expect(made.ok).toBe(false)
   expect(await readFile(madePath(out, "thumbnail"), "utf8")).toBe("the owner's")
   expect(await readdir(out)).toEqual(["thumbnail.png"])
+})
+
+test("refuses a work folder that is the episode's folder, or inside it", async () => {
+  const before = await snapshot(root)
+  for (const out of [root, join(root, "work")]) {
+    await mkdir(out, { recursive: true })
+    const made = await makeAsset(browser, "thumbnail", "cards-essay", root, out)
+    expect(made.ok).toBe(false)
+  }
+  await rm(join(root, "work"), { recursive: true })
+  const linked = join(base, "linked-root")
+  await symlink(root, linked)
+  expect(
+    (await makeAsset(browser, "thumbnail", "cards-essay", root, linked)).ok
+  ).toBe(false)
+  expect(await snapshot(root)).toEqual(before)
+})
+
+test("writes through no partial already in the work folder, a link included", async () => {
+  const out = await workDir("planted")
+  const target = join(base, "not-ours.txt")
+  await writeFile(target, "keep me")
+  await symlink(target, join(out, ".thumbnail.png.partial"))
+  const made = await makeAsset(browser, "thumbnail", "cards-essay", root, out)
+  expect(made.ok).toBe(true)
+  expect(await readFile(target, "utf8")).toBe("keep me")
+  expect((await readdir(out)).sort()).toEqual([
+    ".thumbnail.png.partial",
+    "thumbnail.png",
+  ])
+})
+
+test("two makes into one work folder leave one whole thumbnail", async () => {
+  const out = await workDir("raced")
+  const [a, b] = await Promise.all([
+    makeAsset(browser, "thumbnail", "cards-essay", root, out),
+    makeAsset(browser, "thumbnail", "cards-essay", root, out),
+  ])
+  expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1)
+  expect(await readdir(out)).toEqual(["thumbnail.png"])
+  const alone = await workDir("alone")
+  await makeAsset(browser, "thumbnail", "cards-essay", root, alone)
+  expect(sha(await readFile(madePath(out, "thumbnail")))).toBe(
+    sha(await readFile(madePath(alone, "thumbnail")))
+  )
 })
 
 test("makes nothing from a folder it can't read, and says why", async () => {

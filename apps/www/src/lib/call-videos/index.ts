@@ -135,7 +135,7 @@ export async function produceAsset(
   const asked = await sendProduce(feed, key, asset)
   const produced: Produced =
     asked.kind === "answered"
-      ? readProduced(asked.answer)
+      ? readProduced(asset, asked.answer)
       : { kind: "unreadable" }
   if (produced.kind === "step") void feedVideos(feed).open()
   return produced

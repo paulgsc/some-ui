@@ -7,7 +7,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { Now, RenderFailed } from "./model"
+import type { Now, Refusal, RenderFailed } from "./model"
 import { refusalOf } from "./model"
 
 /** The line every render moves along, in order. */
@@ -98,15 +98,13 @@ export const ROW_TAGS = {
 } as const
 
 /**
- * The side track a failed row sits on (C502): one the render policy refused
- * was never burnt, it didn't fit, before the oven (too long) or in the box
- * (too large), or its scenes spilled over their frame (C566); any other
- * failure is burnt, as before.
+ * The side track a video the render policy refused sits on (C502): it didn't
+ * fit, before the oven (too long) or in the box (too large), or its scenes
+ * spilled over their frame (C566). Shared by a render's row and by a file
+ * asked of home that waits on its video (`lib/call-videos/step-conveyor`).
  */
-export function failedAside(failed: RenderFailed): Aside {
-  const refusal = refusalOf(failed)
-  if (refusal === null) return "burnt"
-  switch (refusal.kind) {
+export function refusalAside(kind: Refusal["kind"]): Aside {
+  switch (kind) {
     case "too-long": {
       return "tooBigForOven"
     }
@@ -117,7 +115,17 @@ export function failedAside(failed: RenderFailed): Aside {
       return "spilledOver"
     }
     default: {
-      return assertNever(refusal)
+      return assertNever(kind)
     }
   }
+}
+
+/**
+ * The side track a failed row sits on (C502): one the render policy refused
+ * was never burnt, and sits where `refusalAside` puts it; any other failure
+ * is burnt, as before.
+ */
+export function failedAside(failed: RenderFailed): Aside {
+  const refusal = refusalOf(failed)
+  return refusal === null ? "burnt" : refusalAside(refusal.kind)
 }

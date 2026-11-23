@@ -9,6 +9,7 @@
  * `ASSET_WORDS`. Phone build only.
  */
 import type { JSX } from "react"
+import { useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button, Notice, StationStrip } from "@some-ui/shared"
 import type { AloneAsset } from "@some-ui/video-render/assets"
@@ -129,6 +130,11 @@ const OnTheLine = ({
         </p>
       )}
       {said !== null && <p className="text-xs">{said}</p>}
+      {aside === null && at !== "ready" && (
+        <p className="text-muted-foreground text-xs">
+          {ASSET_WORDS.checkAgain}
+        </p>
+      )}
     </>
   )
 }
@@ -182,9 +188,14 @@ const AssetBlock = ({
     (alone: AloneAsset) => produceAsset(feed, episode.key, alone),
     { presentation: "interactive" }
   )
+  // The list Generate was tapped over: home's answer stands only until the
+  // list is read again after it, then the list's word is the newer one.
+  const [askedOver, setAskedOver] = useState<Episode | null>(null)
   const { state } = produce
   const answered =
-    state.status === "succeeded" && state.value.kind === "step"
+    state.status === "succeeded" &&
+    state.value.kind === "step" &&
+    askedOver === episode
       ? state.value.step
       : null
   const said =
@@ -211,7 +222,9 @@ const AssetBlock = ({
           className="self-start"
           disabled={state.status === "working"}
           onClick={() => {
-            if (view.generate !== null) produce.start(view.generate)
+            if (view.generate === null) return
+            setAskedOver(episode)
+            produce.start(view.generate)
           }}
         >
           {state.status === "working"

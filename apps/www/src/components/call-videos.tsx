@@ -324,7 +324,7 @@ export const EpisodeScreen = ({
                 startAt={startAt}
               />
             </ul>
-            <EpisodeFiles feed={feed} episode={episode} />
+            <EpisodeFiles key={episode.key} feed={feed} episode={episode} />
           </>
         )}
       </EpisodesList>

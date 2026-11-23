@@ -100,7 +100,10 @@ const PD_FOLDER = /^(.+)-week-(\d+)$/
 const PART_FOLDER = /^part-(\d+)$/
 
 /** `root`'s `name` as JSON, or why it can't be read. */
-async function keptJson(root: string, name: string): Promise<Parsed<unknown>> {
+export async function keptJson(
+  root: string,
+  name: string
+): Promise<Parsed<unknown>> {
   try {
     const value: unknown = JSON.parse(await readFile(join(root, name), "utf8"))
     return { ok: true, value }
@@ -124,6 +127,13 @@ export const FACTS_FROM_FOLDER: {
     thenOf(thenOf(await keptJson(root, "week.json"), parseCallWeek), (week) => {
       const of = callParts(week).length
       const named = PART_FOLDER.exec(basename(root))
+      if (named === null && of > 1)
+        return {
+          ok: false,
+          problems: [
+            `${root} is a week of ${String(of)} parts: each part has a folder of its own`,
+          ],
+        }
       const part = named === null ? 1 : Number(named[1])
       return part >= 1 && part <= of
         ? { ok: true, value: callFacts(week, part, of) }
