@@ -6,6 +6,7 @@
  * bite read aloud included, while one in the owner's own voice is not); and an essay that contradicts itself is
  * refused with every reason.
  */
+import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import {
   GAME_ESSAY_ID,
@@ -478,6 +479,7 @@ describe("the game essay's scenes and cut list", () => {
       "setup-3",
       "bite-3",
       "answer-3",
+      "chapter-close",
       "close",
       "brand-out",
     ])
@@ -517,7 +519,7 @@ describe("the game essay's scenes and cut list", () => {
     expect(gameEssayTakeFiles(essay, ["sample-bite-1.ogg"]).ok).toBe(false)
   })
 
-  it("is a cut list of one still per scene, and marks a chapter at each game", () => {
+  it("is a cut list of one still per scene, and marks a chapter at each game and the close", () => {
     const essay = sample()
     const scenes = gameEssayScenes(essay)
     const cut = gameEssayCutList(
@@ -525,8 +527,10 @@ describe("the game essay's scenes and cut list", () => {
       scenes.map(() => null)
     )
     expect(cut.shots).toHaveLength(scenes.length)
+    expect(parseCutList(cut).ok).toBe(true)
     expect(gameEssayChapterMarks(essay).map((mark) => mark.title)).toEqual([
       "NE at CHI",
+      "The week, closed",
     ])
   })
 

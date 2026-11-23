@@ -1,7 +1,8 @@
 /**
  * Which file in the folder home hands an essay's recorder is each answer's
  * take (RR16), for every essay that plays the owner's takes whole: the Rust
- * Rounds essay (`essay.ts`) and the interview essay (`interview-essay.ts`).
+ * Rounds essay (`essay.ts`), the interview essay (`interview-essay.ts`) and
+ * the Game Week essay (`game-essay.ts`).
  */
 import type { Parsed } from "./cut-list"
 
@@ -21,8 +22,9 @@ const TAKE_WORDS = ".words.json"
  * missing, two for one item, one for an item of `silent` or of neither, and
  * word times with no take, so nothing is drawn from the wrong voice. `noun`
  * names an item in those reasons ("ticket"). A take of an item of `unheard`
- * (a silence home couldn't make out, HEARD2) is set aside, not refused:
- * home may hand it over, and the essay plays none of it.
+ * (a silence home couldn't make out, HEARD2, or a game bite read aloud by
+ * the second voice) is set aside, not refused: home may hand it over, and
+ * the essay plays none of it.
  */
 export function takeFilesOf(
   items: {

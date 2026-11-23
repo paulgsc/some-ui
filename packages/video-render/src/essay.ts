@@ -1086,8 +1086,9 @@ export const ESSAY_VOICES: Readonly<Record<Speaker, KokoroVoice>> = {
 
 /**
  * The role each speaker plays in the voice lanes (C840): the tutor teaches,
- * the opening's asker asks, and `you`, said by Kokoro only in the sample,
- * answers. The interview essay's speakers are the same.
+ * the opening's asker asks, and `you`, said by Kokoro in a sample and for a
+ * game essay's bite read aloud, answers. The interview and game essays'
+ * speakers are the same.
  */
 export const ESSAY_VOICE_ROLES: Readonly<Record<Speaker, VoiceRole>> = {
   tutor: "tutor",
@@ -1097,9 +1098,10 @@ export const ESSAY_VOICE_ROLES: Readonly<Record<Speaker, VoiceRole>> = {
 
 /**
  * Each scene's Kokoro voice, in order, for an essay drawn in `shape`, the
- * Rust essay's or the interview essay's: its speaker's under the shape's
+ * Rust, interview or Game Week essay's: its speaker's under the shape's
  * voice policy, a chapter slide opening each new chapter. The owner's own
- * takes play in place of `you`'s voice outside the sample.
+ * takes play in place of `you`'s voice outside the sample, except a game
+ * bite read aloud, which `you`'s voice says.
  */
 export const essaySceneVoices = (
   shape: Shape | undefined,

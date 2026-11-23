@@ -11,16 +11,18 @@
  * 1. `open`: the week, and the games it holds.
  * 2. For each game, the team it is read for's first (D3):
  *    - `game`: the game, its two teams and how it ended for the team;
- *    - `bite`, for each bite of the game in each placement, in the order they were said: the one
- *      still of the game at the bite's moment, the host's setup, the bite in
- *      the owner's voice or read aloud (D5–D7), then the host's answer in
- *      the way its stance calls for (D21);
+ *    - for each bite of the game, in each placement in the order they were
+ *      said: `setup`, the host's setup over one still of the play home
+ *      matched it to (none for a bite matched to none, D12); `bite`, the bite
+ *      in the owner's voice or read aloud (D5–D7); `happened`, what came of
+ *      it, only when the still doesn't show it (D11); and `answer`, the
+ *      host's answer in the way its stance calls for (D21);
  *    - `halftime`, between a game's first half and its second (D10).
  *
  *    A game's bites are filed where home's week file puts them: a half,
  *    or before or after the game (`GAME_PLACEMENTS`, C1242). Whose voice says each is
  *    code's (`gameVoiceOf`, D5), for the writer to set `voice` by.
- * 3. `close`: the week, closed.
+ * 3. `close`: the week, closed, after a chapter slide of its own.
  *
  * **What the essay never is (section 0, D20; the owner, 2026-11-15):** a
  * recreation of the game, play by play. Its four rules, each held here:
@@ -209,10 +211,10 @@ const scene = (
   }
 }
 
-/** Mochi Night with the moving brand, as its siblings; a chapter slide opens each game. */
+/** Mochi Night with the moving brand, as its siblings; a chapter slide opens each game and the close. */
 const SHAPE: Shape = nightInMotion({
   brand: { intro: true, outro: true },
-  chapters: ["game"],
+  chapters: ["game", "close"],
   subtitles: "word",
 })
 
@@ -247,7 +249,7 @@ export function gameEssayFormat(version: number = GAME_ESSAY_VERSION): Format {
       scene(
         "setup",
         "The moment",
-        "The game at the bite's moment as one still, and the host's setup",
+        "The host's setup, over one still of the play home matched the bite to, where it matched one",
         15_000
       ),
       scene(
@@ -606,7 +608,8 @@ export type GameEssayScene =
       readonly id: string
       /** The scene the chapter slide opens. */
       readonly of: Section
-      readonly game: string
+      /** The game it opens; none for the close's. */
+      readonly game?: string
       readonly title: string
       readonly speaker: Speaker
       readonly said: string
@@ -629,7 +632,7 @@ export function gameEssayIntro(
   const aloud = bites.filter((bite) => bite.voice === "read-aloud").length
   const sample = voicing === "sample"
   const games = essay.games.length
-  const of = `${bites.length} bites on ${games} ${games === 1 ? "game" : "games"}`
+  const of = `${bites.length} ${bites.length === 1 ? "bite" : "bites"} on ${games} ${games === 1 ? "game" : "games"}`
   return {
     rows: [
       {
@@ -652,7 +655,7 @@ export function gameEssayIntro(
       },
       {
         label: "The games",
-        says: "ESPN's public play-by-play, read by home's scenario engine, drawn as one still per bite and never read out",
+        says: "ESPN's public play-by-play, read by home's scenario engine, drawn as one still per bite home matched to a play and never read out",
       },
       { label: "Said", says: of },
     ],
@@ -664,11 +667,14 @@ export function gameEssayIntro(
         : aloud === 0
           ? "The host's voice is synthetic; every bite is the owner's own."
           : "The host's voice is synthetic; each bite is the owner's own voice, or the owner's words read by a second synthetic voice where marked.",
-      "Each game is shown only where a bite was said about it, as one still of that moment.",
+      "Each game is shown only where a bite was said about it, as one still of the play home matched it to.",
       sample ? `It covers ${of}.` : `The owner said ${of}.`,
     ].join(" "),
   }
 }
+
+/** The close's chapter title. */
+const CLOSE_TITLE = "The week, closed"
 
 /** A game's chapter title: "NE at CHI". */
 const gameTitle = (game: GameEssay["games"][number]): string =>
@@ -778,6 +784,15 @@ export function gameEssayScenes(
       }
     }
   }
+  if (shape.chapters.includes("close"))
+    scenes.push({
+      section: "chapter",
+      id: "chapter-close",
+      of: "close",
+      title: CLOSE_TITLE,
+      speaker: "tutor",
+      said: `${CLOSE_TITLE}.`,
+    })
   scenes.push({
     section: "close",
     id: "close",
@@ -822,7 +837,7 @@ export function gameEssayCutList(
   )
 }
 
-/** Where the essay's chapters start (SFEED4): each game. */
+/** Where the essay's chapters start (SFEED4): each game, and the close. */
 export const gameEssayChapterMarks = (essay: GameEssay): Array<ChapterMark> =>
   chapterSlides(gameEssayScenes(essay).filter((s) => s.section === "chapter"))
 

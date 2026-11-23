@@ -1,0 +1,15 @@
+{
+  "id": "C1243",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": ["packages/video-render/src/game-essay.ts"],
+  "chose": "The Game Week essay's scenes, cut list, chapter marks and takes are its own thin functions over the stills family the essays already share (stillsCutList, chapterSlides, takeFilesOf, repeatedId, essaySceneVoices), as the interview essay's are; its scene union is its own, since its sections and what a scene belongs to (a game, a bite) are its own. Lifting the three kinds' wrappers into one generic essay cut list waits for a step that differs per kind only in data: today the Rust essay's adds zoomed screens and the others don't. A bite is four scenes (setup, bite, what happened where said, the host's answer, D11), and the close has a chapter slide of its own, so a one-game week still carries three chapters.",
+  "options": [
+    "Thin per-kind functions over the shared stills family (chosen): each is a few lines, and the kind's sections stay a compile-time union.",
+    "One generic essay cut list taking a format, a title and scenes: right once a third kind's wrapper has nothing of its own, but the Rust essay's zoom would need a hook, which is the generic node the owner warns against growing for one case.",
+    "One bite scene holding the still, setup, bite and answer: the bite and the host's lines are different speakers and voices, so they must be scenes of their own."
+  ],
+  "gray": "Where the family's line sits between shared helpers and per-kind wrappers is a judgement the next essay kind will test; the scene split and the close's chapter are what the owner sees in every essay.",
+  "undo": "Fold the four bite scenes back into one in gameEssayFormat and gameEssayScenes, drop the close's chapter from SHAPE, or lift the wrappers into a generic essay cut list.",
+  "refs": ["#2074"]
+}

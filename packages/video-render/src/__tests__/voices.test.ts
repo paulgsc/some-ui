@@ -33,6 +33,12 @@ import {
 } from "@video-render/essay"
 import type { Essay, Speaker } from "@video-render/essay"
 import {
+  GAME_ESSAY_VERSION,
+  gameEssayFormat,
+  gameEssayScenes,
+  sampleGameEssay,
+} from "@video-render/game-essay"
+import {
   INTERVIEW_ESSAY_VERSION,
   interviewEssayFormat,
   interviewEssayScenes,
@@ -72,6 +78,7 @@ type VideoKind =
   | "rust-essay"
   | "rust-opening"
   | "interview-essay"
+  | "game-essay"
 
 type Case = {
   /** Whether its newest version is in the lanes; the call is `fixed` (C840). */
@@ -233,6 +240,20 @@ const KINDS: Readonly<Record<VideoKind, Case>> = {
       expect(essay.template.version).toBe(INTERVIEW_ESSAY_VERSION)
       const scenes = interviewEssayScenes(essay, "sample")
       const shape = interviewEssayFormat(essay.template.version).shape
+      return Promise.resolve(
+        essayLines(scenes, essaySceneVoices(shape, scenes))
+      )
+    },
+  },
+  "game-essay": {
+    lanes: true,
+    pairs: false,
+    held: ["you"],
+    lines: () => {
+      const essay = unwrap(sampleGameEssay())
+      expect(essay.template.version).toBe(GAME_ESSAY_VERSION)
+      const scenes = gameEssayScenes(essay, "sample")
+      const shape = gameEssayFormat(essay.template.version).shape
       return Promise.resolve(
         essayLines(scenes, essaySceneVoices(shape, scenes))
       )
