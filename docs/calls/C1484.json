@@ -6,12 +6,12 @@
     "some-ui:packages/ui/burn-ins/src/lib/burn-in.ts",
     "some-ui:packages/some-styles/src/brand/cast.ts"
   ],
-  "chose": "The owner (2026-11-24, verbatim, in the coordinator session, after the HOST-AB prototype at https://claude.ai/artifact/AvUYK12xc17SSJuyiBU9YL): 'I really like it, and I 100% prefer the SVG, and I agree with you. And by definition, just by the memory size alone, it would be forcing that is the SVG is the only option really. ... So 100% completely approved.' So the essays' host is drawn as a live SVG rig from the cast's own data (A), not a baked sprite sheet (B), and it lands as a host kind in the burn-ins' closed union. The A/B measured 19 KB of assets for A against 19.6 MB for B; A blends poses and stays sharp in a close-up; both rendered the same bytes twice.",
+  "chose": "The owner (2026-11-24, verbatim, in the coordinator session, after the HOST-AB prototype at https://claude.ai/artifact/AvUYK12xc17SSJuyiBU9YL): \"I really like it, and I 100% prefer the SVG, and I agree with you. And by definition, just by the memory size alone, it would be forcing that is the SVG is the only option really. Now, so 100% completely approved.\" So the essays' host is drawn as a live SVG rig from the cast's own data (A), not a baked sprite sheet (B), and it lands as a host kind in the burn-ins' closed union. The A/B (numbers.json on branch claude/host-ab) measured about 19 KB of assets for A against a 19.6 MB sheet for B; A blends poses and stays sharp in a close-up; A's video rendered the same bytes twice, and B's sheet baked to the same hash twice.",
   "options": [
     "A: a live SVG rig drawn from cast.ts's data",
     "B: a sprite sheet baked from the same drawing"
   ],
   "gray": "Gray because both are deterministic and either could carry the host; the choice is a look and a weight the owner sees on every video.",
-  "undo": "Bake the sheet with the script kept on branch claude/host-ab and render the host kind with a sprite medium.",
+  "undo": "Bake the sheet with the script kept on branch claude/host-ab (commit baa59aac) and render the host kind with a sprite medium. Only the owner can move this call.",
   "refs": ["#3521", "#3522"]
 }
