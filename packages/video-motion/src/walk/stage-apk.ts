@@ -166,12 +166,13 @@ const LAID_OUT = { ms: 15_000, everyMs: 500 } as const
  * WALK9: the WebView's place, read once the app's WebView is laid out on
  * screen (`laidOut`) and two looks in a row give it the same box, so a top
  * still moving with the system bars' or the keyboard's insets is not read;
- * looking for `wait.ms`, plus the look under way when it runs out. A dump
+ * never starting a look after `wait.ms`, so it gives up within `wait.ms`
+ * and one look. A dump
  * taken as the app starts, as its keyboard's insets settle or as
  * `uiautomator` turns accessibility on can find the WebView's node not yet
  * laid out (#3489); the stage looks again rather than read that one. A look
  * that throws is a look that saw nothing. Refused with the reason the last
- * look gave, and that look's dump.
+ * look gave, and the last dump a look read.
  */
 export async function placeWhenLaidOut(
   read: () => Promise<PlaceRead>,
@@ -185,30 +186,33 @@ export async function placeWhenLaidOut(
   }
 ): Promise<ReturnType<typeof screenPlace>> {
   const until = wait.now() + wait.ms
+  /** The box the look before saw laid out, if it did. */
   let before: Box | null = null
+  let dump = ""
   for (;;) {
-    let look: PlaceRead
-    let box: Box | string
+    let why: string
     try {
-      look = await read()
-      box = laidOut(look, pkg)
-    } catch (e) {
-      look = { dump: "", innerWidth: 0, pixelRatio: 0 }
-      box = `the look failed: ${e instanceof Error ? e.message : String(e)}`
-    }
-    if (typeof box !== "string") {
-      if (before !== null && sameBox(before, box)) {
+      const look = await read()
+      if (look.dump !== "") dump = look.dump
+      const box = laidOut(look, pkg)
+      if (typeof box === "string") {
+        why = box
+        before = null
+      } else if (before !== null && sameBox(before, box)) {
         return screenPlace(box, look.innerWidth, screen)
+      } else {
+        why =
+          before === null
+            ? "the WebView was laid out only on the last look"
+            : "the WebView's box was still moving"
+        before = box
       }
-      before = box
-    } else {
+    } catch (e) {
+      why = `the look failed: ${e instanceof Error ? e.message : String(e)}`
       before = null
     }
-    if (wait.now() >= until) {
-      throw new WebViewNotLaidOut(
-        typeof box === "string" ? box : "the WebView's box was still moving",
-        look.dump
-      )
+    if (wait.now() + wait.everyMs > until) {
+      throw new WebViewNotLaidOut(why, dump)
     }
     await wait.sleep(wait.everyMs)
   }

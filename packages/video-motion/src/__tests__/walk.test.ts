@@ -180,6 +180,8 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
       { ...LAID, innerWidth: 0 },
       { ...LAID, innerWidth: Number.NaN },
       { ...LAID, pixelRatio: Number.NaN },
+      // Any width would agree with an infinite ratio.
+      { ...LAID, pixelRatio: Number.POSITIVE_INFINITY },
       { ...LAID, dump: "<hierarchy/>" },
       // A node with width, not yet the page's: 1080 / 980 is not 2.625.
       { ...LAID, innerWidth: 980 },
@@ -193,7 +195,8 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
   })
 
   it("waits for the WebView's box to hold still, its top settled with the insets", async () => {
-    const moving = { ...LAID, dump: dumpWith("[0,300][1080,1794]") }
+    // The whole box lower, its height the same: only its top tells.
+    const moving = { ...LAID, dump: dumpWith("[0,300][1080,2031]") }
     const stage = looking([moving, LAID])
     const { place } = await read(stage)
     expect(place(0, 0).y).toBeCloseTo(63 / (1080 / 411))
@@ -217,10 +220,18 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
     expect(stage.taken()).toBe(2)
   })
 
-  it("reads once two looks in a row agree", async () => {
+  it("reads once two looks in a row agree, never two with one not laid out between", async () => {
     const stage = looking([LAID])
     await read(stage)
     expect(stage.taken()).toBe(2)
+    const broken = looking([
+      LAID,
+      { ...LAID, dump: dumpWith("[0,0][0,0]") },
+      LAID,
+      LAID,
+    ])
+    await read(broken)
+    expect(broken.taken()).toBe(4)
   })
 
   it("gives up past its bound, naming the read with no width and keeping the dump", async () => {
@@ -233,8 +244,46 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
       "the WebView was never laid out: the app's WebView is 0 px wide in the screen's dump"
     )
     expect(failed.dump).toBe(zero)
-    // Each look 1 s and each wait 0.5 s: 11 looks reach the 15 s bound.
+    // Each look 1 s and each wait 0.5 s: the 11th starts at 15 s, the last
+    // one that may, and none starts after.
     expect(stage.taken()).toBe(11)
+  })
+
+  it("says whether the box was still moving or laid out only on the last look", async () => {
+    const lower = { ...LAID, dump: dumpWith("[0,300][1080,2031]") }
+    const moving = looking(
+      Array.from({ length: 11 }, (_, i) => (i % 2 === 0 ? LAID : lower))
+    )
+    expect(await read(moving).catch((e: unknown) => e)).toMatchObject({
+      message:
+        "the WebView was never laid out: the WebView's box was still moving",
+    })
+    const zero = { ...LAID, dump: dumpWith("[0,0][0,0]") }
+    const late = looking([...Array.from({ length: 10 }, () => zero), LAID])
+    expect(await read(late).catch((e: unknown) => e)).toMatchObject({
+      message:
+        "the WebView was never laid out: the WebView was laid out only on the last look",
+    })
+  })
+
+  it("keeps the last dump a look read when the last look throws", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    const stage = looking([{ ...LAID, dump: zero }])
+    let looks = 0
+    const failing = {
+      ...stage,
+      read: (): Promise<PlaceRead> => {
+        looks += 1
+        return looks === 1
+          ? stage.read()
+          : stage.read().then(() => Promise.reject(new Error("gone")))
+      },
+    }
+    const failed = await read(failing).catch((e: unknown) => e)
+    expect(failed).toMatchObject({
+      message: "the WebView was never laid out: the look failed: gone",
+      dump: zero,
+    })
   })
 })
 
