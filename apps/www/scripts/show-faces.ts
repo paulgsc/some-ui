@@ -9,8 +9,8 @@
 //
 // With a Snips Capture bundle (docs/snips.md), it also copies each route's
 // still the show names (a `screen` face, #3473) from the bundle's APK
-// pictures, the release build's where it has one. With no bundle there
-// (that half of the capture failed), it makes the rest and says so.
+// pictures, the release build's where it has one. A route the show names
+// that the capture did not photograph fails the run.
 //
 // Beside each face it writes the face's preview (`previewKey`): a still
 // itself, or a clip's middle frame (a cut opens on its fade in), 40 px on its long edge, as WebP, which the landing shows in the
@@ -21,7 +21,7 @@
 // run: the producer's own output, not the landing, is where that shows.
 
 import { execFileSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { previewKey } from "@/landing/render"
 import type { EpisodeId } from "@/landing/show"
@@ -177,29 +177,28 @@ function apkPictures(bundle: string): ReadonlyArray<Picture> {
   })
 }
 
-const bundle = bundleDir === undefined ? null : resolve(bundleDir)
-// No bundle (the web capture or the bundle failed in this run): the route
-// stills are left out, and the landing draws their faces' title cards.
-if (
-  screens.length > 0 &&
-  bundle !== null &&
-  !existsSync(join(bundle, "manifest.json"))
-)
-  process.stdout.write(
-    `[show-faces] no snips bundle at ${bundle}: no route stills\n`
-  )
-else if (screens.length > 0 && bundle !== null) {
+// A route the show names that the capture didn't photograph fails the run,
+// as a walk face the render lacks does: the producer's own output, not the
+// landing, is where that shows (#3473). So does a run with no bundle.
+if (screens.length > 0) {
+  if (bundleDir === undefined)
+    throw new Error(
+      `the show names ${String(screens.length)} route stills, and no snips bundle was given`
+    )
+  const bundle = resolve(bundleDir)
   const pictures = apkPictures(bundle)
+  const missing = screens.filter(
+    ({ route }) => !pictures.some((p) => p.route === route)
+  )
+  if (missing.length > 0)
+    throw new Error(
+      `the capture photographed none of: ${missing.map((m) => m.route).join(", ")} (the bundle's manifest lists each route it could not show under \`unreached\`)`
+    )
   for (const { route, key } of screens) {
     const found =
       pictures.find((p) => p.route === route && p.build === "release") ??
       pictures.find((p) => p.route === route)
-    // A route the capture couldn't show is the capture's to say (its
-    // `unreached`); the landing draws the face's title card.
-    if (found === undefined) {
-      process.stdout.write(`[show-faces] ${key}: no picture of ${route}\n`)
-      continue
-    }
+    if (found === undefined) continue
     const target = join(out, key)
     mkdirSync(dirname(target), { recursive: true })
     copyFileSync(join(bundle, found.name), target)

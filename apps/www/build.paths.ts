@@ -270,13 +270,14 @@ export const ALLOWLISTED_PROFILES: ReadonlyArray<Deployable> = ["pages"]
  * reaches the record through, and the landing's one script, which only
  * enhances its show (C1422): the phone's deck, the media's reveal and the
  * clips' pausing, with the words they say and the show's clock they read,
- * and each pool's draw (`draw.ts`, #3473).
+ * and each pool's draw (`draw.ts`, `pool-dom.ts`, #3473).
  */
 const PAGES_MODULES: ReadonlyArray<string> = [
   "apps/www/src/landing/authorship.tsx",
   "apps/www/src/landing/deck.ts",
   "apps/www/src/landing/draw.ts",
   "apps/www/src/landing/enhance.ts",
+  "apps/www/src/landing/pool-dom.ts",
   "apps/www/src/landing/timeline.ts",
   "apps/www/src/landing/words.ts",
   "apps/www/src/lib/build-profile/index.ts",
