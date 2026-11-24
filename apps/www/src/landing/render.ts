@@ -328,7 +328,12 @@ function stage(
       return `
             <section class="face copy" data-copy="${episode.id}" style="--i: ${String(copyFaceOf(k, episodes.length))}">
               <p class="kicker">${e(episode.kicker)}</p>
-              <h3 class="headline">${e(episode.title)}</h3>
+              <h3 class="headline">${e(episode.title)}</h3>${
+                episode.standing === null
+                  ? ""
+                  : `
+              <p class="standing">${e(episode.standing)}</p>`
+              }
               <div class="scenes">${scenes}
               </div>
             </section>`
@@ -413,7 +418,12 @@ function flat(
       (episode) => `
         <section class="episode" data-episode="${episode.id}">
           <p class="kicker">${e(episode.kicker)}</p>
-          <h3>${e(episode.title)}</h3>${episode.scenes
+          <h3>${e(episode.title)}</h3>${
+            episode.standing === null
+              ? ""
+              : `
+          <p class="standing">${e(episode.standing)}</p>`
+          }${episode.scenes
             .map(
               (scene) => `
           <div class="scene-flat" data-scene="${String(at++)}">

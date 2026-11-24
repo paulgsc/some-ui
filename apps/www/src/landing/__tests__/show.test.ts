@@ -70,6 +70,7 @@ describe("resolveShow", () => {
       id: "android",
       kicker: "K",
       title: "T",
+      standing: null,
       scenes: [
         {
           title: "Second half",

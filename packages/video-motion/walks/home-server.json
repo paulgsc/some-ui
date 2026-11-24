@@ -52,8 +52,7 @@
         "from": 6,
         "narration": [
           "The render lane decides when a video may render on four cores without starving what I'm doing.",
-          "On the last night it paused the render while I used the app, stopped it once when memory pressure passed its limit, and let it run again once that had cleared.",
-          "These rows lean towards staying up and refusing well, not towards speed yet. When my questions change, new dashboards are one pull request away."
+          "On the last night it paused the render while I used the app, stopped it once when memory pressure passed its limit, and let it run again once that had cleared."
         ]
       },
       {

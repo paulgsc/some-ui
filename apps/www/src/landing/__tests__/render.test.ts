@@ -444,6 +444,14 @@ describe("renderLanding", () => {
     }
   })
 
+  it("puts an episode's standing line under its title, on the stage and laid flat", () => {
+    for (const ep of EPISODES.filter((x) => x.standing !== null)) {
+      const line = `<p class="standing">${escapeHtml(ep.standing ?? "")}</p>`
+      expect(page.split(line).length - 1).toBe(2)
+    }
+    expect(EPISODES.some((x) => x.standing !== null)).toBe(true)
+  })
+
   it("names every track only where the show moves, on the show's one clock", () => {
     const head = renderLandingHead(LANDING_WORDS, EPISODES)
     const names = [...head.matchAll(/@keyframes (s-\d+) /g)].map((m) => m[1])

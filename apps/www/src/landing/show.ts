@@ -202,6 +202,11 @@ type Episode = {
   /** The copy block's label for the episode, and its heading. */
   readonly kicker: string
   readonly title: string
+  /**
+   * A standing line under the title, the same on every visit whatever a
+   * pool draws: what holds for every scene of the episode.
+   */
+  readonly standing?: string
   /** The walkthrough its chapters come from, by app; none: its scenes write their own. */
   readonly walkthrough: "jobs" | "home-server" | null
   /** Its scenes, the same each visit, or a pool each visit draws from. */
@@ -584,6 +589,10 @@ export const SHOW: Show = {
       // Every visit draws four groupings in any order, so what holds for
       // all of them (code, sample data) is said here, not in one chapter.
       title: "file_host's dashboards: code, drawn on sample data",
+      // The owner's words on #3401: why these panels, what they lean
+      // towards, and that a moved story is one pull request away.
+      standing:
+        "I chose these rows for staying up and refusing well, not yet for speed. When that changes, new dashboards are one pull request away.",
       walkthrough: "home-server",
       // A pool of every grouping the owner named (C1441), a dashboard's row
       // each; the first four are the draw a page with no script shows.
@@ -720,6 +729,8 @@ export type ResolvedEpisode = {
   readonly id: EpisodeId
   readonly kicker: string
   readonly title: string
+  /** Its standing line under the title; none: it has none. */
+  readonly standing: string | null
   /** What a page shows with no script: its scenes, or its pool's first draw. */
   readonly scenes: ReadonlyArray<ResolvedScene>
   /** Its pool, which a visit draws its scenes from; null: its scenes are fixed. */
@@ -819,6 +830,7 @@ export function resolveShow(
     const head = {
       id: episode.id,
       kicker: episode.kicker,
+      standing: episode.standing ?? null,
       title: episode.title,
     }
     if (!("pool" in episode.scenes)) return { ...head, scenes, pool: null }

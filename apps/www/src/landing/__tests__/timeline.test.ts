@@ -38,6 +38,7 @@ const EPISODES: ReadonlyArray<ResolvedEpisode> = (
     row: null,
   })),
   pool: null,
+  standing: null,
 }))
 
 /** Each keyframe's percentage and its declarations, in order. */
@@ -325,6 +326,7 @@ describe("showTimeline over any shape", () => {
         row: null,
       })),
       pool: null,
+      standing: null,
     }))
 
   it("keeps every track's keyframes in order, none at the same moment", () => {
