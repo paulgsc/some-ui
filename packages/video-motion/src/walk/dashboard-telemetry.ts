@@ -32,7 +32,7 @@
  * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard, OUTBOUND
  * and CALL, as `./home-dashboards` names them), with the label values the
  * server exports (`metrics/refusals.rs`, `metrics/rate_limit.rs`,
- * `crates/outbound`, `metrics/contention.rs`). A panel whose query moves to a
+ * `crates/outbound`, `metrics/contention.rs`, `call_weeks/lane.rs`). A panel whose query moves to a
  * series this does not write draws "No data", which the walk's stage
  * refuses.
  */

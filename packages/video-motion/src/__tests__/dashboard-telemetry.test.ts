@@ -130,7 +130,7 @@ describe(
     // legend reads as home's would (file_host `call_weeks::lane::Kind`).
     it("names the lane's busy kinds as file_host does: voice and rust_rounds", () => {
       const kinds = Array.from(once.all.keys())
-        .filter((k) => k.startsWith("lane_busy_ticks_total{"))
+        .filter((k) => k.split("{")[0] === "lane_busy_ticks_total")
         .map((k) => /kind="([^"]+)"/.exec(k)?.[1])
       expect(kinds.sort()).toEqual(["rust_rounds", "voice"])
     })
