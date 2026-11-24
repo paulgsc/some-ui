@@ -67,7 +67,7 @@ export function resolve(cutList: CutList, series: Series): Parsed<Resolved> {
       )
     }
   }
-  const music = cutList.music ?? LOOK_RULES[cutList.look].music
+  const music = cutList.music ?? musicOf(cutList.look, series)
   if (music !== "off" && !series.music) {
     problems.push(`the music is ${music}, and the series has no music bed`)
   }
@@ -133,3 +133,13 @@ function lookMotion(m: LookMotion, taps: ReadonlyArray<number>): Motion {
 /** A burn-in's design: its own, else its series version's for the kind. */
 export const designOf = (b: BurnIn, series: Series): string | null =>
   b.design ?? series.designs[b.kind] ?? null
+
+/**
+ * The bed's mode where the video sets none: its look's, except that a
+ * series naming a bed plays it under every video in it (#3476), so a look
+ * whose own mode is off (`plain`) lays it under the voice.
+ */
+export function musicOf(look: Look, series: Series): MusicMode {
+  const own = LOOK_RULES[look].music
+  return own === "off" && series.music ? "under-voice" : own
+}

@@ -19,6 +19,7 @@ import {
   Button,
   ConfirmSheet,
   Notice,
+  Reading,
   useTakePattern,
 } from "@some-ui/shared"
 import type { BundleTakes, TakePatternSnapshot } from "@some-ui/voice-capture"
@@ -321,7 +322,7 @@ const Screen = ({
 }): JSX.Element => {
   switch (state.screen) {
     case "loading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "unreadable": {
       return (

@@ -43,6 +43,7 @@
         "tests/ui-fit/phone-page/main.tsx",
         "stage/main.tsx",
         "scripts/snips-bundle.ts",
+        "scripts/walks-bundle.ts",
         "scripts/show-faces.ts",
         "src/landing/authorship.tsx",
         "src/landing/enhance.ts",

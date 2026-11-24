@@ -21,6 +21,7 @@
 
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { drawSnacks } from "@/landing/draw"
 import type { ResolvedEpisode } from "@/landing/show"
 import { SHOW, showFor } from "@/landing/show"
 import { expect, test } from "@playwright/test"
@@ -45,6 +46,25 @@ function shownEpisodes(): ReadonlyArray<ResolvedEpisode> {
   if (!show.ok) throw new Error(show.problems.join("; "))
   return show.episodes
 }
+
+/**
+ * The scenes a visit seeded `seed` shows, episode after episode: each
+ * episode's own, or the snacks its pool draws (#3473, `drawSnacks`).
+ */
+function drawnScenes(
+  seed: number
+): ReadonlyArray<ResolvedEpisode["scenes"][number]> {
+  return shownEpisodes().flatMap((e) =>
+    e.pool === null
+      ? e.scenes
+      : drawSnacks(e.id, e.pool.snacks.length, e.pool.draw, seed).flatMap(
+          (i) => e.pool?.snacks.at(i) ?? []
+        )
+  )
+}
+
+/** The page's `Math.random` pinned to 0.5, so its draw's seed is known. */
+const PINNED_SEED = (0.5 * 2 ** 32) >>> 0
 
 /** Every route a learner on the device can open without an account. */
 const LOCAL_ROUTES = [
@@ -325,8 +345,13 @@ test.describe("the Pages build", () => {
     })
     try {
       const page = await context.newPage()
+      // The draw's seed pinned, so the deck's order is the one drawnScenes
+      // gives: the page's draw is the pure one.
+      await page.addInitScript(() => {
+        Math.random = (): number => 0.5
+      })
       await page.goto(`${app().origin}${BASE}`)
-      const scenes = shownEpisodes().flatMap((e) => e.scenes)
+      const scenes = drawnScenes(PINNED_SEED)
       const deck = page.locator(".show[data-deck] .flat")
       await expect(deck).toBeVisible()
       const current = deck.locator('.scene-flat[data-face="current"]')
@@ -502,23 +527,42 @@ test.describe("the Pages build", () => {
       )
     ).toBe(true)
     // On a wide screen the show plays on its one clock (C1182): each
-    // episode is read out once, by the copy block, and every track runs
-    // over the same cycle.
+    // episode is read out once, by the copy block, and every track that
+    // loops runs over the same cycle. The only tracks that play once are
+    // the dashboard band's first round (C1443), on its plates, each over
+    // within that cycle.
     await page.setViewportSize({ width: 1280, height: 800 })
     for (const episode of shownEpisodes())
       await expect(
         page.getByRole("heading", { level: 3, name: episode.title })
       ).toHaveCount(1)
-    const durations = await page.evaluate(() =>
+    const tracks = await page.evaluate(() =>
       document
         .getAnimations()
         .filter(
           (a) => a instanceof CSSAnimation && a.animationName.startsWith("s-")
         )
-        .map((a) => a.effect?.getTiming().duration)
+        .map((a) => {
+          const timing = a.effect?.getTiming()
+          const target =
+            a.effect instanceof KeyframeEffect ? a.effect.target : null
+          return {
+            duration: Number(timing?.duration),
+            loops: timing?.iterations === Infinity,
+            onPlate:
+              target instanceof Element && target.matches(".dash-band .plate"),
+          }
+        })
     )
-    expect(durations.length).toBeGreaterThan(shownEpisodes().length * 3)
-    expect(new Set(durations).size).toBe(1)
+    const loops = tracks.filter((t) => t.loops)
+    expect(loops.length).toBeGreaterThan(shownEpisodes().length * 3)
+    const durations = new Set(loops.map((t) => t.duration))
+    expect(durations.size).toBe(1)
+    const cycle = Math.max(...durations)
+    for (const once of tracks.filter((t) => !t.loops)) {
+      expect(once.onPlate).toBe(true)
+      expect(once.duration).toBeLessThan(cycle)
+    }
     // For a reader who prefers less motion nothing turns, types or breathes.
     await page.emulateMedia({ reducedMotion: "reduce" })
     expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)

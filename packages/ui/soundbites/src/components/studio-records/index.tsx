@@ -8,7 +8,7 @@
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { TakeRow } from "@some-ui/shared"
+import { Reading, TakeRow } from "@some-ui/shared"
 import type { RecordsPorts } from "@soundbites/lib/studio/records"
 import {
   createStudioRecords,
@@ -34,7 +34,7 @@ export const StudioRecords = ({
   useEffect(() => records.attach(), [records])
   const state = useSyncExternalStore(records.subscribe, records.getSnapshot)
   if (state.projects === null) {
-    return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+    return <Reading>{WORDS.reading}</Reading>
   }
   if (state.projects === "unreadable") {
     return <p className="text-sm">{WORDS.unreadable}</p>

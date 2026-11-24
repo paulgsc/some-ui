@@ -1,0 +1,21 @@
+{
+  "id": "C1432",
+  "made": "2026-11-23",
+  "by": "owner",
+  "paths": [
+    "server:apps/servers/file_host/src/site_shots.rs",
+    "server:infra/render/render-calls.sh",
+    "server:infra/compose/call-render.yml",
+    "server:infra/compose/monitoring.yml",
+    "server:docs/identity.md"
+  ],
+  "chose": "The owner (2026-11-23, on #3401, comment 7112444256, close paraphrase): \"Why do we need the Grafana key at all? I thought we were taking screenshots of the dashboard, not of my live dashboard. There's no reason to show my actual metrics or my uptime. Given the jsonnet and libsonnet, generate the dashboard with mock telemetry and take a screenshot or a screen recording of that. It's deterministic and automatic; I don't want any administrative or editorial task. … There's absolutely no reason to surface real-time metrics from the home box. The box is private and the data is private. Asking for that was an anti-pattern from the start.\" So home's side of the pictures (file_host's `site_shots`, the render worker's `site-shots` job, the `site-shots-network`, identity.md invariant 39) has no job left and is to be removed from paulgsc/server; this repository's half goes first, in the change that records this call. The removal is written down on #3401 for a server session.",
+  "options": [
+    "home takes a week's pictures over a dedicated internal network to Grafana (C1074, moved)",
+    "home takes no pictures (chosen)"
+  ],
+  "gray": "Recorded as the owner's call; the owner gave no options. The two above are the design C1074 chose and the one the owner moved it to.",
+  "undo": "Record a call that moves this one, and bring back server#1120's `site_shots` with its network and invariant.",
+  "refs": ["#3401", "server#1120"],
+  "moves": "C1074"
+}

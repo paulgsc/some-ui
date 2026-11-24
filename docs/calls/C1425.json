@@ -1,0 +1,21 @@
+{
+  "id": "C1425",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/burn-ins/src/lib/terminal.ts",
+    "some-ui:packages/ui/burn-ins/src/components/stage/terminal.tsx",
+    "some-ui:packages/video-render/src/sample/series/cheat-sheet/v7.json"
+  ],
+  "chose": "A terminal card types its commands as a new design of the one card, terminal-v2, pinned by a new cheat-sheet version (v7 = v6, with its intro, outro and bed, plus terminal-v2), never by a per-line flag or a per-video switch. A line with a prompt shows the prompt, then types its keyword and text a character every 45 ms (about 22 a second) behind a steady block cursor that doesn't blink, then shows its comment. Every line appears at the time v1 gives it, so badges spell themselves out when the renderer counts them (BS1); a card where another line would appear while a command is still typing (its time plus 400 ms, 45 ms a character and 350 ms) is refused, naming the earliest atMs, so a command's output never shows before the command. The family is the cards' items appearing one at a time (cards.ts, `appearing` and `itemTimes`); typing is one way an item appears, kept in the terminal for now because only its lines are typed commands. A cheat sheet's or flow's command typed too would move the typing into cards.ts as a shared appearance, not copy it.",
+  "options": [
+    "a new design, terminal-v2, pinned by a series version",
+    "a per-line `typed` field on terminal-v1",
+    "type every line, output included",
+    "move later lines until their command is typed (it breaks the renderer's badge timing, BS1)",
+    "a blinking cursor, or none"
+  ],
+  "gray": "The owner asked for commands typed with the typewriter effect (#3476) and named no speed, cursor or what output does. Each is seen in every essay that pins v7, and a design is frozen once a published video uses it, so changing one later means another design.",
+  "undo": "Pin cheat-sheet v6 (or a later version naming terminal-v1) in the essay; to change the look, add terminal-v3 and a series version naming it. terminal-v2 itself stays as drawn once a published video pins v7.",
+  "refs": ["#3476"]
+}

@@ -158,6 +158,7 @@ const E2E = [
   "record",
   "motion",
   "mic",
+  "snips_settle",
 ] as const
 const NO_E2E = Object.fromEntries(E2E.map((name) => [name, false]))
 
@@ -312,6 +313,8 @@ describe("CD1: each node-e2e step runs on its own flag", () => {
     ["packages/ui/burn-ins/src/x.tsx", "record"],
     ["extensions/suspender-ledger/src/x.ts", "motion"],
     ["packages/voice-capture/tests/clips/a.wav", "mic"],
+    ["apps/www/tests/snips/capture.ts", "snips_settle"],
+    ["apps/www/src/lib/snips/index.ts", "snips_settle"],
   ])("a file it names sets its flag: %s → %s", (file, flag) => {
     expect(e2eFlags([file])[flag]).toBe(true)
   })

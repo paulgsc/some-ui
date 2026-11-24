@@ -280,5 +280,69 @@ page is live and a capture is never made again the same.
    #3395.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
-  stub answers few routes (`compat/stub-routes.json`), so many screens are
-  their empty state. Richer sample fixtures for the stub are a follow-up.
+  stub answers few routes (`compat/stub-routes.json`); the capture lays the
+  snips' sample over them (`apps/mobile/snips/sample-routes.json`, #3476), a
+  Monday at `FROZEN_AT`: Renders expecting the Rust Rounds essay today and
+  the call on Friday, with an older cards essay held for a take; Takes and
+  Needs your attention with last week's takes; and Rust Rounds' week that
+  ended and week that opened. Its test reads each answer as the phone does
+  (`apps/www/src/lib/snips/__tests__/stub-sample.test.ts`), through the one
+  stand-in home the walks' test reads too. A screen the sample doesn't
+  answer for shows what `{}` or an empty list gives it, an empty state or
+  a read it couldn't make sense of; a screen an essay needs gets its answer
+  here.
+
+## How walks reach home (#3476)
+
+A walk is a scripted journey through the app (WALK1, `packages/video-motion/src/walk`):
+each step's screen and each tap, on the walk's own timeline, in `walk.json`
+(`some-ui.walk/1`, `@some-ui/video-render`'s `walk.ts`). An essay plays one
+as a screen in motion, so the owner sees the app used, not only its
+pictures. The trip is the pages' one, keyed by the run.
+
+1. **The capture.** Snips Capture's APK job walks each app with a walk
+   (`apps/mobile/walk/walk-apk.sh`), and its dashboards job walks the
+   server's dashboards an essay shows, `home-call` and `home-pipelines`,
+   on a throwaway Grafana over the sample week, each screen banded as
+   sample data (`packages/video-motion/scripts/dashboards-on-sample.sh`,
+   C1481). Its bundle job writes
+   `walks-bundle-<run>` (`apps/www/scripts/walks-bundle.ts`):
+
+   ```
+   walks.json     some-ui.walks/1: {schema, commit, run, walks: [{app, walk, pictures}]}
+   SHA256SUMS     sha256sum -c form, over walks.json and every picture
+   <app>/snips/<NN>.png
+   ```
+
+   and nothing else. A walk that failed in the run is left out, never
+   listed half; with no walk made, there is no bundle. A bundle that can't
+   be made is a warning: the run, and its snips, stand. It lives one day.
+
+2. **The cut list** names, in a scene, the run, the app and, if not the
+   whole walk, the steps it plays, from 1, both ends kept:
+   `{"kind": "screen", "of": {"from": "walks", "run": "<digits>", "app": "rust-rounds", "steps": [2, 6]}}`.
+
+3. **Home (paulgsc/server).** For an essay waiting on home that names walk
+   scenes, each mailbox pass fetches each named run's `walks-bundle-<run>`
+   by the read-only token the snips and pages use, only from a successful
+   run of `.github/workflows/snips-capture.yml`, the newest attempt's, and
+   checks `SHA256SUMS` and the schema: a mismatch refuses the whole bundle.
+   It checks each scene's app is in the bundle and its steps within the
+   walk, and hands, beside `<key>.json`, `<key>.walks/` holding
+   `walks.json` (`some-ui.walks-given/1`: `{schema, runs: [{run, commit,
+walks}]}`, only the walks the essay names) and each picture at
+   `<run>/<app>/snips/<NN>.png`. It drops those copies once the video is
+   made. `record:cards --walks <dir>` checks every picture by its sum, and
+   `resolveScreens` plays the steps in the screen-zoom composition: the
+   screen held whole above the captions, each step's picture in turn on the
+   walk's timeline stretched or pressed to the scene, and a ring on each
+   tap. It never plays faster than twice the walk's own speed (C1427): a
+   part longer than that ends with the scene, its last steps not shown, so
+   a scene names the steps its words have time for.
+
+   **When a bundle can't be had:** `walk-gone` (the run isn't a successful
+   Snips Capture run, its bundle expired or was refused, or a named app or
+   step isn't in it) names the run; the recovery is a new dispatch and a cut
+   list naming the new run. `walk-missing` (no token, or nothing fetched
+   yet) is held and tried again next pass. Home never starts a run. Not
+   yet: home's half is the server pair of #3476.

@@ -12,14 +12,18 @@ import { FEEDS } from "@/lib/feeds"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type {
   Board,
+  Coming,
   HeldBy,
   Now,
   Phase,
   RenderFailed,
+  WaitsOn,
 } from "@/lib/renders/model"
 import { readBoard } from "@/lib/renders/model"
 import { subjectOf } from "@/lib/renders/subject"
 import {
+  COMING_ATTENTION,
+  comingLines,
   doneLine,
   failedLine,
   kindName,
@@ -107,6 +111,31 @@ const ROWS = [
   { feed: "a-kind-from-later", key: "x" },
 ] as const
 
+/** Every reason home gives for an owed video, held whole by its type. */
+const REASONS = {
+  "essay-refused": true,
+  "essay-waiting": true,
+  "not-final": true,
+  "take-unheard": true,
+  "take-hearing": true,
+  "not-written": true,
+  "week-missing": true,
+} satisfies Record<WaitsOn, true>
+const WAITS = Object.keys(REASONS).filter((reason): reason is WaitsOn =>
+  Object.hasOwn(REASONS, reason)
+)
+
+/** Every owed row: on time or late, with each reason or none. */
+const everyComing: ReadonlyArray<Coming> = [false, true].flatMap((overdue) =>
+  [undefined, ...WAITS].map((waitsOn) => ({
+    feed: "rust-essay",
+    on: "2026-11-23",
+    overdue,
+    key: "2026-w47",
+    waitsOn,
+  }))
+)
+
 const board = (n: Now | null): Board => ({
   now: n,
   waiting: [],
@@ -120,7 +149,7 @@ describe("RENDERS_WORDS and what it says of each render", () => {
     const said = [
       ...strings(RENDERS_WORDS),
       ...strings(SHAPE_WORDS),
-      RENDERS_WORDS.expected("2026-11-13"),
+      ...everyComing.flatMap((coming) => strings(comingLines(coming))),
       RENDERS_WORDS.gaveWay(1),
       RENDERS_WORDS.gaveWay(3),
       ...everyNow.flatMap((n) => strings(nowLines(n))),
@@ -603,6 +632,12 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(failedLine(row("page-gone", 3))).toMatch(
       /^It shows 3 pages .*those pictures as the essay names them\. Take the pages again/
     )
+    expect(failedLine(row("walk-missing", 2))).toMatch(
+      /^It plays 2 walks through the app .*once it can fetch them\.$/
+    )
+    expect(failedLine(row("walk-gone", 1))).toMatch(
+      /^It plays a walk through the app .*that walk as the essay names it\. Run Snips Capture again/
+    )
     // Named, where home names every take (itemNames): never by id.
     const named = {
       ...row("take-unheard", 2),
@@ -657,12 +692,20 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     const clipMissing = failedLine(row("clip-missing"))
     const pageMissing = failedLine(row("page-missing"))
     const pageGone = failedLine(row("page-gone"))
+    const walkMissing = failedLine(row("walk-missing"))
+    const walkGone = failedLine(row("walk-gone"))
     expect(snipMissing).toMatch(/names a picture its capture holds/)
     expect(snipGone).toMatch(/Re-run that Snips Capture/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)
     expect(pageMissing).toMatch(/home couldn't get, or that no capture made/)
     expect(pageGone).toMatch(/Take the pages? again with Public Pages Capture/)
+    expect(walkMissing).toMatch(
+      /a walk through the app that home couldn't get yet/
+    )
+    expect(walkGone).toMatch(/Run Snips Capture again/)
     const lines = [
+      walkMissing,
+      walkGone,
       missing,
       unheard,
       snipMissing,
@@ -762,5 +805,49 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
       capMinutes: 15,
     })
     expect(failedLine(row)).toMatch(/longer than home will make/)
+  })
+})
+
+describe("Coming, for an owed video home hasn't made (#3478)", () => {
+  it("says when it is expected, as it did", () => {
+    expect(
+      comingLines({ feed: "call", on: "2026-11-13", overdue: false })
+    ).toEqual({
+      line: "The weekly call. Expected Friday, November 13.",
+      waits: null,
+      toAttention: false,
+    })
+  })
+
+  it("keeps a late one listed, and says it is late", () => {
+    const { line } = comingLines({
+      feed: "rust-essay",
+      on: "2026-11-23",
+      overdue: true,
+    })
+    expect(line).toMatch(/Was expected Monday, November 23\. Not here yet\.$/)
+  })
+
+  it("says what it waits on, on its own day too", () => {
+    for (const coming of everyComing)
+      expect(comingLines(coming).waits === null, coming.waitsOn).toBe(
+        coming.waitsOn === undefined
+      )
+    const onTheDay = comingLines({
+      feed: "interview-essay",
+      on: "2026-11-23",
+      overdue: false,
+      waitsOn: "take-hearing",
+    })
+    expect(onTheDay.line).toMatch(/Expected Monday/)
+    expect(onTheDay.waits).toMatch(/home to hear a take/)
+  })
+
+  it("leads to Needs your attention only for a take home couldn't hear", () => {
+    for (const coming of everyComing)
+      expect(comingLines(coming).toAttention, coming.waitsOn).toBe(
+        coming.waitsOn === "take-unheard"
+      )
+    expect(COMING_ATTENTION).toMatch(/Needs your attention/)
   })
 })

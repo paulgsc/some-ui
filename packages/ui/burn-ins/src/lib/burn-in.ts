@@ -355,7 +355,7 @@ function checked<D extends string, P, V>(
   designs: ReadonlyArray<D>,
   b: BurnInData,
   schema: z.ZodType<P>,
-  draw: (params: P, g: Geometry) => Parsed<V>,
+  draw: (params: P, g: Geometry, design: D) => Parsed<V>,
   g: Geometry
 ): Parsed<{ readonly design: D; readonly value: V }> {
   if (!isOneOf(designs, b.design))
@@ -363,7 +363,7 @@ function checked<D extends string, P, V>(
   const params = schema.safeParse(b.params)
   if (!params.success)
     return { ok: false, problems: issues(name, params.error) }
-  const drawn = draw(params.data, g)
+  const drawn = draw(params.data, g, b.design)
   if (!drawn.ok)
     return { ok: false, problems: drawn.problems.map((p) => `${name}: ${p}`) }
   return { ok: true, value: { design: b.design, value: drawn.value } }

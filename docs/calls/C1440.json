@@ -1,0 +1,24 @@
+{
+  "id": "C1440",
+  "made": "2026-11-23",
+  "by": "claude",
+  "agreed": "2026-11-24",
+  "paths": [
+    "apps/www/src/landing/show.ts",
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/timeline.ts",
+    "apps/www/src/landing/enhance.ts",
+    "apps/www/scripts/show-faces.ts",
+    ".github/workflows/snips-capture.yml"
+  ],
+  "chose": "An episode's scenes are either its fixed scenes, as before, or a pool: more snacks than a page shows, fixed when the site is built, each a short first-person line with its two faces and the record it rests on (`from`: issues, calls or files, each file checked to exist). Every episode can use one; the Android episode's pool holds 18 snacks written from the epics (RUST-ROUNDS, KO-LESSONS, FEED, TAKES, EXPLAIN, SETTINGS-MAP, MY-DATA, ENGAGE, INTERVIEW-WEEK) plus its four Jobs walkthrough chapters, and draws four. The page is built with the pool's first draw in place, so a reader with no script sees it; the landing's script draws fresh each visit with the repo's one seeded Fisher-Yates (shuffledBySeed, @some-ui/core-utils), seeded fresh each visit (draw.ts) and puts the drawn snacks in the same places on the stage and in the list, from an inert template that holds every snack once, so nothing in it loads until drawn. The show's clock times each place of a pool for its longest title and its longest line at each place, so any draw fits its place's tracks. A route still from Snips Capture's own bundle is a new kind of face, `screen`, rather than a media key with a side table: Rust Rounds, Korean on Practice Home, Studio's pages, Settings and My data are already photographed on sample data by every capture, and the apk-clip job copies the ones the show names (the release build's picture first), warning on the run when the capture photographed none of a named route, since a red capture run would hide its other faces from Pages and its bundle from home. The coordinator agreed this new member of the Face family over a media key with a side table. The build refuses a pool with no more snacks than it draws, and a picture labelled two ways; a `screen` face's route is typed as the router's own route union. On Pages, where the owner's unread snacks are left out, a pool left with no more snacks than it draws becomes fixed scenes in its order.",
+  "options": [
+    "a pool as a new case of the episode's scenes, drawn by the landing's script into the first draw's places",
+    "a separate snack module beside the show, with its own markup",
+    "a draw at build time, so each deploy shows one fixed set",
+    "route stills as media keys mapped to routes in a side table, or four new emulator walks"
+  ],
+  "gray": "How many snacks a visit shows, what a reader with no script sees, how a draw fits the show's one clock, and where the new screens' pictures come from are all on the screen, and no check or earlier call settles them. The owner asked for a Fisher-Yates draw from a set fixed at build time (#3473) but not for this shape.",
+  "undo": "Turn the Android episode's pool back into its four Jobs chapter scenes, and drop `Pool` and `Snack` from show.ts, draw.ts and pool-dom.ts, `timedScenes` from timeline.ts, the template from render.ts, drawPools from enhance.ts, the `screen` face kind with its producer in show-faces.ts, and the bundle download in snips-capture.yml's apk-clip job.",
+  "refs": ["#3473", "#3401", "#3471"]
+}

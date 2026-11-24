@@ -1,8 +1,10 @@
-/** `motion render | prove | video | walk | promo | walkthrough`: the README says what each does. */
+/** `motion render | prove | video | walk | dashboards-sample | promo | walkthrough`: the README says what each does. */
 
+import { createWriteStream } from "node:fs"
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
+import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
 import { PIPELINES } from "@some-ui/engagement"
@@ -31,10 +33,18 @@ import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
 import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
-import { homeCores, homeServer } from "./walk/home-dashboards"
+import { openMetrics, WEEK } from "./walk/dashboard-telemetry"
+import {
+  homeCall,
+  homeCores,
+  homePipelines,
+  homeServer,
+  homeServerRows,
+} from "./walk/home-dashboards"
 import { jobs } from "./walk/jobs"
 import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
+import { rustRounds } from "./walk/rust-rounds"
 import { suspenderLedger } from "./walk/suspender-ledger"
 import {
   voicedWalkthrough,
@@ -49,6 +59,7 @@ const USAGE = [
   "       motion prove <composition> [--variables <file>] [--runs 2]",
   "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
+  "       motion dashboards-sample <folder> --origin <grafana url> --version <file_host version>",
   "       motion promo <release folder> --out <folder> [--brand <folder>] [--prove]",
   "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder> | --speaker <url>] [--brand <folder>] [--prove]",
 ].join("\n")
@@ -69,15 +80,20 @@ const entry =
   }
 
 /**
- * The apps a walk can show. Home's dashboards walk on its own Grafana
- * (`home-server`, `home-cores`, C1073). Suspender Ledger walks in the sandbox; Jobs on
- * the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
+ * The apps a walk can show. The server's dashboards walk on a throwaway
+ * Grafana over sample telemetry (`home-server`, `home-cores`; `home-call`
+ * and `home-pipelines` for an essay, #3476). Suspender Ledger walks in the sandbox; Jobs and
+ * Rust Rounds on the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["suspender-ledger", entry(suspenderLedger)],
   ["jobs", entry(jobs)],
+  ["rust-rounds", entry(rustRounds)],
   ["home-server", entry(homeServer)],
+  ["home-server-rows", entry(homeServerRows)],
   ["home-cores", entry(homeCores)],
+  ["home-call", entry(homeCall)],
+  ["home-pipelines", entry(homePipelines)],
 ])
 
 /** The series of a vertical whose scenes are compositions, the default. */
@@ -105,6 +121,8 @@ const { positionals, values } = parseArgs({
     home: { type: "string" },
     takes: { type: "string" },
     speaker: { type: "string" },
+    origin: { type: "string" },
+    version: { type: "string" },
   },
 })
 
@@ -588,6 +606,34 @@ async function walkthrough(file: string): Promise<void> {
   await renderVideo(out, VERTICAL, values.prove)
 }
 
+/**
+ * The dashboards' sample (`./walk/dashboard-telemetry`) into `folder`: the
+ * week's telemetry as OpenMetrics (`telemetry.om`, for promtool), and the
+ * walks' sample (`sample.json`) naming that week and the Grafana that serves
+ * it. The same command gives the same bytes.
+ */
+async function dashboardsSample(folder: string): Promise<void> {
+  const { origin, version } = values
+  if (origin === undefined || version === undefined) throw new Refused(USAGE)
+  const sample = homeServer.sample.safeParse({
+    schema: "some-ui.walk-sample/home-dashboards/2",
+    version,
+    origin,
+    ...WEEK,
+  })
+  if (!sample.success) {
+    throw new Refused(`the sample: ${sample.error.message}`)
+  }
+  const out = here(folder)
+  await mkdir(out, { recursive: true })
+  await writeFile(
+    join(out, "sample.json"),
+    `${JSON.stringify(sample.data, null, 2)}\n`
+  )
+  await pipeline(openMetrics(), createWriteStream(join(out, "telemetry.om")))
+  say(`the week to ${WEEK.to} of sample telemetry, in ${out}`)
+}
+
 async function main(): Promise<void> {
   const [command, name] = positionals
   if (!name) throw new Refused(USAGE)
@@ -600,6 +646,9 @@ async function main(): Promise<void> {
     }
     case "walk": {
       return walk(name)
+    }
+    case "dashboards-sample": {
+      return dashboardsSample(name)
     }
     case "promo": {
       return promo(name)

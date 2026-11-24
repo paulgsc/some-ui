@@ -13,7 +13,7 @@
  * episode's cubes leave as the next episode's copy turns in. Until they first
  * arrive, their places stand as skeletons of what is coming (C1185).
  */
-import type { ResolvedEpisode } from "./show.ts"
+import type { ResolvedEpisode, ResolvedScene } from "./show.ts"
 
 /** Characters a second the copy streams at. */
 export const STREAM_CPS = 38
@@ -52,6 +52,21 @@ export type SceneTracks = {
   readonly labels: readonly [Track, Track]
 }
 
+/**
+ * One plate of the dashboard band (C1443), a place of an episode whose
+ * scenes are dashboard rows: shown from when its scene's faces come into
+ * view until the next scene's do, the last held until the episode comes
+ * round again. On the page's first round, before any of the episode's
+ * scenes has played, the first plate shows instead (`intro`, once, for
+ * `introS` seconds of the show's clock: until the first place's plate has
+ * faded in).
+ */
+export type PlateTracks = {
+  readonly loop: Track
+  readonly intro: Track | null
+  readonly introS: number
+}
+
 type EpisodeTracks = {
   /** Seconds into the cycle the copy block begins its turn to the episode. */
   readonly start: number
@@ -65,6 +80,8 @@ type EpisodeTracks = {
   readonly pair: Track
   readonly cubes: readonly [Track, Track]
   readonly scenes: ReadonlyArray<SceneTracks>
+  /** Its places as the dashboard band's plates, in order. */
+  readonly plates: ReadonlyArray<PlateTracks>
 }
 
 export type Timeline = {
@@ -75,6 +92,28 @@ export type Timeline = {
   /** The copy block's turn about Y, an episode a face. */
   readonly copy: Track
   readonly episodes: ReadonlyArray<EpisodeTracks>
+}
+
+/**
+ * The scenes the show's clock times: an episode's own, or,
+ * for a pool, each place timed for whichever snack a visit draws into it:
+ * the pool's longest title, and its longest line at each place.
+ */
+export function timedScenes(
+  episode: ResolvedEpisode
+): ReadonlyArray<ResolvedScene> {
+  if (episode.pool === null) return episode.scenes
+  const longest = (texts: ReadonlyArray<string>): string =>
+    texts.reduce((a, b) => ([...b].length > [...a].length ? b : a), "")
+  const { snacks } = episode.pool
+  const lines = Math.max(0, ...snacks.map((s) => s.narration.length))
+  const narration = Array.from({ length: lines }, (_, l) =>
+    longest(snacks.map((s) => s.narration[l] ?? ""))
+  )
+  const title = longest(snacks.map((s) => s.title))
+  // A snack shorter than its place's time holds its words on screen for
+  // the rest: a one-line snack is read longer, never cut short.
+  return episode.scenes.map((scene) => ({ ...scene, title, narration }))
 }
 
 /** A number for CSS, rounded to three places with no trailing zeros. */
@@ -248,7 +287,7 @@ export function showTimeline(
     const start = at
     const turn = copyTurnS(k, n)
     at += turn
-    const scenes = episode.scenes.map((scene): SceneTimes => {
+    const scenes = timedScenes(episode).map((scene): SceneTimes => {
       const sceneStart = at
       let cursor = sceneStart + TITLE_S
       const lines = scene.narration.map((line): readonly [number, number] => {
@@ -364,7 +403,9 @@ export function showTimeline(
       const following = e.scenes.at(i + 1)?.start ?? e.end + leave
       const blockName = name()
       const titleName = name()
-      const scene = episodes.at(k)?.scenes.at(i)
+      const episode = episodes.at(k)
+      const scene =
+        episode === undefined ? undefined : timedScenes(episode).at(i)
       const titleChars = Math.max(1, chars(scene?.title ?? ""))
       const label = (j: 0 | 1): Track => {
         const labelName = name()
@@ -431,7 +472,12 @@ export function showTimeline(
         labels: [label(0), label(1)],
       }
     })
-    return { start: e.start, skeleton, pair, cubes, scenes }
+    const plates = platesOf(
+      scenes.map((scene) => scene.on[0]),
+      cycleS,
+      name
+    )
+    return { start: e.start, skeleton, pair, cubes, scenes, plates }
   })
   return {
     cycleS,
@@ -439,6 +485,60 @@ export function showTimeline(
     copy,
     episodes: episodeTracks,
   }
+}
+
+/** How long one plate of the dashboard band takes to give way to the next. */
+const PLATE_FADE_S = 0.6
+
+/**
+ * The dashboard band's plates for places whose faces come into view at
+ * `starts` (seconds into the cycle): each shown from its start to the
+ * next's, the last held round the cycle to the first's, with the first
+ * shown instead on the page's first round (`PlateTracks`).
+ */
+function platesOf(
+  starts: ReadonlyArray<number>,
+  cycleS: number,
+  name: () => string
+): ReadonlyArray<PlateTracks> {
+  const first = starts.at(0) ?? 0
+  const fadeIn = (at: number): ReadonlyArray<Point> => [
+    { at, css: HIDDEN, ease: "ease-out" },
+    { at: at + PLATE_FADE_S, css: SHOWN },
+  ]
+  const fadeOut = (at: number): ReadonlyArray<Point> => [
+    { at, css: SHOWN, ease: "ease-in" },
+    { at: at + PLATE_FADE_S, css: HIDDEN },
+  ]
+  const held = (css: string): Track => {
+    const introName = name()
+    return {
+      name: introName,
+      keyframes: `@keyframes ${introName} { from { ${css} } to { ${css} } }`,
+    }
+  }
+  return starts.map((at, i) => {
+    const loopName = name()
+    const next = starts.at(i + 1)
+    const only = starts.length === 1
+    const points: ReadonlyArray<Point> = only
+      ? [{ at: 0, css: SHOWN }]
+      : next === undefined
+        ? [{ at: 0, css: SHOWN }, ...fadeOut(first), ...fadeIn(at)]
+        : [{ at: 0, css: HIDDEN }, ...fadeIn(at), ...fadeOut(next)]
+    return {
+      loop: { name: loopName, keyframes: keyframes(loopName, cycleS, points) },
+      intro: only
+        ? null
+        : i === 0
+          ? held(SHOWN)
+          : next === undefined
+            ? held(HIDDEN)
+            : null,
+      // Until plate 0 has faded in and the last out, so the hand-off is seamless.
+      introS: first + PLATE_FADE_S,
+    }
+  })
 }
 
 /** Every track of a timeline, in order. */

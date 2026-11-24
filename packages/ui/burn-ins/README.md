@@ -50,7 +50,10 @@ it is; each module's header does the same for its part:
   card's body, which the cut list writes once for every card.
 - `src/lib/terminal.ts`: the terminal card (CARDS2, #2467), design
   `terminal-v1`: a window of lines in the cards' monospace
-  (`src/lib/mono.ts`).
+  (`src/lib/mono.ts`); and `terminal-v2` (#3476), the same window with each
+  command typed a character at a time behind a cursor, every line at the
+  time v1 gives it, refusing a line that would appear while a command is
+  still typing (C1425).
 - `src/lib/cheat-sheet.ts`: the cheat-sheet card (CARDS3, #2468), design
   `sheet-v1`: a row per task with its badge, command and note; the task
   above the command where the two don't fit side by side.

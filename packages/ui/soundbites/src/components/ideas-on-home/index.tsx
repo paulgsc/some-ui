@@ -18,6 +18,7 @@ import {
   ConfirmSheet,
   Input,
   Notice,
+  Reading,
   SameWidth,
   TakeList,
   useTakePattern,
@@ -124,7 +125,7 @@ const Unread = ({
   pair: ReactNode
 }): JSX.Element => {
   if (read.kind === "reading") {
-    return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+    return <Reading>{WORDS.reading}</Reading>
   }
   if (read.kind === "unpaired") {
     return <Unpaired line={WORDS.unpaired} pair={pair} />

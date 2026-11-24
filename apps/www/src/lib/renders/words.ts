@@ -16,11 +16,13 @@ import { PREVIEW_WORDS } from "@/lib/template-preview/words"
 
 import type {
   Board,
+  Coming,
   HeldBy,
   Now,
   Refusal,
   RenderEpisode,
   RenderFailed,
+  WaitsOn,
 } from "./model"
 import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
@@ -322,7 +324,8 @@ function refusalLine(
 
 /**
  * Why home set a cards essay aside before making it (WALK7,
- * paulgsc/server#1052; SNIPS2, server#1076; public pages, server#1144), by
+ * paulgsc/server#1052; SNIPS2, server#1076; public pages, server#1144;
+ * walks, #3476), by
  * home's word for each: its `essay_media` refusals, a closed set. A take home hasn't finished listening
  * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
  * waits for its takes. A take the owner deleted is no refusal either: home
@@ -348,6 +351,11 @@ const ESSAY_REFUSAL_WORDS = {
   // home never captures pages itself.
   "page-gone": (n: number): string =>
     `It shows ${n > 1 ? `${String(n)} pages` : n === 1 ? "a page" : "pages"} from the web that home couldn't get from the capture the essay names: the capture may be over a day old, may have failed, or may not hold ${n === 1 ? "that picture" : "those pictures"} as the essay names ${n === 1 ? "it" : "them"}. Take ${n === 1 ? "the page" : "the pages"} again with Public Pages Capture, and name only the new pictures in the essay.`,
+  "walk-missing": (n: number): string =>
+    `It plays ${n > 1 ? `${String(n)} walks` : "a walk"} through the app that home couldn't get yet. Home holds it, and makes it by itself once it can fetch ${n > 1 ? "them" : "it"}.`,
+  // #3476: home never walks the app itself; the owner runs Snips Capture.
+  "walk-gone": (n: number): string =>
+    `It plays ${n > 1 ? `${String(n)} walks` : n === 1 ? "a walk" : "walks"} through the app that home couldn't get from the capture the essay names: the capture may be over a day old, may have failed, or may not hold ${n === 1 ? "that walk" : "those walks"} as the essay names ${n === 1 ? "it" : "them"}. Run Snips Capture again, and name the new run's walk in the essay.`,
   "clip-missing": (n: number): string =>
     `It shows ${n > 1 ? `${String(n)} clips` : "a clip"} home doesn't have. Home holds it, and makes it by itself once the essay names ${n > 1 ? "clips" : "one"} home keeps.`,
 } as const
@@ -486,6 +494,52 @@ export function liveLine(board: Board): string {
   }
 }
 
+/**
+ * What an owed video waits on (#3478, #3480), by home's word for it. A take
+ * home couldn't hear is the owner's to look at: its line is followed by the
+ * way to Needs your attention (`COMING_ATTENTION`).
+ */
+const WAITS_WORDS = {
+  "essay-refused":
+    "Home refused the essay before making it, and sent you an alert saying where the reason is.",
+  "essay-waiting":
+    "The essay came, and waits for a take it plays to reach home.",
+  "not-final": "It waits for home to make the week's record final.",
+  "take-unheard": "It waits on a take home couldn't hear.",
+  "take-hearing": "It waits for home to hear a take.",
+  "not-written":
+    "Nothing was written for it: the Monday routine didn't write the essay.",
+  "week-missing":
+    "The week hasn't reached home: the weekly routine wrote none, or home hasn't read it yet.",
+} as const satisfies Record<WaitsOn, string>
+
+/** The way from a row that waits on an unheard take to where it is heard. */
+export const COMING_ATTENTION = "See Needs your attention."
+
+export type ComingLines = {
+  /** The feed's name, then when it was or is expected. */
+  readonly line: string
+  /** What it waits on, where home says. */
+  readonly waits: string | null
+  /** Whether the row leads to Needs your attention. */
+  readonly toAttention: boolean
+}
+
+/**
+ * A row under Coming: when it is expected, or that it is late (#3478), and
+ * what it waits on, said whenever home says it, on its own day too.
+ */
+export function comingLines(coming: Coming): ComingLines {
+  const when = coming.overdue
+    ? `Was expected ${dayOf(coming.on)}. Not here yet.`
+    : `Expected ${dayOf(coming.on)}.`
+  return {
+    line: `${feedName(coming.feed)}. ${when}`,
+    waits: coming.waitsOn === undefined ? null : WAITS_WORDS[coming.waitsOn],
+    toAttention: coming.waitsOn === "take-unheard",
+  }
+}
+
 export const RENDERS_WORDS = {
   heading: "Renders",
   intro:
@@ -497,7 +551,6 @@ export const RENDERS_WORDS = {
   failed: "Couldn't finish",
   done: "Finished lately",
   coming: "Coming",
-  expected: (on: string): string => `Expected ${dayOf(on)}.`,
   nothingComing: "Nothing is expected soon.",
   gaveWay: (times: number): string =>
     times === 1

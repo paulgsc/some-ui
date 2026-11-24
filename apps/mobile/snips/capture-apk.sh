@@ -12,7 +12,8 @@
 # the debug APK (the same JavaScript, in a WebView Playwright opens) for
 # every route by address. The bundle prefers the release picture of a
 # screen. Sample data only: a fresh install whose one home is the stub on
-# the runner, answering fixtures (compat/stub-routes.json).
+# the runner, answering fixtures (compat/stub-routes.json, with the snips'
+# sample, sample-routes.json, laid over them).
 #
 # What the run leaves for reading a failure (logcat, the stub's log, ui.mjs's
 # errors, a picture of a Pair form that could not be driven) goes in
@@ -77,7 +78,12 @@ demo notifications -e visible false
 # What the status bar looks like now, for reading a run whose pictures show
 # the real clock.
 adb exec-out screencap -p > "$out/demo-mode.png" || true
+# The base routes, and the snips' sample over them (sample-routes.json: a
+# Monday's renders, takes and Rust Rounds weeks), so the screens show what
+# they're for rather than their empty state.
 node "$here/stub-home.mjs" --port 8787 --control 8788 \
+  --routes "$here/stub-routes.json" \
+  --routes "$repo/apps/mobile/snips/sample-routes.json" \
   --cert "$certs/home.pem" --key "$certs/home.key" > "$out/stub.log" 2>&1 &
 stub_pid=$!
 adb logcat -c

@@ -25,9 +25,22 @@ project each. Each episode is one to four scenes, and each scene is some copy an
   (`SITE_SHOW_DRAFTS=1`), never on Pages; agreeing one sets its `draft` to false.
 - **Timing.** `timeline.ts` lays the whole show on one clock: copy streams in, then the
   cubes turn.
-- **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the two producer
-  jobs: each still copied from a walk's screens, each cut taken silent from a rendered
-  video by shot. A face the build doesn't have shows its title card.
+- **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the producer jobs:
+  each still copied from a walk's screens, each cut taken silent from a rendered video by
+  shot, and each still of an app's route (a `screen` face) copied from the same Snips
+  Capture run's bundle (`docs/snips.md`), on sample data. A face the build doesn't have
+  shows its title card.
+- **The server's dashboards are sample data.** Each server scene is one grouping, a row of
+  one of the server's Grafana dashboards (C1441), drawn from a pool of eight. Its two panels
+  are its faces, on the cubes and the phone's deck. On a wide screen the whole row shows on
+  the **dashboard band** under the stage (C1443): a plate a place, each the row of the server
+  scene in view, the last held while other episodes play and the first draw's first row on
+  the page's first round, captioned with the grouping's name and "sample data". The band
+  keeps one shape, so the page never changes size. The producer makes both
+  (`stills/server/NN.png`, `stills/server/rows/NN.png`), and the cores gap's still, from
+  paulgsc/server's jsonnet over a made-up week of telemetry, in Site Assets' `dashboards`
+  job (`packages/video-motion/scripts/dashboards-on-sample.sh`). Home and its numbers are
+  never reached (the owner on #3401, 2026-11-23), and the episode's words say so.
 - **Skeletons.** Until an episode's pair turns in, each of its places stands as a skeleton
   of what is coming, a clip's frame or a still's, by the face's slot (`slotOf`, C1185).
 
@@ -37,6 +50,18 @@ project each. Each episode is one to four scenes, and each scene is some copy an
   round on a closed, rounded shell with opaque blank faces and end caps. A media cube
   stands as tall as its episode's narrowest picture needs (`pairTall`), and each face's
   picture sits in an aperture of its own shape.
+
+## Pools
+
+An episode can hold a pool of snacks instead of fixed scenes (#3473, C1440): more than a
+page shows, each a short first-person line, its two faces, and the record its words rest
+on (`from`: an issue, a call or a file). The page is built with the pool's first draw in
+place, which is what a reader with no script sees. With the script, each visit draws
+afresh (`drawSnacks` over the repo's seeded Fisher-Yates; `pool-dom.ts`) and puts the drawn snacks in the same places, from an
+inert template that holds every snack, so nothing in it loads until drawn. The show's
+clock times each place for the pool's longest title and lines (`timedScenes`), so any
+draw fits. The Android episode's pool says why its apps exist: growth through engagement,
+with friction as one reason a weak muscle goes untrained.
 
 ## The show on a phone
 

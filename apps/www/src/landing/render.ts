@@ -19,11 +19,16 @@ import { SHOW_BREAK_PX } from "./deck.ts"
 import type { MediaSize } from "./media.ts"
 import type { LandingMochi } from "./mochi.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
-import type { ResolvedEpisode, ResolvedFace, SlotKind } from "./show.ts"
-import { showMediaKeys } from "./show.ts"
+import type {
+  ResolvedEpisode,
+  ResolvedFace,
+  ResolvedRow,
+  SlotKind,
+} from "./show.ts"
+import { everyScene, showMediaKeys } from "./show.ts"
 import type { LandingTheme, ThemePicker } from "./themes.ts"
 import { themeCss, themePicker } from "./themes.ts"
-import type { SceneTracks, Timeline } from "./timeline.ts"
+import type { PlateTracks, SceneTracks, Timeline } from "./timeline.ts"
 import {
   COPY_FACES,
   copyFaceOf,
@@ -108,11 +113,83 @@ const mediaTag = (key: string, slot: SlotKind): string =>
 export const WIDE_MOTION = `(width >= ${String(SHOW_BREAK_PX)}px) and (prefers-reduced-motion: no-preference)`
 
 /** The show's tracks as CSS: every keyframes rule, each named only where the show moves. */
-function showCss(timeline: Timeline): string {
+function showCss(
+  timeline: Timeline,
+  episodes: ReadonlyArray<ResolvedEpisode>
+): string {
   const tracks = tracksOf(timeline)
-  return `${tracks.map((t) => t.keyframes).join("\n      ")}
+  // The dashboard band's plates (C1443), of the episodes whose scenes are
+  // dashboard rows: a plate with a first-round track runs both, that one
+  // once, over the loop while it lasts.
+  const plates = timeline.episodes
+    .filter((_, k) => banded(episodes[k]))
+    .flatMap((e) => e.plates)
+  const plateRule = (p: PlateTracks): string =>
+    p.intro === null
+      ? `.dash-band .${p.loop.name} { animation-name: ${p.loop.name}; }`
+      : `.dash-band .${p.loop.name} { animation-name: ${p.loop.name}, ${p.intro.name}; animation-duration: var(--show), ${num(p.introS)}s; animation-delay: var(--show-start), var(--show-start); animation-iteration-count: infinite, 1; animation-fill-mode: both, none; }`
+  return `${[
+    ...tracks,
+    ...plates.flatMap((p) => [p.loop, ...(p.intro === null ? [] : [p.intro])]),
+  ]
+    .map((t) => t.keyframes)
+    .join("\n      ")}
       .show { --show: ${num(timeline.cycleS)}s; --show-start: -${num(timeline.openS)}s; }
-      @media ${WIDE_MOTION} { ${tracks.map((t) => `.${t.name} { animation-name: ${t.name}; }`).join(" ")} }`
+      @media ${WIDE_MOTION} { ${tracks.map((t) => `.${t.name} { animation-name: ${t.name}; }`).join(" ")} ${plates.map(plateRule).join(" ")} }`
+}
+
+/** Whether an episode's scenes are dashboard rows, which the band shows (C1443). */
+const banded = (episode: ResolvedEpisode | undefined): boolean =>
+  episode?.scenes.some((scene) => scene.row !== null) ?? false
+
+/** A grouping's row on the band: its still in its own shape, or its name until the build has it. */
+const plateBody = (
+  row: ResolvedRow,
+  media: LandingMedia,
+  sample: string
+): string => {
+  const asset = shown(media, row.key)
+  return `${
+    asset === undefined
+      ? `<div class="plate-card"><span>${e(row.label)}</span></div>`
+      : `<img class="plate-media" src="${mediaSrc(row.key)}" alt="" loading="lazy" decoding="async" width="${String(asset.width)}" height="${String(asset.height)}" />`
+  }
+              <figcaption class="plate-caption"><span class="plate-label">${e(row.label)}</span> · ${e(sample)}</figcaption>`
+}
+
+/**
+ * The dashboard band (C1443): under the stage, the whole width of the show,
+ * a plate a place of each episode whose scenes are dashboard rows, each the
+ * row of the scene in view, the last held until its episode comes round,
+ * and the first on the page's first round. The page's size never changes:
+ * every plate sits in one place, in a band of one shape. Shown only where
+ * the stage moves (a phone has the panels on its cubes); the copy is what a
+ * screen reader reads, so the band is hidden from it.
+ */
+function dashBand(
+  episodes: ReadonlyArray<ResolvedEpisode>,
+  timeline: Timeline,
+  media: LandingMedia,
+  sample: string
+): string {
+  return episodes
+    .map((episode, k) => {
+      const tracks = timeline.episodes.at(k)
+      if (!banded(episode) || tracks === undefined) return ""
+      return `
+        <div class="dash-band" data-episode="${episode.id}" aria-hidden="true">${episode.scenes
+          .map((scene, s) => {
+            const plate = tracks.plates.at(s)
+            if (scene.row === null || plate === undefined) return ""
+            return `
+            <figure class="plate tk ${plate.loop.name}" data-asset="${e(scene.row.key)}">
+              ${plateBody(scene.row, media, sample)}
+            </figure>`
+          })
+          .join("")}
+        </div>`
+    })
+    .join("")
 }
 
 /**
@@ -204,7 +281,7 @@ export function pairTall(
   episode: ResolvedEpisode,
   media: LandingMedia
 ): number {
-  const needs = episode.scenes.flatMap((scene) =>
+  const needs = everyScene(episode).flatMap((scene) =>
     scene.faces.map((face) => {
       const size = shown(media, face.key) ?? PLACEHOLDER
       return size.height / size.width + BAND
@@ -224,7 +301,8 @@ export function pairTall(
 function stage(
   episodes: ReadonlyArray<ResolvedEpisode>,
   timeline: Timeline,
-  media: LandingMedia
+  media: LandingMedia,
+  sample: string
 ): string {
   const copyFaces = episodes
     .map((episode, k) => {
@@ -235,19 +313,27 @@ function stage(
           if (t === undefined) return ""
           return `
                 <div class="scene tk ${t.block.name}">
-                  <p class="scene-title"><span class="tk ${t.title.name}">${e(scene.title)}</span></p>${scene.narration
+                  <p class="scene-title"><span class="tk ${t.title.name}">${e(scene.title)}</span></p>${t.lines
                     .map(
+                      // A pool's place holds a line for each its snacks
+                      // may say (`timedScenes`); a line its draw lacks is
+                      // left empty.
                       (line, l) => `
-                  <p class="line tk ${t.lines.at(l)?.name ?? ""}">${e(line)}</p>`
+                  <p class="line tk ${line.name}">${e(scene.narration[l] ?? "")}</p>`
                     )
                     .join("")}
                 </div>`
         })
         .join("")
       return `
-            <section class="face copy" style="--i: ${String(copyFaceOf(k, episodes.length))}">
+            <section class="face copy" data-copy="${episode.id}" style="--i: ${String(copyFaceOf(k, episodes.length))}">
               <p class="kicker">${e(episode.kicker)}</p>
-              <h3 class="headline">${e(episode.title)}</h3>
+              <h3 class="headline">${e(episode.title)}</h3>${
+                episode.standing === null
+                  ? ""
+                  : `
+              <p class="standing">${e(episode.standing)}</p>`
+              }
               <div class="scenes">${scenes}
               </div>
             </section>`
@@ -307,7 +393,7 @@ function stage(
             <div class="ring-turn tk ${timeline.copy.name}">${copyFaces}${blanks}
             </div>
           </div>
-        </div>${pairs}
+        </div>${pairs}${dashBand(episodes, timeline, media, sample)}
       </div>`
 }
 
@@ -332,7 +418,12 @@ function flat(
       (episode) => `
         <section class="episode" data-episode="${episode.id}">
           <p class="kicker">${e(episode.kicker)}</p>
-          <h3>${e(episode.title)}</h3>${episode.scenes
+          <h3>${e(episode.title)}</h3>${
+            episode.standing === null
+              ? ""
+              : `
+          <p class="standing">${e(episode.standing)}</p>`
+          }${episode.scenes
             .map(
               (scene) => `
           <div class="scene-flat" data-scene="${String(at++)}">
@@ -364,16 +455,61 @@ function flat(
     .join("")
 }
 
+/**
+ * An episode's pool (#3473), for the enhancement to draw from: each snack's
+ * copy, its two faces and their skeletons, rendered once into an inert template, so nothing
+ * in it loads until a draw puts it on the page. With no script the page
+ * shows the pool's first draw, which the stage and the list already hold.
+ */
+function pool(
+  episode: ResolvedEpisode,
+  media: LandingMedia,
+  sample: string
+): string {
+  if (episode.pool === null) return ""
+  return `
+        <template class="pool" data-episode="${episode.id}" data-draw="${String(episode.pool.draw)}">${episode.pool.snacks
+          .map(
+            (snack) => `
+          <div class="snack">
+            <p class="snack-title">${e(snack.title)}</p>${snack.narration
+              .map(
+                (line) => `
+            <p class="snack-line">${e(line)}</p>`
+              )
+              .join("")}${snack.faces
+              .map(
+                (face) => `
+            <div class="snack-face" data-slot="${face.slot}" data-asset="${e(face.key)}" data-label="${e(face.label)}" data-shape="${shape(shown(media, face.key) ?? PLACEHOLDER)}">${screen(face, media)}
+            </div>`
+              )
+              .join(
+                ""
+              )}${snack.faces.map((face) => skeletonSlot(face, media)).join("")}${
+              snack.row === null
+                ? ""
+                : `
+            <div class="snack-row" data-asset="${e(snack.row.key)}">
+              ${plateBody(snack.row, media, sample)}
+            </div>`
+            }
+          </div>`
+          )
+          .join("")}
+        </template>`
+}
+
 /** The show: its stage where it moves, laid flat everywhere else. */
 function show(
   episodes: ReadonlyArray<ResolvedEpisode>,
-  media: LandingMedia
+  media: LandingMedia,
+  sample: string
 ): string {
   if (episodes.length === 0) return ""
   return `
-      <div class="show">${stage(episodes, showTimeline(episodes), media)}
+      <div class="show">${stage(episodes, showTimeline(episodes), media, sample)}
         <div class="flat">${flat(episodes, media)}
-        </div>
+        </div>${episodes.map((episode) => pool(episode, media, sample)).join("")}
       </div>`
 }
 
@@ -451,7 +587,9 @@ export function renderLandingHead(
 ): string {
   const css = [
     ...(themes.length === 0 ? [] : [themeCss(themes)]),
-    ...(episodes.length === 0 ? [] : [showCss(showTimeline(episodes))]),
+    ...(episodes.length === 0
+      ? []
+      : [showCss(showTimeline(episodes), episodes)]),
   ]
   return `<title>${e(words.title)}</title>
     <meta name="description" content="${e(words.description)}" />
@@ -526,7 +664,7 @@ export function renderLanding(
     <main>
       <p class="lede">${e(words.lede)}</p>
       <h2 class="section-title">${e(words.projectsTitle)}</h2>
-${show(episodes, media)}
+${show(episodes, media, words.rowSample)}
       <h2 class="section-title">${e(words.gapsTitle)}</h2>
       <div class="grid gaps">${words.gaps.map((g) => gapCard(g, media)).join("")}
       </div>

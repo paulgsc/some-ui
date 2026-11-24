@@ -107,6 +107,12 @@ export type HomeLinkPorts = {
    */
   onHidden: (listener: () => void) => () => void
   now: () => number
+  /**
+   * A clock that only moves forward, from 0 at the page's load: what the
+   * pace measures its waits by (HERD1), where the wall clock (`now`) can be
+   * frozen, set back or jump. `now` stands in when absent.
+   */
+  since?: () => number
   /** Runs `run` once, `ms` from now; returns the cancel. */
   after: (ms: number, run: () => void) => () => void
   /** Where a stretch away from home is told, once as it starts (AW1). */

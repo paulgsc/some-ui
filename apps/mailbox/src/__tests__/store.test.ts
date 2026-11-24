@@ -124,41 +124,38 @@ describe("the migration", () => {
     )
   })
 
-  it("a site picture leaves item without an archived row only while a newer one of its kind is live (C1071)", async () => {
+  it("no folder but the index keeps a view's exception: 0006 took the site pictures' out (#3401)", async () => {
     const db = await migrated()
-    const picture = (folder: string, name: string): void => {
+    const put = (folder: string, name: string): void => {
       db.run(
-        "INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at) VALUES (?, ?, 's', 1, 'image/png', x'00', 'home', 'now')",
+        "INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at) VALUES (?, ?, 's', 1, 'application/json', x'7b7d', 'home', 'now')",
         [folder, name]
       )
     }
-    const cores1 = "cores-20261116T000000000Z.png"
-    const cores2 = "cores-20261123T000000000Z.png"
-    const server = "server-20261124T000000000Z.mp4"
-    picture("site-assets", cores1)
-    picture("site-assets", server)
-    // The same name in another folder is no newer item of its kind.
-    picture("brief", cores2)
+    // The folder that was a view until 0006, and a record folder, each with
+    // a newer item of the same kind live beside the older one.
     const leaves = "an item leaves only into archived"
-    const drop = (folder: string, name: string): void => {
-      db.run("DELETE FROM item WHERE folder = ? AND name = ?", [folder, name])
+    for (const [folder, older, newer] of [
+      [
+        "site-assets",
+        "cores-20261116T000000000Z.png",
+        "cores-20261123T000000000Z.png",
+      ],
+      [
+        "brief",
+        "index-jobs-20261031T150000000Z.json",
+        "index-jobs-20261101T150000000Z.json",
+      ],
+    ] as const) {
+      put(folder, older)
+      put(folder, newer)
+      expect(() => {
+        db.run("DELETE FROM item WHERE folder = ? AND name = ?", [
+          folder,
+          older,
+        ])
+      }).toThrow(leaves)
     }
-    expect(() => {
-      drop("site-assets", cores1)
-    }).toThrow(leaves)
-    picture("site-assets", cores2)
-    expect(() => {
-      drop("site-assets", server)
-    }).toThrow(leaves)
-    expect(() => {
-      drop("site-assets", cores2)
-    }).toThrow(leaves)
-    expect(() => {
-      drop("brief", cores2)
-    }).toThrow(leaves)
-    expect(() => {
-      drop("site-assets", cores1)
-    }).not.toThrow()
   })
 
   it("an archived name takes no other bytes, whoever inserts them", async () => {
@@ -433,33 +430,6 @@ describe.each([
     ).toBe("2")
   })
 
-  it("a site picture's put drops the ones before it of its kind, and one older than the live one is superseded (C1071)", async () => {
-    const store = await open()
-    const home = (text: string): NewItem =>
-      item(text, { putBy: "home", contentType: "image/png" })
-    const cores1 = "cores-20261116T000000000Z.png"
-    const cores2 = "cores-20261123T000000000Z.png"
-    const server = "server-20261101T000000000Z.mp4"
-    expect((await store.put("site-assets", cores1, home("1"))).change).toBe(
-      "added"
-    )
-    expect((await store.put("site-assets", server, home("s"))).change).toBe(
-      "added"
-    )
-    expect((await store.put("site-assets", cores2, home("2"))).change).toBe(
-      "added"
-    )
-    expect(
-      (await store.list("site-assets", 0, 50)).map((meta) => meta.name)
-    ).toEqual([server, cores2])
-    expect(await store.put("site-assets", cores1, home("1"))).toEqual({
-      change: "superseded",
-    })
-    expect((await store.get("site-assets", cores2))?.contentType).toBe(
-      "image/png"
-    )
-  })
-
   it("archiving moves an old item's metadata into archived and drops its bytes", async () => {
     const store = await open()
     await store.put("brief", "b1.json", item("1"))
@@ -623,9 +593,10 @@ describe("MB5: nothing in the workspace issues a statement that rewrites an item
   /** The one trigger a migration may drop: 0002 replaces it in the same file. */
   const REPLACED_TRIGGER = /\bDROP\s+TRIGGER\s+item_is_append_only_delete\s*;/i
   /**
-   * 0004 and 0005 replace the delete trigger in the same file, with each
-   * view's one exception (the index's, then the site's pictures'); the
-   * trigger cases above fail if it lets anything else go.
+   * 0004, 0005 and 0006 replace the delete trigger in the same file: 0004
+   * with the index's exception, 0005 adding the site pictures', and 0006
+   * taking theirs out again (#3401). The trigger cases above fail if the
+   * last one lets anything else go.
    */
   const REPLACED_FOR_VIEW =
     /\bDROP\s+TRIGGER\s+item_leaves_only_into_archived\s*;(?=\s*CREATE\s+TRIGGER\s+item_leaves_only_into_archived\s+BEFORE\s+DELETE\s+ON\s+item\b)/i
@@ -694,7 +665,8 @@ describe("MB5: nothing in the workspace issues a statement that rewrites an item
       if (file === "0003_folders.sql") sql = sql.replace(REBUILD, "")
       if (
         file === "0004_index_view.sql" ||
-        file === "0005_site_assets_view.sql"
+        file === "0005_site_assets_view.sql" ||
+        file === "0006_drop_site_assets_view.sql"
       ) {
         sql = sql.replace(REPLACED_FOR_VIEW, "")
       }

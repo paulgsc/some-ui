@@ -17,6 +17,7 @@ import type { Composition, CutList, Shot, TimedWord } from "./cut-list"
 import { markThemeOf } from "./format"
 import type { Format, Shape } from "./format"
 import type { Look } from "./plans"
+import { brandComposition } from "./series"
 
 /** How long a brand slide holds, with nothing said over it. */
 export const BRAND_MS = 3_000
@@ -114,16 +115,11 @@ export function brandPicture(
   const ref = shape?.brand.motion
   if (ref === undefined || (id !== "brand-in" && id !== "brand-out"))
     return null
-  const theme = markThemeOf(shape)
-  return {
-    kind: "composition",
+  return brandComposition(
     ref,
-    variables: {
-      part: id === "brand-in" ? "open" : "close",
-      ...(theme === undefined ? {} : { theme }),
-    },
-    files: [],
-  }
+    id === "brand-in" ? "open" : "close",
+    markThemeOf(shape)
+  )
 }
 
 /**
