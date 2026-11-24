@@ -655,10 +655,12 @@ function allSeries(): ReadonlyArray<Series> {
         laneAt(t).verb === v && laneAt(t).why === w ? 0.2 : 0
       )
     ),
-    counter("lane_busy_ticks_total", { kind: "transcribe" }, (t) =>
+    // The kinds file_host's lane names (`call_weeks::lane::Kind`): hearing a
+    // note, recording a Rust Rounds program.
+    counter("lane_busy_ticks_total", { kind: "voice" }, (t) =>
       jobNamed(t) ? 0.12 : 0.02 * daily(t)
     ),
-    counter("lane_busy_ticks_total", { kind: "speech" }, (t) =>
+    counter("lane_busy_ticks_total", { kind: "rust_rounds" }, (t) =>
       interactiveAt(t) ? 0.2 : 0.03 * daily(t)
     ),
     gauge("lane_interactive_waiting", {}, (t) => (interactiveAt(t) ? 1 : 0)),
