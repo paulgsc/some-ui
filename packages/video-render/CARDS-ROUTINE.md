@@ -148,6 +148,12 @@ Since you, months later, are the listener:
      a snip or a clip frame (`docs/snips.md`). Its `spoken` role is
      `scene`, like a card's; a spoken card (`role: "spoken"`) is drawn by
      its own stage and shows no screen.
+   - Or it plays a walk through the app in motion, each step's screen and
+     each tap, `{"kind": "screen", "of": {"from": "walks", "run": "<run>",
+"app": "<app>", "steps": [<first>, <last>]}}`: a walk Snips Capture made
+     (`docs/snips.md`, "How walks reach home"), named by its run, which home
+     fetches as it fetches pages. Use one where the essay says what a person
+     does in the app, rather than describing it.
    - Or it shows a public page, photographed logged out, when the subject
      lives outside the app (a pull request's checks, a run's log page, a
      page of docs): `{"kind": "screen", "of": {"from": "pages", …}}`. Take

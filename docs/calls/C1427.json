@@ -1,0 +1,22 @@
+{
+  "id": "C1427",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/walk.ts",
+    "some-ui:packages/video-render/src/snip.ts",
+    "some-ui:packages/video-motion/compositions/screen-zoom/index.html",
+    "some-ui:apps/www/scripts/walks-bundle.ts",
+    ".github/workflows/snips-capture.yml"
+  ],
+  "chose": "A walk is a fourth member of the screen family a cards essay shows (snips, Clips Library frames, public pages, walks), named by the Snips Capture run that walked it, its app and an optional range of steps. It is played by the one screen-zoom composition, which gains an optional walk: the screen held whole above the captions, each step's picture in turn on the walk's own timeline stretched or pressed to the scene, and a ring on each tap. It reaches home as pages do, by run: Snips Capture's bundle job writes walks-bundle-<run> (walks.json, some-ui.walks/1, and SHA256SUMS), and home hands what an essay names in <key>.walks/. The walk's record (some-ui.walk/1) and its slicing moved into video-render, so the runner, the walkthrough and the essay read one schema.",
+  "options": [
+    "a walk scene in the screen family, played by screen-zoom, fetched by run",
+    "each walk step filed as an ordinary snip, shown as still screens",
+    "a new composition of its own for walks",
+    "the walkthrough video as a clip"
+  ],
+  "gray": "The coordinator chose a walk scene over stills (the owner asked for motion). How it plays (one composition or a new one), how it is named (run, app, steps) and how it reaches home were open; each is seen in every essay that plays a walk.",
+  "undo": "Remove the walks member from cut-list.ts and resolveScreens, screen-zoom's walk variable, the walks bundle step and its retention family; essays naming a walk would then be refused by cards-check.",
+  "refs": ["#3476", "#3282"]
+}

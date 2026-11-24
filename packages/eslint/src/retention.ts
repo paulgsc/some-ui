@@ -133,6 +133,16 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 1,
     ttlDays: 1,
   },
+  // The APK's walks as a bundle (#3476, docs/snips.md "How walks reach
+  // home"): what home fetches for the essay that names the run. Each run is
+  // its own lineage, as a pages bundle is, so each lives out its day.
+  {
+    kind: "artifact",
+    name: "walks-bundle-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 1,
+  },
   // public-pages-capture.yml (#3395, docs/snips.md "Public pages"): the
   // pictures home fetches for the essay that names the run. Each run is its
   // own lineage (no commit in the name), so a later capture never

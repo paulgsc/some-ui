@@ -17,8 +17,8 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { assertNever } from "@some-ui/core-utils"
+import type { WalkFile } from "@some-ui/video-render"
 import type { Page } from "playwright-core"
-import { z } from "zod"
 
 import type { Microphone } from "./microphone"
 import { microphoneScript } from "./microphone"
@@ -96,36 +96,9 @@ export type Stage = {
   readonly close: () => Promise<void>
 }
 
-/** What a walk leaves beside its snips, as `walk.json` (`some-ui.walk/1`). */
-export const WalkFileSchema = z.strictObject({
-  schema: z.literal("some-ui.walk/1"),
-  app: z.string().min(1),
-  version: z.string().min(1),
-  viewport: z.strictObject({
-    width: z.number().positive(),
-    height: z.number().positive(),
-    scale: z.number().positive(),
-  }),
-  /** Each step's screen, from `atMs` until the next one starts. */
-  snips: z.array(
-    z.strictObject({
-      file: z.string().regex(/^snips\/\d+\.png$/),
-      label: z.string(),
-      atMs: z.number().min(0),
-    })
-  ),
-  /** Each tap: when, and where in the snip before it, in the viewport's units. */
-  taps: z.array(
-    z.strictObject({
-      label: z.string(),
-      atMs: z.number(),
-      x: z.number(),
-      y: z.number(),
-    })
-  ),
-  lengthMs: z.number().min(0),
-})
-export type WalkFile = z.infer<typeof WalkFileSchema>
+/** What a walk leaves beside its snips, as `walk.json`: `@some-ui/video-render`'s, which a cards essay plays too. */
+export { WalkFileSchema } from "@some-ui/video-render"
+export type { WalkFile } from "@some-ui/video-render"
 
 /** How long before a step's screen its tap lands, so the ring is seen first. */
 const TAP_LEAD_MS = 400

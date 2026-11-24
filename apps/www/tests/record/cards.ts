@@ -42,7 +42,9 @@
  * each picture under it by its bundle name. `--clips <dir>` (`<key>.clips/`)
  * holds each Clips Library frame it names at `<clip>/<side>/<file>`, and
  * `--pages <dir>` (`<key>.pages/`) holds `pages.json` (`some-ui.pages/1`)
- * beside each public page's picture (`./pages.ts`). A screen
+ * beside each public page's picture (`./pages.ts`), and `--walks <dir>`
+ * (`<key>.walks/`) holds `walks.json` (`some-ui.walks-given/1`) and each
+ * walk's pictures at `<run>/<app>/snips/<NN>.png` (#3476). A screen
  * home didn't hand, a picture not the one its record names, a page taken at
  * another moment than the scene says, or a frame that isn't a PNG is
  * refused before anything is drawn. With no screen it takes none of them.
@@ -74,6 +76,7 @@ import {
   parseCardsEssay,
   parsePages,
   parseSnipsGiven,
+  parseWalksGiven,
   pngSize,
   resolveScreens,
   sceneNames,
@@ -83,6 +86,9 @@ import {
   spokenTakeFilesOf,
   spokenTakesOf,
   voicedCardsCutList,
+  walkPicturePath,
+  WALKS_DIR,
+  walksOf,
 } from "@some-ui/video-render"
 import type {
   CardsScene,
@@ -95,6 +101,7 @@ import type {
   SnipsGiven,
   SpokenTakeFiles,
   StillTake,
+  WalksGiven,
 } from "@some-ui/video-render"
 import {
   layAudio,
@@ -130,6 +137,7 @@ const { values } = parseArgs({
     snips: { type: "string" },
     clips: { type: "string" },
     pages: { type: "string" },
+    walks: { type: "string" },
     ...CALL_OPTIONS,
   },
 })
@@ -336,6 +344,7 @@ type HandedScreens = {
   readonly snipsDir: string | null
   readonly clipsDir: string | null
   readonly pagesDir: string | null
+  readonly walksDir: string | null
 }
 
 /**
@@ -348,12 +357,19 @@ async function handedScreens(
   cut: CutList,
   snipsFlag: string | undefined,
   clipsFlag: string | undefined,
-  pagesFlag: string | undefined
+  pagesFlag: string | undefined,
+  walksFlag: string | undefined
 ): Promise<HandedScreens | null> {
   const snips = snipsOf(cut)
   const clips = clipFramesOf(cut)
   const pages = pagesOf(cut)
-  if (snips.length === 0 && clips.length === 0 && pages.length === 0)
+  const walks = walksOf(cut)
+  if (
+    snips.length === 0 &&
+    clips.length === 0 &&
+    pages.length === 0 &&
+    walks.length === 0
+  )
     return null
   const problems: Array<string> = []
   if (snips.length > 0 && snipsFlag === undefined)
@@ -368,8 +384,13 @@ async function handedScreens(
     problems.push(
       `it shows ${String(pages.length)} pages, and --pages names no folder home handed them in`
     )
+  if (walks.length > 0 && walksFlag === undefined)
+    problems.push(
+      `it plays ${String(walks.length)} walks, and --walks names no folder home handed them in`
+    )
   if (problems.length > 0) fail(problems)
   const snipsDir = snipsFlag === undefined ? null : here(snipsFlag)
+  const walksDir = walksFlag === undefined ? null : here(walksFlag)
   const pagesDir = pagesFlag === undefined ? null : here(pagesFlag)
   const clipsDir = clipsFlag === undefined ? null : here(clipsFlag)
   let given: SnipsGiven | null = null
@@ -437,11 +458,41 @@ async function handedScreens(
       }
     }
   }
+  let walked: WalksGiven | null = null
+  if (walksDir !== null) {
+    const read = await readFile(join(walksDir, "walks.json"), "utf8").catch(
+      () => fail([`${walksDir} holds no walks.json`])
+    )
+    const parsed = parseWalksGiven(jsonOr(read, `${walksDir}/walks.json`))
+    if (!parsed.ok) fail([`${walksDir}/walks.json:`, ...parsed.problems])
+    walked = parsed.value
+    for (const { run, walks: given } of walked.runs)
+      for (const { walk, pictures } of given)
+        for (const picture of pictures) {
+          const path = walkPicturePath(run, picture.name)
+          const bytes = await readFile(join(walksDir, path)).catch(() => null)
+          if (bytes === null) problems.push(`${path} is missing`)
+          else if (
+            bytes.length !== picture.bytes ||
+            (await sha256Hex(new Uint8Array(bytes).buffer)) !== picture.sha256
+          )
+            problems.push(`${path} is not the picture its record names`)
+          else {
+            // Taps land in the walk's viewport: a picture of another shape
+            // would put them off its controls.
+            const size = pngSize(bytes)
+            const wide = size === null ? 0 : size.width / walk.viewport.width
+            const tall = size === null ? 0 : size.height / walk.viewport.height
+            if (Math.abs(wide - tall) > 0.02)
+              problems.push(`${path} isn't the shape its walk's screen is`)
+          }
+        }
+  }
   if (problems.length > 0) fail(problems)
-  const handed = { snips: given, clips: frames, pages: taken }
+  const handed = { snips: given, clips: frames, pages: taken, walks: walked }
   const resolved = resolveScreens(cut, handed)
   if (!resolved.ok) fail(resolved.problems)
-  return { handed, snipsDir, clipsDir, pagesDir }
+  return { handed, snipsDir, clipsDir, pagesDir, walksDir }
 }
 
 /**
@@ -481,6 +532,16 @@ async function withScreens(
           from: join(screens.pagesDir ?? "", image.name),
           to: join(root, PAGES_DIR, image.name),
         }))),
+    ...(screens.walksDir === null
+      ? []
+      : (screens.handed.walks?.runs ?? []).flatMap(({ run, walks }) =>
+          walks.flatMap(({ pictures }) =>
+            pictures.map(({ name }) => ({
+              from: join(screens.walksDir ?? "", walkPicturePath(run, name)),
+              to: join(root, WALKS_DIR, walkPicturePath(run, name)),
+            }))
+          )
+        )),
   ]
   for (const { from, to } of copies) {
     await mkdir(dirname(to), { recursive: true })
@@ -520,7 +581,8 @@ async function main(): Promise<void> {
     essay.value,
     values.snips,
     values.clips,
-    values.pages
+    values.pages,
+    values.walks
   )
   const root = join(here(values.out), key)
   await mkdir(root, { recursive: true })

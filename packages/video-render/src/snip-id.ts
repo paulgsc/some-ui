@@ -25,6 +25,9 @@ export const RUN_ID = /^[1-9][0-9]{0,19}$/
  * where it is (its host and path, as a slug), then the first 12 hex digits
  * of the PNG's SHA-256, so a page that changes gets a new name.
  */
+/** A walk's app, as its runner names it (`rust-rounds`, `jobs`). */
+export const WALK_APP = /^[a-z0-9][a-z0-9-]{0,63}$/
+
 export const PAGE_FILE = /^[a-z0-9][a-z0-9-]{0,95}-[0-9a-f]{12}\.png$/
 
 /**

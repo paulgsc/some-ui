@@ -19,6 +19,7 @@ import {
   snipId,
   STAGE_ROUTES,
   tabBar,
+  walksBundleOf,
   WEB_VIEWPORTS,
   wingPath,
 } from "@/lib/snips"
@@ -361,5 +362,53 @@ group("the release APK's tab bar (#3137, option (b))", () => {
 
   it("is not one control alone", () => {
     expect(tabBar([node("Studio", 540)], at)).toEqual([])
+  })
+})
+
+group("a run's walks bundle (#3476)", () => {
+  const walk = {
+    schema: "some-ui.walk/1",
+    app: "rust-rounds",
+    version: "0.1.77",
+    viewport: { width: 412, height: 732, scale: 2.625 },
+    snips: [
+      { file: "snips/01.png", label: "The week", atMs: 0 },
+      { file: "snips/02.png", label: "A ticket", atMs: 3000 },
+    ],
+    taps: [{ label: "A ticket", atMs: 2600, x: 200, y: 400 }],
+    lengthMs: 6000,
+  }
+  const sum = { bytes: 10, sha256: "b".repeat(64) }
+  const both = new Map([
+    ["01.png", sum],
+    ["02.png", sum],
+  ])
+  const at = { commit: "c".repeat(40), run: "45321427650" }
+
+  it("names each walk's pictures under its app, with their sums", () => {
+    const bundle = walksBundleOf(
+      [{ app: "rust-rounds", walk, pictures: both }],
+      at
+    )
+    expect(bundle).toMatchObject({ schema: "some-ui.walks/1", ...at })
+    expect(bundle.walks[0]?.pictures.map((p) => p.name)).toEqual([
+      "rust-rounds/snips/01.png",
+      "rust-rounds/snips/02.png",
+    ])
+  })
+
+  it("refuses a walk whose picture is missing, or whose record is another's", () => {
+    expect(() =>
+      walksBundleOf(
+        [{ app: "rust-rounds", walk, pictures: new Map([["01.png", sum]]) }],
+        at
+      )
+    ).toThrow(/rust-rounds\/snips\/02.png is missing/)
+    expect(() =>
+      walksBundleOf([{ app: "jobs", walk, pictures: both }], at)
+    ).toThrow(/the walk is of rust-rounds, not jobs/)
+    expect(() =>
+      walksBundleOf([{ app: "x", walk: { nope: 1 }, pictures: both }], at)
+    ).toThrow(/x\/walk.json is not a walk's record/)
   })
 })

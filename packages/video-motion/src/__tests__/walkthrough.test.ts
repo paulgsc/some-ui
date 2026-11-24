@@ -4,6 +4,7 @@ import {
   FRICTION_SCHEMA,
   frictionOf,
   parseCutList,
+  walkSlice,
 } from "@some-ui/video-render"
 import type { StillTake } from "@some-ui/video-render"
 import type { WalkFile } from "@video-motion/walk/run"
@@ -11,7 +12,6 @@ import {
   BREATH_MS,
   retimed,
   voicedWalkthrough,
-  walkSlice,
   walkthroughCutList,
   walkthroughLines,
   walkthroughProblems,

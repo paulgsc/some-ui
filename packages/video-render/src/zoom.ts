@@ -10,6 +10,7 @@
 import type { Composition } from "./cut-list"
 import type { Box, RegionRef, Screen, Screens } from "./screen"
 import { regionOf } from "./screen"
+import type { WalkFile } from "./walk"
 
 /** The composition that zooms a screen (`@some-ui/video-motion`). */
 export const SCREEN_ZOOM = "screen-zoom"
@@ -119,3 +120,41 @@ export const wholePicture = (
   screen: Screen,
   options: ZoomOptions = {}
 ): Composition => screenZoom(screen, [], options)
+
+/**
+ * A walk played as a scene's picture (#3476): the screen-zoom composition
+ * held whole, as `wholePicture` holds a screen, showing each of the walk's
+ * screens in turn on the walk's own timeline, stretched or pressed to the
+ * scene's length, with a ring where each tap lands. `files` are the walk's
+ * pictures in its steps' order, under `dir` in the video's folder.
+ */
+export function walkPicture(
+  walk: WalkFile,
+  files: ReadonlyArray<string>,
+  { dir = "walks", foot = 0, theme, ground }: ZoomOptions = {}
+): Composition {
+  footOf(foot)
+  const placed = files.map((file) => `${dir}/${file}`)
+  const [first = ""] = placed
+  return {
+    kind: "composition",
+    ref: SCREEN_ZOOM,
+    variables: {
+      picture: first,
+      width: walk.viewport.width,
+      height: walk.viewport.height,
+      scale: walk.viewport.scale,
+      stops: "[]",
+      walk: JSON.stringify({
+        frames: walk.snips.map((s, i) => ({
+          picture: placed[i] ?? first,
+          atMs: s.atMs,
+        })),
+        taps: walk.taps.map(({ atMs, x, y }) => ({ atMs, x, y })),
+        lengthMs: walk.lengthMs,
+      }),
+      ...lookOf(foot, theme, ground),
+    },
+    files: placed,
+  }
+}

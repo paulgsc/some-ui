@@ -282,3 +282,50 @@ page is live and a capture is never made again the same.
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are
   their empty state. Richer sample fixtures for the stub are a follow-up.
+
+## How walks reach home (#3476)
+
+A walk is a scripted journey through the app (WALK1, `packages/video-motion/src/walk`):
+each step's screen and each tap, on the walk's own timeline, in `walk.json`
+(`some-ui.walk/1`, `@some-ui/video-render`'s `walk.ts`). An essay plays one
+as a screen in motion, so the owner sees the app used, not only its
+pictures. The trip is the pages' one, keyed by the run.
+
+1. **The capture.** Snips Capture's APK job walks each app with a walk
+   (`apps/mobile/walk/walk-apk.sh`), and its bundle job writes
+   `walks-bundle-<run>` (`apps/www/scripts/walks-bundle.ts`):
+
+   ```
+   walks.json     some-ui.walks/1: {schema, commit, run, walks: [{app, walk, pictures}]}
+   SHA256SUMS     sha256sum -c form, over walks.json and every picture
+   <app>/snips/<NN>.png
+   ```
+
+   and nothing else. A walk that failed in the run is left out, never
+   listed half; with no walk made, there is no bundle. It lives one day.
+
+2. **The cut list** names, in a scene, the run, the app and, if not the
+   whole walk, the steps it plays, from 1, both ends kept:
+   `{"kind": "screen", "of": {"from": "walks", "run": "<digits>", "app": "rust-rounds", "steps": [2, 6]}}`.
+
+3. **Home (paulgsc/server).** For an essay waiting on home that names walk
+   scenes, each mailbox pass fetches each named run's `walks-bundle-<run>`
+   by the read-only token the snips and pages use, only from a successful
+   run of `.github/workflows/snips-capture.yml`, the newest attempt's, and
+   checks `SHA256SUMS` and the schema: a mismatch refuses the whole bundle.
+   It checks each scene's app is in the bundle and its steps within the
+   walk, and hands, beside `<key>.json`, `<key>.walks/` holding
+   `walks.json` (`some-ui.walks-given/1`: `{schema, runs: [{run, commit,
+walks}]}`, only the walks the essay names) and each picture at
+   `<run>/<app>/snips/<NN>.png`. It drops those copies once the video is
+   made. `record:cards --walks <dir>` checks every picture by its sum, and
+   `resolveScreens` plays the steps in the screen-zoom composition: the
+   screen held whole above the captions, each step's picture in turn on the
+   walk's timeline stretched to the scene, and a ring on each tap.
+
+   **When a bundle can't be had:** `walk-gone` (the run isn't a successful
+   Snips Capture run, its bundle expired or was refused, or a named app or
+   step isn't in it) names the run; the recovery is a new dispatch and a cut
+   list naming the new run. `walk-missing` (no token, or nothing fetched
+   yet) is held and tried again next pass. Home never starts a run. Not
+   yet: home's half is the server pair of #3476.

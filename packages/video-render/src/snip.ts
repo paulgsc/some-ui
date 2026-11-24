@@ -19,8 +19,10 @@
  *   names some it hands them as it hands takes, each kind in its own
  *   folder: `<key>.snips/` with `snips.json` (`some-ui.snips-given/1`) and
  *   the pictures under their bundle names, `<key>.clips/` with each
- *   frame at `<clip>/<side>/<file>`, and `<key>.pages/` with `pages.json`
- *   (`some-ui.pages/1`) beside the pictures.
+ *   frame at `<clip>/<side>/<file>`, `<key>.pages/` with `pages.json`
+ *   (`some-ui.pages/1`) beside the pictures, and `<key>.walks/` with
+ *   `walks.json` (`some-ui.walks-given/1`) and each walk's pictures at
+ *   `<run>/<app>/snips/<NN>.png` (`./walk`).
  * - `resolveScreens` turns the essay's screen scenes into the pictures the
  *   renderer draws, and refuses one home did not hand: never a blank frame.
  */
@@ -35,8 +37,10 @@ import { PAGES_DIR, pageScreen, pagesOf } from "./page"
 import type { Screen } from "./screen"
 import { parseScreens, RegionSchema, SCREENS_SCHEMA } from "./screen"
 import { COMMIT, SNIP_ID } from "./snip-id"
+import type { WalksGiven } from "./walk"
+import { walkPicturePath, walkSlice } from "./walk"
 import type { ZoomOptions } from "./zoom"
-import { wholePicture, zoomPicture } from "./zoom"
+import { walkPicture, wholePicture, zoomPicture } from "./zoom"
 
 export { SNIP_ID } from "./snip-id"
 
@@ -225,6 +229,22 @@ export function snipScreen(snip: SnipRecord, id: string): Screen {
 type ScreenPicture = Extract<Picture, { kind: "screen" }>
 type SnipOf = Extract<ScreenPicture["of"], { from: "snips" }>
 type ClipOf = Extract<ScreenPicture["of"], { from: "clips" }>
+type WalkOf = Extract<ScreenPicture["of"], { from: "walks" }>
+
+/** A walk as an essay names it: the run that walked it, and its app. */
+export type WalkRef = { readonly run: string; readonly app: string }
+
+/**
+ * Every walk a cut list's scenes name, each once, in the order first named:
+ * what home fetches, `walks-bundle-<run>` for each run.
+ */
+export function walksOf(cut: CutList): Array<WalkRef> {
+  const named = new Map<string, WalkRef>()
+  for (const of of screensOf(cut))
+    if (of.from === "walks" && !named.has(`${of.run} ${of.app}`))
+      named.set(`${of.run} ${of.app}`, { run: of.run, app: of.app })
+  return [...named.values()]
+}
 
 const screensOf = (cut: CutList): Array<ScreenPicture["of"]> =>
   cut.shots.flatMap(({ picture }) =>
@@ -292,6 +312,7 @@ export type Handed = {
   readonly snips: SnipsGiven | null
   readonly clips: ReadonlyMap<string, PictureSize> | null
   readonly pages?: Pages | null
+  readonly walks?: WalksGiven | null
 }
 
 /**
@@ -434,6 +455,31 @@ export function resolveScreens(
     }
     return partsOf(shotId, `the page ${of.file}`, screen, of.at, PAGES_DIR)
   }
+  const fromWalks = (shotId: string, of: WalkOf): Picture | null => {
+    const record = handed.walks?.runs
+      .find((r) => r.run === of.run)
+      ?.walks.find((w) => w.app === of.app)
+    if (record === undefined) {
+      problems.push(
+        `${shotId}: it plays the ${of.app} walk of run ${of.run}, which home did not hand`
+      )
+      return null
+    }
+    const count = record.walk.snips.length
+    const [first, last] = of.steps ?? [1, count]
+    if (last > count) {
+      problems.push(
+        `${shotId}: it plays steps ${String(first)} to ${String(last)} of the ${of.app} walk, which has ${String(count)}`
+      )
+      return null
+    }
+    const walk = walkSlice(record.walk, first - 1, last)
+    return walkPicture(
+      walk,
+      walk.snips.map((s) => walkPicturePath(of.run, `${of.app}/${s.file}`)),
+      { dir: WALKS_DIR, ...look }
+    )
+  }
   const shots = cut.shots.map((shot) => {
     const { picture } = shot
     if (picture.kind !== "screen") return shot
@@ -443,7 +489,9 @@ export function resolveScreens(
         ? fromSnips(shot.id, of)
         : of.from === "clips"
           ? fromClips(shot.id, of)
-          : fromPages(shot.id, of)
+          : of.from === "walks"
+            ? fromWalks(shot.id, of)
+            : fromPages(shot.id, of)
     return drawn === null ? shot : { ...shot, picture: drawn }
   })
   return problems.length > 0
@@ -473,3 +521,6 @@ export const SNIPS_DIR = "snips"
 
 /** Where the handed clip frames sit in the video's folder. */
 export const CLIPS_DIR = "clips"
+
+/** Where the handed walks' pictures sit in the video's folder: `walks/<run>/<app>/snips/<NN>.png`. */
+export const WALKS_DIR = "walks"
