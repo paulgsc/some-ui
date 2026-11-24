@@ -67,16 +67,17 @@
       "picture": {
         "kind": "screen",
         "of": {
-          "from": "snips",
-          "id": "apk:/journal/renders:android:0.1.78:f5676212697a",
-          "commit": "0a6063f1996b7a7f822c4f6e8845649e254db6d8"
+          "from": "walks",
+          "run": "45457667595",
+          "app": "renders",
+          "steps": [3, 4]
         }
       },
       "durationMs": 30000,
       "burnIns": [],
       "spoken": {
         "role": "scene",
-        "narration": "On the owner's phone, Studio's Renders said, under Coming, that this week's Rust Rounds essay waits for home to hear a take, and the interview essay the same. The picture is Renders on sample data, not home's. The owner had recorded every take days before, and home hears a take in minutes. So the first question is what Renders means by hear.",
+        "narration": "On the owner's phone, Studio's Renders said, under Coming, that this week's Rust Rounds essay waits for home to hear a take, and the interview essay the same. The picture is Renders on sample data, a made-up Monday, not home's: its Coming row says the same. The owner had recorded every take days before, and home hears a take in minutes. So the first question is what Renders means by hear.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
