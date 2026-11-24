@@ -10,6 +10,9 @@
  * - **The media**: each face's clip or still crossfades in over its preview
  *   once it can be shown (a still decoded, a clip's first frame), and gives
  *   way to its title card should it fail.
+ * - **The draw** (#3473): an episode with a pool shows a fresh draw of its
+ *   snacks each visit (`drawSnacks`, `pool-dom.ts`), put in the places of the first draw
+ *   the page was built with, before anything else here reads them.
  * - **The clips** stay ambient (no controls, muted, looping, inline), but
  *   play only while their face is in view: on screen, and on the stage only
  *   while the show's clock has their scene up (`data-on`, timeline.ts).
@@ -19,6 +22,7 @@ import { createPager, offsetOf } from "@some-ui/shared"
 
 import type { DeckEvent, DeckState } from "./deck.ts"
 import { DECK_QUERY, restAt, step, viewOf } from "./deck.ts"
+import { drawPools } from "./pool-dom.ts"
 import { faceOn } from "./timeline.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -350,6 +354,8 @@ function clips(): void {
 }
 
 document.documentElement.classList.add("enhanced")
+// A fresh seed each visit.
+drawPools((Math.random() * 2 ** 32) >>> 0)
 for (const aperture of document.querySelectorAll<HTMLElement>(".aperture"))
   reveal(aperture)
 clips()
