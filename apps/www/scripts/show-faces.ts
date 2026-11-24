@@ -192,26 +192,23 @@ if (screens.length > 0) {
     )
   const bundle = resolve(bundleDir)
   const pictures = apkPictures(bundle)
-  const missing = screens.filter(
-    ({ route }) => !pictures.some((p) => p.route === route)
-  )
-  for (const { route, key } of missing) {
-    const line = `The landing names ${route}, which this capture did not photograph (see the manifest's \`unreached\`): ${key} shows its title card.`
-    // A workflow command's data escapes %, CR and LF.
-    const data = line
-      .replaceAll("%", "%25")
-      .replaceAll("\r", "%0D")
-      .replaceAll("\n", "%0A")
-    process.stdout.write(`::warning title=Landing faces::${data}\n`)
-    const summary = process.env["GITHUB_STEP_SUMMARY"]
-    if (summary !== undefined && summary !== "")
-      appendFileSync(summary, `- ${line}\n`)
-  }
   for (const { route, key } of screens) {
     const found =
       pictures.find((p) => p.route === route && p.build === "release") ??
       pictures.find((p) => p.route === route)
-    if (found === undefined) continue
+    if (found === undefined) {
+      const line = `The landing names ${route}, which this capture did not photograph (see the manifest's \`unreached\`): ${key} shows its title card.`
+      // A workflow command's data escapes %, CR and LF.
+      const data = line
+        .replaceAll("%", "%25")
+        .replaceAll("\r", "%0D")
+        .replaceAll("\n", "%0A")
+      process.stdout.write(`::warning title=Landing faces::${data}\n`)
+      const summary = process.env["GITHUB_STEP_SUMMARY"]
+      if (summary !== undefined && summary !== "")
+        appendFileSync(summary, `- ${line}\n`)
+      continue
+    }
     const target = join(out, key)
     mkdirSync(dirname(target), { recursive: true })
     copyFileSync(join(bundle, found.name), target)

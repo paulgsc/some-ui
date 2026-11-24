@@ -192,7 +192,7 @@ type Episode = {
 }
 
 /** An episode's scenes as one list: its scenes, or every snack of its pool. */
-const scenesOf = (episode: Episode): ReadonlyArray<Scene> =>
+export const scenesOf = (episode: Episode): ReadonlyArray<Scene> =>
   "pool" in episode.scenes ? episode.scenes.pool : episode.scenes
 
 export const SHOW_SCHEMA = "some-ui.landing-show/1"
@@ -264,10 +264,7 @@ export const SHOW: Show = {
       kicker: "On my phone",
       title: "The Android app I built for myself",
       walkthrough: "jobs",
-      // A pool (#3473): each visit draws four. The owner's why is growth
-      // through engagement: friction is one reason a weak muscle goes
-      // untrained, so each app makes practice a tap away. Each snack's
-      // `from` is the record its words rest on.
+      // A pool (#3473, C1440).
       scenes: {
         draw: 4,
         pool: [
@@ -762,8 +759,6 @@ function publicEpisodes(
     }
     const pool = { ...episode.pool, snacks: read(episode.pool.snacks) }
     if (pool.snacks.length === 0) return []
-    // A pool left with no more than it draws shows them all every visit,
-    // in their order: then they are its scenes, and nothing draws.
     if (pool.snacks.length <= pool.draw)
       return [{ ...episode, scenes: pool.snacks, pool: null }]
     return [{ ...episode, scenes: firstDraw(pool), pool }]

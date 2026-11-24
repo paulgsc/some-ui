@@ -78,7 +78,7 @@ export type Timeline = {
 }
 
 /**
- * The scenes the show's clock times (`timeline.ts`): an episode's own, or,
+ * The scenes the show's clock times: an episode's own, or,
  * for a pool, each place timed for whichever snack a visit draws into it:
  * the pool's longest title, and its longest line at each place.
  */
@@ -270,7 +270,6 @@ export function showTimeline(
     const start = at
     const turn = copyTurnS(k, n)
     at += turn
-    // A pool's places are timed for any snack a visit draws (#3473).
     const scenes = timedScenes(episode).map((scene): SceneTimes => {
       const sceneStart = at
       let cursor = sceneStart + TITLE_S

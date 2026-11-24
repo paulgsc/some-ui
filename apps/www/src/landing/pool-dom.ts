@@ -30,28 +30,22 @@ function putLines(
   old: ReadonlyArray<Element>,
   texts: ReadonlyArray<string>
 ): void {
-  // The stage's places keep their lines, each on the show's clock; a line
-  // the snack lacks stays empty (render.ts, `timedScenes`).
   old.forEach((line, l) => {
     line.textContent = texts[l] ?? ""
   })
 }
 
-/**
- * Each pool's draw (#3473): its snacks, drawn fresh, put in its places on
- * the stage (copy and both cubes) and in the list, in place of the first
- * draw the page was built with.
- */
-export function drawPools(random: () => number): void {
+export function drawPools(seed: number): void {
   for (const template of document.querySelectorAll<HTMLTemplateElement>(
     "template.pool"
   )) {
     const episode = template.dataset["episode"] ?? ""
     const snacks = [...template.content.querySelectorAll<HTMLElement>(".snack")]
     const drawn = drawSnacks(
+      episode,
       snacks.length,
       Number(template.dataset["draw"]),
-      random
+      seed
     )
     const copy = document.querySelector(`.copy[data-copy="${episode}"]`)
     const places = [...(copy?.querySelectorAll(".scene") ?? [])]
@@ -81,7 +75,6 @@ export function drawPools(random: () => number): void {
       const h4 = card?.querySelector("h4")
       if (h4 != null) {
         h4.textContent = title
-        // The list's scene holds just the snack's lines.
         for (const old of card?.querySelectorAll(".scene-copy > h4 ~ p") ?? [])
           old.remove()
         h4.after(

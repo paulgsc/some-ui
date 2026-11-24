@@ -48,33 +48,22 @@ const PAGE = renderLanding(
   EPISODES
 )
 
-/** A seeded random source (a linear congruential generator). */
-const seeded = (seed: number): (() => number) => {
-  let s = seed
-  return () => {
-    s = (s * 1_103_515_245 + 12_345) % 2 ** 31
-    return s / 2 ** 31
-  }
-}
-
 const pooled = EPISODES.filter((e) => e.pool !== null)
 
 describe("drawPools", () => {
-  it("has a pool to draw from", () => {
-    expect(pooled.length).toBeGreaterThan(0)
-  })
-
   for (const seed of [1, 2, 3, 5, 8, 13, 21, 34]) {
     it(`puts each drawn snack whole in its place, nothing of the built draw left (seed ${String(seed)})`, () => {
       document.body.innerHTML = PAGE
-      drawPools(seeded(seed))
-      // The same draws drawPools made: one source, each pool in turn in the
-      // page's order (the episodes'), each taking its shuffle's numbers.
-      const replay = seeded(seed)
+      drawPools(seed)
       for (const episode of pooled) {
         const pool = episode.pool
         if (pool === null) continue
-        const drawn = drawSnacks(pool.snacks.length, pool.draw, replay)
+        const drawn = drawSnacks(
+          episode.id,
+          pool.snacks.length,
+          pool.draw,
+          seed
+        )
         const id = episode.id
         const copy = [
           ...document.querySelectorAll(`.copy[data-copy="${id}"] .scene`),

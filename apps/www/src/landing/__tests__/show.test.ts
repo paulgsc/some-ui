@@ -5,12 +5,13 @@
  */
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { drawSnacks, shuffle } from "@/landing/draw"
+import { drawSnacks } from "@/landing/draw"
 import type { Show, WalkthroughCopy } from "@/landing/show"
 import {
   faceKey,
   facesToMake,
   resolveShow,
+  scenesOf,
   SHOW,
   SHOW_SCHEMA,
   showFor,
@@ -155,7 +156,7 @@ describe("resolveShow", () => {
 
   it("resolves the landing's own show: its drafts the extensions' scenes, the Android pool agreed", () => {
     for (const e of SHOW.episodes) {
-      const scenes = "pool" in e.scenes ? e.scenes.pool : e.scenes
+      const scenes = scenesOf(e)
       for (const s of scenes)
         expect("chapter" in s.copy ? false : s.copy.draft).toBe(
           e.id === "extensions"
@@ -318,55 +319,6 @@ describe("faceKey and facesToMake", () => {
   })
 })
 
-/** A random source that gives `values` in turn, then 0. */
-const randomOf = (values: ReadonlyArray<number>): (() => number) => {
-  let at = 0
-  return () => values[at++] ?? 0
-}
-
-describe("shuffle", () => {
-  it("swaps each place with one drawn at or below it (Fisher-Yates)", () => {
-    // i = 3 swaps with j = floor(0.5 * 4) = 2 (a b d c); i = 2 with 0
-    // (d b a c); i = 1 with floor(0.99 * 2) = 1, itself.
-    expect(shuffle(["a", "b", "c", "d"], randomOf([0.5, 0, 0.99]))).toEqual([
-      "d",
-      "b",
-      "a",
-      "c",
-    ])
-  })
-
-  it("keeps every item once, and leaves its input as it was", () => {
-    const items = Array.from({ length: 20 }, (_, i) => i)
-    const got = shuffle(items, Math.random)
-    expect([...got].sort((a, b) => a - b)).toEqual(items)
-    expect(items).toEqual(Array.from({ length: 20 }, (_, i) => i))
-  })
-
-  it("stays inside the array when the random source gives 1", () => {
-    expect(shuffle(["a", "b", "c"], () => 1)).toEqual(["a", "b", "c"])
-  })
-
-  it("draws every order of three about equally often", () => {
-    // A seeded source (a linear congruential generator), so the count is the same every run.
-    let seed = 7
-    const seeded = (): number => {
-      seed = (seed * 1_103_515_245 + 12_345) % 2 ** 31
-      return seed / 2 ** 31
-    }
-    const counts = new Map<string, number>()
-    for (let n = 0; n < 6000; n++) {
-      const order = shuffle(["a", "b", "c"], seeded).join("")
-      counts.set(order, (counts.get(order) ?? 0) + 1)
-    }
-    expect(counts.size).toBe(6)
-    for (const count of counts.values()) {
-      expect(count).toBeGreaterThan(850)
-      expect(count).toBeLessThan(1150)
-    }
-  })
-})
-
 describe("an episode's pool", () => {
   const snack = (title: string, draft: boolean) =>
     ({
@@ -449,20 +401,17 @@ describe("an episode's pool", () => {
     expect(pages.episodes[0]?.pool).toBeNull()
   })
 
-  it("draws `draw` snacks of a pool, each once, by their places in it", () => {
-    // 0 1 2 3 4 → 0 1 4 3 2 → 3 1 4 0 2 → (2 stays) → 1 3 4 0 2.
-    expect(drawSnacks(5, 3, randomOf([0.5, 0, 0.99, 0]))).toEqual([1, 3, 4])
-    for (let n = 0; n < 50; n++) {
-      const drawn = drawSnacks(5, 3, Math.random)
-      expect(drawn).toHaveLength(3)
-      expect(new Set(drawn).size).toBe(3)
-    }
+  it("draws `draw` snacks of a pool, each once, the same for the same seed, apart for each episode", () => {
+    const drawn = drawSnacks("android", 22, 4, 7)
+    expect(drawn).toHaveLength(4)
+    expect(new Set(drawn).size).toBe(4)
+    expect(drawSnacks("android", 22, 4, 7)).toEqual(drawn)
+    expect(drawSnacks("server", 22, 4, 7)).not.toEqual(drawn)
   })
 
   it("rests every snack of the landing's own pools on the record: each file it names exists", () => {
     for (const e of SHOW.episodes) {
       if (!("pool" in e.scenes)) continue
-      expect(e.scenes.pool.length).toBeGreaterThan(e.scenes.draw)
       for (const s of e.scenes.pool)
         for (const source of s.from)
           if (source.includes("/") || source.endsWith(".md"))

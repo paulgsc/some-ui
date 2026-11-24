@@ -226,11 +226,9 @@ jobs:
       # (apps/www/tests/walk/jobs-week.json), rendered as its walkthrough
       # with no voice, then cut into the landing show's Android faces
       # (PAGES #3401, C1059, C1183): each chapter's stop as a silent clip,
-      # and the stills the show names, by apps/www/scripts/show-faces.ts,
-      # which also copies the stills of the app's routes the show names from
-      # this run's snips bundle (#3473). A walk that failed (only a warning
-      # to the capture) leaves no walk.json: then there are no faces, and
-      # pages.yml keeps the newest earlier ones, all of a piece.
+      # and the stills the show names, by apps/www/scripts/show-faces.ts. A
+      # walk that failed (only a warning to the capture) leaves no walk.json:
+      # then there are no faces, and pages.yml keeps the newest earlier ones.
       - name: Render the Jobs walkthrough
         id: clip
         run: |

@@ -354,7 +354,8 @@ function clips(): void {
 }
 
 document.documentElement.classList.add("enhanced")
-drawPools(Math.random)
+// A fresh seed each visit.
+drawPools((Math.random() * 2 ** 32) >>> 0)
 for (const aperture of document.querySelectorAll<HTMLElement>(".aperture"))
   reveal(aperture)
 clips()

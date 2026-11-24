@@ -45,7 +45,7 @@ An episode can hold a pool of snacks instead of fixed scenes (#3473, C1440): mor
 page shows, each a short first-person line, its two faces, and the record its words rest
 on (`from`: an issue, a call or a file). The page is built with the pool's first draw in
 place, which is what a reader with no script sees. With the script, each visit draws
-afresh (Fisher-Yates, `drawSnacks`; `pool-dom.ts`) and puts the drawn snacks in the same places, from an
+afresh (`drawSnacks` over the repo's seeded Fisher-Yates; `pool-dom.ts`) and puts the drawn snacks in the same places, from an
 inert template that holds every snack, so nothing in it loads until drawn. The show's
 clock times each place for the pool's longest title and lines (`timedScenes`), so any
 draw fits. The Android episode's pool says why its apps exist: growth through engagement,
