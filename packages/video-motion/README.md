@@ -44,8 +44,10 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   - **apk** (`src/walk/stage-apk.ts`): the debug APK on a booted emulator, its WebView
     driven by Playwright, each snip the whole screen. Jobs walks here
     (`src/walk/jobs.ts`), against the stand-in home answering its story sample
-    (`apps/www/tests/walk/jobs-week.json`), run by `apps/mobile/walk/walk-apk.sh` inside
-    Snips Capture's emulator.
+    (`apps/www/tests/walk/jobs-week.json`), and so does Rust Rounds
+    (`src/walk/rust-rounds.ts`, #3476), on the snips' sample
+    (`apps/mobile/snips/sample-routes.json`), the Monday the APK's snips show. Both are
+    run by `apps/mobile/walk/walk-apk.sh` inside Snips Capture's emulator.
   - **grafana** (`src/walk/stage-grafana.ts`): a throwaway Grafana, each page opened at one
     size, dark, in UTC, over the sample week (`WEEK`). A page is a single panel (`/d-solo/`),
     or a whole dashboard in kiosk that names one of its rows (`walk-row`, `ROW_PARAM`): the
@@ -81,7 +83,7 @@ checkout> <out>` builds that Grafana on any machine with docker: paulgsc/server'
   each from a screen of the walk; the cut list is the promo's opening, then per stop a
   chapter card (`walk-chapter`) and that stop's screens in `promo-feature`, then the
   promo's close. It takes a walk already made, since an APK walk needs the emulator:
-  Snips Capture's `walks-<run>` artifact holds `jobs/`. Jobs' words are
+  Snips Capture's `walks-<run>` artifact holds `jobs/` and `rust-rounds/`. Jobs' words are
   `apps/www/tests/walk/jobs-walkthrough.json`.
 
   Voiced (WALK5, #3337; the owner's call C945). It writes `lines.json`, every line home's

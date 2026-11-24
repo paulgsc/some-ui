@@ -20,6 +20,7 @@ import {
 } from "@video-motion/walk/microphone"
 import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
+import { rustRounds } from "@video-motion/walk/rust-rounds"
 import type { PlaceRead } from "@video-motion/walk/stage-apk"
 import {
   lookCommand,
@@ -35,6 +36,7 @@ import {
   WalkthroughSchema,
 } from "@video-motion/walkthrough"
 import { describe, expect, it } from "vitest"
+import { z } from "zod"
 
 /** Jobs' story sample (WALK2), which the stand-in home answers and the walk reads. */
 const sample = jobs.sample.parse(
@@ -77,6 +79,131 @@ describe("a walk's steps (WALK1)", () => {
     expect(walk.stage.kind).toBe("apk")
     expect(stepProblems(walk.steps)).toEqual([])
     expect(walk.steps[0]?.until).toBe(`text=${sample.walk.title}`)
+  })
+})
+
+/** A file of the repository, as text. */
+const repoFile = (path: string): string =>
+  readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf8")
+
+/** The week a test rewrites in the snips' sample, the rest kept as it is. */
+const WEEK_ROUTE = "GET /api/v1/rust-weeks/2026-w45"
+const SampleRoutes = z.looseObject({
+  routes: z.record(z.string(), z.looseObject({ body: z.unknown() })),
+})
+const WeekBody = z.looseObject({
+  week: z.looseObject({
+    tickets: z.array(
+      z.looseObject({
+        forks: z.array(z.looseObject({ options: z.array(z.looseObject({})) })),
+      })
+    ),
+  }),
+})
+
+describe("Rust Rounds' walk (#3476)", () => {
+  const sample: unknown = JSON.parse(
+    repoFile("apps/mobile/snips/sample-routes.json")
+  )
+
+  it("reads the snips' sample, opening its newest week's first ticket, and walks in order", () => {
+    const walk = rustRounds.walk(rustRounds.sample.parse(sample))
+    expect(walk.stage).toMatchObject({ kind: "apk", path: "/rust-rounds" })
+    expect(stepProblems(walk.steps)).toEqual([])
+    expect(walk.steps[0]?.until).toBe("text=Tallowbrook")
+    expect(walk.steps[1]?.action).toEqual({
+      kind: "tap",
+      target: `button:has-text("TB-101 · Print each queued label's address")`,
+    })
+    expect(walk.steps.at(-1)?.until).toBe(`button:has-text("Send to home")`)
+  })
+
+  it("picks the first fork's first option not recommended, and refuses a fork with none", () => {
+    const pickedIn = (value: unknown): unknown =>
+      rustRounds
+        .walk(rustRounds.sample.parse(value))
+        .steps.find((s) => s.label === "An option picked")?.action
+    expect(pickedIn(sample)).toEqual({
+      kind: "tap",
+      target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=1',
+    })
+    // The sample with its first fork's options given `recommended` in turn.
+    // `undefined` leaves the option saying nothing of it.
+    const recommending = (
+      flags: ReadonlyArray<boolean | undefined>
+    ): unknown => {
+      const copy = SampleRoutes.parse(structuredClone(sample))
+      const route = copy.routes[WEEK_ROUTE]!
+      const body = WeekBody.parse(route.body)
+      const fork = body.week.tickets[0]!.forks[0]!
+      fork.options = flags.map((recommended, i) => {
+        const { recommended: _said, ...option } = fork.options[i] ?? {}
+        return recommended === undefined ? option : { ...option, recommended }
+      })
+      copy.routes[WEEK_ROUTE] = { ...route, body }
+      return copy
+    }
+    expect(pickedIn(recommending([false, true, false]))).toEqual({
+      kind: "tap",
+      target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=0',
+    })
+    const refused = (value: unknown): ReadonlyArray<string> => {
+      const read = rustRounds.sample.safeParse(value)
+      return read.success ? [] : read.error.issues.map((i) => i.message)
+    }
+    expect(refused(recommending([true, true, true]))).toEqual([
+      "TB-101's first fork has no option but the recommended",
+    ])
+    // An option that says nothing of it never passes for "not recommended".
+    expect(refused(recommending([true, undefined, false]))).not.toEqual([])
+  })
+
+  it("looks only for words the week's screens say", () => {
+    // The words table's string literals, its comments left out, so a reworded
+    // button can't pass on a comment that still says the old words.
+    const literals = [
+      ...repoFile("packages/ui/rust-rounds/src/lib/week-play/words.ts")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "")
+        .matchAll(/"((?:[^"\\]|\\.)*)"|`([^`]*)`/g),
+    ].map((m) => m[1] ?? m[2] ?? "")
+    const read = rustRounds.sample.parse(sample)
+    const walk = rustRounds.walk(read)
+    const said = walk.steps
+      .flatMap((step) => [
+        step.until,
+        step.action.kind === "tap" ? step.action.target : undefined,
+      ])
+      .flatMap((selector) => {
+        const quoted = /has-text\("([^"]+)"\)|^text=(.+)$/.exec(selector ?? "")
+        return quoted === null ? [] : [quoted[1] ?? quoted[2] ?? ""]
+      })
+      // The sample's own words (the company, a ticket, an exercise).
+      .filter(
+        (text) =>
+          text !== read.company &&
+          text !== `${read.ticket.id} · ${read.ticket.title}` &&
+          text !== read.ticket.academy[0]?.title
+      )
+    expect(said.length).toBeGreaterThan(5)
+    for (const text of said) {
+      expect(
+        // A quoted `text="…"` is matched whole on screen, so whole here.
+        /^".*"$/.test(text)
+          ? literals.includes(text.slice(1, -1))
+          : literals.some((l) => l.includes(text)),
+        text
+      ).toBe(true)
+    }
+  })
+
+  it("refuses a sample that serves no week", () => {
+    expect(
+      rustRounds.sample.safeParse({
+        schema: "some-ui.stub-sample/snips/1",
+        routes: { "GET /api/v1/rust-weeks": { body: { weeks: [] } } },
+      }).success
+    ).toBe(false)
   })
 })
 

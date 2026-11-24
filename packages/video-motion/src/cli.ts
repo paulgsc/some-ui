@@ -44,6 +44,7 @@ import {
 import { jobs } from "./walk/jobs"
 import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
+import { rustRounds } from "./walk/rust-rounds"
 import { suspenderLedger } from "./walk/suspender-ledger"
 import {
   voicedWalkthrough,
@@ -81,12 +82,13 @@ const entry =
 /**
  * The apps a walk can show. The server's dashboards walk on a throwaway
  * Grafana over sample telemetry (`home-server`, `home-cores`; `home-call`
- * and `home-pipelines` for an essay, #3476). Suspender Ledger walks in the sandbox; Jobs on
- * the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
+ * and `home-pipelines` for an essay, #3476). Suspender Ledger walks in the sandbox; Jobs and
+ * Rust Rounds on the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["suspender-ledger", entry(suspenderLedger)],
   ["jobs", entry(jobs)],
+  ["rust-rounds", entry(rustRounds)],
   ["home-server", entry(homeServer)],
   ["home-server-rows", entry(homeServerRows)],
   ["home-cores", entry(homeCores)],
