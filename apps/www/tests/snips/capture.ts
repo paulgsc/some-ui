@@ -87,9 +87,54 @@ const READING_MS = 20_000
 /** How many pictures of a screen that began reading after it settled are taken before it is left. */
 const LOOKS = 3
 
-/** Whether anything on the screen is reading now. */
-const reading = (page: Page): Promise<boolean> =>
-  page.evaluate((busy) => document.querySelector(busy) !== null, BUSY)
+/**
+ * Starts noting whether anything on the screen reads, at any moment from
+ * now until `sawReading`: a line that comes and goes between two looks, as
+ * a read that lands while a picture is taken, is noted too (#3491). What it
+ * notes is kept on the page's root, as `data-snips-*`, which no screen reads.
+ */
+const watchReading = (page: Page): Promise<void> =>
+  page.evaluate((busy) => {
+    const root = document.documentElement
+    // Each watch's own number, from a count that only grows in this document.
+    const watch = String(Number(root.dataset["snipsWatches"] ?? "0") + 1)
+    root.dataset["snipsWatches"] = watch
+    root.dataset["snipsWatch"] = watch
+    root.dataset["snipsSaw"] =
+      document.querySelector(busy) === null ? "" : "yes"
+    const reads = (node: Node): boolean =>
+      node instanceof Element &&
+      (node.matches(busy) || node.querySelector(busy) !== null)
+    const observer = new MutationObserver((records): void => {
+      // A later watch, or `sawReading`, ends this one.
+      if (root.dataset["snipsWatch"] !== watch) {
+        observer.disconnect()
+        return
+      }
+      for (const record of records) {
+        if (record.type === "attributes" && reads(record.target))
+          root.dataset["snipsSaw"] = "yes"
+        for (const node of record.addedNodes)
+          if (reads(node)) root.dataset["snipsSaw"] = "yes"
+      }
+    })
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-busy"],
+    })
+  }, BUSY)
+
+/** Whether anything read since `watchReading`, or reads now; ends the watch. */
+const sawReading = (page: Page): Promise<boolean> =>
+  page.evaluate((busy) => {
+    const root = document.documentElement
+    const saw = root.dataset["snipsSaw"] === "yes"
+    root.dataset["snipsWatch"] = ""
+    root.dataset["snipsSaw"] = ""
+    return saw || document.querySelector(busy) !== null
+  }, BUSY)
 
 export async function walk(w: Walk): Promise<Part> {
   const links = new Set<string>()
@@ -115,6 +160,11 @@ export async function walk(w: Walk): Promise<Part> {
       stillReading()
       return
     }
+    // A screen can begin reading after settle's last look, and its read can
+    // land while the picture is taken; a picture taken while anything read
+    // since settle is dropped, and the screen settled and shot again, a few
+    // times at most.
+    await watchReading(w.page)
     const screen = await read(w.page, w.base)
     for (const link of screen.links) links.add(link)
     if (screen.notFound) {
@@ -135,13 +185,12 @@ export async function walk(w: Walk): Promise<Part> {
     }
     const whole = isStage(route.path)
     let png = await w.camera.shoot(whole)
-    // A screen can begin reading after settle's last look; such a picture is
-    // dropped, and the screen is settled and shot again, a few times at most.
-    for (let look = 1; await reading(w.page); look++) {
+    for (let look = 1; await sawReading(w.page); look++) {
       if (look >= LOOKS || !(await settle(w.page))) {
         stillReading()
         return
       }
+      await watchReading(w.page)
       png = await w.camera.shoot(whole)
     }
     const regions = await w.camera.regions(whole)
@@ -288,8 +337,8 @@ export async function pageRegions(
 
 /**
  * Waits for the network to go quiet, for nothing on the screen to be reading
- * (`BUSY`) and fonts to load, then a beat for late paints, and looks again:
- * while a screen began reading during the beat, it waits again. False when
+ * (`BUSY`) and fonts to load, then a beat for late paints: while anything
+ * read at any moment of the beat, it waits again. False when
  * the screen was still reading after `readingMs` in all.
  */
 export async function settle(
@@ -312,8 +361,9 @@ export async function settle(
       .catch(() => false)
     if (!read) return false
     await page.evaluate(() => document.fonts.ready.then(() => true))
+    await watchReading(page)
     await page.waitForTimeout(SETTLE_MS)
-    if (!(await reading(page))) return true
+    if (!(await sawReading(page))) return true
     if (Date.now() >= until) return false
   }
 }

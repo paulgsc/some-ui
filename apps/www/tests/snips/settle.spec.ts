@@ -12,7 +12,7 @@
 import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 
-import { settle, walk } from "./capture"
+import { hashOf, settle, walk } from "./capture"
 
 /** A screen whose reading line (`Reading`, `@some-ui/shared`) goes after `ms`, or never. */
 const screenReading = (ms: number | null): string => `
@@ -76,6 +76,24 @@ test.describe("the capture's wait for a screen to read (SN2)", () => {
     expect(await settle(page, 4_000)).toBe(false)
   })
 
+  test("waits again for a read that comes and goes inside the beat", async ({
+    page,
+  }) => {
+    // Idle at first; reading from 1 s to 1.5 s, inside the 2.5 s beat. Only
+    // a second beat after it can be trusted to show the screen it landed on.
+    await page.setContent(`<main><h1>Takes</h1><script>
+      setTimeout(() => {
+        const p = Object.assign(document.createElement("p"), { id: "reading", textContent: "Asking home…" })
+        p.setAttribute("aria-busy", "true")
+        document.querySelector("main").append(p)
+      }, 1_000)
+      setTimeout(() => document.getElementById("reading").remove(), 1_500)
+    </script></main>`)
+    const from = Date.now()
+    expect(await settle(page, 10_000)).toBe(true)
+    expect(Date.now() - from).toBeGreaterThanOrEqual(5_000)
+  })
+
   test("refuses a screen still reading at its bound", async ({ page }) => {
     await page.setContent(screenReading(null))
     expect(await settle(page, 1_000)).toBe(false)
@@ -87,16 +105,19 @@ const BASE = "http://snips.test/app"
 
 /**
  * Walks one screen, /takes, whose reading line appears just as the first
- * picture is taken (after `settle` looked) and goes after `goesMs`, or never.
+ * picture is taken (after `settle` looked) and goes after `goesMs`, or never,
+ * or as soon as that picture is taken: a read that lands while it is taken.
  * Each picture notes whether the screen was reading as it was taken.
  */
 async function walkTakes(
   page: Page,
   out: string,
-  goesMs: number | null
+  goesMs: number | "with the picture" | null
 ): Promise<{
   readonly part: Awaited<ReturnType<typeof walk>>
   readonly shots: ReadonlyArray<boolean>
+  /** Each picture's SHA-256, in the order taken. */
+  readonly pictures: ReadonlyArray<string>
 }> {
   await page.route(`${BASE}/**`, (route) =>
     route.fulfill({
@@ -105,6 +126,7 @@ async function walkTakes(
     })
   )
   const shots: Array<boolean> = []
+  const pictures: Array<string> = []
   const part = await walk({
     surface: "web",
     build: "debug",
@@ -133,7 +155,7 @@ async function walkTakes(
             })
             p.setAttribute("aria-busy", "true")
             document.querySelector("main")?.append(p)
-            if (goesMs !== null)
+            if (typeof goesMs === "number")
               setTimeout(
                 () => document.getElementById("reading")?.remove(),
                 goesMs
@@ -144,13 +166,19 @@ async function walkTakes(
             () => document.querySelector('[aria-busy="true"]') !== null
           )
         )
-        return page.screenshot()
+        const png = await page.screenshot()
+        pictures.push(await hashOf(png))
+        if (goesMs === "with the picture" && shots.length === 1)
+          await page.evaluate(() =>
+            document.getElementById("reading")?.remove()
+          )
+        return png
       },
       regions: () => Promise.resolve([]),
       record: () => Promise.resolve(null),
     },
   })
-  return { part, shots }
+  return { part, shots, pictures }
 }
 
 test.describe("the capture's walk drops a picture of a screen that began reading (SN2)", () => {
@@ -166,6 +194,23 @@ test.describe("the capture's walk drops a picture of a screen that began reading
     expect(part.snips).toHaveLength(1)
     expect(shots[0]).toBe(true)
     expect(shots.at(-1)).toBe(false)
+  })
+
+  test("drops a picture taken while a read landed, though nothing reads by the time it looks", async ({
+    page,
+  }) => {
+    const { part, shots, pictures } = await walkTakes(
+      page,
+      test.info().outputPath("walk"),
+      "with the picture"
+    )
+    expect(part.unreached).toEqual([])
+    expect(part.snips).toHaveLength(1)
+    expect(part.snips[0]?.image.sha256).not.toBe(pictures[0])
+    // The first picture, taken while it read, is dropped; every later one
+    // (the retake, and the motion check's second look) shows it read.
+    expect(shots[0]).toBe(true)
+    expect(shots.slice(1)).not.toContain(true)
   })
 
   test("lists a screen that never stops reading as unreached, with no picture", async ({
