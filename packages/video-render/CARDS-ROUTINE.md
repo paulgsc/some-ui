@@ -54,12 +54,20 @@ every video carries, whatever it is about (#3476, `src/bookends.ts`), the
 brand's intro and outro and a music bed under the voice, which home makes
 itself. `render cards-check` refuses an essay being published in an older
 version, or one that turns the bed off (`"music": "off"`): only a series
-opts out of one, as policy in `bookends.ts`, never an essay. Version 3
-plays spoken cards, version 4 also moves each voice on at each chapter, so
-the narrator of one card is not the narrator of the next (C840), and version
-5 adds a chart card, `bars`. Versions 2 and 3 keep one narrator for every
-card, and version 1 essays are silent, from before this routine; each still
-plays as it did, and is never rewritten.
+opts out of one, as policy in `bookends.ts`, never an essay. Version 7 is
+version 6 with its terminal card typed (`terminal-v2`): a line with a prompt
+shows the prompt, then types its command a character at a time behind a
+cursor. A line after a command must give an `atMs` for when it is typed:
+the card is refused otherwise, and the refusal names the earliest time.
+Typing lengthens a card, about three quarters of a second plus 45
+milliseconds a character, so a scene's words must run past its last line's
+time and typing, or the scene ends before it is shown. Pin it for an essay
+that types commands on screen; home draws it once its render image is
+rebuilt. Version 3 plays spoken cards, version 4 also moves each voice on at
+each chapter, so the narrator of one card is not the narrator of the next
+(C840), and version 5 adds a chart card, `bars`. Versions 2 and 3 keep one
+narrator for every card, and version 1 essays are silent, from before this
+routine; each still plays as it did, and is never rewritten.
 Each scene says something, in a `spoken` field:
 
 1. **The intro**, the first scene, `{"role": "intro", "said": "…"}`. It
@@ -138,7 +146,8 @@ Since you, months later, are the listener:
 2. **Read the subject** at the commits the essay will be stamped with. Clone
    each repository it explains read-only, with enough history to hold that
    commit, and note each one's short commit. Keep the clones for step 7.
-3. **Write the cut list** in the cheat-sheet series, version 6, as
+3. **Write the cut list** in the cheat-sheet series, version 6 (7 with typed
+   commands), as
    `packages/video-render/src/sample/videos/*/cut-list.json` are. Read both,
    cards and words, before writing.
    - **Show what we own** (#3476, SHOW1). When a chapter speaks of a screen
