@@ -293,10 +293,11 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `voice_repo::verdict::Verdict` serialises it: `{"kind","reasons","rule","signals"}`, `kind` one
   of `heard`, `garbled`, `nothing_said` or `failed`, `reasons` short words (`low_confidence`,
   `deadline`), `rule` the thresholds' name (`heard-1`), and `signals` `null` or the eleven
-  numbers and languages it was judged on, each number `null` where home kept none and the
-  detected language `""` where it kept none. Every key is required and no other is taken.
-  `verdict` is `null` for a transcript kept before verdicts were, and may be absent. A take home
-  found silent (`nothing_said`) or never heard (`failed`) is filed with `text` `""`, `language`
+  numbers and languages it was judged on: `speechMs` whole milliseconds, each other number
+  `null` where home kept none, the detected `language` `""` where it kept none, and
+  `expectedLanguage` `null` for a kind said in no one language. Every key is required and no other is taken.
+  `verdict` is `null` for a transcript kept before verdicts were, and may be absent. A Rust Rounds
+  or interview take home found silent (`nothing_said`) or never heard (`failed`) is filed with `text` `""`, `language`
   `null` and `words` empty, so the week's routine stops waiting for it; any other transcript
   needs text and a language. `src/__tests__/fixtures/home-mailbox-bodies.snapshot.json` holds
   one body of each shape home's mailbox pass puts, and every one must be taken (MB7). Unlike the other folders, the Worker holds this

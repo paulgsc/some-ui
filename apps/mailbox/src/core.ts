@@ -78,6 +78,8 @@ const VERDICT_KINDS: ReadonlySet<unknown> = new Set([
   "nothing_said",
   "failed",
 ])
+/** What a take home files a silence for is said for: the week's routine must not wait on it (HEARD1). */
+const SILENT_OF: ReadonlySet<unknown> = new Set(["rust-round", "interview"])
 /** The kinds a transcript filed with no text may carry: home heard nothing said, or never heard it. */
 const SILENT_KINDS: ReadonlySet<unknown> = new Set(["nothing_said", "failed"])
 /** `voice_repo::verdict::Signals`' numbers, each `null` where home stored none (serde writes a non-finite `f64` so). */
@@ -298,6 +300,7 @@ function transcriptRefusal(
   // language and no words beside the verdict that says which (HEARD1).
   const silent =
     body.text === "" &&
+    SILENT_OF.has(body.of) &&
     isRecord(body.verdict) &&
     SILENT_KINDS.has(body.verdict.kind)
   if (silent) {

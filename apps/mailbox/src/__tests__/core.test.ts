@@ -3762,6 +3762,11 @@ describe("what home puts (MB7)", () => {
       { ...silence.body, verdict: null },
       "text must be what home heard"
     )
+    await refuses(
+      silence,
+      { ...silence.body, of: "reflection", ref: "session-7f2a" },
+      "text must be what home heard"
+    )
     const { verdict: _v, ...unjudged } = silence.body
     await refuses(silence, unjudged, "text must be what home heard")
     await refuses(
