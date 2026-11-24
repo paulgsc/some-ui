@@ -12,6 +12,7 @@ import {
 } from "@video-motion/walk/microphone"
 import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
+import { rustRounds } from "@video-motion/walk/rust-rounds"
 import {
   screenPlace,
   versionOf,
@@ -64,6 +65,60 @@ describe("a walk's steps (WALK1)", () => {
     expect(walk.stage.kind).toBe("apk")
     expect(stepProblems(walk.steps)).toEqual([])
     expect(walk.steps[0]?.until).toBe(`text=${sample.walk.title}`)
+  })
+})
+
+/** A file of the repository, as text. */
+const repoFile = (path: string): string =>
+  readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf8")
+
+describe("Rust Rounds' walk (#3476)", () => {
+  const sample: unknown = JSON.parse(
+    repoFile("apps/mobile/snips/sample-routes.json")
+  )
+
+  it("reads the snips' sample, opening its newest week's first ticket, and walks in order", () => {
+    const walk = rustRounds.walk(rustRounds.sample.parse(sample))
+    expect(walk.stage).toMatchObject({ kind: "apk", path: "/rust-rounds" })
+    expect(stepProblems(walk.steps)).toEqual([])
+    expect(walk.steps[0]?.until).toBe("text=Tallowbrook")
+    expect(walk.steps[1]?.action).toEqual({
+      kind: "tap",
+      target: `button:has-text("TB-101 · Print each queued label's address")`,
+    })
+    expect(walk.steps.at(-1)?.until).toBe(`button:has-text("Send to home")`)
+  })
+
+  it("looks only for words the week's screens say", () => {
+    const words = repoFile("packages/ui/rust-rounds/src/lib/week-play/words.ts")
+    const walk = rustRounds.walk(rustRounds.sample.parse(sample))
+    const said = walk.steps
+      .flatMap((step) => [
+        step.until,
+        step.action.kind === "tap" ? step.action.target : undefined,
+      ])
+      .flatMap((selector) => {
+        const quoted = /has-text\("([^"]+)"\)|^text=(.+)$/.exec(selector ?? "")
+        return quoted === null ? [] : [quoted[1] ?? quoted[2] ?? ""]
+      })
+      // The sample's own words (the company, a ticket, an exercise).
+      .filter(
+        (text) =>
+          !text.startsWith("TB-") &&
+          text !== "Tallowbrook" &&
+          text !== "A struct of plain fields still moves"
+      )
+    expect(said.length).toBeGreaterThan(5)
+    for (const text of said) expect(words, text).toContain(text)
+  })
+
+  it("refuses a sample that serves no week", () => {
+    expect(
+      rustRounds.sample.safeParse({
+        schema: "some-ui.stub-sample/snips/1",
+        routes: { "GET /api/v1/rust-weeks": { body: { weeks: [] } } },
+      }).success
+    ).toBe(false)
   })
 })
 

@@ -35,6 +35,7 @@ import { homeCores, homeServer } from "./walk/home-dashboards"
 import { jobs } from "./walk/jobs"
 import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
+import { rustRounds } from "./walk/rust-rounds"
 import { suspenderLedger } from "./walk/suspender-ledger"
 import {
   voicedWalkthrough,
@@ -70,12 +71,13 @@ const entry =
 
 /**
  * The apps a walk can show. Home's dashboards walk on its own Grafana
- * (`home-server`, `home-cores`, C1073). Suspender Ledger walks in the sandbox; Jobs on
- * the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
+ * (`home-server`, `home-cores`, C1073). Suspender Ledger walks in the sandbox; Jobs and
+ * Rust Rounds on the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["suspender-ledger", entry(suspenderLedger)],
   ["jobs", entry(jobs)],
+  ["rust-rounds", entry(rustRounds)],
   ["home-server", entry(homeServer)],
   ["home-cores", entry(homeCores)],
 ])
