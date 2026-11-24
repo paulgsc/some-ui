@@ -13,7 +13,6 @@ import {
   laidTake,
   parseCardsEssay,
   PUBLISH_SINCE,
-  sceneTakeFile,
   voicedCardsCutList,
 } from "@video-render/cards-essay"
 import type { CutList } from "@video-render/cut-list"
@@ -518,13 +517,15 @@ describe("a spoken essay (EXPLAIN6)", () => {
     })
     if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
     const scenes = cardsScenes(parsed.value)
-    // What the recorder writes: each line's take as the speaker said it,
-    // and, for a scene of several lines, their join (`sceneTakes`).
+    // What the recorder writes that a scene can play: a one-line scene's
+    // take as the speaker said it, and a several-line scene's join, laid at
+    // `<file>.wav` (`sceneTakes`), never one of its lines alone.
     const made = new Set(
-      scenes.flatMap((scene) => [
-        ...scene.lines.map((line) => `${line.file}.wav`),
-        ...(scene.lines.length > 1 ? [`${sceneTakeFile(scene)}.wav`] : []),
-      ])
+      scenes.map((scene) =>
+        scene.lines.length > 1
+          ? `${scene.file}.wav`
+          : `${scene.lines[0]?.file ?? ""}.wav`
+      )
     )
     const lineCounts = new Set(scenes.map((scene) => scene.lines.length))
     expect([...lineCounts].sort()).toEqual([1, 2])

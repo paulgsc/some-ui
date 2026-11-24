@@ -580,13 +580,12 @@ export const joinedTake = (takes: ReadonlyArray<StillTake>): StillTake =>
  * both ends (CT1, #3519). A scene of several lines plays their join,
  * `<file>`, which the recorder lays there. A scene of one line plays that
  * line's own take, as the speaker recorded it: a chapter that goes on says
- * its narration alone, `<file>-narration` (C1027). A spoken card's scene
- * plays the take recorded with its still, `<file>`.
+ * its narration alone, `<file>-narration` (C1027); the intro's and close's
+ * one line is `<file>` itself. A spoken card's scene plays the take
+ * recorded with its still, `<file>`, which its one line, if any, is named.
  */
 export const sceneTakeFile = (scene: CardsScene): string =>
-  scene.spoken === undefined && scene.lines.length === 1
-    ? (scene.lines[0]?.file ?? scene.file)
-    : scene.file
+  scene.lines.length === 1 ? (scene.lines[0]?.file ?? scene.file) : scene.file
 
 /**
  * The spoken essay as the cut list the renderer draws: a scene per card
