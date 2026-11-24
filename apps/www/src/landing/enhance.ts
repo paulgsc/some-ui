@@ -37,6 +37,9 @@ const ROUND = {
   held: false,
 } as const
 
+/** How recently the deck lost focus to nothing for its teardown to count it as the deck's. */
+const JUST_LOST_MS = 200
+
 /**
  * Runs the deck over `flat` while the window is narrow, from scene `from`,
  * telling `kept` each scene it lands on (so a turn of the phone that crosses
@@ -160,17 +163,30 @@ function mountDeck(
     turn(event.key === "ArrowRight" ? "next" : "prev")
   }
   flat.addEventListener("keydown", onKey)
+  // Hiding the deck as the window widens can blur it before its media
+  // query reports the change (a style read in between is enough), so a
+  // focus it lost to nothing just before the teardown still counts as its.
+  let lostAt = Number.NEGATIVE_INFINITY
+  const onOut = (event: FocusEvent): void => {
+    if (event.relatedTarget === null) lostAt = performance.now()
+  }
+  flat.addEventListener("focusout", onOut)
+  dots.addEventListener("focusout", onOut)
   draw()
 
   return () => {
     // Focus in the deck, its dots included, moves to the show as the deck
     // goes, rather than falling to the page's start.
+    const active = document.activeElement
     const focused =
-      flat.contains(document.activeElement) ||
-      dots.contains(document.activeElement)
+      flat.contains(active) ||
+      dots.contains(active) ||
+      ((active === null || active === document.body) &&
+        performance.now() - lostAt < JUST_LOST_MS)
     // A turn in flight lands where it was going.
     run({ type: "touch" })
     flat.removeEventListener("keydown", onKey)
+    flat.removeEventListener("focusout", onOut)
     detach()
     unsubscribe()
     cancelAnimationFrame(frame)

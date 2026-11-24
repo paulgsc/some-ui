@@ -89,7 +89,7 @@ describe("renderLanding", () => {
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
-  it("lets a reader send the mochi a hug, a button on a page with no script, moving only where the show moves, and drops it for a photo (C1187)", () => {
+  it("lets a reader send the mochi a hug, a button with no script, moving at every width where motion is allowed, and drops it for a photo (C1187, C1423)", () => {
     const slot = page.slice(
       page.indexOf('<figure class="photo"'),
       page.indexOf("</figure>", page.indexOf('<figure class="photo"'))
@@ -99,14 +99,17 @@ describe("renderLanding", () => {
     )
     expect(slot).toContain('<span class="hug-heart" aria-hidden="true"><svg')
     expect(page).not.toMatch(/<script|onclick|onpointer/i)
-    // The hug moves only where the show moves, and by the individual
-    // properties, never transform, which would stop the idle loops.
+    // The hug moves wherever motion is allowed, at every width, and by the
+    // individual properties, never transform, which would stop the idle
+    // loops.
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
-    // The wide block, to its own closing brace.
-    const open = template.indexOf(`@media ${WIDE_MOTION} {`)
+    // The motion block, to its own closing brace.
+    const open = template.indexOf(
+      "@media (prefers-reduced-motion: no-preference) {"
+    )
     let depth = 0
     let close = open
     for (let i = template.indexOf("{", open); i < template.length; i++) {
@@ -116,13 +119,19 @@ describe("renderLanding", () => {
         break
       }
     }
-    const wide = template.slice(open, close)
+    const moving = template.slice(open, close)
+    // Not tied to a width: the hug and the idle loops play on a phone too.
+    expect(moving).toMatch(/\.hug:active \.hug-body \{/)
+    expect(moving).toMatch(/animation: mochi-blink /)
+    expect(
+      template.slice(template.indexOf(`@media ${WIDE_MOTION} {`))
+    ).not.toMatch(/mochi-(blink|sway|lean) \d/)
     const pressed = [...template.matchAll(/\.hug:active[^{]*\{([^}]*)\}/g)]
     expect(pressed.length).toBeGreaterThan(1)
     for (const [rule, body] of pressed) {
       expect(body, rule).not.toMatch(/(^|[\s;{])transform\s*:/)
       if (/\b(scale|rotate|translate):/.test(body))
-        expect(wide, rule).toContain(rule)
+        expect(moving, rule).toContain(rule)
     }
     const withPhoto = renderLanding(
       resume,
@@ -411,7 +420,7 @@ describe("renderLanding", () => {
     )
   })
 
-  it("moves only on a wide screen with motion allowed", () => {
+  it("moves only where motion is allowed: the stage on a wide screen, the deck under a finger, the sheen and the mochi", () => {
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
@@ -422,23 +431,24 @@ describe("renderLanding", () => {
     // The block ends where the next top-level rule starts.
     const end = css.indexOf("\n      }\n", start)
     const outside = css.slice(0, start) + css.slice(end)
-    // Outside it, two things move, each in a block of its own: the phone's
-    // deck, which turns only under the reader's finger (C1422), and a
-    // preview's sheen, only where motion is allowed. Nothing else is set
-    // moving or turned: transforms live only in keyframes.
+    // Outside it, the rest move each in a block of its own: the phone's
+    // deck, which turns only under the reader's finger (C1422), and, where
+    // motion is allowed at any width, a preview's sheen and the mochi's
+    // idle loops and hug (C1186, C1423). Nothing else is set moving or
+    // turned: transforms live only in keyframes.
     const blockAt = (query: string): string => {
       const from = outside.indexOf(`@media ${query} {`)
       expect(from, query).toBeGreaterThan(-1)
       return outside.slice(from, outside.indexOf("\n      }\n", from))
     }
     const deck = blockAt(DECK_QUERY)
-    const sheen = blockAt("(prefers-reduced-motion: no-preference)")
+    const motion = blockAt("(prefers-reduced-motion: no-preference)")
     expect(deck).toMatch(/\.show\[data-deck\] [^{]*\{[^}]*transform:/)
-    expect(sheen).toMatch(/\.preview::after \{\s*animation: pass [^;]* 2;/)
+    expect(motion).toMatch(/\.preview::after \{\s*animation: pass [^;]* 2;/)
     const keyframes = /@keyframes [a-z-]+ \{(?:[^{}]*\{[^{}]*\})*\s*\}/g
     const rules = outside
       .replace(deck, "")
-      .replace(sheen, "")
+      .replace(motion, "")
       .replace(keyframes, "")
     expect(outside.match(keyframes)?.length).toBeGreaterThan(0)
     expect(rules).not.toMatch(/\banimation(-name)?:/)

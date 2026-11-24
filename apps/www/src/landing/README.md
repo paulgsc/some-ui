@@ -86,8 +86,11 @@ dismisses.
 ## The mochi
 
 Until the owner's photo is bundled, the photo slot holds the mochi (`mochi.ts`). It blinks
-and sways where the page moves (C1186), and a reader can send it a hug (C1187): it is a
-button, and pressing it sets a heart rising, all CSS, with no script and nothing kept.
+and sways (C1186), and a reader can send it a hug (C1187): it is a button, and pressing it
+squeezes it and sets a heart rising past its frame, all CSS, with no script and nothing
+kept. Both play at every width where the reader allows motion, the phone included
+(C1423); on a touch screen a quick tap plays the hug as the finger lifts. A reader who prefers less
+motion gets a still heart that fades.
 
 ## Previewing a branch on your machine
 
