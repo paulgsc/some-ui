@@ -223,9 +223,9 @@ describe("a spoken essay (EXPLAIN6)", () => {
     ).toContain("no letter or digit")
   })
 
-  it("is refused past ten minutes by its words, and told to split", async () => {
+  it("is refused past twelve minutes by its words, and told to split", async () => {
     const cut = await showcase("nixos-upgrade")
-    const long = "a long sentence of words that teach something ".repeat(40)
+    const long = "a long sentence of words that teach something ".repeat(48)
     const shots = cut.shots.map((s) =>
       s.spoken?.role === "scene"
         ? { ...s, spoken: { ...s.spoken, narration: long } }

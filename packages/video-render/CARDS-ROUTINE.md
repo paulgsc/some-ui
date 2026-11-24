@@ -32,7 +32,7 @@ rendered once, and published it where home picks it up.
 - **Code** refuses what can't be drawn or said. `render cards-check` (below)
   refuses an essay with no intro, a scene with no narration, a scene
   with no chapter line before any chapter has opened, a line the speech model can't say (empty, punctuation alone,
-  or over 4,000 characters), and an essay whose words run past ten minutes.
+  or over 4,000 characters), and an essay whose words run past twelve minutes.
   It also refuses a malformed cut list, a card with no stamp, a series
   version home doesn't hold, and anything that version lacks. Given a clone
   of each repository the stamp pins, it holds every line's sources to the
@@ -123,9 +123,9 @@ Since you, months later, are the listener:
   "backslash r", "dash dash refresh". Leave out commit hashes; the stamp on
   each card carries them. Captions show the words as said.
 - Keep a chapter line to one short sentence. Keep the whole essay under
-  about eight minutes (a scene's narration is usually 80 to 150 words).
-  Past ten minutes `cards-check` refuses it: split the subject into two
-  essays.
+  about eight minutes (a scene's narration is usually 80 to 150 words);
+  a subject that needs more may run to twelve (C1426). Past twelve
+  `cards-check` refuses it: split the subject into two essays.
 
 ## Steps
 
