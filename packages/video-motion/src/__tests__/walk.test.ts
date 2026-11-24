@@ -18,10 +18,14 @@ import {
 } from "@video-motion/walk/microphone"
 import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
+import type { PlaceRead } from "@video-motion/walk/stage-apk"
 import {
+  lookCommand,
+  placeWhenLaidOut,
   screenPlace,
   versionOf,
   webviewBounds,
+  WebViewNotLaidOut,
 } from "@video-motion/walk/stage-apk"
 import { ROW_PARAM } from "@video-motion/walk/stage-grafana"
 import {
@@ -126,6 +130,233 @@ describe("the APK stage's places (WALK1)", () => {
     expect(() => versionOf("Unable to find package")).toThrow(
       "the app is not installed"
     )
+  })
+})
+
+/** A screen's dump holding the app's WebView at `bounds`. */
+const dumpWith = (bounds: string): string =>
+  `<hierarchy><node class="android.webkit.WebView" package="dev.paulgsc.someui" bounds="${bounds}" /></hierarchy>`
+
+/**
+ * The looks a stage takes, in turn, the last repeated, on a clock that each
+ * look and each wait moves on: Snips Capture run 45321427650's Jobs walk
+ * read its one dump while the app stalled as accessibility came on (#3489).
+ */
+function looking(looks: ReadonlyArray<PlaceRead | "hangs">): {
+  read: () => Promise<PlaceRead>
+  wait: Parameters<typeof placeWhenLaidOut>[3]
+  taken: () => number
+  now: () => number
+} {
+  let t = 0
+  let i = 0
+  /** A look that never ends: a `uiautomator dump` the device never answers. */
+  const hung = new Promise<PlaceRead>(() => undefined)
+  return {
+    read: (): Promise<PlaceRead> => {
+      const look = looks[Math.min(i, looks.length - 1)]!
+      i += 1
+      if (look === "hangs") return hung
+      t += 1_000
+      return Promise.resolve(look)
+    },
+    wait: {
+      ms: 15_000,
+      everyMs: 500,
+      lookMs: 5_000,
+      now: () => t,
+      sleep: (ms): Promise<void> => {
+        t += ms
+        return Promise.resolve()
+      },
+      limit: <T>(p: Promise<T>, ms: number): Promise<T> => {
+        if (p !== hung) return p
+        t += ms
+        return Promise.reject(
+          new Error(`it took longer than ${String(ms / 1000)} s`)
+        )
+      },
+    },
+    taken: () => i,
+    now: () => t,
+  }
+}
+
+const LAID: PlaceRead = {
+  dump: dumpWith("[0,63][1080,1794]"),
+  innerWidth: 411,
+  pixelRatio: 2.625,
+}
+const SCREEN = { width: 1080, height: 1920 }
+
+describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", () => {
+  const read = (
+    stage: ReturnType<typeof looking>
+  ): ReturnType<typeof placeWhenLaidOut> =>
+    placeWhenLaidOut(stage.read, "dev.paulgsc.someui", SCREEN, stage.wait)
+
+  it("looks again past a dump read before the WebView's node was laid out, and past a page read mid-layout", async () => {
+    for (const early of [
+      { ...LAID, dump: dumpWith("[0,0][0,0]") },
+      { ...LAID, innerWidth: 0 },
+      { ...LAID, innerWidth: Number.NaN },
+      { ...LAID, pixelRatio: Number.NaN },
+      // Any width would agree with an infinite ratio.
+      { ...LAID, pixelRatio: Number.POSITIVE_INFINITY },
+      { ...LAID, dump: "<hierarchy/>" },
+      // A node with width, not yet the page's: 1080 / 980 is not 2.625.
+      { ...LAID, innerWidth: 980 },
+    ]) {
+      const stage = looking([early, early, LAID])
+      const { viewport } = await read(stage)
+      expect(viewport.scale).toBeCloseTo(1080 / 411)
+      // Two early looks, then two laid out that agree.
+      expect(stage.taken()).toBe(4)
+    }
+  })
+
+  it("waits for the WebView's box to hold still, its top settled with the insets", async () => {
+    // The whole box lower, its height the same: only its top tells.
+    const moving = { ...LAID, dump: dumpWith("[0,300][1080,2031]") }
+    const stage = looking([moving, LAID])
+    const { place } = await read(stage)
+    expect(place(0, 0).y).toBeCloseTo(63 / (1080 / 411))
+    expect(stage.taken()).toBe(3)
+  })
+
+  it("counts a look that throws as one that saw nothing", async () => {
+    const stage = looking([LAID])
+    let first = true
+    const failing = {
+      ...stage,
+      read: (): Promise<PlaceRead> => {
+        if (first) {
+          first = false
+          return Promise.reject(new Error("Execution context was destroyed"))
+        }
+        return stage.read()
+      },
+    }
+    await read(failing)
+    expect(stage.taken()).toBe(2)
+  })
+
+  it("reads once two looks in a row agree, never two with one not laid out between", async () => {
+    const stage = looking([LAID])
+    await read(stage)
+    expect(stage.taken()).toBe(2)
+    const broken = looking([
+      LAID,
+      { ...LAID, dump: dumpWith("[0,0][0,0]") },
+      LAID,
+      LAID,
+    ])
+    await read(broken)
+    expect(broken.taken()).toBe(4)
+  })
+
+  it("gives up past its bound, naming the read with no width and keeping the dump", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    const stage = looking([{ ...LAID, dump: zero }])
+    const failed = await read(stage).catch((e: unknown) => e)
+    expect(failed).toBeInstanceOf(WebViewNotLaidOut)
+    if (!(failed instanceof WebViewNotLaidOut)) return
+    expect(failed.message).toBe(
+      "the WebView was never laid out: the app's WebView is 0 px wide in the screen's dump"
+    )
+    expect(failed.dump).toBe(zero)
+    // Each look 1 s and each wait 0.5 s: the 11th starts at 15 s, the last
+    // one that may, and none starts after.
+    expect(stage.taken()).toBe(11)
+    expect(stage.now()).toBeLessThanOrEqual(15_000 + 5_000)
+  })
+
+  it("cuts a look that never ends at its own bound, and still gives up within the wait and one look", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    // A look that hangs between two that agree: it saw nothing, so the two
+    // around it are not two in a row.
+    const between = looking([LAID, "hangs", LAID, LAID])
+    await read(between)
+    expect(between.taken()).toBe(4)
+    const stuck = looking([{ ...LAID, dump: zero }, "hangs"])
+    const failed = await read(stuck).catch((e: unknown) => e)
+    expect(failed).toMatchObject({
+      message:
+        "the WebView was never laid out: the look failed: it took longer than 5 s",
+      dump: zero,
+    })
+    expect(stuck.now()).toBeLessThanOrEqual(15_000 + 5_000)
+  })
+
+  it("says whether the box was still moving or laid out only on the last look", async () => {
+    const lower = { ...LAID, dump: dumpWith("[0,300][1080,2031]") }
+    const moving = looking(
+      Array.from({ length: 11 }, (_, i) => (i % 2 === 0 ? LAID : lower))
+    )
+    expect(await read(moving).catch((e: unknown) => e)).toMatchObject({
+      message:
+        "the WebView was never laid out: the WebView's box was still moving",
+    })
+    const zero = { ...LAID, dump: dumpWith("[0,0][0,0]") }
+    const late = looking([...Array.from({ length: 10 }, () => zero), LAID])
+    expect(await read(late).catch((e: unknown) => e)).toMatchObject({
+      message:
+        "the WebView was never laid out: the WebView was laid out only on the last look",
+    })
+  })
+
+  it("gives each look its own file, its dump ended by the device before the look's own bound", () => {
+    expect(lookCommand(1, 5_000)).toBe(
+      "timeout 4 uiautomator dump /sdcard/walk-ui-1.xml >/dev/null && cat /sdcard/walk-ui-1.xml; rm -f /sdcard/walk-ui-1.xml"
+    )
+    // A late look's rm or dump never names a later look's file.
+    const files = (n: number): Array<string> =>
+      lookCommand(n, 5_000).match(/\/sdcard\/\S+\.xml/g) ?? []
+    expect(new Set(files(2))).toEqual(new Set(["/sdcard/walk-ui-2.xml"]))
+    expect(files(2).some((f) => files(3).includes(f))).toBe(false)
+    for (const lookMs of [2_000, 5_000, 12_000]) {
+      const seconds = Number(
+        /^timeout (\d+) /.exec(lookCommand(1, lookMs))?.[1]
+      )
+      expect(seconds * 1000).toBeLessThan(lookMs)
+    }
+  })
+
+  it("keeps the last screen's dump, not the error a failed dump reads back", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    const stage = looking([
+      { ...LAID, dump: zero },
+      {
+        ...LAID,
+        dump: "cat: /sdcard/walk-ui-2.xml: No such file or directory",
+      },
+    ])
+    const failed = await read(stage).catch((e: unknown) => e)
+    expect(failed).toMatchObject({
+      message:
+        "the WebView was never laid out: the app's WebView is not on screen",
+      dump: zero,
+    })
+  })
+
+  it("keeps the last dump a look read when the last look throws", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    const stage = looking([{ ...LAID, dump: zero }])
+    let looks = 0
+    const failing = {
+      ...stage,
+      read: (): Promise<PlaceRead> => {
+        looks += 1
+        return looks === 1
+          ? stage.read()
+          : stage.read().then(() => Promise.reject(new Error("gone")))
+      },
+    }
+    const failed = await read(failing).catch((e: unknown) => e)
+    expect(failed).toMatchObject({
+      message: "the WebView was never laid out: the look failed: gone",
+      dump: zero,
+    })
   })
 })
 
