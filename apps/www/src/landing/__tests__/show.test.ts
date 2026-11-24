@@ -87,6 +87,7 @@ describe("resolveShow", () => {
               slot: "clip",
             },
           ],
+          row: null,
         },
       ],
       pool: null,
@@ -314,8 +315,45 @@ describe("faceKey and facesToMake", () => {
       "stills/extensions/01.png",
       "stills/extensions/02.png",
     ])
-    // The server's stills come from home (the mailbox), not a producer here.
-    expect(facesToMake(SHOW, "server").cuts).toEqual([])
+    // The server's: its walk's panels, and each grouping's row (C1443),
+    // all from Site Assets' dashboards job; no cut.
+    const server = facesToMake(SHOW, "server")
+    expect(server.cuts).toEqual([])
+    expect(server.rows.map((r) => r.row)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+    expect(server.rows.map((r) => r.key)).toEqual(
+      [1, 2, 3, 4, 5, 6, 7, 8].map(
+        (n) => `stills/server/rows/0${String(n)}.png`
+      )
+    )
+    expect(server.stills.map((s) => s.snip)).toEqual(
+      Array.from({ length: 16 }, (_, i) => i + 1)
+    )
+    expect(facesToMake(SHOW, "android").rows).toEqual([])
+  })
+
+  it("gives a dashboard row to every scene of an episode, or to none (C1443)", () => {
+    const server = SHOW.episodes.find((e) => e.id === "server")
+    if (server === undefined || !("pool" in server.scenes))
+      throw new Error("no server pool")
+    const [first, ...rest] = server.scenes.pool
+    if (!("row" in first)) throw new Error("no rowed snack first")
+    const { row: _gone, ...unrowed } = first
+    const got = resolveShow(
+      {
+        ...SHOW,
+        episodes: SHOW.episodes.map((e) =>
+          e.id === "server"
+            ? { ...e, scenes: { draw: 4, pool: [unrowed, ...rest] } }
+            : e
+        ),
+      },
+      walks
+    )
+    expect(got.ok).toBe(false)
+    if (got.ok) return
+    expect(got.problems).toContain(
+      "server gives a dashboard row to 7 of its 8 scenes: all or none"
+    )
   })
 })
 

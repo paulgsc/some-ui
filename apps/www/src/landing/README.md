@@ -31,11 +31,15 @@ project each. Each episode is one to four scenes, and each scene is some copy an
   Capture run's bundle (`docs/snips.md`), on sample data. A face the build doesn't have
   shows its title card.
 - **The server's dashboards are sample data.** Each server scene is one grouping, a row of
-  one of the server's Grafana dashboards (C1441). The producer makes each grouping's whole
-  row for a wide screen (`stills/server/rows/NN.png`) and two of its panels for a phone.
-  Both, and the cores gap's still, are compiled from paulgsc/server's jsonnet and drawn by
-  Site Assets' `dashboards` job over a made-up week of telemetry
-  (`packages/video-motion/scripts/dashboards-on-sample.sh`). Home and its numbers are
+  one of the server's Grafana dashboards (C1441), drawn from a pool of eight. Its two panels
+  are its faces, on the cubes and the phone's deck. On a wide screen the whole row shows on
+  the **dashboard band** under the stage (C1443): a plate a place, each the row of the server
+  scene in view, the last held while other episodes play and the first draw's first row on
+  the page's first round, captioned with the grouping's name and "sample data". The band
+  keeps one shape, so the page never changes size. The producer makes both
+  (`stills/server/NN.png`, `stills/server/rows/NN.png`), and the cores gap's still, from
+  paulgsc/server's jsonnet over a made-up week of telemetry, in Site Assets' `dashboards`
+  job (`packages/video-motion/scripts/dashboards-on-sample.sh`). Home and its numbers are
   never reached (the owner on #3401, 2026-11-23), and the episode's words say so.
 - **Skeletons.** Until an episode's pair turns in, each of its places stands as a skeleton
   of what is coming, a clip's frame or a still's, by the face's slot (`slotOf`, C1185).

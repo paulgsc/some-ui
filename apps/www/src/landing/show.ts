@@ -144,11 +144,28 @@ type SceneCopy =
       readonly draft: boolean
     }
 
-type Scene = {
+type PanelScene = {
   readonly copy: SceneCopy
   /** The left cube's face, then the right cube's. */
   readonly faces: readonly [Face, Face]
 }
+
+/**
+ * A grouping's whole row of one of the server's dashboards (C1441, C1443):
+ * by its number in the episode's rows walk (`home-server-rows`, its
+ * `stills/<episode>/rows/NN.png`), and the caption that names it.
+ */
+type RowShot = { readonly row: number; readonly label: string }
+
+/**
+ * A scene whose grouping is a dashboard's row: its two faces are a phone's
+ * (and the cubes'), and its row is the wide screen's, on the dashboard band
+ * under the stage (C1443).
+ */
+type RowScene = PanelScene & { readonly row: RowShot }
+
+/** A scene: two faces, and, where it is a dashboard's grouping, its row. */
+type Scene = PanelScene | RowScene
 
 /** A cube has four faces, so an episode shows one to four scenes. */
 type Scenes =
@@ -566,12 +583,70 @@ export const SHOW: Show = {
       kicker: "At home",
       title: "file_host, the server behind them",
       walkthrough: "home-server",
-      scenes: [
-        { copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] },
-        { copy: { chapter: 1 }, faces: [{ snip: 3 }, { snip: 4 }] },
-        { copy: { chapter: 2 }, faces: [{ snip: 5 }, { snip: 6 }] },
-        { copy: { chapter: 3 }, faces: [{ snip: 7 }, { snip: 8 }] },
-      ],
+      // A pool of every grouping the owner named (C1441), a dashboard's row
+      // each; the first four are the draw a page with no script shows.
+      scenes: {
+        draw: 4,
+        pool: [
+          {
+            copy: { chapter: 0 },
+            faces: [{ snip: 1 }, { snip: 2 }],
+            row: { row: 1, label: "file_host › file_host" },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 1 },
+            faces: [{ snip: 3 }, { snip: 4 }],
+            row: { row: 2, label: "file_host › Traffic, latency & errors" },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 2 },
+            faces: [{ snip: 5 }, { snip: 6 }],
+            row: {
+              row: 3,
+              label: "OUTBOUND › What file_host asks the outside",
+            },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 3 },
+            faces: [{ snip: 7 }, { snip: 8 }],
+            row: { row: 4, label: "CALL › LANE: when the render may run" },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 4 },
+            faces: [{ snip: 9 }, { snip: 10 }],
+            row: {
+              row: 5,
+              label: "file_host › Shared stages: what other work waits on",
+            },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 5 },
+            faces: [{ snip: 11 }, { snip: 12 }],
+            row: {
+              row: 6,
+              label: "file_host › Metal — what the services cost the host",
+            },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 6 },
+            faces: [{ snip: 13 }, { snip: 14 }],
+            row: { row: 7, label: "file_host › Realtime — WebSocket" },
+            from: ["#3401", "C1441"],
+          },
+          {
+            copy: { chapter: 7 },
+            faces: [{ snip: 15 }, { snip: 16 }],
+            row: { row: 8, label: "file_host › Rate limiting & refusals" },
+            from: ["#3401", "C1441"],
+          },
+        ],
+      },
     },
   ],
 }
@@ -591,6 +666,13 @@ export function faceKey(episode: EpisodeId, face: Face): string {
   return face.media
 }
 
+/** Where the build finds a grouping's row (`RowShot`), by key. */
+const rowKey = (episode: EpisodeId, row: RowShot): string =>
+  `stills/${episode}/rows/${two(row.row)}.png`
+
+/** A grouping's row as the landing draws it on the dashboard band: its key and its caption. */
+export type ResolvedRow = { readonly key: string; readonly label: string }
+
 /** A face as the landing draws it: its asset's key, its band's label, and its slot. */
 export type ResolvedFace = {
   readonly key: string
@@ -604,6 +686,8 @@ export type ResolvedScene = {
   readonly narration: ReadonlyArray<string>
   readonly draft: boolean
   readonly faces: readonly [ResolvedFace, ResolvedFace]
+  /** Its grouping's row for the dashboard band; none: a scene of two faces. */
+  readonly row: ResolvedRow | null
 }
 
 /** A pool as the landing draws from it: every snack resolved, and how many a visit shows. */
@@ -700,8 +784,18 @@ export function resolveShow(
         narration,
         draft: "chapter" in scene.copy ? false : scene.copy.draft,
         faces: [face(scene.faces[0]), face(scene.faces[1])],
+        row:
+          "row" in scene
+            ? { key: rowKey(episode.id, scene.row), label: scene.row.label }
+            : null,
       }
     })
+    // The band shows a row for every place of its episode, or none at all.
+    const rowed = scenes.filter((scene) => scene.row !== null).length
+    if (rowed !== 0 && rowed !== scenes.length)
+      problems.push(
+        `${episode.id} gives a dashboard row to ${String(rowed)} of its ${String(scenes.length)} scenes: all or none`
+      )
     const head = {
       id: episode.id,
       kicker: episode.kicker,
@@ -844,7 +938,10 @@ export function showMediaKeys(
   episodes: ReadonlyArray<ResolvedEpisode>
 ): ReadonlyArray<string> {
   const keys = (scenes: ReadonlyArray<ResolvedScene>): Array<string> =>
-    scenes.flatMap((s) => s.faces.map((f) => f.key))
+    scenes.flatMap((s) => [
+      ...s.faces.map((f) => f.key),
+      ...(s.row === null ? [] : [s.row.key]),
+    ])
   return [
     ...new Set([
       ...episodes.flatMap((e) => keys(e.scenes)),
@@ -872,6 +969,8 @@ export function facesToMake(
     readonly route: string
     readonly key: string
   }>
+  /** Each grouping's row, copied from the episode's rows walk's snips. */
+  readonly rows: ReadonlyArray<{ readonly row: number; readonly key: string }>
 } {
   const faces = show.episodes
     .filter((e) => e.id === episode)
@@ -884,7 +983,12 @@ export function facesToMake(
     else if ("cut" in face) cuts.set(faceKey(episode, face), face.cut)
     else if ("screen" in face) screens.set(faceKey(episode, face), face.screen)
   }
+  const rows = new Map<string, number>()
+  for (const e of show.episodes.filter((x) => x.id === episode))
+    for (const scene of scenesOf(e))
+      if ("row" in scene) rows.set(rowKey(episode, scene.row), scene.row.row)
   return {
+    rows: [...rows].map(([key, row]) => ({ row, key })),
     stills: [...stills].map(([key, snip]) => ({ snip, key })),
     cuts: [...cuts].map(([key, shot]) => ({ shot, key })),
     screens: [...screens].map(([key, route]) => ({ route, key })),

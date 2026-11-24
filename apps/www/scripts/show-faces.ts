@@ -6,7 +6,11 @@
 // job (android), and by Site Assets' extensions job (extensions) and its
 // dashboards job (server, from the walk's own folder: no cut, so no video).
 //
-//   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>]
+//   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>] [--rows <rows walk>]
+//
+// With `--rows`, it copies each grouping's row the show names (a scene's
+// `row`, C1443) from that walk's snips: Site Assets' dashboards job passes
+// the `home-server-rows` walk.
 //
 // From the Snips Capture bundle (docs/snips.md), which it needs whenever
 // the episode names route stills, it copies each route's still the show
@@ -30,7 +34,11 @@ import type { EpisodeId } from "@/landing/show"
 import { facesToMake, SHOW } from "@/landing/show"
 
 const EPISODES: ReadonlyArray<EpisodeId> = ["extensions", "android", "server"]
-const args = process.argv.slice(2)
+const argv = process.argv.slice(2)
+const rowsAt = argv.indexOf("--rows")
+const rowsDir = rowsAt === -1 ? undefined : argv.at(rowsAt + 1)
+const args =
+  rowsAt === -1 ? argv : argv.filter((_, i) => i !== rowsAt && i !== rowsAt + 1)
 const [episode, renderDir, outDir, bundleDir] = [
   args.at(0),
   args.at(1),
@@ -40,12 +48,15 @@ const [episode, renderDir, outDir, bundleDir] = [
 const known = EPISODES.find((id) => id === episode)
 if (known === undefined || renderDir === undefined || outDir === undefined) {
   throw new Error(
-    "usage: tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>, needed when the episode names route stills]"
+    "usage: tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>, needed when the episode names route stills] [--rows <rows walk>, needed when its scenes name dashboard rows]"
   )
 }
 const render = resolve(renderDir)
 const out = resolve(outDir)
-const { stills, cuts, screens } = facesToMake(SHOW, known)
+const { stills, cuts, screens, rows } = facesToMake(SHOW, known)
+if (rows.length > 0 && rowsDir === undefined) {
+  throw new Error(`${known} names dashboard rows: pass --rows <rows walk>`)
+}
 
 /** A face's preview beside it: its frame at `atS` seconds, 40 px on the long edge. */
 function makePreview(file: string, key: string, atS = 0): void {
@@ -67,6 +78,21 @@ function makePreview(file: string, key: string, atS = 0): void {
     "50",
     join(out, previewKey(key)),
   ])
+}
+
+// Each grouping's row (C1443): the band shows it as it is, with no preview.
+for (const { row, key } of rows) {
+  const target = join(out, key)
+  mkdirSync(dirname(target), { recursive: true })
+  copyFileSync(
+    join(
+      resolve(rowsDir ?? ""),
+      "snips",
+      `${String(row).padStart(2, "0")}.png`
+    ),
+    target
+  )
+  process.stdout.write(`[show-faces] ${key}: row ${String(row)}\n`)
 }
 
 for (const { snip, key } of stills) {

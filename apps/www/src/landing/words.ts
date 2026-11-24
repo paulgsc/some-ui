@@ -53,6 +53,8 @@ export type LandingWords = {
   /** The theme picker's name, and its first choice: the device's own theme (C1184). */
   readonly theme: string
   readonly themeDevice: string
+  /** What the dashboard band's captions say of every row (C1443): its numbers are made up. */
+  readonly rowSample: string
   readonly gaps: ReadonlyArray<GapWords>
 }
 
@@ -83,6 +85,7 @@ export const LANDING_WORDS: LandingWords = {
   footerKeeps: "This page keeps nothing about you.",
   theme: "Theme",
   themeDevice: "As your device is set",
+  rowSample: "sample data",
   gaps: [
     {
       id: "page-filter",

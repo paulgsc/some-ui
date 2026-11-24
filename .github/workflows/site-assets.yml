@@ -154,7 +154,8 @@ jobs:
           build: none
           resume-assets: "false"
       # Each server scene's grouping, a dashboard row shot whole for a wide
-      # screen (stills/server/rows/NN.png, a scene each); the server
+      # screen (stills/server/rows/NN.png, a scene each, which show-faces
+      # copies from the rows walk, `--rows`); the server
       # episode's stills, as the show names them
       # (apps/www/scripts/show-faces.ts, from the walk's own screens: the
       # episode names no cut, so no video is rendered; a cut added to it
@@ -168,9 +169,9 @@ jobs:
             bash scripts/dashboards-on-sample.sh "$GITHUB_WORKSPACE/server-checkout" "$RUNNER_TEMP/walks"
           nix develop .#ci-playwright --command \
             pnpm --filter www exec tsx scripts/show-faces.ts server \
-            "$RUNNER_TEMP/walks/walk-home-server" "$RUNNER_TEMP/site-assets"
-          mkdir -p "$RUNNER_TEMP/site-assets/stills/server/rows"
-          cp "$RUNNER_TEMP/walks/walk-home-server-rows/snips/"*.png "$RUNNER_TEMP/site-assets/stills/server/rows/"
+            "$RUNNER_TEMP/walks/walk-home-server" "$RUNNER_TEMP/site-assets" \
+            --rows "$RUNNER_TEMP/walks/walk-home-server-rows"
+          mkdir -p "$RUNNER_TEMP/site-assets/stills"
           cp "$RUNNER_TEMP/walks/walk-home-cores/snips/01.png" "$RUNNER_TEMP/site-assets/stills/cores.png"
           echo "Drawn from paulgsc/server at $(git -C server-checkout rev-parse HEAD), on sample telemetry." >> "$GITHUB_STEP_SUMMARY"
       # The job is continue-on-error, so the run stays green when this fails:

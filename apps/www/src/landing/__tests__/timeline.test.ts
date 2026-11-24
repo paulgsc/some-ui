@@ -35,6 +35,7 @@ const EPISODES: ReadonlyArray<ResolvedEpisode> = (
     narration: ["x".repeat(38), "y".repeat(76)],
     draft: false,
     faces: [face(`a${String(n)}`), face(`b${String(n)}`)] as const,
+    row: null,
   })),
   pool: null,
 }))
@@ -288,6 +289,26 @@ describe("showTimeline", () => {
   })
 })
 
+describe("the dashboard band's plates (C1443)", () => {
+  const timeline = showTimeline(EPISODES)
+  it("gives each place a plate: shown from its faces' turn in to the next's, the last held round the cycle", () => {
+    for (const [k, e] of timeline.episodes.entries()) {
+      expect(e.plates).toHaveLength(EPISODES[k]?.scenes.length ?? -1)
+      const [first, last] = [e.plates.at(0), e.plates.at(-1)]
+      // Before the first place, the cycle opens on the last plate held.
+      expect(last?.loop.keyframes).toMatch(/ 0% \{ opacity: 1;/)
+      expect(first?.loop.keyframes).toMatch(/ 0% \{ opacity: 0;/)
+      // On the page's first round the first shows and the last does not,
+      // until the first place's faces turn in.
+      expect(first?.intro?.keyframes).toContain("from { opacity: 1; }")
+      expect(last?.intro?.keyframes).toContain("from { opacity: 0; }")
+      expect(first?.introS).toBe(e.scenes.at(0)?.on[0])
+      for (const middle of e.plates.slice(1, -1))
+        expect(middle.intro).toBeNull()
+    }
+  })
+})
+
 describe("showTimeline over any shape", () => {
   const episodesOf = (counts: ReadonlyArray<number>): Array<ResolvedEpisode> =>
     counts.map((n, k) => ({
@@ -301,6 +322,7 @@ describe("showTimeline over any shape", () => {
           [[], ["z".repeat(400)], ["a line", "another line"]][i % 3] ?? [],
         draft: false,
         faces: [face("a"), face("b")] as const,
+        row: null,
       })),
       pool: null,
     }))

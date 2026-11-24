@@ -392,6 +392,58 @@ describe("renderLanding", () => {
       expect(card).not.toMatch(/<a\b|<button|controls/)
   })
 
+  it("shows each dashboard row of a banded episode on the band under the stage, named, as sample data (C1443)", () => {
+    const banded = EPISODES.filter((ep) =>
+      ep.scenes.some((sc) => sc.row !== null)
+    )
+    expect(banded.length).toBeGreaterThan(0)
+    for (const ep of banded) {
+      const band = new RegExp(
+        `<div class="dash-band" data-episode="${ep.id}" aria-hidden="true">([\\s\\S]*?)\\n        </div>`
+      ).exec(page)?.[1]
+      expect(band).toBeDefined()
+      const plates = [
+        ...(band ?? "").matchAll(
+          /<figure class="plate tk (s-\d+)" data-asset="([^"]+)"/g
+        ),
+      ]
+      expect(plates.map((m) => m[2])).toEqual(
+        ep.scenes.map((sc) => sc.row?.key)
+      )
+      for (const sc of ep.scenes) {
+        expect(band).toContain(
+          `<span class="plate-label">${escapeHtml(sc.row?.label ?? "")}</span> · ${LANDING_WORDS.rowSample}`
+        )
+      }
+      // Its first plate shows on the page's first round, and its last does
+      // not, until the episode has played.
+      const head = renderLandingHead(LANDING_WORDS, EPISODES)
+      const first = plates.at(0)?.[1] ?? ""
+      const last = plates.at(-1)?.[1] ?? ""
+      expect(head).toMatch(
+        new RegExp(
+          `\\.dash-band \\.${first} \\{ animation-name: ${first}, (s-\\d+);`
+        )
+      )
+      const intro = (n: string): string =>
+        new RegExp(
+          `\\.dash-band \\.${n} \\{ animation-name: ${n}, (s-\\d+);`
+        ).exec(head)?.[1] ?? ""
+      expect(head).toContain(
+        `@keyframes ${intro(first)} { from { opacity: 1; } to { opacity: 1; } }`
+      )
+      expect(head).toContain(
+        `@keyframes ${intro(last)} { from { opacity: 0; } to { opacity: 0; } }`
+      )
+    }
+    // Episodes with no rows have no band.
+    for (const ep of EPISODES.filter((x) => !banded.includes(x))) {
+      expect(page).not.toContain(
+        `<div class="dash-band" data-episode="${ep.id}"`
+      )
+    }
+  })
+
   it("names every track only where the show moves, on the show's one clock", () => {
     const head = renderLandingHead(LANDING_WORDS, EPISODES)
     const names = [...head.matchAll(/@keyframes (s-\d+) /g)].map((m) => m[1])
@@ -402,9 +454,18 @@ describe("renderLanding", () => {
       m[1].split(" ")
     )
     for (const name of names) {
-      expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
+      // A dashboard band's plate (C1443) is named under the band, and its
+      // first-round track only beside its loop's, on the same element.
+      const plate = new RegExp(
+        `\\.dash-band \\.(s-\\d+) \\{ animation-name: (?:s-\\d+, )?${name}[;,]`
+      ).exec(wide)
+      if (plate === null) {
+        expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
+      }
       // Every element a track moves names it, beside the one clock's class.
-      expect(classLists).toContainEqual(expect.arrayContaining(["tk", name]))
+      expect(classLists).toContainEqual(
+        expect.arrayContaining(["tk", plate?.[1] ?? name])
+      )
     }
     const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
     expect(outside).not.toMatch(/animation-name\s*:/)
