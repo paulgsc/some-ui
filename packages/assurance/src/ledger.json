@@ -341,7 +341,7 @@
               "on": "2026-11-24",
               "change": "Only a refusal that could change is handed again: a file over the mailbox's size limit, or with a name it can't take, is final after one answer (server#1197).",
               "why": "Retrying a file that can never be taken was wasted work. The owner, 2026-11-24, asked \"Amend MI8 to say a file the mailbox can never take (over its size limit, or a name it can't accept) is final after one answer?\", chose \"Amend MI8 (Recommended)\".",
-              "decision": "https://github.com/paulgsc/server/pull/1197"
+              "decision": "https://github.com/paulgsc/some-ui/pull/3537"
             }
           ]
         }
