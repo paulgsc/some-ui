@@ -6,9 +6,9 @@
  * snips and `walk.json` are a function of the app's build and the sample, on
  * one machine.
  *
- * One runner, three stages (C860, C1073): the same steps and the same
+ * One runner, three stages (C860, C1431): the same steps and the same
  * `walk.json`, whether the app is a built web page in a sandbox
- * (`./stage-sandbox`), the APK on an emulator (`./stage-apk`) or home's own
+ * (`./stage-sandbox`), the APK on an emulator (`./stage-apk`) or a throwaway
  * Grafana (`./stage-grafana`). A new stage is a new case of `StageSpec`
  * and of `openStage`'s switch, never a second runner. What a step does is a
  * closed union too (`Action`), each case handled once here.
