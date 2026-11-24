@@ -1,0 +1,769 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "Rust Rounds: how it works",
+  "series": {
+    "id": "cheat-sheet",
+    "version": 7
+  },
+  "look": "plain",
+  "voice": "read",
+  "burnIns": [],
+  "stamp": {
+    "sources": ["paulgsc/some-ui@0a6063f", "paulgsc/server@640b436"],
+    "date": "2026-11-24"
+  },
+  "shots": [
+    {
+      "id": "introduction",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 1000,
+      "burnIns": [],
+      "spoken": {
+        "role": "spoken",
+        "category": "introduction",
+        "exchanges": [
+          {
+            "ask": {
+              "voice": "kokoro",
+              "said": "Who are you, and why does this video sound synthetic?"
+            },
+            "answer": {
+              "voice": "owner",
+              "take": "37c56646-e792-4323-896b-453592377aef"
+            }
+          },
+          {
+            "ask": {
+              "voice": "kokoro",
+              "said": "What does AI-generated mean here?"
+            },
+            "answer": {
+              "voice": "owner",
+              "take": "9072a8ef-81c1-49f6-aaff-ff24599b57e7"
+            }
+          },
+          {
+            "ask": {
+              "voice": "kokoro",
+              "said": "Why Rust Rounds, and not LeetCode, or just writing Rust?"
+            },
+            "answer": {
+              "voice": "owner",
+              "take": "4499b000-e757-48f8-87d7-50eeda07029e"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "intro",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · ONE WEEK",
+            "title": "Monday to Monday",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Monday, 03:41",
+                "note": "A routine writes the week: an invented company, its promise, 2 to 4 tickets."
+              },
+              {
+                "badge": "main",
+                "label": "Home runs the code",
+                "note": "Every program goes through a real rustc in a sandbox."
+              },
+              {
+                "badge": "you",
+                "label": "Read, work, decide",
+                "note": "On the phone, then at the desk: each ticket's forks and its academy."
+              },
+              {
+                "badge": "you",
+                "label": "Say it, send it",
+                "note": "A take per point. Sent again until Sunday 23:59, then final."
+              },
+              {
+                "badge": "main",
+                "label": "Monday again",
+                "note": "The essay for the week that ended, and the next week."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "intro",
+        "said": "That was paulgsc, in their own voice. What follows is how Rust Rounds works, shown on the phone itself and then explained underneath. First a week as it feels to use it, walked through on the app with sample data for an invented company, Tallowbrook; then, announced when we get there, the internals. It is as of November twenty-fourth, twenty twenty-six, checked against two repositories: some-ui, which holds the app, and server, which holds home, the server on paulgsc's own network. Later commits may have moved things.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/sample-week/tallowbrook.ts",
+            "quote": "Tallowbrook is"
+          }
+        ]
+      }
+    },
+    {
+      "id": "week",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45394592311",
+          "app": "rust-rounds",
+          "steps": [1, 1]
+        }
+      },
+      "durationMs": 25000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter one. A week, from Monday to Monday.",
+        "narration": "Every Monday at three forty-one in the morning, a routine writes the new week, and it is on the phone when the day starts. It describes a made-up company, a promise its service has to keep, and two to four tickets, each a short Rust program that misses the promise, doesn't compile, or fails only sometimes. This is the week as the phone opens it: Tallowbrook, which prints shipping labels, and what it has to meet.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "The scheduled task fires every Monday at 03:41 Pacific"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "`tickets` holds 2 to 4 tickets."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/formats/week.ts",
+            "quote": "misses the SLA, doesn't compile, or fails only in some situations. Never"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ticket",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45394592311",
+          "app": "rust-rounds",
+          "steps": [2, 2]
+        }
+      },
+      "durationMs": 30000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter two. What a ticket asks for.",
+        "narration": "Open a ticket, and the program is there with rustc's own words about it: home has already compiled it. Below come the forks, the decisions the ticket asks for. At each, an assistant lists a few options, the way a coding agent would, and marks exactly one as recommended. The recommendation isn't always best, and the best isn't always listed. That is the skill being practised: reading code, and deciding.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/formats/week.ts",
+            "quote": "recommend them, exactly one marked recommended, honest and wrong only by"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/formats/week.ts",
+            "quote": "const FORKS_MAX = 6"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "The best may be the recommended option, another, or"
+          }
+        ]
+      }
+    },
+    {
+      "id": "academy",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45394592311",
+          "app": "rust-rounds",
+          "steps": [3, 6]
+        }
+      },
+      "durationMs": 25000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "narration": "Before deciding, the academy: up to eight exercises, each testing the model of Rust one of the options rests on, worked at the desk, not on the phone. Stumbling there is the point. Ticking one off only marks it as worked.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/formats/week.ts",
+            "quote": "const ACADEMY_MAX = 8"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/week-play/words.ts",
+            "quote": "Before you decide, test the models the options rest on, at your desk."
+          }
+        ]
+      }
+    },
+    {
+      "id": "decide",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45394592311",
+          "app": "rust-rounds",
+          "steps": [7, 11]
+        }
+      },
+      "durationMs": 30000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter three. Say it, then send it.",
+        "narration": "Then the decisions. At each fork, pick an option or say your own, and say why out loud. A fork left alone goes with the recommended. Each point gets a take of its own, and it stays on the phone until you send the week.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/week-play/words.ts",
+            "quote": "At each fork, pick an option or say your own, then say why."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/components/point-takes/index.tsx",
+            "quote": "One ticket's speak-to points, a take for each"
+          }
+        ]
+      }
+    },
+    {
+      "id": "send",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45394592311",
+          "app": "rust-rounds",
+          "steps": [12, 12]
+        }
+      },
+      "durationMs": 22000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "narration": "Last, look it all over and send it home. You can say a point again and send again until Sunday at eleven fifty-nine in the evening, the owner's time. What home holds then is final, and a ticket never answered counts as a silence.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/formats/week.ts",
+            "quote": "The deadline: Sunday 23:59, the owner's time."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/kept-home/index.ts",
+            "quote": "Home records a week that closed unsent itself: nothing goes for"
+          }
+        ]
+      }
+    },
+    {
+      "id": "monday",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "apk:/journal/renders:android:0.1.78:f5676212697a",
+          "commit": "0a6063f1996b7a7f822c4f6e8845649e254db6d8"
+        }
+      },
+      "durationMs": 30000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter four. What comes back on Monday.",
+        "narration": "On Monday, an essay answers the week that closed, ticket by ticket, and Studio's Renders shows it coming. It restates each question, plays the answer whole, or says it was silent, and gives a best fit, never called correct, set beside the answer. A take home couldn't make out is said to be just that, and never read as a weak answer.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/src/essay.ts",
+            "quote": "`answer`: the owner's take, played whole and captioned with its"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "couldn't make out, and never call it a weak answer."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "Expected ${dayOf(coming.on)}."
+          }
+        ]
+      }
+    },
+    {
+      "id": "rustc",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · RUSTC ON HOME",
+            "title": "Every program is hostile",
+            "bar": "rust-runner · home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "rustc",
+                "text": " --edition 2024 -C opt-level=0",
+                "comment": "  # JSON errors",
+                "badge": "main"
+              },
+              {
+                "text": "error[E0507]: cannot move out of index",
+                "badge": "main",
+                "atMs": 3400
+              },
+              {
+                "text": "16 |  let to = queue[i].address;",
+                "atMs": 3800
+              },
+              {
+                "comment": "# one uid for programs, never the runner's",
+                "badge": "main",
+                "atMs": 5200
+              },
+              {
+                "comment": "# no network, a read-only root, caps on memory,",
+                "atMs": 6000
+              },
+              {
+                "comment": "# processes and time; the run's environment empty",
+                "atMs": 6800
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter five. Now the internals: rustc on home.",
+        "narration": "Now the internals: if you don't write code, let this part wash over you. Nothing about the compiler is simulated. On home, a service called rust-runner compiles each program with rustc, edition twenty twenty-four, optimisation off, and keeps its errors as JSON, each with its code and the span it points at. Every program is treated as hostile: every compile and run happens under one user kept for programs, never the runner's own, with no network, a read-only root, and caps on memory, processes and time. The program's run gets an empty environment.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "records with `--edition 2024 -C opt-level=0`"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/rust_runner/src/lib.rs",
+            "quote": "is `rustc -C opt-level=0 --error-format=json`, so a failed compile keeps"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/rust_runner.yml",
+            "quote": "10101:10101 (the image's --program-uid and --program-gid, an id pair"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/rust_runner.yml",
+            "quote": "network_mode: none"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/rust_runner.yml",
+            "quote": "rustup variables and a program none"
+          }
+        ]
+      }
+    },
+    {
+      "id": "hearing",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 35000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · HOME HEARS A TAKE",
+            "title": "From a voice note to words",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Decode",
+                "command": "ffmpeg",
+                "note": "16 kHz mono, in a private folder removed after."
+              },
+              {
+                "badge": "main",
+                "label": "Find the speech",
+                "command": "Silero VAD",
+                "note": "No speech found: it is silent, and Whisper never runs."
+              },
+              {
+                "badge": "main",
+                "label": "Hear it",
+                "command": "whisper.cpp",
+                "note": "In home's own server. A Rust Rounds answer is heard in one language."
+              },
+              {
+                "badge": "main",
+                "label": "Keep the words",
+                "note": "Each word with its time and how sure Whisper was.",
+                "command": ""
+              },
+              {
+                "badge": "main",
+                "label": "Or say so",
+                "note": "A take home couldn't hear is never read as a weak answer.",
+                "command": ""
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter six. How home hears a take.",
+        "narration": "The owner's voice stays on home, never a cloud service. Home decodes a take with ffmpeg, in a fresh private folder. A voice activity detector, Silero, looks for speech first, because Whisper alone tends to hear thank you in silence; with no speech, Whisper never runs. Otherwise whisper dot cpp, built into home's own server, hears it, and keeps each word's time and how sure it was.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/transcribe/engine.rs",
+            "quote": "note is written to a fresh `0700` temporary directory, decoded beside it,"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/transcribe/engine.rs",
+            "quote": "Whisper hears \"you\" or \"Thank you.\""
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/transcribe/engine.rs",
+            "quote": "[`Outcome::Silent`], and Whisper is not run at all."
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/transcribe/engine.rs",
+            "quote": "**In-process whisper.cpp, through `whisper-rs`, rather than a sidecar.**"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/transcribe/engine.rs",
+            "quote": "**Each word keeps its time, and how sure Whisper was of it**"
+          }
+        ]
+      }
+    },
+    {
+      "id": "split",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · MONDAY",
+            "title": "What code decides, and what Claude writes",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "Which weeks are owed",
+                "command": "monday prepare",
+                "note": "Final weeks; a take home couldn't make out never holds one."
+              },
+              {
+                "badge": "main",
+                "task": "Next week's topics",
+                "command": "code",
+                "note": "Your errors, then what faded, then what no week touched."
+              },
+              {
+                "badge": "main",
+                "task": "Run and check",
+                "command": "monday finish"
+              },
+              {
+                "badge": "main",
+                "task": "The words",
+                "command": "Claude",
+                "note": "From what home heard, never the audio."
+              },
+              {
+                "badge": "main",
+                "task": "The video",
+                "command": "home",
+                "note": "Kokoro as tutor; the owner's takes, captioned."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter seven. Monday: what code decides, and what Claude writes.",
+        "narration": "Monday splits the work on purpose. Code decides what a model needn't: which closed weeks are owed an essay, and a take home couldn't make out never holds one back; and next week's topics, your own pasted errors first, then what has faded, then what no week has touched. Code runs each program and checks both files. Claude writes only the words, from what home heard, never the audio. Home renders the essay: Kokoro speaks as the tutor, and the owner's takes play whole, captioned.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "take home couldn't make out never holds a week back."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/monday/topics.ts",
+            "quote": "1. **Your own errors.** Each error pasted in a week that ended seeds a"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "You read text only, never audio."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/src/essay.ts",
+            "quote": "them, the caption underneath. The tutor's words are Kokoro's; the owner's"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fork",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 38000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · A FORK, JUDGED AFTER THE DEADLINE",
+            "title": "From A, trusting the list, to A prime, seeing past it",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Trusted",
+                "note": "Left the fork alone: it goes with the recommended."
+              },
+              {
+                "badge": "main",
+                "label": "Reasoned",
+                "note": "Picked the recommended option, and said why."
+              },
+              {
+                "badge": "main",
+                "label": "Departed",
+                "note": "Picked another listed option."
+              },
+              {
+                "badge": "main",
+                "label": "Own, or astute",
+                "note": "Said a decision of their own, off the list."
+              },
+              {
+                "badge": "next",
+                "label": "Read from home",
+                "note": "The owner's real decision placed in the essay: next."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter eight. A fork, judged after the deadline.",
+        "narration": "Each fork is a deliberation. Every option rests on a model of Rust an engineer could honestly hold, and cites what it trades on: the promise's rows and the ticket's own figures. Only after the deadline does Monday name the best: the recommended one, another, or one nobody listed. The essay places a decision on a scale with five stops, from trusting the recommendation to seeing past the list. Reading the owner's real decision into that scale is next.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "one: the SLA's rows (`S…`) and the ticket's own figures (`F…`). Never a"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "The best may be the recommended option, another, or"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/src/essay.ts",
+            "quote": "Where a decision sits between A, the naive judge whose only rational"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/src/essay.ts",
+            "quote": "and, once the owner's decision is on record (RR28), the decision, the"
+          }
+        ]
+      }
+    },
+    {
+      "id": "solo",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 35000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · OVER THE WEEKS",
+            "title": "SOLO for each answer, decay across weeks",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "1 Prestructural",
+                "command": "misses the point"
+              },
+              {
+                "badge": "main",
+                "task": "2 Unistructural",
+                "command": "one aspect"
+              },
+              {
+                "badge": "main",
+                "task": "3 Multistructural",
+                "command": "several, not joined"
+              },
+              {
+                "badge": "main",
+                "task": "4 Relational",
+                "command": "one account, and its cost"
+              },
+              {
+                "badge": "main",
+                "task": "5 Extended abstract",
+                "command": "past the ticket"
+              },
+              {
+                "badge": "main",
+                "task": "Rechecks",
+                "command": "1, 2, 4, 8, 16 weeks"
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter nine. A published rubric, and decay across weeks.",
+        "narration": "Nothing here is a made-up grade. Each answer is read on SOLO, published by Biggs and Collis in nineteen eighty-two and applied to explaining code by Lister and others: five levels, from missing the point to an account carried past the ticket. Knowledge fades, so each concept is rechecked after one, two, four, eight and sixteen weeks. Relational or above moves it up a box; anything less, or silence, sends it back to the first.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "**SOLO** (Biggs & Collis, 1982), as applied to explaining code by Lister et"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "5. **Extended abstract:** that account carried past the ticket, to the"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/decay/index.ts",
+            "quote": "boxes, rechecked after 1, 2, 4, 8 and 16 weeks. An answer at relational or"
+          }
+        ]
+      }
+    },
+    {
+      "id": "badges",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 22000,
+      "burnIns": [
+        {
+          "kind": "legend",
+          "params": {
+            "kicker": "LEGEND",
+            "title": "Reading the badges"
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter ten. Reading the badges on these cards.",
+        "narration": "Each claim on a card carries a badge. A filled square is on main, at the commit the card is stamped with. A half-filled square is an open pull request. An empty square is planned, not built. A triangle is a known gap. A raised hand is a step only the owner does.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/CARDS-ROUTINE.md",
+            "quote": "**Badges:** ■ `main` for what is on a default branch at the stamp's"
+          }
+        ]
+      }
+    },
+    {
+      "id": "close",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 20000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · ONE WEEK",
+            "title": "Monday to Monday",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Monday, 03:41",
+                "note": "A routine writes the week: an invented company, its promise, 2 to 4 tickets."
+              },
+              {
+                "badge": "main",
+                "label": "Home runs the code",
+                "note": "Every program goes through a real rustc in a sandbox."
+              },
+              {
+                "badge": "you",
+                "label": "Read, work, decide",
+                "note": "On the phone, then at the desk: each ticket's forks and its academy."
+              },
+              {
+                "badge": "you",
+                "label": "Say it, send it",
+                "note": "A take per point. Sent again until Sunday 23:59, then final."
+              },
+              {
+                "badge": "main",
+                "label": "Monday again",
+                "note": "The essay for the week that ended, and the next week."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "close",
+        "said": "That is Rust Rounds: a week that arrives on the phone, decisions said out loud, and an essay that answers back, made by a routine, a real compiler in a sandbox, a voice heard on home, and a published rubric. The code is public, in paulgsc slash some-ui and paulgsc slash server.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "A scheduled cloud session runs this every Monday"
+          }
+        ]
+      }
+    }
+  ]
+}

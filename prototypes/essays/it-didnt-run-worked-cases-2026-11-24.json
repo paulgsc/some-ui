@@ -1,0 +1,766 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "It didn't run: two worked cases, from symptom to decision",
+  "series": {
+    "id": "cheat-sheet",
+    "version": 7
+  },
+  "look": "plain",
+  "voice": "read",
+  "burnIns": [],
+  "stamp": {
+    "sources": ["paulgsc/some-ui@0d84628", "paulgsc/server@a938a3d"],
+    "date": "2026-11-24"
+  },
+  "shots": [
+    {
+      "id": "intro",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · A WORKED CASE",
+            "title": "From a degraded state to a decision",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "The symptom",
+                "note": "What the phone or an alert says."
+              },
+              {
+                "badge": "you",
+                "label": "A question",
+                "note": "One you can answer with one command."
+              },
+              {
+                "badge": "you",
+                "label": "The output",
+                "note": "Home's own, as it printed."
+              },
+              {
+                "badge": "main",
+                "label": "The decision",
+                "note": "What it rules out, and what to ask next."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "intro",
+        "said": "Part one of this essay was a map: where to look when something should have run and didn't. This part walks two real cases from home, the week the map was drawn; a third, essays stuck in line, gets its own part. Each starts from what the phone or an alert said, asks one question at a time, runs one command for it, reads what home printed, and decides what that rules out. Every output here is home's own, as the owner ran it, with ids shortened and no spoken words shown. It is as of November twenty-fourth, twenty twenty-six, checked against some-ui and server at that day's commits.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/CARDS-ROUTINE.md",
+            "quote": "with the commits it was checked against"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1-symptom",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45457667595",
+          "app": "renders",
+          "steps": [3, 4]
+        }
+      },
+      "durationMs": 30000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "narration": "On the owner's phone, Studio's Renders said, under Coming, that this week's Rust Rounds essay waits for home to hear a take, and the interview essay the same. The picture is Renders on sample data, a made-up Monday, not home's: its Rust Rounds row says the same. The owner had recorded every take days before, and home hears a take in minutes. So the first question is what Renders means by hear.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "It waits for home to hear a take."
+          }
+        ],
+        "chapter": "Chapter one. Heard, but held: the essays wait on takes home has heard."
+      }
+    },
+    {
+      "id": "c1-means",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 35000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "READ THE WORDS · WHAT HEAR MEANS",
+            "title": "Renders' take-hearing, as home decides it",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "Home heard it",
+                "command": "voice_transcript",
+                "note": "outcome heard: the transcriber is done."
+              },
+              {
+                "badge": "main",
+                "task": "Home filed it",
+                "command": "mailbox_transcript",
+                "note": "A transcript put out for the routine, numbered n."
+              },
+              {
+                "badge": "main",
+                "task": "The mailbox took it",
+                "command": "mailbox_handed",
+                "note": "Its answer: added or unchanged."
+              },
+              {
+                "badge": "you",
+                "task": "Only then",
+                "command": "routine_reads_any",
+                "note": "Renders stops saying it waits."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Renders reads one function, routine reads any. It asks whether the routine can read a transcript of the take: home heard it, filed it to the Jobs mailbox, and the mailbox answered added or unchanged. So hear, on Renders, means reach the routine. A take can be heard on home and still not heard by that definition.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/voice/src/verdict.rs",
+            "quote": "handed.answer IN ('added', 'unchanged')"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/rust_essays.rs",
+            "quote": "yet: [`WaitsOn::TakeHearing`]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1-query",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 60000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "Heard, filed, and what the mailbox said",
+            "bar": "home · sqlite3 -readonly",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "sqlite3",
+                "text": " -readonly -header -column \"$DB\" \"SELECT ...\"",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "note_id   outcome  n  answer   handed_at",
+                "atMs": 3940
+              },
+              {
+                "text": "12606ad0  heard    1  refused  2026-11-20T22:32Z",
+                "atMs": 4840
+              },
+              {
+                "text": "12606ad0  heard    2  refused  2026-11-24T16:45Z",
+                "atMs": 5740
+              },
+              {
+                "comment": "# 30 rows: every one heard, every one refused",
+                "badge": "main",
+                "atMs": 6640
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "First question: was each take heard, filed, and taken? The query, trimmed here to its first word, joins the three tables, voice transcript, mailbox transcript and mailbox handed, on the note, and selects the note, the outcome, the filing number, the answer and when it was handed. DB is the database file the file host container mounts, found with docker inspect. Thirty rows came back, and every one says the same thing: heard, filed, refused. Some were filed twice, the second after the owner asked home to hear the take again, and the second was refused too. Decision: home's hearing is fine. The hold is between home and the mailbox, on the way out.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/voice/src/verdict.rs",
+            "quote": "SELECT 1 FROM mailbox_transcript AS filed"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/voice/src/verdict.rs",
+            "quote": "SELECT 1 FROM mailbox_handed AS handed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1-log",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 50000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "What the mailbox pass said",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker logs",
+                "text": " --since 3h file-host-server | grep 'Jobs mailbox pass'",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "16:41:38 INFO Jobs mailbox pass filed: 1 handed: [\"refused\"] cause: \"local\"",
+                "atMs": 4570
+              },
+              {
+                "text": "16:45:11 INFO Jobs mailbox pass filed: 1 handed: [\"refused\"] cause: \"local\"",
+                "atMs": 5470
+              },
+              {
+                "text": "16:48:28 INFO Jobs mailbox pass filed: 0 handed: [] indexed: [added x5] cause: \"timer\"",
+                "atMs": 6370
+              },
+              {
+                "comment": "# a refusal, logged at INFO: nothing warns",
+                "badge": "gap",
+                "atMs": 7270
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Second question: does home know it was refused? Its mailbox pass logs each pass that did anything. Trimmed to the fields that matter, each set out with a colon where home prints an equals sign: each local pass filed one transcript, and the mailbox handed it back refused. The line is at INFO level, the same as a pass that went well, so nothing warns and no alert fires: that is a known gap, filed. Decision: home sends, the mailbox says no, and home carries on.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/mailbox.rs",
+            "quote": "\"Jobs mailbox pass\""
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/mailbox.rs",
+            "quote": "handed = ?outcome.handed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1-metrics",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 35000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "Does any counter see it?",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "curl",
+                "text": " -s localhost:3000/metrics | grep -E '^mailbox_(pass|last|bell)'",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "mailbox_bell_rings_total{folder=\"brief\"} 0",
+                "atMs": 4660
+              },
+              {
+                "text": "mailbox_passes_total{cause=\"local\"} 0",
+                "atMs": 5560
+              },
+              {
+                "text": "mailbox_passes_total{cause=\"timer\"} 1",
+                "atMs": 6460
+              },
+              {
+                "comment": "# no counter of refusals",
+                "badge": "gap",
+                "atMs": 7360
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Third question: would a dashboard have shown it? These counters started again when home restarted at 16:48, which is why the local passes read zero. Home's metrics count passes and the bell's rings by folder, and nothing counts a refusal. A counter of refused handings is the second known gap. Decision: the only place this shows is the table you just read.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/metrics/mailbox.rs",
+            "quote": "mailbox_passes_total"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1-decision",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 45000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · CASE ONE, DECIDED",
+            "title": "Heard, but never taken",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Heard",
+                "note": "voice_transcript: every take, heard."
+              },
+              {
+                "badge": "main",
+                "label": "Refused",
+                "note": "mailbox_handed: refused, every time."
+              },
+              {
+                "badge": "main",
+                "label": "Why",
+                "note": "The mailbox didn't know home's newer shape: a verdict on every transcript."
+              },
+              {
+                "badge": "you",
+                "label": "The fix",
+                "note": "The mailbox takes it now, and home hands a refused file again, an hour apart, up to seven times (server#1192)."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "So the decision chain is: heard, but not taken by the routine; the mailbox refuses; the refusal is a shape mismatch, a verdict home began putting on every transcript that the mailbox didn't know; then the fix. The mailbox now takes a verdict. When this was checked, a file it refused stayed refused, and home never put it again. The same day, server pull request eleven ninety-two changed that: home hands a refused file again, an hour apart, up to seven times.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/mailbox/src/core.ts",
+            "quote": "verdict must be what home made of it"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/mailbox/src/lib.rs",
+            "quote": "`subject`'s filed files the mailbox has not answered"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1-both-ways",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · LOOK BOTH WAYS",
+            "title": "The mailbox runs in two directions",
+            "rows": [
+              {
+                "badge": "you",
+                "task": "Did it come in?",
+                "command": "mailbox_item",
+                "note": "What home pulled from the mailbox: part one's check."
+              },
+              {
+                "badge": "you",
+                "task": "Did it go out?",
+                "command": "mailbox_handed",
+                "note": "What the mailbox answered home: added, unchanged or refused."
+              },
+              {
+                "badge": "gap",
+                "task": "A refusal warns",
+                "command": "nothing yet",
+                "note": "Logged at INFO, counted nowhere."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "One correction to part one. Its cheat sheet looked one way: mailbox item, what home pulled in. Its question about takes asked whether home heard them, and here home had. Both came back clean while the essays were held. Look both ways: mailbox handed is what the mailbox said to what home sent.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/voice/src/verdict.rs",
+            "quote": "routine_reads_any"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2-symptom",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 30000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · CASE TWO, THE SYMPTOM",
+            "title": "One essay fails, every hour",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "The alert",
+                "note": "Cards essay render failed: merge-queue, November twenty-third."
+              },
+              {
+                "badge": "main",
+                "label": "Again",
+                "note": "The worker tries each hour, and it fails each hour."
+              },
+              {
+                "badge": "you",
+                "label": "First question",
+                "note": "What did the worker say when it gave up?"
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter two. Failed every hour: an essay home gave without its pages.",
+        "narration": "The second case starts from an alert, not the phone. The cards essay about the merge queue failed to render, and an hour later it failed again. The worker tries every hour, so an alert that repeats on the hour points at a cause that doesn't go away by itself. First question: what did the worker say when it gave up?",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "CARDS_MEDIA=(takes snips clips pages walks)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2-log",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 55000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "The worker's failed log",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker exec",
+                "text": " render tail -40 /renders/cards-essay-worker/merge-queue-2026-11-23.failed.log",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "... waits for room on home (the lane: stop, busy)",
+                "atMs": 5605
+              },
+              {
+                "text": "...",
+                "atMs": 6505
+              },
+              {
+                "text": "... waits for room on home (the lane: stop, settling)",
+                "atMs": 7405
+              },
+              {
+                "text": "it shows 5 pages, and --pages names no folder home handed them in",
+                "atMs": 8305
+              },
+              {
+                "text": "the recorder exited 1",
+                "atMs": 9205
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "The worker keeps a failed log beside each essay it couldn't make, in its own folder. Its tail, shortened: it waited for room on home: busy, missing, busy again, then settling, so the lane did its job and then let the render in. Then the recorder stopped: the essay shows five pages, and the pages flag names no folder home handed them in. Decision: this isn't the lane and it isn't load. The recorder was missing the pages the essay shows.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/tests/record/cards.ts",
+            "quote": "pages, and --pages names no folder home handed them in"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2-folder",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 45000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "What home handed beside the essay",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker exec",
+                "text": " render ls -la /cards-essays /renders/cards-essay-worker ...",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "-rwxrwxrwx 1 root root 21212 Nov 23 07:47 merge-queue-2026-11-23.json",
+                "atMs": 4795
+              },
+              {
+                "text": "-rwxrwxrwx 1 root root 21657 Nov 22 23:43 rust-rounds-how-it-works-2026-11-20.json",
+                "atMs": 5695
+              },
+              {
+                "comment": "# no merge-queue-2026-11-23.pages/ beside it",
+                "badge": "gap",
+                "atMs": 6595
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Second question: did home hand the essay its pages? The worker reads what home put in the cards essays folder. This is the owner's listing of that folder from the same sitting, shortened to two lines: the merge queue essay is there, written on the twenty-third, and no folder named for its pages sits beside it. Decision: the essay names five pages, and home never handed them.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "if [ -d \"$INPUT/$key.$kind\" ]; then"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2-who",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 50000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "READ THE CODE · WHO MAKES THE FOLDER",
+            "title": "Home writes the folder, the worker passes it on",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "The worker",
+                "command": "render-calls.sh",
+                "note": "Passes --pages only when <key>.pages exists."
+              },
+              {
+                "badge": "main",
+                "task": "Home's export",
+                "command": "cards_essays::pass",
+                "note": "Each folder first, the essay after; only an essay not yet given."
+              },
+              {
+                "badge": "gap",
+                "task": "Home's tidy",
+                "command": "folders.is_empty()",
+                "note": "An essay with no folder is never taken back for missing media."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Third question: who makes that folder, the worker or home? The worker only passes along a folder that exists. Home's export writes each folder first and the essay after, and it gives only an essay it hasn't given yet. So code that knows about pages never leaves this essay without its folder. Home's tidy never takes back an essay that has no folder at all, and nothing checks that the folders match what the essay names. Decision: the defect is in home's handing, not in the essay.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/cards_essays/pass.rs",
+            "quote": "if folders.is_empty() {"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/cards_essays/pass.rs",
+            "quote": "written = written && essay_media::write(folder, &essay.key, *kind, files).await.is_ok();"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2-when",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 45000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · HOW IT GOT THERE",
+            "title": "The essay arrived about two hours after home learned pages",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Pages handed",
+                "note": "server#1144 merged, released in #1149; release #1148 came before it."
+              },
+              {
+                "badge": "main",
+                "label": "The essay",
+                "note": "Pushed to testing; on home, stamped 07:47."
+              },
+              {
+                "badge": "gap",
+                "label": "Given bare",
+                "note": "Most likely written by code from before pages: only that writes it bare."
+              },
+              {
+                "badge": "gap",
+                "label": "Stranded",
+                "note": "Never taken back, never given again."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "How did it get there? Home learned to hand pages in one server change, released about two hours before the essay landed on home. To code from before that change, a page names nothing, so the essay looks complete and is written alone. Home was most likely still on a release from before it. Its deploy log would settle that, and this essay doesn't show it. Either way, once written alone, it stays alone.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/essay_media/pages.rs",
+            "quote": "Home hands each beside the essay in `<key>.pages/`"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2-decision",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 45000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · CASE TWO, DECIDED",
+            "title": "Home's handing, filed as a defect",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Not the lane",
+                "note": "It let the render in."
+              },
+              {
+                "badge": "main",
+                "label": "Not the essay",
+                "note": "It names five pages; home never handed them."
+              },
+              {
+                "badge": "gap",
+                "label": "Home's handing",
+                "note": "An essay missing a folder it names is never given again: issue 3512."
+              },
+              {
+                "badge": "gap",
+                "label": "Too late",
+                "note": "Its pages lived a day on GitHub; by the time it waited, they were gone."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "So the decision: not the lane, not the essay, but home's handing. It is filed as a defect, issue thirty-five twelve. The fix is for home's tidy to take back any essay missing a folder it names, so the next pass gives it whole. The owner tried the way round: home keeps the essay in its database, so removing its file made the next pass take it up again. It waited for its pages, but those live a day on GitHub, and they were captured a day and a half before. Being stranded cost the pictures too. A page can't be taken again as it was, so this essay needs a new capture.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/cards_essays/pass.rs",
+            "quote": "A withdrawn essay is never given again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "close",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 30000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · THE WORKED CASES",
+            "title": "Ask, run, read, decide",
+            "rows": [
+              {
+                "badge": "you",
+                "task": "Held on a take",
+                "command": "mailbox_handed",
+                "note": "Heard is not taken: look both ways."
+              },
+              {
+                "badge": "you",
+                "task": "Failed every hour",
+                "command": "<key>.failed.log",
+                "note": "Then what home handed beside the essay."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "close",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/voice/src/verdict.rs",
+            "quote": "routine_reads_any"
+          }
+        ],
+        "said": "Two cases, one method: one question, one command, read what home printed, and decide what that rules out. The third case, essays stuck in line, is its own part, once its outputs and its screen are in hand."
+      }
+    }
+  ]
+}

@@ -1,0 +1,1066 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "It should have run, and it didn't: finding where",
+  "series": {
+    "id": "cheat-sheet",
+    "version": 7
+  },
+  "look": "plain",
+  "voice": "read",
+  "burnIns": [],
+  "stamp": {
+    "sources": ["paulgsc/some-ui@0a6063f", "paulgsc/server@640b436"],
+    "date": "2026-11-24"
+  },
+  "shots": [
+    {
+      "id": "intro",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 45000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · THE FIRST FORK",
+            "title": "It should have run, and it didn't",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Never picked up",
+                "note": "Nothing reached home: the routine didn't run, put nothing, or held the week."
+              },
+              {
+                "badge": "main",
+                "label": "Picked up, waiting",
+                "note": "Home holds it: for a take, for room, or behind another job."
+              },
+              {
+                "badge": "main",
+                "label": "Refused",
+                "note": "Home or the render said no, and kept why."
+              },
+              {
+                "badge": "you",
+                "label": "Then the fix",
+                "note": "Run it again, hear a take again, or a pull request: the cause says which."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "intro",
+        "said": "It's Monday. The Rust Rounds essay and the mock interview essay should have come overnight, and the weekly call's video by now. Nothing failed: the pipelines are green, and Renders has nothing under Couldn't finish. All you know is one bit: it should have run, and it didn't. The causes are many, so this essay doesn't list them. It teaches a workflow: where to look on the phone, the few commands on home that answer most questions, and the panels in Grafana. By the end, you'll be able to say of each video whether it was never picked up, was picked up and is waiting, or was refused, and where it stopped. It is as of November twenty-fourth, twenty twenty-six, checked against two repositories: some-ui, which holds the app and the routines, and server, which holds home. Later commits may have moved things.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "A scheduled cloud session runs this every Monday"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/CALL-ROUTINE.md",
+            "quote": "A scheduled cloud session runs this every Friday."
+          }
+        ]
+      }
+    },
+    {
+      "id": "road",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · WHAT SHOULD HAVE RUN",
+            "title": "Two roads to one render worker",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Monday 03:41 Pacific",
+                "note": "Two routines write the Rust Rounds and interview essays into the mailbox."
+              },
+              {
+                "badge": "main",
+                "label": "Every 10 minutes",
+                "note": "Home gives the render an essay once its week is final and its takes are home."
+              },
+              {
+                "badge": "main",
+                "label": "Fridays, then hourly",
+                "note": "The call's routine writes the week to testing; home reads it every hour."
+              },
+              {
+                "badge": "main",
+                "label": "One video at a time",
+                "note": "The render worker makes each when home has room, the call's first."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter one. The forcing bit: what should have run, and the first fork.",
+        "narration": "Three things were owed this week, and they travel two roads. The Rust Rounds essay and the interview essay are each written by a scheduled session, a Monday routine, at three forty-one in the morning, Pacific time. It writes the essay for the week that closed on Sunday night into the mailbox, which home reads. Every ten minutes, home's essay pass looks for it, and hands it to the render worker only once its week is final and every take it plays has reached home. The weekly call takes the other road: its routine runs on Fridays and writes the week into the testing repository, which home reads every hour. Both roads end at one render worker, which makes one video at a time, the call's first, whenever home has room.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "CRON_TZ=America/Los_Angeles 41 3 * * 1"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/interview-week/ROUTINE.md",
+            "quote": "CRON_TZ=America/Los_Angeles 41 3 * * 1"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/rust_essays.rs",
+            "quote": "Duration::from_secs(600)"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/rust_essays.rs",
+            "quote": "A take has not reached home yet."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/video-render/CALL-ROUTINE.md",
+            "quote": "A scheduled cloud session runs this every Friday."
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/call_weeks.rs",
+            "quote": "How often home reads the index: a week arrives once a week."
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "One episode at a time, the call's first"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fork",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · THE FIRST FORK",
+            "title": "It should have run, and it didn't",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Never picked up",
+                "note": "Nothing reached home: the routine didn't run, put nothing, or held the week."
+              },
+              {
+                "badge": "main",
+                "label": "Picked up, waiting",
+                "note": "Home holds it: for a take, for room, or behind another job."
+              },
+              {
+                "badge": "main",
+                "label": "Refused",
+                "note": "Home or the render said no, and kept why."
+              },
+              {
+                "badge": "you",
+                "label": "Then the fix",
+                "note": "Run it again, hear a take again, or a pull request: the cause says which."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Whatever the cause, the first question splits it three ways. Never picked up: nothing on home knows the video exists. Either the routine didn't run, or it ran and held the week back, which it does when home hasn't made the week final, or hasn't heard one of its takes yet. A take home heard and couldn't make out does not hold the week: the essay goes on, with that ticket left as if unanswered. Picked up and waiting: home has it, and waits for a take to arrive, for room, or for another job. Refused: home or the render said no, and wrote down why. The rest of this essay is where to look, in order: the phone, then home's command line, then the dashboards.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "hasn't made the record final, or hasn't heard a take yet"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "A take home couldn't make out never holds a week back."
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "A yield is never a failure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "renders",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "apk:/journal/renders:android:0.1.78:f5676212697a",
+          "commit": "0a6063f1996b7a7f822c4f6e8845649e254db6d8"
+        }
+      },
+      "durationMs": 40000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter two. On the phone: where to look first.",
+        "narration": "Start in Studio, on Renders: what home is making, what waits, what couldn't finish, what finished, and what's coming. Coming answers the fork first. Each feed's row says when its next video is expected, and once that day has passed it stays, late: was expected Monday, not here yet. Under it, home says what the essay waits on: a take it hasn't heard, a week not made final, an essay it refused, or nothing written by the routine at all. Couldn't finish is the refused branch, for whatever home had already been given: each row says why in plain words, and leads to a page to run it again. In this sample, an older cards essay waits there for a take home couldn't make out.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "What home is making for your feeds and templates, what waits its turn"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "Was expected ${dayOf(coming.on)}. Not here yet."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "Nothing was written for it: the Monday routine didn't write the essay."
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/feeds/renders.rs",
+            "quote": "never moved on to the next or dropped"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "so it holds the essay until it can hear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "takes",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "apk:/journal/takes/all:android:0.1.78:b8a0106d7f95",
+          "commit": "0a6063f1996b7a7f822c4f6e8845649e254db6d8"
+        }
+      },
+      "durationMs": 40000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "narration": "Next, Takes. Every take home keeps is here, newest first, with what home heard in it. The one to look for says home hasn't heard it yet. That take is what holds a Rust Rounds or interview week back: the Monday routine won't write an essay while one of the week's takes is still waiting to be heard. In this sample, week forty-four's last take, recorded late on Sunday, still says so. A minute or two is normal. Hours mean home's hearing is stuck, which chapter four's TRANSCRIBE dashboard shows.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/soundbites/src/lib/library/words.ts",
+            "quote": "Home hasn't heard this take yet."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/src/lib/monday/bundle.ts",
+            "quote": "one whose take home hasn't heard yet holds the essay"
+          }
+        ]
+      }
+    },
+    {
+      "id": "attention",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "apk:/journal/takes/attention:android:0.1.78:d28670a37cc2",
+          "commit": "0a6063f1996b7a7f822c4f6e8845649e254db6d8"
+        }
+      },
+      "durationMs": 40000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "narration": "Then Needs your attention, under Takes: every take home couldn't hear well, with ways to keep it, record it again, ask home to try again, or delete it. A Rust Rounds take listed here does not hold its week: the essay is written as if that ticket was left unanswered. A cards essay that plays a take listed here is held until home can hear it, and that hold shows under Couldn't finish. So this page names takes to look at, never a week that waits.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/soundbites/src/lib/reconcile/words.ts",
+            "quote": "Hear each one, then keep it, record it again, ask home to try again, or delete it."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "The essay goes on as if"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "so it holds the essay until it can hear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "status",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "apk:/settings/status:android:0.1.78:2abee2563ee6",
+          "commit": "0a6063f1996b7a7f822c4f6e8845649e254db6d8"
+        }
+      },
+      "durationMs": 40000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "narration": "Last on the phone, Settings, Status. Its row for videos home makes says in a word how home's renders stand: making, paused, waiting for room, couldn't finish, or nothing now. Nothing now, on a Monday morning, is the first clue for the never-picked-up branch: home holds no essay to make.",
+        "sources": [
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "name: \"Videos home makes\""
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "quiet: \"Nothing now\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "running",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 55000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "Is it running, and what did the render say?",
+            "bar": "home · the server checkout",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker ps",
+                "text": "",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "comment": "# each container and its status: render up, file-host-server healthy",
+                "badge": "main",
+                "atMs": 1855
+              },
+              {
+                "prompt": "$",
+                "keyword": "docker logs",
+                "text": " --since 24h render",
+                "badge": "you",
+                "atMs": 3055
+              },
+              {
+                "text": "rendering the rust-essay of 2026-w44",
+                "badge": "main",
+                "atMs": 5155
+              },
+              {
+                "text": "the call of 2026-11-20 waits for room on home (the lane: …)",
+                "atMs": 6055
+              },
+              {
+                "text": "the … did not render; it is tried again in an hour",
+                "atMs": 6955
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter three. On home: the commands that answer most of it.",
+        "narration": "Home's command line shows what no screen does. Run each of these on home, from the server checkout. First, is anything running at all? docker ps lists each of home's containers and its status: render should be up, and file-host-server healthy. Then read the render worker's own words for the last day: docker logs, dash dash since twenty-four hours, render. Each video it starts says rendering, then the job and its key. One that waits says it waits for room on home, and why. One that failed says it did not render, and is tried again in an hour. If the log never names your essay, the render was never given it.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/call-render.yml",
+            "quote": "container_name: render"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/file_host.yml",
+            "quote": "container_name: file-host-server"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "echo \"rendering the $job of $key\""
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "waits for room on home (the lane: $LANE_VERB, $LANE_WHY)"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "did not render; it is tried again in an hour"
+          }
+        ]
+      }
+    },
+    {
+      "id": "given",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 55000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "Was it given, and what is home doing?",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker exec render",
+                "text": " ls /essays /interview-essays /weeks",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "comment": "# a folder for the week: picked up and given",
+                "badge": "main",
+                "atMs": 3880
+              },
+              {
+                "prompt": "$",
+                "keyword": "docker exec render",
+                "text": " cat /renders/call-worker/job.state",
+                "badge": "you",
+                "atMs": 5080
+              },
+              {
+                "text": "kind=<job>  key=<week>  state=<waiting, rendering or paused>",
+                "badge": "main",
+                "atMs": 8215
+              },
+              {
+                "prompt": "$",
+                "keyword": "docker exec render",
+                "text": " cat /renders/call-worker/lane",
+                "badge": "you",
+                "atMs": 9415
+              },
+              {
+                "text": "verb=<run, pause or stop>  why=<clear, busy, memory, …>",
+                "badge": "main",
+                "atMs": 12325
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Was it given? The render worker reads each essay home gives it from a folder of its own: slash essays for Rust Rounds, slash interview-essays for the interview, and slash weeks for the call. List them with docker exec render, ls. A folder for your week means it was picked up and given. No folder means it is still on file host's side, or never arrived. Then, what is home doing about it? The job dot state file, in slash renders slash call-worker, names the one job under way: its kind, its key, and whether it is waiting, rendering or paused. Beside it, the lane file says what home decided about running renders: run, pause or stop, and why, such as busy or memory. A pause or a stop is never a failure, so nothing else reports it.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/call-render.yml",
+            "quote": "target: /essays"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/call-render.yml",
+            "quote": "target: /interview-essays"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/call-render.yml",
+            "quote": "target: /weeks"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "kind=%s\\nkey=%s"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "verb=*) verb=${line#verb=} ;;"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "A yield is never a failure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "failed",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 50000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "What failed, or was refused?",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker exec render",
+                "text": " ls /renders/rust-essay-worker",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "last-pass  <week>.failed.log  <week>.refused.log",
+                "badge": "main",
+                "atMs": 3610
+              },
+              {
+                "comment": "# interview-essay-worker for the interview, call-worker for the call",
+                "badge": "main",
+                "atMs": 4510
+              },
+              {
+                "prompt": "$",
+                "keyword": "docker exec render",
+                "text": " cat /renders/rust-essay-worker/<week>.refused.log",
+                "badge": "you",
+                "atMs": 5710
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "What failed, or was refused? Each job keeps a status folder in slash renders, named for the job with dash worker: rust-essay-worker, interview-essay-worker, and call-worker for the call. last-pass says when the worker last looked. A week's failed dot log is the whole output of its last failed attempt, which is tried again an hour later. A week's refused dot log is home's essay pass saying no before any rendering: the essay names takes the week's final record doesn't, or the other way round. Each says why in full. A failed one also shows under Couldn't finish; a refused Rust Rounds essay only here, in an alert, and on the CALL dashboard.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "STATUS=$ROOT/renders/rust-essay-worker"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "STATUS=$ROOT/renders/interview-essay-worker"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "STATUS=$ROOT/renders/call-worker"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/rust_essays.rs",
+            "quote": "<week>.refused.log"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "apps/servers/file_host/src/feeds/renders.rs",
+            "quote": "`<key>.failed.log`, `<key>.refused`"
+          }
+        ]
+      }
+    },
+    {
+      "id": "arrived",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 55000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "Did it arrive? What home's database recorded",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "docker inspect",
+                "text": " file-host-server | grep -B1 '\"/app/dbs\"'",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "text": "\"Source\": \"<the database folder>\",",
+                "badge": "main",
+                "atMs": 3925
+              },
+              {
+                "prompt": "$",
+                "keyword": "sqlite3 -readonly",
+                "text": " <the database folder>/hopium.db",
+                "badge": "you",
+                "atMs": 5125
+              },
+              {
+                "prompt": "sqlite>",
+                "keyword": "SELECT",
+                "text": " name, pulled_at FROM mailbox_item",
+                "atMs": 8080
+              },
+              {
+                "prompt": "   ...>",
+                "text": "WHERE folder IN ('brief') ORDER BY pulled_at DESC LIMIT 6;",
+                "atMs": 10630
+              },
+              {
+                "comment": "# rust-essay-<week>.json, interview-essay-<week>.json: it arrived",
+                "badge": "main",
+                "atMs": 13990
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Did it arrive at all? Home's database answers that. docker inspect file-host-server names its folder on home's disk, on the line above slash app slash dbs. Open hopium dot db in it with sqlite3, dash readonly, so nothing you type can change it. The mailbox item table holds every file home pulled from the mailbox. Ask for the brief folder's newest, and look for rust-essay, then the week, dot json, and interview-essay the same way. If the week's essay isn't there, it was never picked up: the routine didn't run, or held the week. Its run's own summary lists each week it held, and why.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/file_host.yml",
+            "quote": "DATABASE_URL=sqlite:///app/dbs/hopium.db"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "migrations/20261023000100_create_mailbox_copy.up.sql",
+            "quote": "CREATE TABLE mailbox_item ("
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "crates/db/mailbox/src/lib.rs",
+            "quote": "name GLOB 'rust-essay-[0-9][0-9][0-9][0-9]-w[0-9][0-9]*.json'"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "each week `waiting`"
+          }
+        ]
+      }
+    },
+    {
+      "id": "final",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 50000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "Is the week final, and are its takes heard?",
+            "bar": "home · sqlite3 -readonly",
+            "lines": [
+              {
+                "prompt": "sqlite>",
+                "keyword": "SELECT",
+                "text": " week_id, sent_at FROM rust_week_final",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "prompt": "   ...>",
+                "text": "ORDER BY week_id DESC LIMIT 2;",
+                "atMs": 3430
+              },
+              {
+                "prompt": "sqlite>",
+                "keyword": "SELECT",
+                "text": " note_id, of_ref, stored_at FROM voice_note",
+                "badge": "you",
+                "atMs": 5530
+              },
+              {
+                "prompt": "   ...>",
+                "text": "WHERE of_kind IN ('rust-round', 'interview') AND note_id NOT IN",
+                "atMs": 8485
+              },
+              {
+                "prompt": "   ...>",
+                "text": "(SELECT note_id FROM voice_transcript WHERE outcome IN ('heard', 'silent'))",
+                "atMs": 12070
+              },
+              {
+                "prompt": "   ...>",
+                "text": "ORDER BY stored_at DESC LIMIT 5;",
+                "atMs": 16195
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Two more questions settle the never-picked-up branch. Is the week final? rust week final holds what stood at each deadline, one row a week, and interview week final does the same for the interview. No row for last week means home never made it final, so the routine held it. Is a take still unheard? voice note holds every take. This query lists the newest Rust Rounds and interview takes with no transcript in which home heard words or silence. Hours old is your cause, and the TRANSCRIBE dashboard says why.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "migrations/20261110000100_create_rust_week_draft_final.up.sql",
+            "quote": "rust_week_final is append-only"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "migrations/20261113003000_create_interview_week_draft_final.up.sql",
+            "quote": "CREATE TABLE interview_week_final ("
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "migrations/20261113002100_add_interview_to_voice_note.up.sql",
+            "quote": "'rust-round', 'interview'"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "migrations/20261025000200_create_voice_transcript.up.sql",
+            "quote": "outcome IN ('heard', 'silent'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "journal",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 40000,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · ON HOME",
+            "title": "What the machine said",
+            "bar": "home",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "journalctl",
+                "text": " -u home-deploy --since yesterday",
+                "badge": "you",
+                "atMs": 700
+              },
+              {
+                "comment": "# a deploy restarts the stack: did one run overnight?",
+                "badge": "main",
+                "atMs": 3385
+              },
+              {
+                "prompt": "$",
+                "keyword": "journalctl",
+                "text": " -k --since yesterday | grep -i oom",
+                "badge": "you",
+                "atMs": 4585
+              },
+              {
+                "comment": "# a process the kernel ended because memory ran out",
+                "badge": "main",
+                "atMs": 7360
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Last, the machine itself: the operating system's journal. journalctl, dash u home-deploy, shows whether a deploy ran overnight. A deploy restarts the stack, and the render worker takes up its job again after it. journalctl, dash k, shows the kernel's own messages. Filtered for o o m, it names a process the kernel ended because memory ran out. The render worker counts such a restart against its job, and after a few takes the job as failed.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "README.md",
+            "quote": "`journalctl -u home-deploy` show it."
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "journalctl -k on home names it"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "A container restart keeps the job"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/render/render-calls.sh",
+            "quote": "is counted in job.state's `restarts`"
+          }
+        ]
+      }
+    },
+    {
+      "id": "call-dash",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45394592311",
+          "app": "home-call",
+          "steps": [2, 3]
+        }
+      },
+      "durationMs": 50000,
+      "burnIns": [],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter four. Grafana: what happened over time.",
+        "narration": "On Grafana, open the CALL dashboard. These pictures are its rows over a made-up week: sample data, as the band at the top says, never home's own numbers. Below the call's own rows are the Rust Rounds essays, the fourth job, and the mock interview essays, the seventh. Each counts essays waiting for the deadline, refused, given, waiting for a video, and failed. Waiting for the deadline above zero after Sunday means home holds the essay but not its week's final, or a take hasn't reached home. Given and waiting for a video mean picked up. Refused or failed above zero has an alert. If every count is zero, the essay never arrived: the never-picked-up branch, which Grafana can't see.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/grafana/dashboards/call.jsonnet",
+            "quote": "Rust Rounds essays, the fourth job"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/grafana/dashboards/call.jsonnet",
+            "quote": "Mock interview essays, the seventh job"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/grafana/dashboards/lib/call-panels.libsonnet",
+            "quote": "Essays waiting for the deadline, refused, given, waiting for a video and failed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "hearing",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 25000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "GRAFANA · TRANSCRIBE",
+            "title": "Home hearing voice notes",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "Waiting to be heard",
+                "command": "hearing",
+                "note": "Takes home holds and hasn't heard."
+              },
+              {
+                "badge": "main",
+                "task": "Since it last looked",
+                "command": "since last look"
+              },
+              {
+                "badge": "main",
+                "task": "Failing",
+                "command": "failing",
+                "note": "The transcriber trying and almost never ending."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Then the TRANSCRIBE dashboard, home hearing voice notes: how many takes wait to be heard, how long since the transcriber last looked, and whether it is failing. A take still waiting hours after it was recorded is the hold on its week.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/grafana/dashboards/transcribe.jsonnet",
+            "quote": "Home hearing voice notes"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/grafana/dashboards/transcribe.jsonnet",
+            "quote": "panels.sinceLastLook"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/grafana/dashboards/transcribe.jsonnet",
+            "quote": "panels.failing"
+          }
+        ]
+      }
+    },
+    {
+      "id": "alerts",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 35000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "GRAFANA · ALERTS",
+            "title": "What reaches you, and what doesn't",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "An essay home refused",
+                "command": "RustEssayRefused"
+              },
+              {
+                "badge": "main",
+                "task": "Given, 3 hours, no video",
+                "command": "RustEssayRenderOverdue"
+              },
+              {
+                "badge": "main",
+                "task": "The call's weeks unread",
+                "command": "CallWeeksStale"
+              },
+              {
+                "badge": "main",
+                "task": "Hearing slower than promised",
+                "command": "StageDegraded"
+              },
+              {
+                "badge": "main",
+                "task": "Past its Monday, not here",
+                "command": "RustEssayOverdue",
+                "note": "Renders says what it waits on."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "scene",
+        "narration": "Alerts reach you on Slack, each saying what to check. Five matter here, on the card. The last, RustEssayOverdue, and its twin for the interview, fires once an essay is past its Monday and hasn't come to home, whatever holds it, a routine that wrote nothing included. It points back to Renders, which says what the essay waits on.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "alert: RustEssayRefused"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "alert: RustEssayRenderOverdue"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "Home has not read the weekly call's weeks for 2 hours"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "something has waited on it longer than it promises"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "alert: RustEssayOverdue"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "alert: InterviewEssayOverdue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "close",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 30000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · KEEP THIS ONE",
+            "title": "It should have run, and it didn't",
+            "rows": [
+              {
+                "badge": "you",
+                "task": "Is it running?",
+                "command": "docker ps"
+              },
+              {
+                "badge": "you",
+                "task": "What the render said",
+                "command": "docker logs --since 24h render"
+              },
+              {
+                "badge": "you",
+                "task": "Given? Waiting?",
+                "command": "docker exec render ls /essays",
+                "note": "Then cat /renders/call-worker/job.state and lane."
+              },
+              {
+                "badge": "you",
+                "task": "Failed or refused",
+                "command": "docker exec render ls /renders/rust-essay-worker"
+              },
+              {
+                "badge": "you",
+                "task": "Did it arrive?",
+                "command": "sqlite3 -readonly <db folder>/hopium.db",
+                "note": "mailbox_item, the brief folder. Then journalctl, for the machine."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "close",
+        "said": "Keep this card. Start from the fork: never picked up, picked up and waiting, or refused. On the phone, look at Renders, then Takes. On home, run these five top to bottom, then the journal. On Grafana, read the CALL dashboard's essay rows. When Renders says nothing was written, the routine never wrote it: read its run's summary. The day this was made, Renders said both essays waited on a take. Start there.",
+        "sources": [
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/compose/call-render.yml",
+            "quote": "container_name: render"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "packages/ui/rust-rounds/ROUTINE.md",
+            "quote": "each week `waiting`"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "Nothing was written for it"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "It waits for home to hear a take."
+          }
+        ]
+      }
+    }
+  ]
+}
