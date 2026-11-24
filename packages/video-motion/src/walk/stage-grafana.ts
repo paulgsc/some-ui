@@ -117,10 +117,15 @@ const rowOf = (url: string): string | undefined =>
 type Box = { x: number; y: number; width: number; height: number }
 
 /** A row's title, and its toggle, in Grafana 13's dashboard, by their test ids. */
+/** A title as a CSS string's content: backslashes and quotes escaped, line breaks as code points. */
+const cssString = (text: string): string =>
+  text
+    .replace(/[\\"]/g, (c) => `\\${c}`)
+    .replace(/[\n\r\f]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `)
 const rowTitle = (title: string): string =>
-  `[data-testid="data-testid dashboard-row-title-${title.replaceAll('"', '\\"')}"]`
+  `[data-testid="data-testid dashboard-row-title-${cssString(title)}"]`
 const rowToggle = (title: string): string =>
-  `[data-testid="data-testid dashboard-row-toggle-for-${title.replaceAll('"', '\\"')}"]`
+  `[data-testid="data-testid dashboard-row-toggle-for-${cssString(title)}"]`
 
 /**
  * Where a row is on the screen: from its title to the bottom of the last of
@@ -260,6 +265,8 @@ export async function openGrafanaStage(
 
     /** A panel's query answered since the page navigated, then the page still. */
     const drawn = async (): Promise<void> => {
+      // A failed step's screen is the whole page, not the last row's box.
+      shot = undefined
       // A row walked before may have grown the screen.
       const size = page.viewportSize()
       if (size?.height !== spec.viewport.height) {
@@ -307,9 +314,17 @@ export async function openGrafanaStage(
           await page.waitForTimeout(100)
         }
         await idle()
-        shot = await rowBox(page, row)
-        if (shot === undefined)
+        const box = await rowBox(page, row)
+        if (box === undefined)
           throw new Error(`the row "${row}" shows no panel`)
+        // A row taller than the walk's screen would be cut short, its lower
+        // panels never drawn: such a walk needs a taller screen.
+        if (box.height > spec.viewport.height) {
+          throw new Error(
+            `the row "${row}" is ${String(box.height)} px tall, past the walk's ${String(spec.viewport.height)}`
+          )
+        }
+        shot = box
       } else {
         shot = undefined
       }

@@ -45,6 +45,22 @@ export const WEEK = { to: "2026-11-16T00:00:00Z", days: 7 } as const
 /** One sample a minute, as a scrape every 60 s. */
 const STEP_S = 60
 
+/**
+ * The series a `rate(…[1m])` reads (Rate limiting's invariant), sampled
+ * every 15 s, so a minute holds the two samples a rate needs.
+ */
+export const FINE: {
+  readonly step: number
+  readonly names: ReadonlySet<string>
+} = {
+  step: 15,
+  names: new Set(["http_requests_total", "rate_limit_decisions_total"]),
+}
+
+/** How often a series is sampled. */
+const stepOf = (name: string): number =>
+  FINE.names.has(name) ? FINE.step : STEP_S
+
 /** Samples before the window, so a `rate(…[15m])` at its first instant has some. */
 const LEAD_S = 3600
 
@@ -83,16 +99,103 @@ const hourOf = (t: number): number => (((t % DAY_S) + DAY_S) % DAY_S) / HOUR_S
 const daily = (t: number): number =>
   0.5 + 0.5 * Math.cos((2 * Math.PI * (hourOf(t) - 20)) / 24)
 
-/** The nightly render job, 23:20 to 00:50: every core busy while it runs. */
-const rendering = (t: number): boolean => {
+/** Whether `t` falls between two hours of its night, which may cross midnight. */
+const between = (t: number, from: number, to: number): boolean => {
   const h = hourOf(t)
-  return h >= 23 + 20 / 60 || h < 50 / 60
+  return from <= to ? h >= from && h < to : h >= from || h < to
 }
 
-/** The render's first ten minutes, while the lane settles on it. */
-const renderStarting = (t: number): boolean => {
-  const h = hourOf(t)
-  return h >= 23 + 20 / 60 && h < 23.5
+/** The night's render job, named to the lane from 23:15 until it ends at 00:50. */
+const jobNamed = (t: number): boolean => between(t, 23.25, 50 / 60)
+
+/** Which night's job `t` belongs to: a job is its own from the night it is named. */
+const jobOf = (t: number): number => Math.floor((t + 2 * HOUR_S) / DAY_S)
+
+/** I'm using the app for ten minutes after the render starts: interactive work waits. */
+const interactiveAt = (t: number): boolean =>
+  between(t, 23 + 25 / 60, 23 + 35 / 60)
+
+/** Memory pressure rises past the lane's limit for six minutes each night. */
+const pressureSpike = (t: number): boolean =>
+  between(t, 23 + 40 / 60, 23 + 46 / 60)
+
+/**
+ * The render lane's policy, as file_host sets it for the call's render
+ * (paulgsc/server `file_host::call_weeks::lane`).
+ */
+const LANE_POLICY = {
+  floorBytes: 2 * 1024 ** 3,
+  pressureLimitPct: 10,
+  holdDownMs: 30_000,
+  peakBytes: 3 * 1024 ** 3,
+} as const
+
+type Verb = "run" | "pause" | "stop"
+type Why = "clear" | "busy" | "memory" | "pressure" | "unknown" | "settling"
+type LaneState = {
+  readonly verb: Verb
+  readonly why: Why
+  readonly stops: number
+  readonly job: number | undefined
+  readonly roomSinceMs: number | undefined
+}
+type LaneSignals = {
+  readonly nowMs: number
+  readonly job: number | undefined
+  readonly interactive: boolean
+  readonly memAvailable: number
+  readonly pressurePct: number
+}
+
+/**
+ * One tick of the render lane, as paulgsc/server's `crates/lane` decides it
+ * (`step`, rules LA2 to LA4), so the sample shows only what the lane can
+ * say: a shortage stops batch work and counts a stop of the job in
+ * progress; a start needs room for its peak; interactive work pauses it;
+ * after a stop, room must hold for the hold-down, settling, before it runs.
+ */
+function laneStep(state: LaneState, s: LaneSignals): LaneState {
+  const continuing = s.job !== undefined && s.job === state.job
+  let stops = continuing ? state.stops : 0
+  const shortage: Why | undefined =
+    s.memAvailable < LANE_POLICY.floorBytes
+      ? "memory"
+      : s.pressurePct > LANE_POLICY.pressureLimitPct
+        ? "pressure"
+        : undefined
+  const room = s.memAvailable >= LANE_POLICY.peakBytes + LANE_POLICY.floorBytes
+  let verb: Verb
+  let why: Why
+  let roomSinceMs: number | undefined
+  if (state.verb !== "stop") {
+    if (shortage !== undefined) [verb, why] = ["stop", shortage]
+    else if (!room && !continuing) [verb, why] = ["stop", "memory"]
+    else if (s.interactive) [verb, why] = ["pause", "busy"]
+    else [verb, why] = ["run", "clear"]
+  } else if (s.interactive) [verb, why] = ["stop", "busy"]
+  else if (shortage !== undefined) [verb, why] = ["stop", shortage]
+  else if (!room) [verb, why] = ["stop", "memory"]
+  else if (
+    state.roomSinceMs !== undefined &&
+    s.nowMs - state.roomSinceMs >= LANE_POLICY.holdDownMs
+  ) {
+    ;[verb, why] = ["run", "clear"]
+  } else {
+    ;[verb, why, roomSinceMs] = [
+      "stop",
+      "settling",
+      state.roomSinceMs ?? s.nowMs,
+    ]
+  }
+  if (
+    state.verb !== "stop" &&
+    verb === "stop" &&
+    s.job !== undefined &&
+    (why === "memory" || why === "pressure")
+  ) {
+    stops += 1
+  }
+  return { verb, why, stops, job: s.job, roomSinceMs }
 }
 
 /** The nightly backup, 04:00 to 04:20: the disk, not the cores, is the wait. */
@@ -195,7 +298,7 @@ const CALLERS = [
     bytes: 4000,
   },
   { caller: "nudge", host: "web_push", perMin: 1.5, p95: 0.25, bytes: 800 },
-  { caller: "snips", host: "github_raw", perMin: 0.4, p95: 0.6, bytes: 25_000 },
+  { caller: "snips", host: "github_api", perMin: 0.4, p95: 0.6, bytes: 25_000 },
 ] as const
 
 /** The services the Metal row reads, by container and by process group. */
@@ -242,6 +345,53 @@ function allSeries(): ReadonlyArray<Series> {
   const zero = (): number => 0
   const scraper = (t: number): boolean => within(t, SCRAPER)
 
+  // The render lane, tick by tick over the week (a tick a minute here), and
+  // what it reads: free memory (less the render's while it holds it) and
+  // memory pressure.
+  const memBase = (t: number): number =>
+    (9.5 - 2 * daily(t)) * GIB + noise("memfree", 0.3)(t) * GIB
+  const pressureAt = (t: number, held: boolean): number =>
+    pressureSpike(t)
+      ? 14 + noise("psi", 3)(t)
+      : held
+        ? 5 + noise("psi", 3)(t)
+        : 1.5 + Math.max(0, noise("psi", 2)(t))
+  const lane = new Map<number, LaneState & { mem: number; pressure: number }>()
+  {
+    let state: LaneState = {
+      verb: "run",
+      why: "clear",
+      stops: 0,
+      job: undefined,
+      roomSinceMs: undefined,
+    }
+    for (const t of instants(STEP_S)) {
+      const job = jobNamed(t) ? jobOf(t) : undefined
+      // The render holds its memory while it runs or is paused, not once stopped.
+      const held =
+        job !== undefined && state.job === job && state.verb !== "stop"
+      const mem = memBase(t) - (held ? LANE_POLICY.peakBytes : 0)
+      const pressure = pressureAt(t, held)
+      state = laneStep(state, {
+        nowMs: t * 1000,
+        job,
+        interactive: interactiveAt(t),
+        memAvailable: mem,
+        pressurePct: pressure,
+      })
+      lane.set(t, { ...state, mem, pressure })
+    }
+  }
+  /** The lane at `t`'s minute. */
+  const laneAt = (t: number): LaneState & { mem: number; pressure: number } => {
+    const found = lane.get(t - (((t % STEP_S) + STEP_S) % STEP_S))
+    if (found === undefined) throw new Error(`no lane tick for ${String(t)}`)
+    return found
+  }
+  /** The render is on the cores: its job named, and the lane saying run. */
+  const rendering = (t: number): boolean =>
+    jobNamed(t) && laneAt(t).verb === "run"
+
   // file_host's traffic: requests a second, and how slow while the render holds the box.
   const traffic = (t: number): number =>
     1.2 + 6 * daily(t) + noise("traffic", 0.8)(t) + (scraper(t) ? 9 : 0)
@@ -279,36 +429,16 @@ function allSeries(): ReadonlyArray<Series> {
     return shares[mode] ?? 0
   }
 
-  // The render lane: what it says, and why.
-  // While the render runs, interactive work that arrives in the evening
-  // makes the lane pause it (and count a stop); once that work is done it
-  // runs; its first ten minutes it settles.
-  const interactive = (t: number): boolean => rendering(t) && daily(t) > 0.55
-  const verb = (t: number): "run" | "pause" =>
-    renderStarting(t) || interactive(t) ? "pause" : "run"
-  const why = (t: number): "clear" | "busy" | "settling" =>
-    renderStarting(t) ? "settling" : interactive(t) ? "busy" : "clear"
-  const memFree = (t: number): number =>
-    (rendering(t) ? 2.1 : 9.5 - 2 * daily(t)) * GIB +
-    noise("memfree", 0.3)(t) * GIB
-  const pressure = (t: number): number =>
-    rendering(t) ? 22 + noise("psi", 8)(t) : 2 + Math.max(0, noise("psi", 3)(t))
-
   // The transcriber's queue: notes waiting, and the oldest's wait, which the render holds up.
   const waitingNotes = (t: number): number =>
-    rendering(t)
+    jobNamed(t)
       ? 7
       : Math.max(0, Math.round(1 + 2 * daily(t) + noise("notes", 2)(t)))
   const oldestWait = (t: number): number => {
     const h = hourOf(t)
-    const sinceRender =
-      h >= 23 + 20 / 60
-        ? (h - 23 - 20 / 60) * HOUR_S
-        : h < 50 / 60
-          ? (h + 40 / 60) * HOUR_S
-          : 0
-    return rendering(t)
-      ? 600 + sinceRender
+    const sinceNamed = (h >= 23.25 ? h - 23.25 : h + 0.75) * HOUR_S
+    return jobNamed(t)
+      ? 300 + sinceNamed
       : 90 + Math.max(0, noise("oldest", 120)(t))
   }
 
@@ -378,7 +508,7 @@ function allSeries(): ReadonlyArray<Series> {
     counter(
       "tracing_events_total",
       { level: "error", target: "file_host::render" },
-      (t) => (renderStarting(t) ? 0.004 : 0)
+      (t) => (laneAt(t).why === "pressure" ? 0.004 : 0)
     ),
     counter(
       "tracing_events_total",
@@ -480,48 +610,51 @@ function allSeries(): ReadonlyArray<Series> {
     gauge("stage:oldest_waiting:seconds", { stage: "transcriber" }, oldestWait),
     gauge("stage_promise_seconds", { stage: "transcriber" }, () => 900),
     gauge("cards_essays_waiting_on_takes", {}, (t) => (rendering(t) ? 2 : 0)),
-    // The render lane.
+    // The render lane, as `laneStep` decided each tick.
     gauge("lane_last_decision_timestamp_seconds", {}, (t) => t - 5),
-    // Tonight's render has been paused once for interactive work.
-    gauge("lane_stops", {}, (t) =>
-      rendering(t) && !renderStarting(t) ? 1 : 0
-    ),
+    gauge("lane_stops", {}, (t) => laneAt(t).stops),
     gauge("lane_signal_readable", {}, one),
     ...(["run", "pause", "stop"] as const).map((v) =>
-      gauge("lane_verb", { verb: v }, (t) => (verb(t) === v ? 1 : 0))
+      gauge("lane_verb", { verb: v }, (t) => (laneAt(t).verb === v ? 1 : 0))
     ),
     ...(
       ["clear", "busy", "memory", "pressure", "unknown", "settling"] as const
-    ).map((w) => gauge("lane_why", { why: w }, (t) => (why(t) === w ? 1 : 0))),
-    ...(["run", "pause"] as const).flatMap((v) =>
-      (["clear", "busy", "settling"] as const).map((w) =>
-        counter("lane_ticks_total", { verb: v, why: w }, (t) =>
-          verb(t) === v && why(t) === w ? 0.2 : 0
-        )
+    ).map((w) =>
+      gauge("lane_why", { why: w }, (t) => (laneAt(t).why === w ? 1 : 0))
+    ),
+    // A tick every 5 s, counted under what it decided.
+    ...(
+      [
+        ["run", "clear"],
+        ["pause", "busy"],
+        ["stop", "busy"],
+        ["stop", "memory"],
+        ["stop", "pressure"],
+        ["stop", "settling"],
+      ] as const
+    ).map(([v, w]) =>
+      counter("lane_ticks_total", { verb: v, why: w }, (t) =>
+        laneAt(t).verb === v && laneAt(t).why === w ? 0.2 : 0
       )
     ),
     counter("lane_busy_ticks_total", { kind: "transcribe" }, (t) =>
-      rendering(t) ? 0.12 : 0.02 * daily(t)
+      jobNamed(t) ? 0.12 : 0.02 * daily(t)
     ),
-    counter(
-      "lane_busy_ticks_total",
-      { kind: "speech" },
-      (t) => 0.03 * daily(t)
+    counter("lane_busy_ticks_total", { kind: "speech" }, (t) =>
+      interactiveAt(t) ? 0.2 : 0.03 * daily(t)
     ),
-    gauge("lane_interactive_waiting", {}, (t) =>
-      rendering(t) && daily(t) > 0.55 ? 1 : 0
-    ),
+    gauge("lane_interactive_waiting", {}, (t) => (interactiveAt(t) ? 1 : 0)),
     gauge("lane_batch_active", {}, (t) => (rendering(t) ? 1 : 0)),
-    gauge("lane_batch_job_present", {}, (t) =>
-      rendering(t) || hourOf(t) >= 23 ? 1 : 0
+    gauge("lane_batch_job_present", {}, (t) => (jobNamed(t) ? 1 : 0)),
+    gauge("lane_idle", {}, (t) =>
+      jobNamed(t) || interactiveAt(t) ? 0 : daily(t) < 0.2 ? 1 : 0
     ),
-    gauge("lane_idle", {}, (t) => (rendering(t) ? 0 : daily(t) < 0.2 ? 1 : 0)),
-    gauge("lane_mem_available_bytes", {}, memFree),
-    gauge("lane_floor_bytes", {}, () => 1.5 * GIB),
-    gauge("lane_batch_peak_bytes", {}, () => 3 * GIB),
+    gauge("lane_mem_available_bytes", {}, (t) => laneAt(t).mem),
+    gauge("lane_floor_bytes", {}, () => LANE_POLICY.floorBytes),
+    gauge("lane_batch_peak_bytes", {}, () => LANE_POLICY.peakBytes),
     gauge("lane_declared_peak_bytes", {}, () => 4 * GIB),
-    gauge("lane_memory_pressure_pct", {}, pressure),
-    gauge("lane_pressure_limit_pct", {}, () => 20),
+    gauge("lane_memory_pressure_pct", {}, (t) => laneAt(t).pressure),
+    gauge("lane_pressure_limit_pct", {}, () => LANE_POLICY.pressureLimitPct),
     counter(
       "contention_outcomes_total",
       { worker: "render", what: "excused" },
@@ -541,7 +674,7 @@ function allSeries(): ReadonlyArray<Series> {
       "contention_outcomes_total",
       { worker: "transcriber", what: "unreadable" },
       // Rare, but not never: a bar of no length is drawn unevenly, by a pixel.
-      (t) => (rendering(t) && renderStarting(t) ? 0.0004 : 0)
+      (t) => (laneAt(t).why === "settling" ? 0.02 : 0)
     ),
     // The metal: each service against its own limits, and the disks.
     ...SERVICES.flatMap(({ name, group, cores, memGiB, base, mem }) => [
@@ -684,11 +817,11 @@ function allSeries(): ReadonlyArray<Series> {
 }
 
 /** Every instant the telemetry holds, in order. */
-function instants(): ReadonlyArray<number> {
+function instants(step: number): ReadonlyArray<number> {
   const to = at(WEEK.to)
   const from = to - WEEK.days * DAY_S - LEAD_S
   const times: Array<number> = []
-  for (let t = from; t <= to; t += STEP_S) times.push(t)
+  for (let t = from; t <= to; t += step) times.push(t)
   return times
 }
 
@@ -713,11 +846,13 @@ function familyOf(s: Series): { readonly name: string; readonly type: string } {
 /**
  * The week's telemetry as OpenMetrics text, a line at a time: each family's
  * TYPE, then each of its series in time order, then `# EOF`. A counter's
- * total is its rate summed over each step, never below 0. Values carry six
+ * total is its rate summed over each step; a rate below zero, or not a
+ * number, throws. Values carry six
  * decimals, so the text is the same on every machine.
  */
 export function* openMetrics(): Generator<string> {
-  const times = instants()
+  const coarse = instants(STEP_S)
+  const fine = instants(FINE.step)
   const byFamily = new Map<string, { type: string; series: Array<Series> }>()
   for (const s of allSeries()) {
     const { name, type } = familyOf(s)
@@ -730,10 +865,20 @@ export function* openMetrics(): Generator<string> {
     for (const s of series) {
       const head = `${s.name}${labelText(s.labels)} `
       let total = 0
-      for (const t of times) {
+      const step = stepOf(s.name)
+      for (const t of step === FINE.step ? fine : coarse) {
         const value = s.kind === "gauge" ? s.at(t) : total
         yield `${head}${value.toFixed(6)} ${String(t)}\n`
-        if (s.kind === "counter") total += Math.max(0, s.at(t)) * STEP_S
+        if (s.kind === "counter") {
+          const rate = s.at(t)
+          // A counter never falls: a rate below zero is this module's mistake.
+          if (!(rate >= 0)) {
+            throw new Error(
+              `${s.name}${labelText(s.labels)} has rate ${String(rate)} at ${String(t)}`
+            )
+          }
+          total += rate * step
+        }
       }
     }
   }

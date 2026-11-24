@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { openMetrics, WEEK } from "@video-motion/walk/dashboard-telemetry"
+import { FINE, openMetrics, WEEK } from "@video-motion/walk/dashboard-telemetry"
 import { describe, expect, it } from "vitest"
 
 /** What the test learns of each series, line by line. */
@@ -36,7 +36,8 @@ function read(): { hash: string; tail: string; all: Map<string, Seen> } {
       })
       continue
     }
-    seen.evenlySpaced &&= t - seen.last === 60
+    const step = FINE.names.has(key.split("{")[0] ?? "") ? FINE.step : 60
+    seen.evenlySpaced &&= t - seen.last === step
     seen.onlyRises &&= value >= seen.value
     seen.last = t
     seen.value = value
@@ -56,6 +57,17 @@ describe("the dashboards' sample telemetry", () => {
     const names = new Set(Array.from(once.all.keys(), (k) => k.split("{")[0]))
     for (const name of [
       "up",
+      "probe_success",
+      "redis_up",
+      "gnatsd_varz_connections",
+      "process_start_time_seconds",
+      "nudge_waker_enabled",
+      "nudge_waker_interval_seconds",
+      "nudge_waker_last_attempt_timestamp_seconds",
+      "ws_client_connections",
+      "ws_connection_guard_occupancy",
+      "rate_limit_tokens_available",
+      "rate_limit_capacity_per_minute",
       "dependency_up",
       "http_requests_total",
       "http_request_duration_seconds_bucket",
@@ -74,6 +86,20 @@ describe("the dashboards' sample telemetry", () => {
     ]) {
       expect(names).toContain(name)
     }
+    // The label sets the walked rows' queries select by.
+    for (const key of [
+      'up{job="file_host"}',
+      'dependency_up{dependency="sqlite"}',
+      'refusals_total{stage="http",reason="load_shed"}',
+      'rate_limit_decisions_total{limiter="http",outcome="rejected"}',
+      'stage:oldest_waiting:seconds{stage="transcriber"}',
+      'lane_verb{verb="stop"}',
+      'lane_why{why="pressure"}',
+      'lane_ticks_total{verb="stop",why="pressure"}',
+      'outbound_requests_total{caller="mailbox",host="mailbox_worker",outcome="no_answer"}',
+    ]) {
+      expect(once.all.has(key), key).toBe(true)
+    }
     expect(
       Array.from(once.all.keys()).filter(
         (k) =>
@@ -82,7 +108,31 @@ describe("the dashboards' sample telemetry", () => {
     ).toHaveLength(4)
   })
 
-  it("covers the sample week, a minute apart, and every counter only rises", () => {
+  it("gives every histogram cumulative buckets: no bucket holds more than the next larger one", () => {
+    const families = new Map<string, Array<{ le: number; value: number }>>()
+    for (const [key, seen] of once.all) {
+      const le = /le="([^"]+)"/.exec(key)?.[1]
+      if (le === undefined) continue
+      const family = key.replace(/,?le="[^"]+"/, "")
+      const list = families.get(family) ?? []
+      list.push({
+        le: le === "+Inf" ? Number.POSITIVE_INFINITY : Number(le),
+        value: seen.value,
+      })
+      families.set(family, list)
+    }
+    expect(families.size).toBeGreaterThan(0)
+    for (const [family, list] of families) {
+      const sorted = [...list].sort((a, b) => a.le - b.le)
+      for (let i = 1; i < sorted.length; i += 1) {
+        expect(sorted[i]?.value ?? 0, family).toBeGreaterThanOrEqual(
+          sorted[i - 1]?.value ?? 0
+        )
+      }
+    }
+  })
+
+  it("covers the sample week, evenly spaced, and every counter only rises", () => {
     const to = Date.parse(WEEK.to) / 1000
     const from = to - WEEK.days * 86_400
     for (const [key, seen] of once.all) {

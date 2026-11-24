@@ -67,7 +67,11 @@ type Grouping = {
   readonly panels: readonly [Panel, Panel]
 }
 
-/** The server episode's groupings, a scene each, in the show's order. */
+/**
+ * The server episode's groupings, a scene each: every grouping the owner
+ * named, its pool (the show draws four a visit; the first four are the
+ * draw a reader without a script sees).
+ */
 export const SERVER_GROUPINGS: ReadonlyArray<Grouping> = [
   {
     dashboard: FILE_HOST,
@@ -93,7 +97,7 @@ export const SERVER_GROUPINGS: ReadonlyArray<Grouping> = [
     label: "What it asks the outside",
     panels: [
       { dashboard: OUTBOUND, id: 7, label: "Requests, by caller" },
-      { dashboard: OUTBOUND, id: 4, label: "Not answered, 24 hours" },
+      { dashboard: OUTBOUND, id: 4, label: "Not OK, 24 hours" },
     ],
   },
   {
@@ -103,6 +107,42 @@ export const SERVER_GROUPINGS: ReadonlyArray<Grouping> = [
     panels: [
       { dashboard: CALL, id: 35, label: "Free memory against a render" },
       { dashboard: CALL, id: 36, label: "Memory pressure" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Shared stages: what other work waits on",
+    label: "What other work waits on",
+    panels: [
+      { dashboard: FILE_HOST, id: 971, label: "The transcriber" },
+      { dashboard: FILE_HOST, id: 973, label: "Who waits on it" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Metal — what the services cost the host",
+    label: "What the services cost the host",
+    panels: [
+      { dashboard: FILE_HOST, id: 947, label: "CPU, against each limit" },
+      { dashboard: FILE_HOST, id: 948, label: "Memory, against each limit" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Realtime — WebSocket",
+    label: "Who is connected",
+    panels: [
+      { dashboard: FILE_HOST, id: 918, label: "Connections against capacity" },
+      { dashboard: FILE_HOST, id: 920, label: "Messages, by kind" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Rate limiting & refusals",
+    label: "Saying no, and why",
+    panels: [
+      { dashboard: FILE_HOST, id: 926, label: "Refusals by reason" },
+      { dashboard: FILE_HOST, id: 927, label: "The limiter's tokens" },
     ],
   },
 ]

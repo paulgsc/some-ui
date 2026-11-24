@@ -60,7 +60,8 @@ checkout> <out>` builds that Grafana on any machine with docker: paulgsc/server'
     compiled by the dashboard-builder image its release pins, a Prometheus loaded with one
     made-up week (`src/walk/dashboard-telemetry.ts`, written by `motion dashboards-sample`),
     both images pinned by the same release. It then walks `home-server` (each grouping's two
-    panels, a phone's faces), `home-server-rows` (each grouping's whole row, a wide screen's)
+    panels, a phone's faces), `home-server-rows` (each grouping's whole row, made for a wide
+    screen)
     and `home-cores` (the CPU panel), from `src/walk/home-dashboards.ts`'s
     `SERVER_GROUPINGS`. Site Assets' `dashboards` job runs it for the landing's server episode
     and cores gap (the owner on #3401, 2026-11-23 and 2026-11-24: never home's own numbers;
