@@ -113,9 +113,36 @@ const FailedSchema = EpisodeSchema.extend({
   itemNames: z.array(z.string().min(1).max(200)).optional().catch(undefined),
 })
 
+/**
+ * What an owed video waits on, by home's word for each (#3478, #3480;
+ * paulgsc/server#1155): the essay home refused, the essay come and waiting
+ * for its takes, the week's record not yet final, a take home couldn't hear
+ * or is still hearing, no essay written, or no week sent at all.
+ */
+const WaitsOnSchema = z.enum([
+  "essay-refused",
+  "essay-waiting",
+  "not-final",
+  "take-unheard",
+  "take-hearing",
+  "not-written",
+  "week-missing",
+])
+
+/**
+ * One row per feed: the next video owed and the day it is expected. `on` is
+ * past once `overdue` (#3478): an owed video home hasn't made stays listed,
+ * late, never dropped. A home from before paulgsc/server#1155 sends only
+ * `{feed, on}`, which reads as not overdue; a reason this phone doesn't know
+ * yet reads as none, so a new one never breaks the board.
+ */
 const ComingSchema = z.object({
   feed: z.string().min(1),
   on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  overdue: z.boolean().optional().catch(undefined).default(false),
+  /** An essay's week, `YYYY-wNN`; absent for the call and Playoff Delta. */
+  key: z.string().min(1).optional().catch(undefined),
+  waitsOn: WaitsOnSchema.optional().catch(undefined),
 })
 
 const BoardSchema = z.object({
@@ -134,6 +161,8 @@ export type Phase = z.infer<typeof PhaseSchema>
 export type HeldBy = z.infer<typeof HeldBySchema>
 export type RenderFailed = z.infer<typeof FailedSchema>
 export type RenderEpisode = z.infer<typeof EpisodeSchema>
+export type Coming = z.infer<typeof ComingSchema>
+export type WaitsOn = z.infer<typeof WaitsOnSchema>
 
 /** What home's answer says. */
 export type BoardRead =
