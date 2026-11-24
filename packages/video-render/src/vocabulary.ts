@@ -10,12 +10,15 @@ import { z } from "zod"
 /** A time or length in whole milliseconds. */
 export const ms = z.number().int().nonnegative()
 
-const SEGMENT = "[A-Za-z0-9_][A-Za-z0-9._-]*"
+const SEGMENT = "[A-Za-z0-9_][A-Za-z0-9._~-]*"
 
 /**
  * A file inside the video's folder: plain path segments only, so no
  * absolute path, `..`, ffmpeg protocol (`file:`, `http:`, `concat:`) or
- * option-like name reaches ffmpeg.
+ * option-like name reaches ffmpeg. A `~` may follow a segment's first
+ * character: a snip of a nested route is named by its route's slug
+ * (`journal~renders`, `slugOf` in apps/www/src/lib/snips), and a home
+ * path (`~/x`) still can't start one.
  */
 export const path = z
   .string()

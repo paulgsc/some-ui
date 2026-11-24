@@ -230,6 +230,10 @@ describe("an essay's screens of the app (SNIPS4)", () => {
       },
     })
     expect(snipsOf(drawn.value)).toEqual([])
+    // The render reads the drawn cut list again: a snip of a nested route
+    // (`studio~takes`) is a file it takes.
+    const rendered = parseCutList(drawn.value)
+    expect(rendered.ok ? [] : rendered.problems).toEqual([])
     // What isn't a snip is drawn as written.
     expect(drawn.value.shots[0]).toEqual(cut.shots[0])
   })
