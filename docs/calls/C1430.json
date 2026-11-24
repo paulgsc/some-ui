@@ -1,0 +1,23 @@
+{
+  "id": "C1430",
+  "made": "2026-11-23",
+  "by": "owner",
+  "paths": [
+    ".github/workflows/site-assets.yml",
+    "packages/eslint/src/retention.ts",
+    "apps/mailbox/src/core.ts",
+    "apps/mailbox/src/store.ts",
+    "apps/mailbox/src/index.ts",
+    "apps/mailbox/migrations/0006_drop_site_assets_view.sql",
+    "packages/assurance/src/ledger.json"
+  ],
+  "chose": "The owner (2026-11-23, on #3401, comment 7112444256, close paraphrase): \"Why do we need the Grafana key at all? I thought we were taking screenshots of the dashboard, not of my live dashboard. There's no reason to show my actual metrics or my uptime. Given the jsonnet and libsonnet, generate the dashboard with mock telemetry and take a screenshot or a screen recording of that. It's deterministic and automatic; I don't want any administrative or editorial task. … There's absolutely no reason to surface real-time metrics from the home box. The box is private and the data is private. Asking for that was an anti-pattern from the start.\" So the landing's server and cores pictures no longer come from home through the Jobs mailbox. Site Assets' `dashboards` job draws them on GitHub: paulgsc/server's jsonnet compiled by the dashboard-builder image its release pins, a throwaway Prometheus loaded with a made-up week, a throwaway Grafana over it, both images the same release pins, then the existing walks. The mailbox's `site-assets` folder and `pages` role go (migration 0006 takes the folder's case out of the delete trigger), Site Assets' `home` job goes, and its two artifact families become one, `site-assets-server-<sha>`, holding the server episode's stills and the cores gap's still. Ask #3423's three keys are no longer needed.",
+  "options": [
+    "home photographs its own dashboards and the mailbox carries the pictures to GitHub (C1071, moved)",
+    "a GitHub job draws the server's dashboards, compiled from its jsonnet, over mock telemetry (chosen)"
+  ],
+  "gray": "Recorded as the owner's call; the owner gave no options. The two above are the design C1071 chose and the one the owner moved it to.",
+  "undo": "Record a call that moves this one; bring back the `site-assets` folder and `pages` role with a new forward migration, Site Assets' `home` job and the keys of #3423.",
+  "refs": ["#3401", "#3415", "#3423"],
+  "moves": "C1071"
+}

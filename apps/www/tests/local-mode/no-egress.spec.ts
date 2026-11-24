@@ -527,23 +527,42 @@ test.describe("the Pages build", () => {
       )
     ).toBe(true)
     // On a wide screen the show plays on its one clock (C1182): each
-    // episode is read out once, by the copy block, and every track runs
-    // over the same cycle.
+    // episode is read out once, by the copy block, and every track that
+    // loops runs over the same cycle. The only tracks that play once are
+    // the dashboard band's first round (C1443), on its plates, each over
+    // within that cycle.
     await page.setViewportSize({ width: 1280, height: 800 })
     for (const episode of shownEpisodes())
       await expect(
         page.getByRole("heading", { level: 3, name: episode.title })
       ).toHaveCount(1)
-    const durations = await page.evaluate(() =>
+    const tracks = await page.evaluate(() =>
       document
         .getAnimations()
         .filter(
           (a) => a instanceof CSSAnimation && a.animationName.startsWith("s-")
         )
-        .map((a) => a.effect?.getTiming().duration)
+        .map((a) => {
+          const timing = a.effect?.getTiming()
+          const target =
+            a.effect instanceof KeyframeEffect ? a.effect.target : null
+          return {
+            duration: Number(timing?.duration),
+            loops: timing?.iterations === Infinity,
+            onPlate:
+              target instanceof Element && target.matches(".dash-band .plate"),
+          }
+        })
     )
-    expect(durations.length).toBeGreaterThan(shownEpisodes().length * 3)
-    expect(new Set(durations).size).toBe(1)
+    const loops = tracks.filter((t) => t.loops)
+    expect(loops.length).toBeGreaterThan(shownEpisodes().length * 3)
+    const durations = new Set(loops.map((t) => t.duration))
+    expect(durations.size).toBe(1)
+    const cycle = Math.max(...durations)
+    for (const once of tracks.filter((t) => !t.loops)) {
+      expect(once.onPlate).toBe(true)
+      expect(once.duration).toBeLessThan(cycle)
+    }
     // For a reader who prefers less motion nothing turns, types or breathes.
     await page.emulateMedia({ reducedMotion: "reduce" })
     expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)

@@ -58,6 +58,18 @@ const firstFaces = clipScene.faces
 const POOLED = EPISODES.flatMap((e) => e.pool?.snacks ?? []).filter(
   (s) => s.faces[0].key === firstFaces[0].key
 ).length
+/**
+ * The dashboard band's plate rules (C1443) in a head's CSS: each plate's
+ * class and the tracks it names, in order. Read with one fixed pattern, so
+ * nothing taken from the page is ever read as a pattern itself.
+ */
+const plateRules = (
+  css: string
+): Array<{ plate: string; names: Array<string> }> =>
+  [...css.matchAll(/\.dash-band \.(s-\d+) \{ animation-name: ([^;]+);/g)].map(
+    (m) => ({ plate: m[1], names: m[2].split(", ") })
+  )
+
 /** A build given that scene's two faces, the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
   [firstFaces[0].key, { width: 1080, height: 1920 }],
@@ -392,6 +404,83 @@ describe("renderLanding", () => {
       expect(card).not.toMatch(/<a\b|<button|controls/)
   })
 
+  it("lets a plate's row still load only once the band is shown, so a phone never fetches one (C1443)", () => {
+    const rows = EPISODES.flatMap((ep) =>
+      ep.scenes.flatMap((sc) => (sc.row === null ? [] : [sc.row.key]))
+    )
+    expect(rows.length).toBeGreaterThan(0)
+    const built = renderLanding(
+      resume,
+      landingMochi(),
+      LANDING_WORDS,
+      new Map(rows.map((key) => [key, { width: 1440, height: 700 }])),
+      EPISODES
+    )
+    const imgs = [...built.matchAll(/<img class="plate-media"[^>]*>/g)]
+    // The drawn plates and the pool's template (#3473) both carry them.
+    expect(imgs.length).toBeGreaterThanOrEqual(rows.length)
+    for (const [img] of imgs) expect(img).toContain(' loading="lazy"')
+  })
+
+  it("shows each dashboard row of a banded episode on the band under the stage, named, as sample data (C1443)", () => {
+    const banded = EPISODES.filter((ep) =>
+      ep.scenes.some((sc) => sc.row !== null)
+    )
+    expect(banded.length).toBeGreaterThan(0)
+    for (const ep of banded) {
+      const band = new RegExp(
+        `<div class="dash-band" data-episode="${ep.id}" aria-hidden="true">([\\s\\S]*?)\\n        </div>`
+      ).exec(page)?.[1]
+      expect(band).toBeDefined()
+      const plates = [
+        ...(band ?? "").matchAll(
+          /<figure class="plate tk (s-\d+)" data-asset="([^"]+)"/g
+        ),
+      ]
+      expect(plates.map((m) => m[2])).toEqual(
+        ep.scenes.map((sc) => sc.row?.key)
+      )
+      for (const sc of ep.scenes) {
+        expect(band).toContain(
+          `<span class="plate-label">${escapeHtml(sc.row?.label ?? "")}</span> · ${LANDING_WORDS.rowSample}`
+        )
+      }
+      // Its first plate shows on the page's first round, and its last does
+      // not, until the episode has played.
+      const head = renderLandingHead(LANDING_WORDS, EPISODES)
+      const rules = plateRules(head)
+      const first = plates.at(0)?.[1] ?? ""
+      const last = plates.at(-1)?.[1] ?? ""
+      // Each names its own loop first, then its first round's track.
+      const intro = (n: string): string => {
+        const names = rules.find((r) => r.plate === n)?.names ?? []
+        expect(names, n).toHaveLength(2)
+        expect(names[0]).toBe(n)
+        return names[1] ?? ""
+      }
+      expect(head).toContain(
+        `@keyframes ${intro(first)} { from { opacity: 1; } to { opacity: 1; } }`
+      )
+      expect(head).toContain(
+        `@keyframes ${intro(last)} { from { opacity: 0; } to { opacity: 0; } }`
+      )
+    }
+    // Episodes with no rows have no band.
+    for (const ep of EPISODES.filter((x) => !banded.includes(x))) {
+      expect(page).not.toContain(
+        `<div class="dash-band" data-episode="${ep.id}"`
+      )
+    }
+  })
+
+  it("puts an episode's standing line under its title, on the stage and laid flat", () => {
+    for (const ep of EPISODES.filter((x) => x.standing !== null)) {
+      const line = `<p class="standing">${escapeHtml(ep.standing ?? "")}</p>`
+      expect(page.split(line).length - 1).toBe(2)
+    }
+    expect(EPISODES.some((x) => x.standing !== null)).toBe(true)
+  })
+
   it("names every track only where the show moves, on the show's one clock", () => {
     const head = renderLandingHead(LANDING_WORDS, EPISODES)
     const names = [...head.matchAll(/@keyframes (s-\d+) /g)].map((m) => m[1])
@@ -402,9 +491,16 @@ describe("renderLanding", () => {
       m[1].split(" ")
     )
     for (const name of names) {
-      expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
+      // A dashboard band's plate (C1443) is named under the band, and its
+      // first-round track only beside its loop's, on the same element.
+      const plate = plateRules(wide).find((r) => r.names.includes(name))
+      if (plate === undefined) {
+        expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
+      }
       // Every element a track moves names it, beside the one clock's class.
-      expect(classLists).toContainEqual(expect.arrayContaining(["tk", name]))
+      expect(classLists).toContainEqual(
+        expect.arrayContaining(["tk", plate?.plate ?? name])
+      )
     }
     const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
     expect(outside).not.toMatch(/animation-name\s*:/)

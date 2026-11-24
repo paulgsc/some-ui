@@ -1,0 +1,20 @@
+{
+  "id": "C1433",
+  "made": "2026-11-23",
+  "by": "claude",
+  "paths": [
+    "packages/video-motion/src/walk/dashboard-telemetry.ts",
+    ".github/workflows/site-assets.yml",
+    "apps/www/src/landing/words.ts"
+  ],
+  "chose": "The sample week the server's dashboards are drawn on, and how the job reads the server. The week is fixed (2026-11-09 to 2026-11-16, UTC), one sample a minute, its noise from a seeded generator, so the same server commit gives the same pictures byte for byte (checked: two runs, every screen identical). Its shape is made to show what each panel is for: two deploys restart file_host, NATS is down twenty minutes one night, a scraper meets the rate limiter one afternoon, a nightly render job takes all four cores while PSI's CPU waiting rises (the contention the cores gap is about), and a nightly backup shows as iowait. The job reads paulgsc/server's main, so the dashboards follow the server's commits (a dispatch, or the twice-monthly schedule, picks a change up), and the server episode's stills are copied from the walk's own screens with no video rendered, since the episode names no cut.",
+  "options": [
+    "a fixed week with a seeded, hand-shaped story (chosen)",
+    "random telemetry each run: not deterministic",
+    "a recorded copy of home's real week: home's numbers, which the owner ruled out",
+    "pin a server commit: deterministic forever, but a dashboard change needs a change here too"
+  ],
+  "gray": "What the made-up week shows is on the public page; no check or earlier decision settles its shape, and whether to follow the server's main or a pinned commit trades freshness for a fixed input.",
+  "undo": "Record a call that moves this one, and change `dashboard-telemetry.ts` or the job's `ref`.",
+  "refs": ["#3401"]
+}
