@@ -1,0 +1,20 @@
+{
+  "id": "C1483",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "apps/mobile/snips/sample-routes.json",
+    "packages/video-motion/src/walk/renders.ts",
+    "packages/video-motion/src/walk/home-dashboards.ts"
+  ],
+  "chose": "The snips' Monday puts something under way on Renders: while home hears the newest Rust Rounds take, Sunday's render-lane cards essay waits for an oven (Now, held for memory) and Sunday's take-conveyor cards essay waits in line behind it, so Studio's line above its tiles reads \"Waiting for room\" in every APK snip of Studio. Both stations show on the board itself (`components/studio/renders.tsx`), not on `/journal/renders/$feed/$key`, which is Run it again for a render that couldn't finish; so the renders walk opens the board, scrolls to the row in line, to the row that couldn't finish and to Coming, then taps through to that row's Run it again. The LANE row joins `home-call` last, so a cut list's steps of its first three rows name the same screens, on the gauges the landing's rows already read from the same sample week. The two samples are different made-up days: the phone's is Monday 2 November at 09:30 (FROZEN_AT), where an essay waits for room, and the dashboards' week ends Monday 16 November at 00:00, where the lane runs that night's render; an essay that shows both says they are two days, never one.",
+  "options": [
+    "an essay at the oven and one in line, on the board, walked down to Coming and into Run it again (chosen)",
+    "only an essay in line, leaving Now empty and Studio's line saying nothing is being made",
+    "a new episode page that repeats the board's stations for one row",
+    "LANE as its own walk, or placed before the essay rows in home-call"
+  ],
+  "gray": "What the sample Monday shows on Renders and Studio's line is on every APK snip and essay that pictures them; the issue placed the stations on an episode page they are not on, and no check settles which screens the walk reaches or where LANE sits in home-call.",
+  "undo": "Record a call that moves this one; set Renders' `now` back to null and `waiting` to [] in sample-routes.json, drop the renders walk from cli.ts and walk-apk.sh, and LANE from CALL_ROWS.",
+  "refs": ["#3476"]
+}

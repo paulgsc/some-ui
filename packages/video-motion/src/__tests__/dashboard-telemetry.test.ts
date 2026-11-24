@@ -163,6 +163,26 @@ describe(
       }
     })
 
+    // The LANE row the same essay walks (`home-call`): the week's one story,
+    // so on that Monday the lane lets the night's render run, having stopped
+    // it once for memory pressure and settled, and nothing waits on a person.
+    it("ends with the lane running the night's render, stopped once for pressure and settled (#3476)", () => {
+      const last = (key: string): number | undefined => once.all.get(key)?.value
+      expect(last('lane_verb{verb="run"}')).toBe(1)
+      expect(last('lane_why{why="clear"}')).toBe(1)
+      expect(last("lane_batch_active")).toBe(1)
+      expect(last("lane_interactive_waiting")).toBe(0)
+      expect(last("lane_stops")).toBe(1)
+      expect(last("lane_signal_readable")).toBe(1)
+      expect(
+        last('lane_ticks_total{verb="stop",why="pressure"}')
+      ).toBeGreaterThan(0)
+      expect(
+        last('lane_ticks_total{verb="stop",why="settling"}')
+      ).toBeGreaterThan(0)
+      expect(last('lane_ticks_total{verb="stop",why="memory"}')).toBe(0)
+    })
+
     it("gives every histogram cumulative buckets: no bucket holds more than the next larger one", () => {
       const families = new Map<string, Array<{ le: number; value: number }>>()
       for (const [key, seen] of once.all) {
