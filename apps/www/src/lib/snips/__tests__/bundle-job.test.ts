@@ -91,20 +91,28 @@ describe("the walks never fail the run the snips come in", () => {
     }
     const snips = step("name: snips-bundle-")
     const download = step("id: walks-download")
+    // The server's dashboards (#3476, C1481), from the dashboards job.
+    const dashboards = step("id: dashboards-download")
     const write = step("id: walks\n")
     const warn = step("name: Say a walks bundle couldn't be made")
     const upload = step("name: Upload the walks bundle")
     // After the snips' bundle is uploaded, in this order.
     expect(snips.at).toBeLessThan(download.at)
-    expect(download.at).toBeLessThan(write.at)
+    expect(download.at).toBeLessThan(dashboards.at)
+    expect(dashboards.at).toBeLessThan(write.at)
     expect(write.at).toBeLessThan(upload.at)
     expect(upload.at).toBeLessThan(warn.at)
-    for (const s of [download, write, upload]) {
+    for (const s of [download, dashboards, write, upload]) {
       // The whole line, as a key of the step: not a comment saying it.
       expect(s.text).toContain("\n        continue-on-error: true\n")
     }
+    // Either half may be missing; only both missing, or a later step
+    // failing, leaves no bundle to say.
+    expect(write.text).toContain(
+      "if: steps.walks-download.outcome == 'success' || steps.dashboards-download.outcome == 'success'\n"
+    )
     expect(warn.text).toContain(
-      "if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure' || steps.walks-upload.outcome == 'failure'\n"
+      "if: (steps.walks-download.outcome == 'failure' && steps.dashboards-download.outcome == 'failure') || steps.walks.outcome == 'failure' || steps.walks-upload.outcome == 'failure'\n"
     )
     expect(warn.text).toContain('\n        run: echo "::warning ')
     expect(upload.text).toContain("if: steps.walks.outcome == 'success'\n")
