@@ -45,6 +45,7 @@
         "scripts/snips-bundle.ts",
         "scripts/show-faces.ts",
         "src/landing/authorship.tsx",
+        "src/landing/enhance.ts",
         "src/landing/page.css"
       ]
     },

@@ -5,13 +5,17 @@
  * exactly what Pages serves. vite.config.ts writes it into
  * `landing/index.html`, the Pages build's `index.html`.
  *
- * The page carries no script. Every card is a picture with its words below
+ * The page reads whole with no script. Its one script (`enhance.ts`, C1422)
+ * only enhances the show: the phone's deck turns by a swipe, a face's media
+ * crossfades in over its preview once it can be shown, and a clip plays only
+ * while its face is in view. Every card is a picture with its words below
  * it, never over it (C1113). The photo slot holds the mochi, the brand
  * cast's own drawing (`landingMochi`), until the owner's photo is bundled; a
  * reader can send it a hug (C1187).
  */
 import type { ResumeData } from "@some-ui/resume"
 
+import { SHOW_BREAK_PX } from "./deck.ts"
 import type { MediaSize } from "./media.ts"
 import type { LandingMochi } from "./mochi.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
@@ -19,8 +23,14 @@ import type { ResolvedEpisode, ResolvedFace, SlotKind } from "./show.ts"
 import { showMediaKeys } from "./show.ts"
 import type { LandingTheme, ThemePicker } from "./themes.ts"
 import { themeCss, themePicker } from "./themes.ts"
-import type { Timeline, Track } from "./timeline.ts"
-import { EPISODE_TURN_S, num, showTimeline, tracksOf } from "./timeline.ts"
+import type { SceneTracks, Timeline } from "./timeline.ts"
+import {
+  COPY_FACES,
+  copyFaceOf,
+  num,
+  showTimeline,
+  tracksOf,
+} from "./timeline.ts"
 import type { GapWords, LandingWords } from "./words.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -43,8 +53,26 @@ const link = (label: string, href: string): string =>
 /** Where the build serves a slot's asset (vite.config.ts, `publicSite`). */
 const mediaSrc = (key: string): string => `${SITE_BASE}${MEDIA_PATH}${e(key)}`
 
+/**
+ * A slot's asset as the build carries it: its picture's size, and the key
+ * of its tiny preview when the producer made one the build can afford
+ * (`PREVIEW_BUDGET`, C1422).
+ */
+export type LandingAsset = MediaSize & { readonly preview?: string }
+
 /** The media the build carries, by key, each with its picture's size when it has one. */
-export type LandingMedia = ReadonlyMap<string, MediaSize | null>
+export type LandingMedia = ReadonlyMap<string, LandingAsset | null>
+
+/**
+ * What the page spends on previews (#3470 §4): a preview is a 40 px WebP the
+ * producer writes beside its asset (`show-faces.ts`); the build serves one
+ * only within its own limit and the page's, else the slot shows the themed
+ * screen.
+ */
+export const PREVIEW_BUDGET = { each: 2 * 1024, page: 24 * 1024 } as const
+
+/** A slot's preview's key, beside its asset. */
+export const previewKey = (key: string): string => `${key}.preview.webp`
 
 /** A card's shape when it has no picture of its own: its placeholder's. */
 const PLACEHOLDER: MediaSize = { width: 4, height: 3 }
@@ -58,17 +86,18 @@ const shape = ({ width, height }: MediaSize): string =>
   `--ar: ${String(width)} / ${String(height)}; --r: ${(width / height).toFixed(4)}`
 
 /** The size of a slot's asset when the build carries it to show. */
-const shown = (media: LandingMedia, key: string): MediaSize | undefined =>
+const shown = (media: LandingMedia, key: string): LandingAsset | undefined =>
   media.get(key) ?? undefined
 
 /**
  * A slot's asset, as the background of its picture: a clip plays muted on a
- * loop, a still just sits there; neither is a control (C1064) nor read out.
+ * loop, inline, with no controls, on every screen (C1064; the owner on
+ * #3470); a still just sits there; neither is a control nor read out.
  */
 const mediaTag = (key: string, slot: SlotKind): string =>
   slot === "clip"
     ? `<video class="media" src="${mediaSrc(key)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
-    : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" />`
+    : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" decoding="async" />`
 
 /**
  * Where the show moves: a wide screen whose reader allows motion. Every
@@ -76,46 +105,58 @@ const mediaTag = (key: string, slot: SlotKind): string =>
  * that brings it in (a page opened narrow and then widened included), and
  * one clock keeps them together (`timeline.ts`).
  */
-export const WIDE_MOTION =
-  "(width >= 900px) and (prefers-reduced-motion: no-preference)"
+export const WIDE_MOTION = `(width >= ${String(SHOW_BREAK_PX)}px) and (prefers-reduced-motion: no-preference)`
 
 /** The show's tracks as CSS: every keyframes rule, each named only where the show moves. */
 function showCss(timeline: Timeline): string {
   const tracks = tracksOf(timeline)
   return `${tracks.map((t) => t.keyframes).join("\n      ")}
-      .show { --show: ${num(timeline.cycleS)}s; --show-start: -${num(EPISODE_TURN_S)}s; }
+      .show { --show: ${num(timeline.cycleS)}s; --show-start: -${num(timeline.openS)}s; }
       @media ${WIDE_MOTION} { ${tracks.map((t) => `.${t.name} { animation-name: ${t.name}; }`).join(" ")} }`
 }
 
 /**
- * A face's picture: the face's title card under its clip or still when the
- * build carries one. Laid flat it takes the picture's own shape (C1064); on
- * a cube's square face the picture sits whole inside it (C1113).
+ * A face's picture. Where the build carries its asset: an aperture in the
+ * asset's own shape (#3470 §5), holding its preview (the producer's tiny
+ * frame, or a themed screen) with the slot's mark, and the clip or still
+ * over it, which the enhancement crossfades in once it can be shown (and
+ * swaps for the title card should it fail). Where it doesn't: the face's
+ * title card, as ever (C1113). Laid flat the screen takes the picture's own
+ * shape (C1064); on a cube's face the aperture sits whole inside it.
  */
-const screen = (face: ResolvedFace, media: LandingMedia): string => `
-                <div class="title-card" aria-hidden="true"><span>${e(face.label)}</span></div>${
-                  shown(media, face.key) !== undefined
-                    ? `
-                ${mediaTag(face.key, face.slot)}`
-                    : ""
-                }`
+const screen = (face: ResolvedFace, media: LandingMedia): string => {
+  const asset = shown(media, face.key)
+  const card = (more: string): string =>
+    `<div class="title-card${more}" aria-hidden="true"><span>${e(face.label)}</span></div>`
+  if (asset === undefined) return card("")
+  return `<div class="aperture" style="${shape(asset)}">
+                  <div class="preview" aria-hidden="true">${
+                    asset.preview === undefined
+                      ? ""
+                      : `<img src="${mediaSrc(asset.preview)}" alt="" decoding="async" />`
+                  }<span class="mark">${SKELETON_GLYPH[face.slot]}</span></div>
+                  ${card(" title-card--failed")}
+                  ${mediaTag(face.key, face.slot)}
+                </div>`
+}
 
 /** A face on a cube: its picture, and its band, whose label types in as it arrives. */
 const cubeFace = (
   face: ResolvedFace | undefined,
   at: number,
-  label: Track | undefined,
+  scene: SceneTracks | undefined,
+  j: 0 | 1,
   media: LandingMedia
 ): string =>
-  face === undefined || label === undefined
+  face === undefined || scene === undefined
     ? `
-              <div class="face" style="--i: ${String(at)}"></div>`
+              <div class="face face--blank" style="--i: ${String(at)}"></div>`
     : `
-              <div class="face" data-slot="${face.slot}" data-asset="${e(face.key)}" style="--i: ${String(at)}">
+              <div class="face" data-slot="${face.slot}" data-asset="${e(face.key)}" data-on="${num(scene.on[0])} ${num(scene.on[1])}" style="--i: ${String(at)}">
                 <div class="screen">${screen(face, media)}
                 </div>
                 <div class="band">
-                  <p class="band-title"><span class="tk ${label.name}">${e(face.label)}</span></p>
+                  <p class="band-title"><span class="tk ${scene.labels[j].name}">${e(face.label)}</span></p>
                 </div>
               </div>`
 
@@ -131,20 +172,54 @@ const SKELETON_GLYPH: Readonly<Record<SlotKind, string>> = {
 
 /**
  * A face's place before it arrives: a skeleton in the face's own shape (a
- * screen above a band), telling what is coming by its glyph, with no words a
- * reader could take for content.
+ * screen above a band), showing what is coming by the face's own preview
+ * where the build has one, and by its glyph, with no words a reader could
+ * take for content.
  */
-const skeletonSlot = (kind: SlotKind): string => `
-          <div class="skeleton" data-skeleton="${kind}">
-            <div class="skeleton-screen">${SKELETON_GLYPH[kind]}</div>
+const skeletonSlot = (face: ResolvedFace, media: LandingMedia): string => {
+  const preview = shown(media, face.key)?.preview
+  return `
+          <div class="skeleton" data-skeleton="${face.slot}">
+            <div class="skeleton-screen">${
+              preview === undefined
+                ? ""
+                : `<img src="${mediaSrc(preview)}" alt="" decoding="async" />`
+            }${SKELETON_GLYPH[face.slot]}</div>
             <div class="skeleton-band"><span></span></div>
           </div>`
+}
 
 /**
- * The stage (C1180, C1182): the copy block, an episode a face about Y, each
- * holding its scenes' copy as it streams in; and an episode's pair of cubes,
- * a scene a face about X, in view while its episode plays. The copy is what
- * a screen reader reads; the cubes only show it.
+ * How tall an episode's cubes stand, as a share of their width (#3470 §5):
+ * tall enough for the narrowest picture they turn to, so a phone's capture
+ * gets the width it can, within bounds that keep the stage in one screen.
+ * The same for both cubes and for the whole episode, so nothing changes
+ * size while they turn.
+ */
+export const TALL = { min: 0.9, max: 1.35 } as const
+/** A cube's band under its screen, as a share of its width. */
+const BAND = 0.16
+
+export function pairTall(
+  episode: ResolvedEpisode,
+  media: LandingMedia
+): number {
+  const needs = episode.scenes.flatMap((scene) =>
+    scene.faces.map((face) => {
+      const size = shown(media, face.key) ?? PLACEHOLDER
+      return size.height / size.width + BAND
+    })
+  )
+  return Math.min(TALL.max, Math.max(TALL.min, ...needs))
+}
+
+/**
+ * The stage (C1180, C1182): the copy block, a cube about Y with an episode a
+ * face, each holding its scenes' copy as it streams in; and an episode's
+ * pair of cubes, a scene a face about X, in view while its episode plays.
+ * Every block faces the reader square-on at rest; its depth shows as it
+ * turns (C1424). The copy is what a screen reader reads; the cubes only show
+ * it.
  */
 function stage(
   episodes: ReadonlyArray<ResolvedEpisode>,
@@ -170,7 +245,7 @@ function stage(
         })
         .join("")
       return `
-            <section class="face copy" style="--i: ${String(k)}">
+            <section class="face copy" style="--i: ${String(copyFaceOf(k, episodes.length))}">
               <p class="kicker">${e(episode.kicker)}</p>
               <h3 class="headline">${e(episode.title)}</h3>
               <div class="scenes">${scenes}
@@ -178,10 +253,20 @@ function stage(
             </section>`
     })
     .join("")
+  // The copy cube's other faces, blank: a closed shell as it turns.
+  const taken = new Set(episodes.map((_, k) => copyFaceOf(k, episodes.length)))
+  const blanks = Array.from({ length: COPY_FACES }, (_, i) => i)
+    .filter((i) => !taken.has(i))
+    .map(
+      (i) => `
+            <div class="face face--blank" style="--i: ${String(i)}"></div>`
+    )
+    .join("")
   const pairs = episodes
     .map((episode, k) => {
       const tracks = timeline.episodes.at(k)
       if (tracks === undefined) return ""
+      const tall = pairTall(episode, media)
       const cubes = ([0, 1] as const)
         .map(
           (j) => `
@@ -193,10 +278,13 @@ function stage(
                   cubeFace(
                     episode.scenes[s]?.faces[j],
                     s,
-                    tracks.scenes[s]?.labels[j],
+                    tracks.scenes[s],
+                    j,
                     media
                   )
               ).join("")}
+                <div class="cap cap--left"></div>
+                <div class="cap cap--right"></div>
               </div>
             </div>
           </div>`
@@ -204,19 +292,19 @@ function stage(
         .join("")
       const coming = episode.scenes[0]?.faces ?? []
       return `
-        <div class="skeletons tk ${tracks.skeleton.name}" data-episode="${episode.id}" aria-hidden="true">${coming
-          .map((face) => skeletonSlot(face.slot))
+        <div class="skeletons tk ${tracks.skeleton.name}" data-episode="${episode.id}" aria-hidden="true" style="--tall: ${num(tall)}; --sweep-at: ${num(tracks.start)}s">${coming
+          .map((face) => skeletonSlot(face, media))
           .join("")}
         </div>
-        <div class="pair tk ${tracks.pair.name}" data-episode="${episode.id}" aria-hidden="true">${cubes}
+        <div class="pair tk ${tracks.pair.name}" data-episode="${episode.id}" aria-hidden="true" style="--tall: ${num(tall)}">${cubes}
         </div>`
     })
     .join("")
   return `
       <div class="stage">
         <div class="block block--copy">
-          <div class="ring ring--copy" style="--faces: ${String(episodes.length)}">
-            <div class="ring-turn tk ${timeline.copy.name}">${copyFaces}
+          <div class="ring ring--copy" style="--faces: ${String(COPY_FACES)}">
+            <div class="ring-turn tk ${timeline.copy.name}">${copyFaces}${blanks}
             </div>
           </div>
         </div>${pairs}
@@ -229,12 +317,16 @@ const CUBE_FACES = 4
 /**
  * The show laid flat, on a phone and for a reader who prefers less motion:
  * each episode, each of its scenes' copy, and the scene's two faces as cards
- * in their own shapes, the label below each picture.
+ * in their own shapes, the label below each picture. It is the whole show
+ * with no script; with it, on a phone, the same scenes are the deck
+ * (`deck.ts`), one at a time, each scene's copy naming its episode
+ * (`scene-of`, shown only there).
  */
 function flat(
   episodes: ReadonlyArray<ResolvedEpisode>,
   media: LandingMedia
 ): string {
+  let at = 0
   return episodes
     .map(
       (episode) => `
@@ -243,13 +335,16 @@ function flat(
           <h3>${e(episode.title)}</h3>${episode.scenes
             .map(
               (scene) => `
-          <div class="scene-flat">
-            <h4>${e(scene.title)}</h4>${scene.narration
-              .map(
-                (line) => `
-            <p>${e(line)}</p>`
-              )
-              .join("")}
+          <div class="scene-flat" data-scene="${String(at++)}">
+            <div class="scene-copy">
+              <p class="scene-of"><span class="kicker">${e(episode.kicker)}</span> ${e(episode.title)}</p>
+              <h4>${e(scene.title)}</h4>${scene.narration
+                .map(
+                  (line) => `
+              <p>${e(line)}</p>`
+                )
+                .join("")}
+            </div>
             <div class="grid">${scene.faces
               .map(
                 (face) => `

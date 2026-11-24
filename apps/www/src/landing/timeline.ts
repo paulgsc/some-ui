@@ -23,15 +23,27 @@ export const TITLE_S = 0.6
 export const TURN_S = 1.2
 /** Seconds a scene holds once its faces are shown. */
 export const HOLD_S = 4
-/** Seconds the copy block takes to turn to the next episode. */
-export const EPISODE_TURN_S = 1.4
+/**
+ * Seconds the copy block takes to turn a quarter, to the next episode: a
+ * turn of two quarters (three episodes wrapping through the blank face, or
+ * two that face each other) takes twice as long, so every turn runs at one
+ * speed.
+ */
+export const QUARTER_TURN_S = 1.4
 /** Seconds a band's label takes to type in once its face has arrived. */
 const LABEL_S = 0.9
 
 /** One element's moves: its name (its class and its keyframes') and its keyframes. */
 export type Track = { readonly name: string; readonly keyframes: string }
 
-type SceneTracks = {
+export type SceneTracks = {
+  /**
+   * Seconds into the cycle when the scene's faces are in view: from their
+   * turn in until they have turned away or their pair has gone. The end
+   * passes the cycle's when the last episode's last faces linger into the
+   * next round. The enhancement plays a face's clip only then (C1422).
+   */
+  readonly on: readonly [number, number]
   /** The scene's copy, shown from its start until the next scene's. */
   readonly block: Track
   readonly title: Track
@@ -41,6 +53,8 @@ type SceneTracks = {
 }
 
 type EpisodeTracks = {
+  /** Seconds into the cycle the copy block begins its turn to the episode. */
+  readonly start: number
   /**
    * Where the episode's pair will be, as skeletons (C1185): standing from
    * halfway through the copy block's turn to the episode (once the last
@@ -56,6 +70,8 @@ type EpisodeTracks = {
 export type Timeline = {
   /** The whole show, in seconds: every track's one cycle. */
   readonly cycleS: number
+  /** The copy block's first turn, which the show opens just past. */
+  readonly openS: number
   /** The copy block's turn about Y, an episode a face. */
   readonly copy: Track
   readonly episodes: ReadonlyArray<EpisodeTracks>
@@ -109,9 +125,95 @@ const WIPED = "clip-path: inset(0 0 100% 0);"
 const TYPED_NOT = "clip-path: inset(0 100% 0 0);"
 const WHOLE = "clip-path: inset(0 0 0 0);"
 
-/** The copy block's angle for episode `k` of `n`: the next episode's face rises from the right. */
-const copyAngle = (k: number, n: number): string =>
-  `transform: translateZ(calc(-1 * var(--depth))) rotateY(${num((-360 * k) / n)}deg);`
+/**
+ * The copy block is a cube about Y, as the media blocks are about X
+ * (C1424): four faces, whatever the show's episodes, which sit on them
+ * spread evenly where they divide four (two face each other), else one
+ * after another, the rest blank.
+ */
+export const COPY_FACES = 4
+
+/** The face episode `k` of `n` sits on. */
+export const copyFaceOf = (k: number, n: number): number =>
+  COPY_FACES % n === 0 ? (k * COPY_FACES) / n : k
+
+/** The copy cube's perspective, in its widths (`.ring`'s 340cqi). */
+const COPY_PERSPECTIVE = 3.4
+
+/**
+ * How much the copy cube shrinks at `deg`, so it never reaches past its
+ * block: a square turned off square-on is wider than its side (its diagonal
+ * at 45 degrees), and perspective widens it again. 1 square-on, about 0.8
+ * at 45 degrees: the largest scale whose four corners, projected, stay
+ * within half a width of the middle.
+ */
+export function copyScaleAt(deg: number): number {
+  const a = (deg * Math.PI) / 180
+  const reach = Math.max(
+    ...[
+      [0.5, 0.5],
+      [0.5, -0.5],
+      [-0.5, 0.5],
+      [-0.5, -0.5],
+    ].map(([x = 0, z = 0]) => {
+      // Turned about Y, about the cube's middle, half a width behind the face.
+      const xr = x * Math.cos(a) + z * Math.sin(a)
+      const zr = -x * Math.sin(a) + z * Math.cos(a) - 0.5
+      return Math.abs(xr) * (COPY_PERSPECTIVE / (COPY_PERSPECTIVE - zr))
+    })
+  )
+  return Math.min(1, 0.5 / reach)
+}
+
+/** The copy cube at `deg`, at its scale there: the next episode's face rises from the right. */
+const copyAt = (deg: number): string =>
+  `transform: translateZ(calc(-1 * var(--depth))) scale(${num(copyScaleAt(deg))}) rotateY(${num(deg)}deg);`
+
+/** The copy cube's angle at `face`. */
+const faceDeg = (face: number): number => (-360 * face) / COPY_FACES
+
+/** An ease in and out, as CSS's `ease-in-out` draws it near enough. */
+const easeInOut = (t: number): number => t * t * (3 - 2 * t)
+
+/** Seconds the copy block takes to turn to episode `k` of `n`: a quarter's time a quarter. */
+export function copyTurnS(k: number, n: number): number {
+  return QUARTER_TURN_S * (copyFaceOf(k, n) - copyFromFace(k, n))
+}
+
+/**
+ * The face the copy cube turns to episode `k` of `n` from: the episode
+ * before's, or for the first, the last's a whole turn back, so the cube
+ * always turns on.
+ */
+const copyFromFace = (k: number, n: number): number =>
+  k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n)
+
+/** Samples of a turn per quarter turn: its scale is drawn from them. */
+const COPY_SAMPLES = 8
+
+/**
+ * The copy cube's turn from face `from` to face `to`, beginning at `start`:
+ * its angle eased in and out, and its scale at every angle on the way,
+ * sampled and drawn straight between.
+ */
+function copyTurn(
+  from: number,
+  to: number,
+  start: number,
+  seconds: number
+): ReadonlyArray<Point> {
+  const a = faceDeg(from)
+  const b = faceDeg(to)
+  const steps = Math.max(1, Math.round((Math.abs(b - a) / 90) * COPY_SAMPLES))
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps
+    return {
+      at: start + t * seconds,
+      css: copyAt(a + (b - a) * easeInOut(t)),
+      ...(i < steps ? { ease: "linear" } : {}),
+    }
+  })
+}
 
 /** A cube's angle for scene `s`: the next face rises from below. */
 const cubeAngle = (s: number): string =>
@@ -135,13 +237,17 @@ export function showTimeline(
   }
   type EpisodeTimes = {
     readonly start: number
+    /** The copy block's turn to the episode, in seconds. */
+    readonly turn: number
     readonly scenes: ReadonlyArray<SceneTimes>
     readonly end: number
   }
+  const n = episodes.length
   let at = 0
-  const times: Array<EpisodeTimes> = episodes.map((episode) => {
+  const times: Array<EpisodeTimes> = episodes.map((episode, k) => {
     const start = at
-    at += EPISODE_TURN_S
+    const turn = copyTurnS(k, n)
+    at += turn
     const scenes = episode.scenes.map((scene): SceneTimes => {
       const sceneStart = at
       let cursor = sceneStart + TITLE_S
@@ -154,10 +260,9 @@ export function showTimeline(
       at = arrive + HOLD_S
       return { start: sceneStart, lines, arrive, end: at }
     })
-    return { start, scenes, end: at }
+    return { start, turn, scenes, end: at }
   })
   const cycleS = at
-  const n = episodes.length
 
   const copyName = name()
   const copy: Track = {
@@ -165,10 +270,11 @@ export function showTimeline(
     keyframes: keyframes(
       copyName,
       cycleS,
-      times.flatMap((e, k) => [
-        { at: e.start, css: copyAngle(k - 1, n), ease: "ease-in-out" },
-        { at: e.start + EPISODE_TURN_S, css: copyAngle(k, n) },
-      ])
+      // Always turning on: the first episode comes round again from past
+      // the last, through any blank face between them.
+      times.flatMap((e, k) =>
+        copyTurn(copyFromFace(k, n), copyFaceOf(k, n), e.start, e.turn)
+      )
     ),
   }
 
@@ -179,7 +285,10 @@ export function showTimeline(
     // episode's copy turns in: the last episode's, as the cycle begins again.
     const enters = first === undefined ? e.start : first.arrive - TURN_S
     const isLast = k === n - 1
-    const gone = EPISODE_TURN_S / 2
+    // The next episode's turn takes this pair away, half way through; the
+    // first episode's, as the cycle begins again, the last pair.
+    const leave = times[(k + 1) % n]?.turn ?? QUARTER_TURN_S
+    const gone = leave / 2
     const leaving: ReadonlyArray<Point> = isLast
       ? [
           { at: 0, css: SHOWN, ease: "ease-in" },
@@ -209,8 +318,8 @@ export function showTimeline(
       name: skeletonName,
       keyframes: keyframes(skeletonName, cycleS, [
         { at: 0, css: HIDDEN },
-        { at: e.start + gone, css: HIDDEN, ease: "ease-out" },
-        { at: e.start + EPISODE_TURN_S, css: SHOWN },
+        { at: e.start + e.turn / 2, css: HIDDEN, ease: "ease-out" },
+        { at: e.start + e.turn, css: SHOWN },
         { at: enters, css: SHOWN, ease: "ease-in" },
         { at: enters + TURN_S, css: HIDDEN },
       ]),
@@ -245,14 +354,14 @@ export function showTimeline(
     const cubes: readonly [Track, Track] = [cube(), cube()]
     const scenes = e.scenes.map((s, i): SceneTracks => {
       // The last scene's copy stays through the copy block's whole turn,
-      // which leaves its face turned away (120 degrees or more: a show is
-      // two or three episodes, one a project, which resolveShow holds), so
+      // which leaves its face turned away (90 degrees or more: each
+      // episode has a face of its own on the copy cube, copyFaceOf), so
       // its hidden back takes it out of sight: the turning face is never
       // blank. The last episode's stays through the turn that begins the
       // cycle again.
       const isLastScene = i === e.scenes.length - 1
       const wraps = isLast && isLastScene
-      const following = e.scenes.at(i + 1)?.start ?? e.end + EPISODE_TURN_S
+      const following = e.scenes.at(i + 1)?.start ?? e.end + leave
       const blockName = name()
       const titleName = name()
       const scene = episodes.at(k)?.scenes.at(i)
@@ -275,14 +384,19 @@ export function showTimeline(
           ]),
         }
       }
+      const next = e.scenes.at(i + 1)
       return {
+        on: [
+          s.arrive - TURN_S,
+          next?.arrive ?? (isLast ? cycleS : e.end) + gone,
+        ],
         block: {
           name: blockName,
           keyframes: keyframes(blockName, cycleS, [
             ...(wraps
               ? [
                   { at: 0, css: SHOWN },
-                  { at: EPISODE_TURN_S, css: HIDDEN },
+                  { at: leave, css: HIDDEN },
                 ]
               : [{ at: 0, css: HIDDEN }]),
             { at: s.start, css: SHOWN },
@@ -317,9 +431,14 @@ export function showTimeline(
         labels: [label(0), label(1)],
       }
     })
-    return { skeleton, pair, cubes, scenes }
+    return { start: e.start, skeleton, pair, cubes, scenes }
   })
-  return { cycleS, copy, episodes: episodeTracks }
+  return {
+    cycleS,
+    openS: times[0]?.turn ?? QUARTER_TURN_S,
+    copy,
+    episodes: episodeTracks,
+  }
 }
 
 /** Every track of a timeline, in order. */
@@ -333,4 +452,14 @@ export function tracksOf(timeline: Timeline): ReadonlyArray<Track> {
       ...e.scenes.flatMap((s) => [s.block, s.title, ...s.lines, ...s.labels]),
     ]),
   ]
+}
+
+/**
+ * Whether a stage face whose scene is up over `on` ("from to", seconds, as
+ * `SceneTracks.on` is written into the page) is up at `t` seconds into a
+ * cycle of `cycle`: an end past the cycle's reaches into the next round.
+ */
+export function faceOn(on: string, t: number, cycle: number): boolean {
+  const [from = Number.NaN, to = Number.NaN] = on.split(" ").map(Number)
+  return (t >= from && t < to) || (t + cycle >= from && t + cycle < to)
 }

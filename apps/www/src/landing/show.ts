@@ -14,6 +14,7 @@
  * video by shot, or an asset by key. Pure: `resolveShow` checks the script
  * against the chapters and gives what `render.ts` draws.
  */
+import { COPY_FACES } from "./timeline.ts"
 
 /** The episodes, by project. */
 export type EpisodeId = "extensions" | "android" | "server"
@@ -363,9 +364,10 @@ export function resolveShow(
     }
   })
   if (episodes.length < 2) problems.push("the show needs two episodes or more")
-  // An episode a project, once each: the copy block's turn between them is
-  // then at least 120 degrees, which the timeline relies on to take an
-  // episode's copy out of sight (timeline.ts).
+  // The copy block is a cube: an episode a face, so four at most.
+  if (episodes.length > COPY_FACES)
+    problems.push(`the show has room for ${String(COPY_FACES)} episodes`)
+  // An episode a project, once each.
   const ids = show.episodes.map((episode) => episode.id)
   if (new Set(ids).size < ids.length)
     problems.push("the show names an episode twice")

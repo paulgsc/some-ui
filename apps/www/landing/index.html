@@ -4,8 +4,11 @@
   Pages build only (vite.config.ts, `publicSite`), which fills the two markers
   below with what render-public-site.ts rendered from src/landing
   (`SITE_FILE`) before the build, and writes it as the output's index.html.
-  No script: everything here is drawn from the résumé's data and the
-  landing's words when the site is built.
+  Everything here is drawn from the résumé's data and the landing's words
+  when the site is built, and reads whole with no script. Its one script,
+  src/landing/enhance.ts (C1422), only enhances the show: the phone's deck
+  turns by a swipe, media crossfade in over their previews, and a clip plays
+  only while its face is in view.
 -->
 <html lang="en">
   <head>
@@ -21,6 +24,10 @@
          theme's. */
       :root {
         --line: color-mix(in oklab, var(--fg) 14%, var(--bg));
+        /* One still grain tile, drawn once by the browser: no animation,
+           no per-frame noise. */
+        --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+        --radius: 16px;
       }
       * {
         box-sizing: border-box;
@@ -72,9 +79,11 @@
       /* A hug (C1187): the mochi is a button, and pressing it is the hug.
          All of it is :active and transitions: the hug's look snaps in
          while pressed and eases back once let go, so a tap replays it and
-         a second tap just starts it over (nothing stacks); the page runs
-         no script and keeps nothing. Here, everywhere: a heart, still,
-         that fades. Where the page moves (below), more. */
+         a second tap just starts it over (nothing stacks); it runs no
+         script and keeps nothing. For a reader who prefers less motion: a
+         heart, still, that fades. Where motion is allowed (below), more,
+         at every width. On a touch screen a quick tap shows the press
+         only as the finger lifts, so there the hug plays on lift. */
       .hug {
         position: relative;
         display: block;
@@ -86,8 +95,11 @@
         background: none;
         color: inherit;
         cursor: pointer;
+        /* The hug is its own answer to a tap, so Android's highlight box
+           doesn't flash over it. */
+        -webkit-tap-highlight-color: transparent;
       }
-      /* Inside the button: the photo's round mask clips anything outside. */
+      /* Inside the button, so the round frame never hides it. */
       .hug:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: -3px;
@@ -250,10 +262,10 @@
         font-weight: 600;
         line-height: 1.2;
       }
-      /* A slot's clip or still, whole inside its screen or filling its
-         card exactly: never cropped, never something to click. Its own box
-         is the screen's dark, so the title card under it never shows
-         through. */
+      /* A slot's clip or still, filling its aperture exactly (the
+         aperture takes the asset's own shape, render.ts): never cropped,
+         never something to click. Clear until it paints, so its preview
+         shows through while it loads (C1422). */
       .media {
         position: absolute;
         inset: 0;
@@ -261,162 +273,106 @@
         height: 100%;
         object-fit: contain;
         display: block;
-        background: var(--screen);
         pointer-events: none;
+        transition: opacity 160ms ease-out;
       }
-      /* A card's words, below its picture. */
-      .caption {
-        padding: 12px 16px 14px;
-      }
-      .caption h3 {
-        margin: 0;
-        font-size: 1.08rem;
-      }
-      .caption p {
-        margin: 0.2rem 0;
-        font-size: 0.95rem;
-      }
-      /* The clip still loads and plays out of sight (autoplay outranks
-         preload, and a video takes no media-chosen source): stopping it
-         would take a script, which this page has none of. */
-      @media (prefers-reduced-motion: reduce) {
-        video.media {
-          display: none;
-        }
-      }
-      /* Cards laid flat sit in justified rows (C1064): each takes its
-         picture's own shape (--ar, from the file, render.ts), asks its row
-         for a width in proportion (--r), and so every card in a row shares
-         one picture height and no picture is cropped or padded. A narrow
-         window gives each card a row of its own. Words sit below the
-         picture, so a row's cards keep their own height. */
-      .grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        align-items: flex-start;
-      }
-      .card,
-      .face {
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--card);
-        box-shadow: 0 0 0 1px var(--line);
-      }
-      .card {
-        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
-      }
-      .pic,
-      .screen {
-        position: relative;
-        aspect-ratio: var(--ar);
-      }
-      .pic {
-        background: var(--stage);
-      }
-      .screen {
+      .pic .media {
         background: var(--screen);
       }
-      /* WIDE_MOTION: the stage. The copy block (an episode a face, about Y)
-         beside the episode's pair of cubes (a scene a face, about X), the
-         pairs stacked in one place, each in view for its episode. Every
-         move is a track on the show's one clock (timeline.ts), named in the
-         head; here each track's element gets that clock's duration. Each
-         block breathes a little, and the whole show holds still under the
-         pointer. */
-      @media (width >= 900px) and (prefers-reduced-motion: no-preference) {
-        .flat {
-          display: none;
-        }
-        .stage {
-          display: grid;
-          grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
-          gap: 20px;
-          align-items: start;
-        }
-        /* The copy is as tall as its longest scene needs; the cubes stay
-           square beside it. */
-        .block--copy {
-          grid-area: 1 / 1;
-          align-self: stretch;
-          min-height: 19rem;
-        }
-        .pair,
-        .skeletons {
-          grid-area: 1 / 2 / 2 / 4;
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 20px;
-        }
-        /* Where an episode's pair will turn in, while its copy streams
-           (C1185): a calm frame in the face's own shape, its glyph telling
-           a clip from a still. One slow sweep of light passes over it, low
-           in contrast and seconds long, never a flash or a flicker. */
-        .skeleton {
-          position: relative;
-          aspect-ratio: 1;
-          display: flex;
-          flex-direction: column;
-          border-radius: 12px;
-          overflow: hidden;
-          background: var(--card);
-          box-shadow: 0 0 0 1px var(--line);
-        }
-        .skeleton-screen {
-          flex: 1;
-          display: grid;
-          place-items: center;
-          --skeleton-ground: color-mix(
-            in oklab,
-            var(--stage) 92%,
+      /* A face's aperture: the asset's own shape, as large as its screen
+         allows (--r is its width over its height), so a phone's capture
+         fills it with no side bands. Laid flat, the screen already has
+         that shape, so the aperture is the whole screen. */
+      .screen {
+        display: grid;
+        place-items: center;
+        container-type: size;
+      }
+      .aperture {
+        position: relative;
+        width: min(100cqw, 100cqh * var(--r));
+        aspect-ratio: var(--ar);
+        overflow: hidden;
+      }
+      /* What stands in the aperture until the media paints: the asset's
+         own 40 px frame where the build has one, softened by its
+         upscaling, else broad theme shapes; one still grain over either,
+         and the slot's mark (a play mark for a clip, a picture for a
+         still). A sheen crosses it twice while it waits, then stops. */
+      .preview {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        color: color-mix(in oklab, var(--screen-fg) 62%, transparent);
+        background: radial-gradient(
+            120% 85% at 18% 12%,
+            color-mix(in oklab, var(--accent) 26%, transparent),
+            transparent 62%
+          ),
+          radial-gradient(
+            95% 75% at 86% 92%,
+            color-mix(in oklab, var(--chart-b) 22%, transparent),
+            transparent 66%
+          ),
+          linear-gradient(
+            160deg,
+            color-mix(in oklab, var(--screen) 84%, var(--screen-fg)),
             var(--screen)
           );
-          background: var(--skeleton-ground);
-          color: color-mix(in oklab, var(--muted) 55%, var(--skeleton-ground));
+      }
+      .preview img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .preview::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: var(--grain);
+        background-size: 140px 140px;
+        opacity: 0.22;
+        mix-blend-mode: overlay;
+      }
+      .preview .mark {
+        position: relative;
+        width: clamp(26px, 16%, 52px);
+        padding: 6%;
+        border-radius: 999px;
+        background: color-mix(in oklab, var(--screen) 55%, transparent);
+      }
+      .preview .mark svg {
+        display: block;
+        width: 100%;
+      }
+      .preview::after {
+        content: "";
+        position: absolute;
+        inset: -30% -60%;
+        background: linear-gradient(
+          110deg,
+          transparent 42%,
+          color-mix(in oklab, var(--screen-fg) 20%, transparent) 50%,
+          transparent 58%
+        );
+        translate: -60% 0;
+        opacity: 0;
+      }
+      /* Where the reader allows motion, at every width: a preview's sheen,
+         and the mochi alive and hugged (C1186; C1423, by the owner, moves
+         C1187: the hug plays on a phone too). */
+      @media (prefers-reduced-motion: no-preference) {
+        .preview::after {
+          animation: pass 1.25s ease-in-out 0.15s 2;
         }
-        .skeleton-screen svg {
-          width: 26%;
-        }
-        .skeleton-band {
-          padding: 12px;
-        }
-        .skeleton-band span {
-          display: block;
-          width: 55%;
-          height: 0.7rem;
-          border-radius: 999px;
-          background: color-mix(in oklab, var(--muted) 22%, var(--card));
-        }
-        .skeleton::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            100deg,
-            transparent 35%,
-            color-mix(in oklab, var(--screen-fg) 18%, transparent) 50%,
-            transparent 65%
-          );
-          background-size: 300% 100%;
-          animation: shimmer 3.2s ease-in-out infinite;
-        }
-        /* Every track on the one clock, started just past the copy block's
-           first turn (--show-start, render.ts), so the show opens on its
-           first episode, not on the last one leaving. */
-        .tk {
-          animation-delay: var(--show-start);
-          animation-duration: var(--show);
-          animation-iteration-count: infinite;
-          animation-fill-mode: both;
-        }
-        .block {
-          animation: breathe 11s ease-in-out infinite;
-        }
-        .pair .block:nth-child(2) {
-          animation-delay: -3.7s;
-        }
-        .block--copy {
-          animation-delay: -7.3s;
+        /* Once the media shows, or has failed, the sheen stops. */
+        .aperture[data-state="ready"] .preview::after,
+        .aperture[data-state="failed"] .preview::after {
+          animation: none;
         }
         /* The mochi, alive (C1186): now and then it blinks and its
            antennas sway, and it leans a little as if in a room. Its parts
@@ -448,11 +404,15 @@
           transform-origin: 0% 100%;
           animation-delay: -0.35s;
         }
-        .photo:hover .hug-body svg,
-        .photo:hover [data-part] {
-          animation-play-state: paused;
+        /* Held still under a pointer that hovers; a tap on a phone
+           leaves :hover stuck, which would freeze it. */
+        @media (hover: hover) {
+          .photo:hover .hug-body svg,
+          .photo:hover [data-part] {
+            animation-play-state: paused;
+          }
         }
-        /* The hug where the page moves (C1187): pressed, the mochi squeezes
+        /* The hug (C1187, C1423): pressed, the mochi squeezes
            down a little, its antennas curl in and its eyes narrow to a
            smile; let go, it springs back as the heart rises and fades.
            Each move is its own property (scale, translate, rotate), so it
@@ -499,19 +459,417 @@
           translate: -50% 45%;
           scale: 0.7;
         }
+        /* The heart rises past the frame's edge, as the mochi's frame no
+           longer clips it; the drawing sits inside the frame, so nothing
+           else shows. */
+        .photo:has(.hug) {
+          overflow: visible;
+        }
+      }
+      @keyframes pass {
+        0% {
+          translate: -60% 0;
+          opacity: 0;
+        }
+        20%,
+        80% {
+          opacity: 1;
+        }
+        100% {
+          translate: 60% 0;
+          opacity: 0;
+        }
+      }
+      /* With the script: the media waits, clear, until it can be shown,
+         then crossfades in; one that fails gives way to its title card. */
+      .enhanced .aperture[data-state="pending"] .media {
+        opacity: 0;
+      }
+      .title-card--failed {
+        display: none;
+        background: var(--screen);
+      }
+      .aperture[data-state="failed"] .title-card--failed {
+        display: grid;
+      }
+      .aperture[data-state="failed"] .media {
+        display: none;
+      }
+      /* A card's words, below its picture. */
+      .caption {
+        padding: 12px 16px 14px;
+      }
+      .caption h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .caption p {
+        margin: 0.2rem 0;
+        font-size: 0.95rem;
+      }
+      /* A reader who prefers less motion sees each clip's preview, still. */
+      @media (prefers-reduced-motion: reduce) {
+        video.media {
+          display: none;
+        }
+      }
+      /* Cards laid flat sit in justified rows (C1064): each takes its
+         picture's own shape (--ar, from the file, render.ts), asks its row
+         for a width in proportion (--r), and so every card in a row shares
+         one picture height and no picture is cropped or padded. A narrow
+         window gives each card a row of its own. Words sit below the
+         picture, so a row's cards keep their own height. */
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: flex-start;
+      }
+      .card,
+      .face,
+      .show[data-deck] .scene-copy {
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--card);
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .card {
+        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
+      }
+      .pic,
+      .screen {
+        position: relative;
+        aspect-ratio: var(--ar);
+      }
+      .pic {
+        background: var(--stage);
+      }
+      .screen {
+        background: var(--screen);
+      }
+      /* The scene's line naming its episode: the deck's alone (the flat
+         list has the episode's own heading). */
+      .scene-of {
+        display: none;
+      }
+      /* Where focus goes when the deck gives way to the stage. */
+      .show:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 6px;
+        border-radius: var(--radius);
+      }
+      /* The deck (C1422, deck.ts): on a phone, with the script, the flat
+         list's scenes one at a time. Every scene sits in one cell over
+         three subgrid rows (its copy, then its two faces), so a row is as
+         tall as the taller of the scene on show and the one turning in,
+         and settles once the turn lands. Each block is a face of its own
+         drum about Y, the one on show at --p quarter turns and the one
+         coming in a quarter turn off on its --side, so all three turn
+         together with the finger. */
+      @media (width < 900px) {
+        .show[data-deck] .flat {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: auto auto auto;
+          container-type: inline-size;
+          border-radius: var(--radius);
+          --p: 0;
+          --side: 0;
+        }
+        .show[data-deck] .flat:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 6px;
+        }
+        .show[data-deck] .episode {
+          display: contents;
+        }
+        .show[data-deck] .episode > .kicker,
+        .show[data-deck] .episode > h3 {
+          display: none;
+        }
+        .show[data-deck] .scene-flat {
+          display: none;
+          grid-area: 1 / 1 / 4 / 2;
+          grid-template-rows: subgrid;
+          row-gap: 14px;
+          margin: 0;
+          --in: 0;
+        }
+        .show[data-deck] .scene-flat[data-face] {
+          display: grid;
+        }
+        .show[data-deck] .scene-flat[data-face="incoming"] {
+          --in: 1;
+        }
+        .show[data-deck] .scene-flat .grid {
+          display: contents;
+        }
+        .show[data-deck] .scene-copy,
+        .show[data-deck] .scene-flat .card {
+          transform: perspective(460cqi) translateZ(-50cqi)
+            rotateY(calc((var(--p) - var(--side) * var(--in)) * 90deg))
+            translateZ(50cqi);
+          backface-visibility: hidden;
+        }
+        .show[data-deck] .flat[data-moving="true"] .scene-copy,
+        .show[data-deck] .flat[data-moving="true"] .card {
+          will-change: transform;
+        }
+        .show[data-deck] .scene-copy {
+          align-self: start;
+          padding: 16px 18px 14px;
+        }
+        .show[data-deck] .scene-copy > p:not(.scene-of) {
+          margin: 0.25rem 0 0;
+        }
+        .show[data-deck] .scene-of {
+          display: block;
+          margin: 0 0 6px;
+          font-size: 0.92rem;
+          font-weight: 600;
+          color: var(--muted);
+        }
+        .show[data-deck] .scene-of .kicker {
+          display: block;
+          margin: 0;
+        }
+        /* A face takes the width it can, its picture its own shape: a
+           phone's capture as wide as the page allows, within one screen's
+           height. */
+        .show[data-deck] .scene-flat .card {
+          align-self: start;
+          justify-self: center;
+          width: min(100%, 78svh * var(--r));
+        }
+        .deck-dots {
+          display: flex;
+          justify-content: center;
+          gap: 2px;
+          margin: 10px 0 0;
+        }
+        /* A turning block reaches past the page's edges: clipped there, a
+           gutter's width out, so the page never widens mid-turn. */
+        .show[data-deck] {
+          overflow: clip;
+          overflow-clip-margin: 20px;
+        }
+        /* Each dot a button to its scene, its mark small and its target
+           a finger's width. */
+        .deck-dots button {
+          display: grid;
+          place-items: center;
+          min-width: 24px;
+          height: 32px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: none;
+          cursor: pointer;
+        }
+        .deck-dots button::before {
+          content: "";
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: color-mix(in oklab, var(--muted) 40%, transparent);
+          transition:
+            width 200ms ease-out,
+            background-color 200ms ease-out;
+        }
+        .deck-dots button[aria-current="true"]::before {
+          width: 18px;
+          background: var(--accent);
+        }
+        .deck-dots button:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: -2px;
+        }
+        .deck-hint {
+          margin: 6px 0 0;
+          text-align: center;
+          font-size: 0.8rem;
+          color: var(--muted);
+        }
+      }
+      /* WIDE_MOTION: the stage. The copy block (an episode a face, about Y)
+         beside the episode's pair of cubes (a scene a face, about X), the
+         pairs stacked in one place, each in view for its episode. Every
+         move is a track on the show's one clock (timeline.ts), named in the
+         head; here each track's element gets that clock's duration. Each
+         block breathes a little, and the whole show holds still under the
+         pointer. */
+      @media (width >= 900px) and (prefers-reduced-motion: no-preference) {
+        .flat {
+          display: none;
+        }
+        .stage {
+          padding-block: 28px 44px;
+          display: grid;
+          grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
+          gap: 20px;
+          align-items: start;
+        }
+        /* The copy is as tall as its longest scene needs; the cubes stay
+           square beside it. */
+        .block--copy {
+          grid-area: 1 / 1;
+          align-self: stretch;
+          min-height: 19rem;
+        }
+        .pair,
+        .skeletons {
+          grid-area: 1 / 2 / 2 / 4;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 28px;
+          padding: 6px 4px 12px;
+        }
+        /* Where an episode's pair will turn in, while its copy streams
+           (C1185): a calm frame in the face's own shape, its glyph telling
+           a clip from a still. One slow sweep of light passes over it, low
+           in contrast and seconds long, never a flash or a flicker. */
+        .skeleton {
+          position: relative;
+          aspect-ratio: 1 / var(--tall);
+          display: flex;
+          flex-direction: column;
+          border-radius: var(--radius);
+          overflow: hidden;
+          background: var(--card);
+          box-shadow: 0 0 0 1px var(--line);
+        }
+        .skeleton-screen {
+          position: relative;
+          flex: 1;
+          display: grid;
+          place-items: center;
+          --skeleton-ground: color-mix(
+            in oklab,
+            var(--stage) 92%,
+            var(--screen)
+          );
+          background: var(--skeleton-ground);
+          color: color-mix(in oklab, var(--muted) 55%, var(--skeleton-ground));
+        }
+        .skeleton-screen img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .skeleton-screen svg {
+          position: relative;
+          width: 22%;
+        }
+        .skeleton-band {
+          padding: 12px;
+        }
+        .skeleton-band span {
+          display: block;
+          width: 55%;
+          height: 0.7rem;
+          border-radius: 999px;
+          background: color-mix(in oklab, var(--muted) 22%, var(--card));
+        }
+        .skeleton::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            100deg,
+            transparent 35%,
+            color-mix(in oklab, var(--screen-fg) 18%, transparent) 50%,
+            transparent 65%
+          );
+          background-size: 300% 100%;
+          animation: shimmer 1.3s ease-in-out var(--sweep-at, 0s) 2 both;
+        }
+        /* Every track on the one clock, started just past the copy block's
+           first turn (--show-start, render.ts), so the show opens on its
+           first episode, not on the last one leaving. */
+        .tk {
+          animation-delay: var(--show-start);
+          animation-duration: var(--show);
+          animation-iteration-count: infinite;
+          animation-fill-mode: both;
+        }
+        .block {
+          animation: breathe 11s ease-in-out infinite;
+        }
+        .pair .block:nth-child(2) {
+          animation-delay: -3.7s;
+        }
+        .block--copy {
+          animation-delay: -7.3s;
+        }
         .show:hover .tk,
         .show:hover .block,
         .show:hover .skeleton::after {
           animation-play-state: paused;
         }
+        /* Every block is a cube in one family (C1424): it faces the
+           reader square-on at rest, and its depth shows as it turns, the
+           faces coming round on a closed, rounded shell. Its perspective
+           is about three and a half of its widths, counted in its own
+           width (the block is the container its cqi reads). The copy cube
+           shrinks a little as it turns, so it stays within its block
+           (copyScaleAt, timeline.ts). */
+        .block {
+          container-type: inline-size;
+        }
         .ring {
           container-type: inline-size;
           height: 100%;
-          perspective: 1400px;
+          perspective: 340cqi;
         }
+        /* A media cube stands as tall as its episode's narrowest picture
+           needs (--tall, its height over its width, render.ts), and turns
+           about X, so its depth is half its height. */
         .ring--cube {
           --faces: 4;
-          aspect-ratio: 1;
+          --depth: calc(50cqi * var(--tall));
+          aspect-ratio: 1 / var(--tall);
+          perspective: calc(340cqi * var(--tall));
+        }
+        /* Above the copy ring's depth (.block .ring .ring-turn, below),
+           which assumes square faces. */
+        .block .ring.ring--cube .ring-turn {
+          --depth: calc(50cqi * var(--tall));
+        }
+        /* The ends: squares at the cube's depth, in the theme's card
+           shaded down, so the shell stays closed from every side. */
+        .cap {
+          position: absolute;
+          top: 0;
+          height: 100%;
+          width: calc(2 * var(--depth));
+          border-radius: var(--radius);
+          backface-visibility: hidden;
+          background: linear-gradient(
+            160deg,
+            color-mix(in oklab, var(--card) 88%, var(--fg)),
+            color-mix(in oklab, var(--card) 76%, var(--fg))
+          );
+          box-shadow: inset 0 0 0 1px var(--line);
+        }
+        .cap--left {
+          left: calc(-1 * var(--depth));
+          transform: rotateY(-90deg);
+        }
+        .cap--right {
+          left: calc(100% - var(--depth));
+          transform: rotateY(90deg);
+        }
+        .face--blank {
+          background: linear-gradient(
+            180deg,
+            var(--card),
+            color-mix(in oklab, var(--card) 90%, var(--fg))
+          );
+        }
+        .ring--cube .aperture {
+          border-radius: calc(var(--radius) - 6px);
         }
         .block .ring .ring-turn {
           --depth: calc(50cqi / tan(180deg / var(--faces)));
@@ -534,10 +892,15 @@
         .ring--cube .face {
           transform: rotateX(calc(var(--i) * -90deg)) translateZ(var(--depth));
         }
+        /* On a cube the screen is the face's own ground, and the
+           aperture a rounded screen set into it. */
         .ring--cube .screen {
           flex: 1;
           min-height: 0;
           aspect-ratio: auto;
+          margin: 10px 10px 0;
+          border-radius: calc(var(--radius) - 6px);
+          background: color-mix(in oklab, var(--card) 82%, var(--fg));
         }
         .ring--cube .title-card {
           font-size: clamp(1rem, 7cqi, 1.4rem);
@@ -727,7 +1090,9 @@
       .themes .theme-icon svg {
         display: block;
       }
-      .themes .theme-name {
+      /* Read out, not seen: the picker's name, the deck's announcements. */
+      .themes .theme-name,
+      .deck-status {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -863,9 +1228,21 @@
           padding: 28px 20px 24px;
           gap: 18px;
         }
+        /* The mochi's frame on a phone (C1422): one size, square, and
+           the drawing inset within it, so its antennas and feet clear the
+           round mask. A portrait keeps filling it. */
         .photo {
-          width: 96px;
-          height: 96px;
+          width: clamp(72px, 21vw, 88px);
+          height: auto;
+          aspect-ratio: 1;
+        }
+        .photo .hug-body {
+          display: grid;
+          place-items: center;
+        }
+        .photo .hug-body svg {
+          width: 84%;
+          height: 84%;
         }
         main {
           padding: 22px 20px 56px;
@@ -875,5 +1252,6 @@
   </head>
   <body>
     <!--site:body-->
+    <script type="module" src="/src/landing/enhance.ts"></script>
   </body>
 </html>
