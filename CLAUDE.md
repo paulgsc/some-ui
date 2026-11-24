@@ -903,13 +903,14 @@ never "sounds like good practice."
   monkey runs with `--pct-syskeys 0`: back is pressed exactly once, at a wing entered by its
   icon, so the rest of `MainActivity`'s back handling (the app has no `@capacitor/app`) is
   reached by no test.
-- **The cloud platform's Stop hook re-fires on every turn, and each firing is a full context
-  re-read.** It is `~/.claude/stop-hook-git-check.sh`, written by the platform when the
-  container starts (not this repo's, so it can't be changed here; #3514). It fires while the
-  checkout has uncommitted or untracked changes, including a background helper's unfinished
-  edits, and while the branch has no remote-tracking ref, when it reports pushed commits as
-  unpushed with "no remote branch". Give helpers that edit files their own worktree
-  (`isolation: "worktree"`), push with `git push -u`, and after a push made another way run
+- **The cloud platform's Stop hook blocks every turn's end while the checkout is dirty or a
+  branch looks unpushed, and each firing is a full context re-read.** It is
+  `~/.claude/stop-hook-git-check.sh`, written by the platform when the container starts (not
+  this repo's, so it can't be changed here; #3514). A background helper's unfinished edits
+  count as dirty, so give a helper that edits files its own clone in the scratchpad (not
+  `isolation: "worktree"`, whose worktree inside the checkout shows as untracked). A
+  pushed branch looks unpushed, "no remote branch", when `origin/<branch>` doesn't resolve
+  (a single-branch clone, or a push from elsewhere): create it with
   `git fetch origin <branch>:refs/remotes/origin/<branch>`.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
