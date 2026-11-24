@@ -15,7 +15,6 @@ type Env = {
   ROUTINE_TOKEN?: string
   HOME_TOKEN?: string
   ARCHIVE_TOKEN?: string
-  PAGES_TOKEN?: string
 }
 
 /** The message only: never the request, its headers or a body (MB3). */
@@ -37,7 +36,6 @@ export default {
         routine: env.ROUTINE_TOKEN,
         home: env.HOME_TOKEN,
         archive: env.ARCHIVE_TOKEN,
-        pages: env.PAGES_TOKEN,
       },
       store: d1Store(env.DB),
       now: () => new Date(),

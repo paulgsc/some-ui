@@ -161,18 +161,12 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 1,
     ttlDays: 30,
   },
-  // Home's dashboards (#3415, C1071): the newest picture of each kind that
-  // home put in the mailbox, fetched by Site Assets' `home` job.
+  // The server's dashboards on sample telemetry, drawn by Site Assets'
+  // `dashboards` job (the owner on #3401, 2026-11-23): the server episode's
+  // stills and the cores gap's still, in one artifact.
   {
     kind: "artifact",
     name: "site-assets-server-${{ github.sha }}",
-    workflows: ["Site Assets"],
-    keep: 1,
-    ttlDays: 30,
-  },
-  {
-    kind: "artifact",
-    name: "site-assets-cores-${{ github.sha }}",
     workflows: ["Site Assets"],
     keep: 1,
     ttlDays: 30,

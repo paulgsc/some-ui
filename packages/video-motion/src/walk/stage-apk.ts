@@ -13,9 +13,9 @@
  */
 
 import { writeFile } from "node:fs/promises"
-import type { AndroidDevice } from "playwright-core"
 import { _android as android } from "playwright-core"
 
+import { heldStill } from "./held-still"
 import type { Stage, WalkViewport } from "./run"
 import { settlePage } from "./stage-sandbox"
 
@@ -118,18 +118,6 @@ function pngSize(png: Buffer): { width: number; height: number } {
   return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
 }
 
-/** The screen once two pictures a second apart agree, or the last one. */
-async function still(device: AndroidDevice): Promise<Buffer> {
-  let last = await device.screenshot()
-  for (let i = 0; i < STILL_TRIES; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 1_000))
-    const now = await device.screenshot()
-    if (now.equals(last)) return now
-    last = now
-  }
-  return last
-}
-
 export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
   const device = (await android.devices()).at(0)
   if (!device) throw new Error("no device: the emulator is not up")
@@ -186,7 +174,12 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
       shoot: async (path, moving): Promise<void> => {
         await writeFile(
           path,
-          moving ? await device.screenshot() : await still(device)
+          moving
+            ? await device.screenshot()
+            : // The last screen if none held: a phone's clock or a spinner
+              // may never stop, and the walk still wants its picture.
+              (await heldStill(() => device.screenshot(), STILL_TRIES, 1_000))
+                .png
         )
       },
       problems: (): ReadonlyArray<string> => errors,

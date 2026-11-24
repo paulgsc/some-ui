@@ -2,8 +2,8 @@
  * What the mailbox keeps, and the one adapter that keeps it in D1.
  *
  * MB5: an item never changes, and leaves `item` only into `archived`, or, in
- * a view folder (`VIEWS`: home's index, the site's pictures), once a newer
- * item of its kind is live; no code may issue `INSERT OR REPLACE`, which the
+ * a view folder (`VIEWS`: home's index), once a newer item of its kind is
+ * live; no code may issue `INSERT OR REPLACE`, which the
  * triggers do not stop. Full text: README.md, "Gray-area invariants".
  */
 
@@ -25,21 +25,19 @@ export type Folder =
   | "pickup"
   | "picked"
   | "snips"
-  | "site-assets"
 
 /**
  * The folders that are views, not records: each keeps only the newest item
  * of a kind, and a put drops the ones before it (MB5). A kind is the name
  * less its stamp and extension, whose length is given here: the stamp
- * `YYYYMMDDTHHMMSSmmmZ` is 19 characters, `.json` 5, `.png` and `.mp4` 4. Home's index is recomputed from what home keeps
- * (owner, 2026-10-31, paulgsc/server#509); the site's pictures are taken
- * again from home's dashboards whenever they are wanted (#3415, C1071).
+ * `YYYYMMDDTHHMMSSmmmZ` is 19 characters, `.json` 5. Home's index is
+ * recomputed from what home keeps (owner, 2026-10-31, paulgsc/server#509).
+ * The site's pictures were a second view until the owner moved that story
+ * (#3401, 2026-11-23); migration 0006 takes their case out of the trigger.
  */
 export const VIEWS = {
   // `20261031T150000000Z.json`
   index: 24,
-  // `20261122T000000000Z.png`, `.mp4`
-  "site-assets": 23,
 } as const satisfies Partial<Record<Folder, number>>
 
 export type View = keyof typeof VIEWS
@@ -52,7 +50,7 @@ export function isView(folder: Folder): folder is View {
 export type Putter = "routine" | "home"
 
 /** The name of each token, and what it may do (`ROLES` in `core.ts`). */
-export type Role = Putter | "archive" | "pages"
+export type Role = Putter | "archive"
 
 export type ItemMeta = {
   readonly seq: number
