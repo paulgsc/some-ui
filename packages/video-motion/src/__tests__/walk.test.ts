@@ -251,7 +251,9 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
       "Mock interview essays, the seventh job",
     ])
     // Only the Rust Rounds row's longest wait is empty, with nothing waiting.
-    expect(call.stage).toMatchObject({ noData: 1 })
+    expect(call.stage).toMatchObject({
+      noData: { "Rust Rounds essays, the fourth job": 1 },
+    })
     expect(pipelines.stage).not.toHaveProperty("noData")
     expect(
       pipelines.stage.kind === "grafana" ? pipelines.stage.page : ""

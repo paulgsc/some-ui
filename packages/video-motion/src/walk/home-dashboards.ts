@@ -323,8 +323,11 @@ export const homeCall = {
       })),
       sample,
       ROW_VIEWPORT,
-      // The Rust Rounds row's longest wait, with nothing waiting.
-      { band: SAMPLE_BAND, noData: 1 }
+      {
+        band: SAMPLE_BAND,
+        // Its longest wait, with nothing waiting.
+        noData: { "Rust Rounds essays, the fourth job": 1 },
+      }
     ),
 }
 

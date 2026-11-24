@@ -54,11 +54,12 @@ export type GrafanaStageSpec = {
    */
   readonly band?: string
   /**
-   * How many panels on one screen may draw "no data": a stat whose query
-   * is empty by design (a longest wait with nothing waiting). A screen
-   * with more fails, as one with any does when this is absent.
+   * How many panels each row the walk shoots, by its title, may draw "no
+   * data": a stat whose query is empty by design (a longest wait with
+   * nothing waiting). A screen with more fails, as every other screen does
+   * with any.
    */
-  readonly noData?: number
+  readonly noData?: Readonly<Record<string, number>>
 }
 
 /** Grafana answers, or the walk stops before a page is opened. */
@@ -196,14 +197,17 @@ async function drawBand(
     borderRadius: "999px",
     background: "rgba(17, 24, 33, 0.92)",
     color: "#e6edf3",
-    font: "600 13px Inter, sans-serif",
+    // A weight the stage preloads (`INTER`), so the band never waits on a font.
+    font: "500 13px Inter, sans-serif",
     letterSpacing: "0.02em",
     border: "1px solid rgba(230, 237, 243, 0.35)",
     pointerEvents: "none",
   }
-  // A string, run in the page: Node's types have no document.
+  // A string, run in the page: Node's types have no document. A screen
+  // settled twice (a walk's first) keeps one band.
   await page.evaluate(
-    `(() => { const band = document.createElement("div");` +
+    `(() => { document.querySelectorAll("[data-walk-band]").forEach((old) => old.remove());` +
+      ` const band = document.createElement("div");` +
       ` band.textContent = ${JSON.stringify(words)};` +
       ` band.setAttribute("data-walk-band", "");` +
       ` Object.assign(band.style, ${JSON.stringify(style)});` +
@@ -394,9 +398,10 @@ export async function openGrafanaStage(
           (box !== null && box.y >= shot.y && box.y < shot.y + shot.height)
         if (inShot) shown += 1
       }
-      if (shown > (spec.noData ?? 0))
+      const allowed = row === undefined ? 0 : (spec.noData?.[row] ?? 0)
+      if (shown > allowed)
         throw new Error(
-          `${page.url()} drew no data in ${String(shown)} ${shown === 1 ? "panel" : "panels"}, past the walk's ${String(spec.noData ?? 0)}`
+          `${page.url()} drew no data in ${String(shown)} ${shown === 1 ? "place" : "places"}, past the ${String(allowed)} it may`
         )
       if (spec.band !== undefined) await drawBand(page, spec.band, shot)
     }

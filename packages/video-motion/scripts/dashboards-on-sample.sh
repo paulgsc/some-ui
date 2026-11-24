@@ -112,7 +112,8 @@ ready() {
     curl -fsS --max-time 5 "$origin/api/dashboards/uid/file-host-dashboard" > /dev/null 2>&1 &&
     curl -fsS --max-time 5 "$origin/api/dashboards/uid/who-dunnit-forensic" > /dev/null 2>&1 &&
     curl -fsS --max-time 5 "$origin/api/dashboards/uid/call" > /dev/null 2>&1 &&
-    curl -fsS --max-time 5 "$origin/api/dashboards/uid/pipelines" > /dev/null 2>&1
+    { [[ " ${apps[*]} " != *" home-pipelines "* ]] ||
+      curl -fsS --max-time 5 "$origin/api/dashboards/uid/pipelines" > /dev/null 2>&1; }
 }
 for _ in $(seq 1 90); do
   ready && break
