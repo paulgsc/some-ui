@@ -236,6 +236,7 @@ jobs:
       # home missed is a new dispatch and a cut list naming the new run.
       - name: Upload the walks bundle
         if: steps.walks.outcome == 'success'
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: walks-bundle-${{ github.run_id }}

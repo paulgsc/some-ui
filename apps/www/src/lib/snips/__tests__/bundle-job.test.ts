@@ -77,25 +77,35 @@ describe("the bundle job builds what its scripts import (SN1)", () => {
 })
 
 describe("the walks never fail the run the snips come in", () => {
-  it("lets the walks steps fail, says so, and uploads only a bundle that was made", () => {
+  it("lets every walks step fail, says so, and uploads only a bundle that was made", () => {
     const job = bundleJob(
       readFileSync(join(REPO, ".github/workflows/snips-capture.yml"), "utf8")
     )
-    const snips = job.indexOf("name: snips-bundle-")
-    const download = job.indexOf("id: walks-download")
-    const write = job.indexOf("id: walks\n")
-    expect(snips).toBeGreaterThan(0)
-    // After the snips' bundle is uploaded, each allowed to fail.
-    for (const at of [download, write]) {
-      expect(at).toBeGreaterThan(snips)
-      expect(job.slice(at, at + 200)).toContain("continue-on-error: true")
+    /** The step at `marker`, up to the next step. */
+    const step = (marker: string): { at: number; text: string } => {
+      const at = job.indexOf(marker)
+      expect(at, marker).toBeGreaterThan(0)
+      const start = job.lastIndexOf("\n      - ", at)
+      const end = job.indexOf("\n      - ", at)
+      return { at, text: job.slice(start, end < 0 ? undefined : end) }
     }
-    expect(job).toContain(
-      "if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'"
+    const snips = step("name: snips-bundle-")
+    const download = step("id: walks-download")
+    const write = step("id: walks\n")
+    const warn = step("name: Say a walks bundle couldn't be made")
+    const upload = step("name: Upload the walks bundle")
+    // After the snips' bundle is uploaded, in this order.
+    expect(snips.at).toBeLessThan(download.at)
+    expect(download.at).toBeLessThan(write.at)
+    expect(write.at).toBeLessThan(warn.at)
+    expect(warn.at).toBeLessThan(upload.at)
+    for (const s of [download, write, upload]) {
+      expect(s.text).toContain("continue-on-error: true")
+    }
+    expect(warn.text).toContain(
+      "if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'\n"
     )
-    const upload = job.indexOf("name: Upload the walks bundle")
-    expect(job.slice(upload, upload + 80)).toContain(
-      "if: steps.walks.outcome == 'success'"
-    )
+    expect(warn.text).toContain("::warning")
+    expect(upload.text).toContain("if: steps.walks.outcome == 'success'\n")
   })
 })
