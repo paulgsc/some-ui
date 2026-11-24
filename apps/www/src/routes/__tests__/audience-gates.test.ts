@@ -117,6 +117,18 @@ const SERVER_PATHS: ReadonlyArray<readonly [string, string, string]> = [
   ],
 ]
 
+/**
+ * A file that names gated routes without linking to them: `file`, and why.
+ * Its quoted paths are skipped wholesale, so a file listed here must hold
+ * no link at all.
+ */
+const NAMED_NOT_LINKED: ReadonlyArray<readonly [string, string]> = [
+  [
+    "src/landing/show.ts",
+    "the static landing's script: each `screen` face names the APK route whose Snips Capture still it shows (#3473); Pages has no app to link into",
+  ],
+]
+
 const IMPORTS_HAS_AUDIENCE =
   /import\s*\{[^}]*\bhasAudience\b[^}]*\}\s*from\s*["']@\/lib\/build-profile["']/
 
@@ -239,6 +251,7 @@ describe("audience gates", () => {
     const unguarded = files.flatMap((file) => {
       const source = readFileSync(join(APP_ROOT, file), "utf8")
       if (IMPORTS_HAS_AUDIENCE.test(source)) return []
+      if (NAMED_NOT_LINKED.some(([f]) => f === file)) return []
       return gated
         .flatMap((g) => g.paths)
         .filter(
