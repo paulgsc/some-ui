@@ -131,6 +131,15 @@ describe(
       ).toHaveLength(4)
     })
 
+    // WALK11: a label the server's closed enum names, and only those, so a
+    // legend reads as home's would (file_host `call_weeks::lane::Kind`).
+    it("names the lane's busy kinds as file_host does: voice and rust_rounds", () => {
+      const kinds = Array.from(once.all.keys())
+        .filter((k) => k.split("{")[0] === "lane_busy_ticks_total")
+        .map((k) => /kind="([^"]+)"/.exec(k)?.[1])
+      expect(kinds.sort()).toEqual(["rust_rounds", "voice"])
+    })
+
     it("ends on a Monday with this week's essays waiting for their deadline and nothing failed (#3476)", () => {
       const last = (name: string): number | undefined =>
         once.all.get(name)?.value

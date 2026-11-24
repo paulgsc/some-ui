@@ -34,7 +34,7 @@
  * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard, OUTBOUND,
  * CALL and WHO DUNNIT, as `./home-dashboards` names them), with the label values the
  * server exports (`metrics/refusals.rs`, `metrics/rate_limit.rs`,
- * `crates/outbound`, `metrics/contention.rs`). A panel whose query moves to a
+ * `crates/outbound`, `metrics/contention.rs`, `call_weeks/lane.rs`). A panel whose query moves to a
  * series this does not write draws "No data", which the walk's stage
  * refuses.
  */
@@ -657,10 +657,12 @@ function allSeries(): ReadonlyArray<Series> {
         laneAt(t).verb === v && laneAt(t).why === w ? 0.2 : 0
       )
     ),
-    counter("lane_busy_ticks_total", { kind: "transcribe" }, (t) =>
+    // The kinds file_host's lane names (`call_weeks::lane::Kind`): hearing a
+    // note, recording a Rust Rounds program.
+    counter("lane_busy_ticks_total", { kind: "voice" }, (t) =>
       jobNamed(t) ? 0.12 : 0.02 * daily(t)
     ),
-    counter("lane_busy_ticks_total", { kind: "speech" }, (t) =>
+    counter("lane_busy_ticks_total", { kind: "rust_rounds" }, (t) =>
       interactiveAt(t) ? 0.2 : 0.03 * daily(t)
     ),
     gauge("lane_interactive_waiting", {}, (t) => (interactiveAt(t) ? 1 : 0)),
