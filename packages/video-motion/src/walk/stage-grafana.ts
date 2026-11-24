@@ -47,7 +47,7 @@ export type GrafanaStageSpec = {
   readonly page: string
   readonly viewport: { readonly width: number; readonly height: number }
   /**
-   * Words drawn in a band at the top right of every screen, over the
+   * Words drawn in a band at the top centre of every screen, over the
    * picture, so a screen shown on its own (in an essay) says what it is:
    * the walks an essay shows name their sample data here (#3476). Absent,
    * nothing is drawn over Grafana's own page.
@@ -171,8 +171,9 @@ async function rowBox(page: Page, title: string): Promise<Box | undefined> {
 }
 
 /**
- * The band (`GrafanaStageSpec.band`): its words in a dark pill at the top
- * right of the screen taken, the row's box or the whole screen, drawn
+ * The band (`GrafanaStageSpec.band`): its words on one line in a dark pill
+ * at the top centre of the screen taken, the row's box or the whole
+ * screen, where a row's title line and a panel's header leave room, drawn
  * again on every screen since each is a new document.
  */
 async function drawBand(
@@ -181,19 +182,21 @@ async function drawBand(
   shot: Box | undefined
 ): Promise<void> {
   const size = page.viewportSize()
-  const right = shot === undefined ? (size?.width ?? 0) : shot.x + shot.width
+  const left = shot === undefined ? 0 : shot.x
+  const width = shot === undefined ? (size?.width ?? 0) : shot.width
   const top = shot === undefined ? 0 : shot.y
   const style = {
     position: "fixed",
-    top: `${String(top + 8)}px`,
-    left: `${String(right - 8)}px`,
-    transform: "translateX(-100%)",
+    top: `${String(top + 6)}px`,
+    left: `${String(left + width / 2)}px`,
+    transform: "translateX(-50%)",
+    whiteSpace: "nowrap",
     zIndex: "2147483647",
-    padding: "4px 10px",
+    padding: "3px 12px",
     borderRadius: "999px",
     background: "rgba(17, 24, 33, 0.92)",
     color: "#e6edf3",
-    font: "600 14px Inter, sans-serif",
+    font: "600 13px Inter, sans-serif",
     letterSpacing: "0.02em",
     border: "1px solid rgba(230, 237, 243, 0.35)",
     pointerEvents: "none",
