@@ -35,6 +35,7 @@ function putLines(
   })
 }
 
+/** Each pool on the page draws from `seed` and fills its places. */
 export function drawPools(seed: number): void {
   for (const template of document.querySelectorAll<HTMLTemplateElement>(
     "template.pool"

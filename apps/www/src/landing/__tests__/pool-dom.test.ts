@@ -51,6 +51,10 @@ const PAGE = renderLanding(
 const pooled = EPISODES.filter((e) => e.pool !== null)
 
 describe("drawPools", () => {
+  it("has a pool to draw from", () => {
+    expect(pooled.length).toBeGreaterThan(0)
+  })
+
   for (const seed of [1, 2, 3, 5, 8, 13, 21, 34]) {
     it(`puts each drawn snack whole in its place, nothing of the built draw left (seed ${String(seed)})`, () => {
       document.body.innerHTML = PAGE
