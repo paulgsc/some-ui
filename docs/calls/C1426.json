@@ -1,0 +1,19 @@
+{
+  "id": "C1426",
+  "made": "2026-11-24",
+  "by": "claude",
+  "moves": "C373",
+  "paths": [
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:packages/video-render/CARDS-ROUTINE.md"
+  ],
+  "chose": "A spoken cards essay runs at most twelve minutes by its words (CARDS_MOST_MS), up from C373's ten, so the diagnosis essay the owner bounded at \"at most 12 minutes\" (#3476) can be published whole. The routine still asks for about eight; twelve is the refusal's bound, and a longer subject is still two essays. Home's render policy already allows it: a cards essay's video may run fifteen minutes (paulgsc/server infra/render/render-calls.sh, MAX_VIDEO_MINUTES). Both cards-check and home's recorder apply twelve to the length counted with a spoken card's owner turns as unheard; home checks the length counted from what it heard only against the render policy's fifteen minutes, so the headroom between the two shrinks from five minutes to three, and an essay near twelve whose owner turns run past about three minutes can still be refused at home.",
+  "options": [
+    "twelve minutes, the owner's bound for this essay",
+    "keep ten and cut the essay to fit",
+    "no cap beyond home's render policy"
+  ],
+  "gray": "C373 set ten from the call's part length; the owner bounded this essay at twelve without saying whether every essay may run that long. CLAUDE.md's \"Policy limits move with the story\" gives the authority to move a content limit; the owner may prefer twelve for this essay only.",
+  "undo": "Set CARDS_MOST_MS back to 600_000 and the routine's words to ten minutes. An essay already served over ten stays as served, as essays are never rewritten, though home would refuse to render it again.",
+  "refs": ["#3476"]
+}
