@@ -811,8 +811,10 @@
         /* Every block is a cube in one family (C1424): it faces the
            reader square-on at rest, and its depth shows as it turns, the
            faces coming round on a closed, rounded shell. Its perspective
-           is about three and a half of its depths, counted in its own
-           width (the block is the container its cqi reads). */
+           is about three and a half of its widths, counted in its own
+           width (the block is the container its cqi reads). The copy cube
+           shrinks a little as it turns, so it stays within its block
+           (copyScaleAt, timeline.ts). */
         .block {
           container-type: inline-size;
         }

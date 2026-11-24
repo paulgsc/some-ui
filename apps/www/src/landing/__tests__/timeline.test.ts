@@ -6,6 +6,7 @@
 import type { ResolvedEpisode, ResolvedFace } from "@/landing/show"
 import {
   copyFaceOf,
+  copyScaleAt,
   EPISODE_TURN_S,
   faceOn,
   HOLD_S,
@@ -140,6 +141,24 @@ describe("showTimeline", () => {
     expect(copy.map((f) => f.css).join(" ")).toContain("rotateY(-90deg)")
     expect(copy.at(-1)?.at).toBe(100)
     expect(copy.at(-1)?.css).toContain("rotateY(-180deg)")
+  })
+
+  it("shrinks the copy cube as it turns just enough to stay within its block, and not at all square-on", () => {
+    for (const deg of [0, 90, -90, 180, -270])
+      expect(copyScaleAt(deg)).toBeCloseTo(1, 6)
+    expect(copyScaleAt(45)).toBeCloseTo(0.811, 2)
+    expect(copyScaleAt(-135)).toBeCloseTo(0.811, 2)
+    for (let deg = -360; deg <= 360; deg += 5) {
+      const s = copyScaleAt(deg)
+      expect(s).toBeGreaterThan(0.79)
+      expect(s).toBeLessThanOrEqual(1)
+    }
+    // Every frame of the turn carries its scale; at rest it is whole.
+    const copy = frames(timeline.copy.keyframes)
+    expect(copy.every((f) => /scale\([\d.]+\)/.test(f.css))).toBe(true)
+    expect(copy.find((f) => f.at === pct(EPISODE_TURN_S))?.css).toContain(
+      "scale(1) rotateY(0deg)"
+    )
   })
 
   it("puts two episodes on facing faces of the copy cube, and more one after another", () => {
