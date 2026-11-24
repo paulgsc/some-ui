@@ -85,7 +85,7 @@ describe("renderLanding", () => {
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
-  it("lets a reader send the mochi a hug, a button on a page with no script, moving only where the show moves, and drops it for a photo (C1187)", () => {
+  it("lets a reader send the mochi a hug, a button with no script, moving at every width where motion is allowed, and drops it for a photo (C1187, C1423)", () => {
     const slot = page.slice(
       page.indexOf('<figure class="photo"'),
       page.indexOf("</figure>", page.indexOf('<figure class="photo"'))
@@ -95,14 +95,17 @@ describe("renderLanding", () => {
     )
     expect(slot).toContain('<span class="hug-heart" aria-hidden="true"><svg')
     expect(page).not.toMatch(/<script|onclick|onpointer/i)
-    // The hug moves only where the show moves, and by the individual
-    // properties, never transform, which would stop the idle loops.
+    // The hug moves wherever motion is allowed, at every width, and by the
+    // individual properties, never transform, which would stop the idle
+    // loops.
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
-    // The wide block, to its own closing brace.
-    const open = template.indexOf(`@media ${WIDE_MOTION} {`)
+    // The motion block, to its own closing brace.
+    const open = template.indexOf(
+      "@media (prefers-reduced-motion: no-preference) {"
+    )
     let depth = 0
     let close = open
     for (let i = template.indexOf("{", open); i < template.length; i++) {
@@ -112,13 +115,19 @@ describe("renderLanding", () => {
         break
       }
     }
-    const wide = template.slice(open, close)
+    const moving = template.slice(open, close)
+    // Not tied to a width: the hug and the idle loops play on a phone too.
+    expect(moving).toMatch(/\.hug:active \.hug-body \{/)
+    expect(moving).toMatch(/animation: mochi-blink /)
+    expect(
+      template.slice(template.indexOf(`@media ${WIDE_MOTION} {`))
+    ).not.toMatch(/mochi-(blink|sway|lean) \d/)
     const pressed = [...template.matchAll(/\.hug:active[^{]*\{([^}]*)\}/g)]
     expect(pressed.length).toBeGreaterThan(1)
     for (const [rule, body] of pressed) {
       expect(body, rule).not.toMatch(/(^|[\s;{])transform\s*:/)
       if (/\b(scale|rotate|translate):/.test(body))
-        expect(wide, rule).toContain(rule)
+        expect(moving, rule).toContain(rule)
     }
     const withPhoto = renderLanding(
       resume,

@@ -1,0 +1,13 @@
+{
+  "id": "C1423",
+  "made": "2026-11-24",
+  "by": "owner",
+  "moves": "C1187",
+  "paths": [
+    "apps/www/landing/index.html",
+    "apps/www/src/landing/__tests__/render.test.ts"
+  ],
+  "chose": "The landing's mochi hugs and lives on a phone too: wherever the reader allows motion, at every width, the press squeezes it, curls its antennas and narrows its eyes, it springs back as the heart rises and fades, and it sways, waves its antennas and blinks at rest (C1186's idle motion, which shared the same wide-only rule). The travel is in proportion to the frame, the frame no longer clips the rising heart, Android's tap highlight is off on the button, and a reader who prefers less motion keeps the still heart that fades. No larger frame. On a touch screen the browser shows the press only once the finger lifts, so there the hug plays on lift. The owner, 2026-11-24, after the measured findings (the phone ran no spring, no idle motion and a heart fixed on the mochi's head, by C1187's and C1186's wide-only rule): \"Yeah. go with a\".",
+  "undo": "Move the mochi's idle and hug rules back inside WIDE_MOTION's block in landing/index.html, and drop the .photo:has(.hug) overflow and the tap-highlight line.",
+  "refs": ["#3470", "#3471"]
+}
