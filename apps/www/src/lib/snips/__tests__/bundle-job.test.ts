@@ -75,3 +75,27 @@ describe("the bundle job builds what its scripts import (SN1)", () => {
     }
   )
 })
+
+describe("the walks never fail the run the snips come in", () => {
+  it("lets the walks steps fail, says so, and uploads only a bundle that was made", () => {
+    const job = bundleJob(
+      readFileSync(join(REPO, ".github/workflows/snips-capture.yml"), "utf8")
+    )
+    const snips = job.indexOf("name: snips-bundle-")
+    const download = job.indexOf("id: walks-download")
+    const write = job.indexOf("id: walks\n")
+    expect(snips).toBeGreaterThan(0)
+    // After the snips' bundle is uploaded, each allowed to fail.
+    for (const at of [download, write]) {
+      expect(at).toBeGreaterThan(snips)
+      expect(job.slice(at, at + 200)).toContain("continue-on-error: true")
+    }
+    expect(job).toContain(
+      "if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'"
+    )
+    const upload = job.indexOf("name: Upload the walks bundle")
+    expect(job.slice(upload, upload + 80)).toContain(
+      "if: steps.walks.outcome == 'success'"
+    )
+  })
+})

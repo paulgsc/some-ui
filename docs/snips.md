@@ -311,7 +311,8 @@ pictures. The trip is the pages' one, keyed by the run.
    ```
 
    and nothing else. A walk that failed in the run is left out, never
-   listed half; with no walk made, there is no bundle. It lives one day.
+   listed half; with no walk made, there is no bundle. A bundle that can't
+   be made is a warning: the run, and its snips, stand. It lives one day.
 
 2. **The cut list** names, in a scene, the run, the app and, if not the
    whole walk, the steps it plays, from 1, both ends kept:

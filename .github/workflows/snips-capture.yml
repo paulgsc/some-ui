@@ -166,9 +166,9 @@ jobs:
       # What scripts/snips-bundle.ts and scripts/walks-bundle.ts import from
       # the workspace, built: a fresh checkout has no dist/, and tsx resolves
       # a package through it (SN1; src/lib/snips/__tests__/bundle-job.test.ts
-      # holds this list to the scripts' imports). @some-ui/video-render, whose snip schema the
-      # script reads, has no build of its own (tsx reads its src): naming it
-      # builds what it imports.
+      # holds this list to the scripts' imports). @some-ui/video-render, whose
+      # snip and walk schemas the scripts read, has no build of its own (tsx
+      # reads its src): naming it builds what it imports.
       - name: Build what the bundle script imports
         run: nix develop .#ci --command pnpm turbo build --filter=@some-ui/core-utils --filter=@some-ui/video-render
       - name: Join the halves, check every file, write the manifest and checksums
@@ -227,13 +227,13 @@ jobs:
               jq -r '.walks[] | "- \(.app): \(.walk.snips | length) steps"' walks-bundle/walks.json
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Say a walks bundle couldn't be made
+        if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'
+        run: echo "::warning title=Walks::this run's walks bundle couldn't be made; its snips stand (the step above says why)"
       # Retention: one day. Home fetches the walks bundle an essay names by
       # this run (#3476), as it fetches a pages bundle: each run its own, so
       # a later capture never supersedes one an essay still names. A bundle
       # home missed is a new dispatch and a cut list naming the new run.
-      - name: Say a walks bundle couldn't be made
-        if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'
-        run: echo "::warning title=Walks::this run's walks bundle couldn't be made; its snips stand (the step above says why)"
       - name: Upload the walks bundle
         if: steps.walks.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
