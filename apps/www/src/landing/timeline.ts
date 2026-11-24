@@ -118,9 +118,21 @@ const WIPED = "clip-path: inset(0 0 100% 0);"
 const TYPED_NOT = "clip-path: inset(0 100% 0 0);"
 const WHOLE = "clip-path: inset(0 0 0 0);"
 
-/** The copy block's angle for episode `k` of `n`: the next episode's face rises from the right. */
-const copyAngle = (k: number, n: number): string =>
-  `transform: translateZ(calc(-1 * var(--depth))) rotateY(${num((-360 * k) / n)}deg);`
+/**
+ * The copy block is a cube about Y, as the media blocks are about X
+ * (C1424): four faces, whatever the show's episodes, which sit on them
+ * spread evenly where they divide four (two face each other), else one
+ * after another, the rest blank.
+ */
+export const COPY_FACES = 4
+
+/** The face episode `k` of `n` sits on. */
+export const copyFaceOf = (k: number, n: number): number =>
+  COPY_FACES % n === 0 ? (k * COPY_FACES) / n : k
+
+/** The copy block at `face`: the next episode's face rises from the right. */
+const copyAngle = (face: number): string =>
+  `transform: translateZ(calc(-1 * var(--depth))) rotateY(${num((-360 * face) / COPY_FACES)}deg);`
 
 /** A cube's angle for scene `s`: the next face rises from below. */
 const cubeAngle = (s: number): string =>
@@ -174,9 +186,17 @@ export function showTimeline(
     keyframes: keyframes(
       copyName,
       cycleS,
+      // Always turning on: the first episode comes round again from past
+      // the last, through any blank face between them.
       times.flatMap((e, k) => [
-        { at: e.start, css: copyAngle(k - 1, n), ease: "ease-in-out" },
-        { at: e.start + EPISODE_TURN_S, css: copyAngle(k, n) },
+        {
+          at: e.start,
+          css: copyAngle(
+            k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n)
+          ),
+          ease: "ease-in-out",
+        },
+        { at: e.start + EPISODE_TURN_S, css: copyAngle(copyFaceOf(k, n)) },
       ])
     ),
   }
@@ -254,8 +274,8 @@ export function showTimeline(
     const cubes: readonly [Track, Track] = [cube(), cube()]
     const scenes = e.scenes.map((s, i): SceneTracks => {
       // The last scene's copy stays through the copy block's whole turn,
-      // which leaves its face turned away (120 degrees or more: a show is
-      // two or three episodes, one a project, which resolveShow holds), so
+      // which leaves its face turned away (90 degrees or more: a show is
+      // two to four episodes, one a project, which resolveShow holds), so
       // its hidden back takes it out of sight: the turning face is never
       // blank. The last episode's stays through the turn that begins the
       // cycle again.

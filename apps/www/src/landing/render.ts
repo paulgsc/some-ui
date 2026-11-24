@@ -24,7 +24,14 @@ import { showMediaKeys } from "./show.ts"
 import type { LandingTheme, ThemePicker } from "./themes.ts"
 import { themeCss, themePicker } from "./themes.ts"
 import type { SceneTracks, Timeline } from "./timeline.ts"
-import { EPISODE_TURN_S, num, showTimeline, tracksOf } from "./timeline.ts"
+import {
+  COPY_FACES,
+  copyFaceOf,
+  EPISODE_TURN_S,
+  num,
+  showTimeline,
+  tracksOf,
+} from "./timeline.ts"
 import type { GapWords, LandingWords } from "./words.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -208,10 +215,12 @@ export function pairTall(
 }
 
 /**
- * The stage (C1180, C1182): the copy block, an episode a face about Y, each
- * holding its scenes' copy as it streams in; and an episode's pair of cubes,
- * a scene a face about X, in view while its episode plays. The copy is what
- * a screen reader reads; the cubes only show it.
+ * The stage (C1180, C1182): the copy block, a cube about Y with an episode a
+ * face, each holding its scenes' copy as it streams in; and an episode's
+ * pair of cubes, a scene a face about X, in view while its episode plays.
+ * Every block faces the reader square-on at rest; its depth shows as it
+ * turns (C1424). The copy is what a screen reader reads; the cubes only show
+ * it.
  */
 function stage(
   episodes: ReadonlyArray<ResolvedEpisode>,
@@ -237,13 +246,22 @@ function stage(
         })
         .join("")
       return `
-            <section class="face copy" style="--i: ${String(k)}">
+            <section class="face copy" style="--i: ${String(copyFaceOf(k, episodes.length))}">
               <p class="kicker">${e(episode.kicker)}</p>
               <h3 class="headline">${e(episode.title)}</h3>
               <div class="scenes">${scenes}
               </div>
             </section>`
     })
+    .join("")
+  // The copy cube's other faces, blank: a closed shell as it turns.
+  const taken = new Set(episodes.map((_, k) => copyFaceOf(k, episodes.length)))
+  const blanks = Array.from({ length: COPY_FACES }, (_, i) => i)
+    .filter((i) => !taken.has(i))
+    .map(
+      (i) => `
+            <div class="face face--blank" style="--i: ${String(i)}"></div>`
+    )
     .join("")
   const pairs = episodes
     .map((episode, k) => {
@@ -255,21 +273,19 @@ function stage(
           (j) => `
           <div class="block block--cube">
             <div class="ring ring--cube">
-              <div class="cube-camera">
-                <div class="ring-turn tk ${tracks.cubes[j].name}">${Array.from(
-                  { length: CUBE_FACES },
-                  (_, s) =>
-                    cubeFace(
-                      episode.scenes[s]?.faces[j],
-                      s,
-                      tracks.scenes[s],
-                      j,
-                      media
-                    )
-                ).join("")}
-                  <div class="cap cap--left"></div>
-                  <div class="cap cap--right"></div>
-                </div>
+              <div class="ring-turn tk ${tracks.cubes[j].name}">${Array.from(
+                { length: CUBE_FACES },
+                (_, s) =>
+                  cubeFace(
+                    episode.scenes[s]?.faces[j],
+                    s,
+                    tracks.scenes[s],
+                    j,
+                    media
+                  )
+              ).join("")}
+                <div class="cap cap--left"></div>
+                <div class="cap cap--right"></div>
               </div>
             </div>
           </div>`
@@ -288,8 +304,8 @@ function stage(
   return `
       <div class="stage">
         <div class="block block--copy">
-          <div class="ring ring--copy" style="--faces: ${String(episodes.length)}">
-            <div class="ring-turn tk ${timeline.copy.name}">${copyFaces}
+          <div class="ring ring--copy" style="--faces: ${String(COPY_FACES)}">
+            <div class="ring-turn tk ${timeline.copy.name}">${copyFaces}${blanks}
             </div>
           </div>
         </div>${pairs}

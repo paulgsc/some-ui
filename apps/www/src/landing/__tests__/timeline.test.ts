@@ -5,6 +5,7 @@
  */
 import type { ResolvedEpisode, ResolvedFace } from "@/landing/show"
 import {
+  copyFaceOf,
   EPISODE_TURN_S,
   faceOn,
   HOLD_S,
@@ -128,14 +129,25 @@ describe("showTimeline", () => {
     })
   })
 
-  it("turns the copy block to each episode as it begins, the cycle wrapping whole", () => {
+  it("turns the copy cube to each episode as it begins, a face a quarter turn on, the cycle wrapping whole (C1424)", () => {
     const copy = frames(timeline.copy.keyframes)
-    expect(copy[0].css).toContain("rotateY(120deg)")
+    // Three episodes on faces 0, 1 and 2: the show begins again from past
+    // the last, through the blank fourth face (-180 and 180 are one angle).
+    expect(copy[0].css).toContain("rotateY(180deg)")
     expect(copy.find((f) => f.at === pct(EPISODE_TURN_S))?.css).toContain(
       "rotateY(0deg)"
     )
+    expect(copy.map((f) => f.css).join(" ")).toContain("rotateY(-90deg)")
     expect(copy.at(-1)?.at).toBe(100)
-    expect(copy.at(-1)?.css).toContain("rotateY(-240deg)")
+    expect(copy.at(-1)?.css).toContain("rotateY(-180deg)")
+  })
+
+  it("puts two episodes on facing faces of the copy cube, and more one after another", () => {
+    expect([0, 1].map((k) => copyFaceOf(k, 2))).toEqual([0, 2])
+    expect([0, 1, 2].map((k) => copyFaceOf(k, 3))).toEqual([0, 1, 2])
+    expect([0, 1, 2, 3].map((k) => copyFaceOf(k, 4))).toEqual([0, 1, 2, 3])
+    const two = frames(showTimeline(EPISODES.slice(0, 2)).copy.keyframes)
+    expect(two.map((f) => f.css).join(" ")).toContain("rotateY(-180deg)")
   })
 
   it("names every track once, and holds each point until the next unless it says how to move", () => {

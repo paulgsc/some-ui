@@ -31,10 +31,12 @@ project each. Each episode is one to four scenes, and each scene is some copy an
 - **Skeletons.** Until an episode's pair turns in, each of its places stands as a skeleton
   of what is coming, a clip's frame or a still's, by the face's slot (`slotOf`, C1185).
 
-- **The cubes.** On a wide screen each media block is a closed, rounded prism with end
-  caps, seen a little from below and aside, so a second surface shows at rest and through
-  every turn. It stands as tall as its episode's narrowest picture needs (`pairTall`),
-  and each face's picture sits in an aperture of its own shape.
+- **The cubes.** On a wide screen every block is a cube in one family (C1424): the copy
+  block turns about Y, an episode a face, and each media block about X, a scene a face.
+  Each faces the reader square-on at rest; its depth shows as it turns, the faces coming
+  round on a closed, rounded shell with opaque blank faces and end caps. A media cube
+  stands as tall as its episode's narrowest picture needs (`pairTall`), and each face's
+  picture sits in an aperture of its own shape.
 
 ## The show on a phone
 
