@@ -23,7 +23,7 @@ import type { Page } from "playwright-core"
 import type { Microphone } from "./microphone"
 import { microphoneScript } from "./microphone"
 import type { ApkStageSpec } from "./stage-apk"
-import { openApkStage } from "./stage-apk"
+import { openApkStage, WebViewNotLaidOut } from "./stage-apk"
 import type { GrafanaStageSpec } from "./stage-grafana"
 import { openGrafanaStage } from "./stage-grafana"
 import type { SandboxStageSpec } from "./stage-sandbox"
@@ -246,7 +246,16 @@ export async function runWalk(
   const refused = stepProblems(walk.steps)
   if (refused.length > 0) throw new Error(refused.join("; "))
   await mkdir(join(out, "snips"), { recursive: true })
-  const stage = await openStage(walk.stage, chrome)
+  const stage = await openStage(walk.stage, chrome).catch(
+    async (e: unknown): Promise<never> => {
+      // The screen as the stage last saw it (WALK9, #3489), the failure's
+      // evidence: no page is open yet to leave failed.png from.
+      if (e instanceof WebViewNotLaidOut) {
+        await writeFile(join(out, "failed-ui.xml"), e.dump)
+      }
+      throw e
+    }
+  )
   try {
     // The first step's page: a failure opening it is that step's too.
     const first = walk.steps[0]?.label ?? walk.app
