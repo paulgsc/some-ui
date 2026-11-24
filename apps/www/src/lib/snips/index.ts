@@ -22,6 +22,12 @@ import type {
   SnipRecord,
   Surface,
 } from "@some-ui/video-render/snip"
+import {
+  parseWalks,
+  WalkFileSchema,
+  WALKS_SCHEMA,
+} from "@some-ui/video-render/walk"
+import type { Walks } from "@some-ui/video-render/walk"
 import { z } from "zod"
 
 export type { Build, SnipFile, SnipRecord, Surface }
@@ -500,4 +506,58 @@ export function checksumsOf(
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((f) => `${f.sha256}  ${f.name}\n`)
     .join("")
+}
+
+/**
+ * A run's walks bundle (#3476, `docs/snips.md`, "How walks reach home"):
+ * `walks.json` (`some-ui.walks/1`) from each walk the run made, by app, with
+ * every picture's bytes and sum, each named `<app>/snips/<NN>.png`. A walk
+ * that failed left no `walk.json`, so it is left out, never listed half.
+ * Refused, with each reason, when a walk isn't the record its folder names
+ * or a picture it names is missing.
+ */
+export function walksBundleOf(
+  walks: ReadonlyArray<{
+    readonly app: string
+    /** Its `walk.json`, as read. */
+    readonly walk: unknown
+    /** Each file of its `snips/`, by name, with its bytes' size and sum. */
+    readonly pictures: ReadonlyMap<
+      string,
+      { readonly bytes: number; readonly sha256: string }
+    >
+  }>,
+  { commit, run }: { readonly commit: string; readonly run: string }
+): Walks {
+  const problems: Array<string> = []
+  const records = walks.flatMap(({ app, walk, pictures }) => {
+    const read = WalkFileSchema.safeParse(walk)
+    if (!read.success) {
+      problems.push(`${app}/walk.json is not a walk's record`)
+      return []
+    }
+    return [
+      {
+        app,
+        walk: read.data,
+        pictures: read.data.snips.flatMap(({ file }) => {
+          const given = pictures.get(file.replace(/^snips\//, ""))
+          if (given === undefined) {
+            problems.push(`${app}/${file} is missing`)
+            return []
+          }
+          return [{ name: `${app}/${file}`, ...given }]
+        }),
+      },
+    ]
+  })
+  const bundle = parseWalks({
+    schema: WALKS_SCHEMA,
+    commit,
+    run,
+    walks: records,
+  })
+  if (!bundle.ok) problems.push(...bundle.problems)
+  if (problems.length > 0 || !bundle.ok) throw new Error(problems.join("\n"))
+  return bundle.value
 }

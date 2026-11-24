@@ -101,8 +101,19 @@ describe("a chapter that speaks of our app", () => {
       said("L4", "The phone shows the error."),
     ])
     expect(unshownProblems(cut)).toEqual([
-      "L3: it speaks of our app and its chapter shows none: show it as a screen (snips or clips), not a card (SHOW1)",
+      "L3: it speaks of our app and its chapter shows none: show it as a screen (snips or clips or walks), not a card (SHOW1)",
     ])
+  })
+
+  it("is shown by a walk through the app (#3476)", () => {
+    const walk: Shot["picture"] = {
+      kind: "screen",
+      of: { from: "walks", run: "45321427650", app: "rust-rounds" },
+    }
+    const cut = cutList([
+      said("L1", "A week arrives on the phone.", { picture: walk }),
+    ])
+    expect(unshownProblems(cut)).toEqual([])
   })
 
   it("isn't shown by a public page", () => {

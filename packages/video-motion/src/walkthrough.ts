@@ -32,6 +32,7 @@ import {
   laidTake,
   PROMO_SHAPE,
   startsAfter,
+  walkSlice,
 } from "@some-ui/video-render"
 import type {
   CutList,
@@ -160,26 +161,6 @@ export function walkthroughProblems(
           )
     })
   return problems
-}
-
-/**
- * The part of `walk` from screen `from` up to screen `to`, on its own
- * timeline from that screen. A tap stays with the screen it lands on, which
- * is the one before the screen it reaches (`TAP_LEAD_MS` in `./walk/run`), so the tap that
- * leads into the next stop is the last of this one.
- */
-export function walkSlice(walk: WalkFile, from: number, to: number): WalkFile {
-  const snips = walk.snips.slice(from, to)
-  const start = snips[0]?.atMs ?? 0
-  const end = walk.snips[to]?.atMs ?? walk.lengthMs
-  return {
-    ...walk,
-    snips: snips.map((s) => ({ ...s, atMs: s.atMs - start })),
-    taps: walk.taps
-      .filter((t) => t.atMs >= start && t.atMs < end)
-      .map((t) => ({ ...t, atMs: t.atMs - start })),
-    lengthMs: end - start,
-  }
 }
 
 /** The version a viewer reads: the release, without a build's own suffix. */

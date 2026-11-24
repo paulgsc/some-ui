@@ -20,6 +20,9 @@ export const COMMIT = /^[0-9a-f]{40}$/
  */
 export const RUN_ID = /^[1-9][0-9]{0,19}$/
 
+/** A walk's app, as its runner names it (`jobs`, `rust-rounds`). */
+export const WALK_APP = /^[a-z0-9][a-z0-9-]{0,63}$/
+
 /**
  * A public page's picture, as the pages capture names it (`./page`):
  * where it is (its host and path, as a slug), then the first 12 hex digits
