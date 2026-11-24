@@ -30,7 +30,7 @@ import {
   webviewBounds,
   WebViewNotLaidOut,
 } from "@video-motion/walk/stage-apk"
-import { ROW_PARAM } from "@video-motion/walk/stage-grafana"
+import { ROW_PARAM, walkScreen } from "@video-motion/walk/stage-grafana"
 import {
   walkthroughProblems,
   WalkthroughSchema,
@@ -530,6 +530,29 @@ const HOME_SAMPLE = {
   to: "2026-11-16T00:00:00Z",
   days: 7,
 }
+
+describe("a Grafana walk's screen, as its pictures make it (WALK10, #3499)", () => {
+  const stage = { width: 1440, height: 1600 }
+
+  it("is as tall as the tallest row it shot, never the height the stage grew to", () => {
+    const screen = walkScreen(stage)
+    // The call dashboard's essay rows, as Snips Capture run 45368180054 shot them.
+    for (const height of [498, 497.2, 346]) screen.took({ height })
+    expect(screen.viewport()).toEqual({ width: 1440, height: 498, scale: 1 })
+  })
+
+  it("is the stage's own screen for a walk of whole pages, or one that shot nothing", () => {
+    const whole = walkScreen(stage)
+    whole.took(undefined)
+    whole.took({ height: 400 })
+    expect(whole.viewport()).toEqual({ width: 1440, height: 1600, scale: 1 })
+    expect(walkScreen(stage).viewport()).toEqual({
+      width: 1440,
+      height: 1600,
+      scale: 1,
+    })
+  })
+})
 
 describe("the server's dashboards, on sample telemetry (#3401)", () => {
   it("reads the sample week, and refuses any other window", () => {

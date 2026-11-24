@@ -123,6 +123,37 @@ async function interFaces(page: Page, origin: string): Promise<string> {
  */
 export const ROW_PARAM = "walk-row"
 
+/**
+ * A Grafana walk's screen, as its pictures make it (WALK10, #3499): as wide
+ * as the stage, as tall as the tallest picture taken, a row clipped to its
+ * box or the whole screen. screen-zoom draws each picture as wide as the
+ * screen from its top, so a screen taller than every picture would only
+ * shrink them, and one shorter would cut one off.
+ */
+export function walkScreen(stage: {
+  readonly width: number
+  readonly height: number
+}): {
+  /** One picture taken: a row's box, or the whole screen (`undefined`). */
+  readonly took: (shot: { readonly height: number } | undefined) => void
+  readonly viewport: () => WalkViewport
+} {
+  let tallest = 0
+  return {
+    took: (shot): void => {
+      tallest = Math.max(
+        tallest,
+        shot === undefined ? stage.height : Math.ceil(shot.height)
+      )
+    },
+    viewport: () => ({
+      width: stage.width,
+      height: tallest > 0 ? tallest : stage.height,
+      scale: 1,
+    }),
+  }
+}
+
 /** The row a page's request names, if it names one. */
 const rowOf = (url: string): string | undefined =>
   new URL(url).searchParams.get(ROW_PARAM) ?? undefined
@@ -321,13 +352,8 @@ export async function openGrafanaStage(
     /** Where the next screen is taken: a row's box, or the whole screen. */
     let shot: Box | undefined
 
-    /**
-     * The tallest picture taken so far, its walk's screen (#3499): a row
-     * is shot to its own box, and the composition draws each picture as
-     * wide as the screen from its top, so a screen taller than every
-     * picture would only shrink them.
-     */
-    let tallest = 0
+    /** The walk's screen, as tall as its tallest picture (WALK10). */
+    const screen = walkScreen(spec.viewport)
 
     /** A panel's query answered since the page navigated, then the page still. */
     const drawn = async (): Promise<void> => {
@@ -418,11 +444,7 @@ export async function openGrafanaStage(
       page,
       version: spec.version,
       get viewport(): WalkViewport {
-        return {
-          width: spec.viewport.width,
-          height: tallest > 0 ? tallest : spec.viewport.height,
-          scale: 1,
-        }
+        return screen.viewport()
       },
       origin,
       place: (x, y) => ({ x, y }),
@@ -438,10 +460,7 @@ export async function openGrafanaStage(
       },
       settle: drawn,
       shoot: async (path, moving): Promise<void> => {
-        tallest = Math.max(
-          tallest,
-          shot === undefined ? spec.viewport.height : Math.ceil(shot.height)
-        )
+        screen.took(shot)
         const take = (): Promise<Buffer> =>
           page.screenshot({
             animations: "disabled",
