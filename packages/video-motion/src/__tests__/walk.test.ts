@@ -23,6 +23,7 @@ import {
   WalkthroughSchema,
 } from "@video-motion/walkthrough"
 import { describe, expect, it } from "vitest"
+import { z } from "zod"
 
 /** Jobs' story sample (WALK2), which the stand-in home answers and the walk reads. */
 const sample = jobs.sample.parse(
@@ -72,6 +73,21 @@ describe("a walk's steps (WALK1)", () => {
 const repoFile = (path: string): string =>
   readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf8")
 
+/** The week a test rewrites in the snips' sample, the rest kept as it is. */
+const WEEK_ROUTE = "GET /api/v1/rust-weeks/2026-w45"
+const SampleRoutes = z.looseObject({
+  routes: z.record(z.string(), z.looseObject({ body: z.unknown() })),
+})
+const WeekBody = z.looseObject({
+  week: z.looseObject({
+    tickets: z.array(
+      z.looseObject({
+        forks: z.array(z.looseObject({ options: z.array(z.looseObject({})) })),
+      })
+    ),
+  }),
+})
+
 describe("Rust Rounds' walk (#3476)", () => {
   const sample: unknown = JSON.parse(
     repoFile("apps/mobile/snips/sample-routes.json")
@@ -89,13 +105,35 @@ describe("Rust Rounds' walk (#3476)", () => {
     expect(walk.steps.at(-1)?.until).toBe(`button:has-text("Send to home")`)
   })
 
-  it("picks the first fork's first option not recommended", () => {
-    const walk = rustRounds.walk(rustRounds.sample.parse(sample))
-    const picked = walk.steps.find((s) => s.label === "An option picked")
-    expect(picked?.action).toEqual({
+  it("picks the first fork's first option not recommended, and refuses a fork with none", () => {
+    const pickedIn = (value: unknown): unknown =>
+      rustRounds
+        .walk(rustRounds.sample.parse(value))
+        .steps.find((s) => s.label === "An option picked")?.action
+    expect(pickedIn(sample)).toEqual({
       kind: "tap",
       target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=1',
     })
+    // The sample with its first fork's options given `recommended` in turn.
+    const recommending = (flags: ReadonlyArray<boolean>): unknown => {
+      const copy = SampleRoutes.parse(structuredClone(sample))
+      const route = copy.routes[WEEK_ROUTE]!
+      const body = WeekBody.parse(route.body)
+      const fork = body.week.tickets[0]!.forks[0]!
+      fork.options = flags.map((recommended, i) => ({
+        ...fork.options[i],
+        recommended,
+      }))
+      copy.routes[WEEK_ROUTE] = { ...route, body }
+      return copy
+    }
+    expect(pickedIn(recommending([false, true, false]))).toEqual({
+      kind: "tap",
+      target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=0',
+    })
+    expect(
+      rustRounds.sample.safeParse(recommending([true, true, true])).success
+    ).toBe(false)
   })
 
   it("looks only for words the week's screens say", () => {
@@ -128,7 +166,10 @@ describe("Rust Rounds' walk (#3476)", () => {
     expect(said.length).toBeGreaterThan(5)
     for (const text of said) {
       expect(
-        literals.some((l) => l.includes(text.replace(/^"|"$/g, ""))),
+        // A quoted `text="…"` is matched whole on screen, so whole here.
+        /^".*"$/.test(text)
+          ? literals.includes(text.slice(1, -1))
+          : literals.some((l) => l.includes(text)),
         text
       ).toBe(true)
     }

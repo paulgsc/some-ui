@@ -30,9 +30,7 @@ const TicketSchema = z.object({
   forks: z
     .array(
       z.object({
-        options: z
-          .array(z.object({ recommended: z.boolean().optional() }))
-          .min(2),
+        options: z.array(z.object({ recommended: z.boolean() })).min(2),
       })
     )
     .min(1),
