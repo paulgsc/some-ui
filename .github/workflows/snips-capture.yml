@@ -243,7 +243,7 @@ jobs:
           retention-days: 1
       - name: Say a walks bundle couldn't be made
         if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure' || steps.walks-upload.outcome == 'failure'
-        run: echo "::warning title=Walks::this run's walks bundle couldn't be made or kept; its snips stand (the step above says why)"
+        run: echo "::warning title=Walks::this run's walks bundle couldn't be made or kept; its snips stand (the walks step that failed says why)"
 
   apk-clip:
     name: The APK faces for the public site
