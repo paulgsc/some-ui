@@ -32,6 +32,7 @@ import {
   stillFile,
   thumbnailInput,
   UploadCopySchema,
+  withSeries,
 } from "@some-ui/video-render"
 import type {
   ChapterMark,
@@ -403,8 +404,14 @@ async function renderStills(
     `${JSON.stringify(cutList, null, 1)}\n`
   )
   // From the templates' version 4 (HYPER5), the brand's open and close are
-  // compositions, drawn by video-motion beside the stills.
-  const draws = cutList.shots.some((s) => s.picture.kind === "composition")
+  // compositions, drawn by video-motion beside the stills; so are a
+  // series' own intro and outro (#3476), which the renderer adds.
+  const pinned = await readSeries(series, cutList.series.version)
+  if (!pinned.ok) fail(["The series can't be read:", ...pinned.problems])
+  const framed = withSeries(cutList, pinned.value)
+  const draws = (framed.ok ? framed.value : cutList).shots.some(
+    (s) => s.picture.kind === "composition"
+  )
   // On the video's own drive: home's /tmp is a small RAM disk HyperFrames
   // can't draw on (video-motion's `pin.ts`).
   const draw = draws ? await mkdtemp(join(root, "draw-")) : null

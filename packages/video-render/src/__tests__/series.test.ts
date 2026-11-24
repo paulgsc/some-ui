@@ -289,6 +289,33 @@ describe("a series' intro and outro", () => {
     ])
   })
 
+  it("may be the brand's own open and close, in the series' theme (#3476)", () => {
+    const brand = { kind: "brand", motion: "brand-v1" } as const
+    const drawn = withSeries(
+      cutList([shot("S1")]),
+      series({
+        theme: "dark",
+        intro: { picture: brand, durationMs: 3000, burnIns: [] },
+        outro: { picture: brand, durationMs: 3000, burnIns: [] },
+      })
+    )
+    expect(drawn.ok && drawn.value.shots.map((s) => s.picture)).toEqual([
+      {
+        kind: "composition",
+        ref: "brand-v1",
+        variables: { part: "open", theme: "dark" },
+        files: [],
+      },
+      shot("S1").picture,
+      {
+        kind: "composition",
+        ref: "brand-v1",
+        variables: { part: "close", theme: "dark" },
+        files: [],
+      },
+    ])
+  })
+
   it("refuse a video whose own scene takes a series scene's id", () => {
     const drawn = withSeries(cutList([shot(SERIES_INTRO)]), framed)
     expect(drawn.ok ? [] : drawn.problems).toEqual([
