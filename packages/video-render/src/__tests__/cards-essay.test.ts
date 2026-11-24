@@ -13,6 +13,7 @@ import {
   laidTake,
   parseCardsEssay,
   PUBLISH_SINCE,
+  sceneTakeFile,
   voicedCardsCutList,
 } from "@video-render/cards-essay"
 import type { CutList } from "@video-render/cut-list"
@@ -499,5 +500,55 @@ describe("a spoken essay (EXPLAIN6)", () => {
       burnIns: cut.shots[1]?.burnIns,
     })
     expect(voiced.shots.every((s) => s.spoken === undefined)).toBe(true)
+  })
+
+  // CT1 (#3519): every take the cut list plays is one the recorder makes.
+  // Family: a scene with its chapter line (two lines, joined), a scene that
+  // goes on in its chapter (C1027: one line, its narration), the intro and
+  // close (one line, the host's), each voiced; and the essay left silent.
+  it("plays only takes the recorder makes, whatever lines a scene says (CT1)", async () => {
+    const cut = await showcase("rust-scratchpad")
+    const [intro, first, second, ...rest] = cut.shots
+    if (second?.spoken?.role !== "scene")
+      throw new Error("the showcase opens with two scenes")
+    const { chapter: _dropped, ...goesOn } = second.spoken
+    const parsed = parseCardsEssay(RUST, {
+      ...cut,
+      shots: [intro, first, { ...second, spoken: goesOn }, ...rest],
+    })
+    if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
+    const scenes = cardsScenes(parsed.value)
+    // What the recorder writes: each line's take as the speaker said it,
+    // and, for a scene of several lines, their join (`sceneTakes`).
+    const made = new Set(
+      scenes.flatMap((scene) => [
+        ...scene.lines.map((line) => `${line.file}.wav`),
+        ...(scene.lines.length > 1 ? [`${sceneTakeFile(scene)}.wav`] : []),
+      ])
+    )
+    const lineCounts = new Set(scenes.map((scene) => scene.lines.length))
+    expect([...lineCounts].sort()).toEqual([1, 2])
+    expect(
+      scenes.some(
+        (s) => s.mark === undefined && s.lines[0]?.file.endsWith("-narration")
+      )
+    ).toBe(true)
+    const voiced = voicedCardsCutList(
+      parsed.value,
+      scenes,
+      scenes.map(() => ({ ms: 1_000 }))
+    )
+    const played = voiced.shots.map((shot) => shot.take?.file)
+    expect(played.every((file) => file !== undefined && made.has(file))).toBe(
+      true
+    )
+    expect(played[2]).toBe(`03-${second.id}-narration.wav`)
+    // Silent: nothing said, so nothing played.
+    const silent = voicedCardsCutList(
+      parsed.value,
+      scenes,
+      scenes.map(() => null)
+    )
+    expect(silent.shots.every((shot) => shot.take === undefined)).toBe(true)
   })
 })

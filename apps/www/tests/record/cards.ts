@@ -80,6 +80,7 @@ import {
   pngSize,
   resolveScreens,
   sceneNames,
+  sceneTakeFile,
   SNIPS_DIR,
   snipsOf,
   spokenCardsOf,
@@ -147,8 +148,8 @@ const { values } = parseArgs({
  * Each scene's take, from `said`, its cards' lines' takes in order: a
  * spoken card's scene its own, from `spoken` by its id; a line's own
  * where it is the scene's only one, else its lines' audio joined into
- * `<file>.wav`, `CHAPTER_GAP_MS` of silence between (`joinedTake`). None
- * where nothing was said.
+ * the file the cut list plays (`sceneTakeFile`, CT1), `CHAPTER_GAP_MS`
+ * of silence between (`joinedTake`). None where nothing was said.
  */
 async function sceneTakes(
   root: string,
@@ -188,7 +189,7 @@ async function sceneTakes(
             ? { kind: "after" as const, ms: CHAPTER_GAP_MS }
             : null,
       })),
-      `${scene.file}.wav`
+      `${sceneTakeFile(scene)}.wav`
     )
     const take = joinedTake(heard)
     takes.push({ ...take, ms: Math.min(take.ms, laidMs) })
