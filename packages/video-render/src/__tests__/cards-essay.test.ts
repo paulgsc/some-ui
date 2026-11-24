@@ -223,7 +223,7 @@ describe("a spoken essay (EXPLAIN6)", () => {
     ).toContain("no letter or digit")
   })
 
-  it("is refused past twelve minutes by its words, and told to split, and takes one of eleven", async () => {
+  it("is refused past twelve minutes by its words, and told to split, and takes one past C373's ten", async () => {
     const cut = await showcase("nixos-upgrade")
     const lasting = (n: number): typeof cut => ({
       ...cut,
