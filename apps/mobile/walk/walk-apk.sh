@@ -12,8 +12,9 @@
 # from the CA capture-apk.sh had the emulator trust. Each walk gets a clean
 # install, paired through its own screen, and the stand-in home started
 # afresh with stub-routes.json and the walk's sample laid over it. A walk
-# that fails leaves failed.png and failed.txt in its folder, and the run's
-# logs in <walks-dir>/logs. Sample data only: fixtures, no DNS.
+# that fails leaves failed.png and failed.txt in its folder (failed-ui.xml,
+# the screen's last dump, when its stage never saw the WebView laid out),
+# and the run's logs in <walks-dir>/logs. Sample data only: fixtures, no DNS.
 set -euo pipefail
 
 debug_apk=$1
@@ -77,7 +78,7 @@ walk() {
       ok=no
     elif ! (cd "$repo" && pnpm --filter @some-ui/video-motion motion walk "$app" \
       --sample "$sample" --out "$walks/$app"); then
-      echo "::error title=Walks::the $app walk failed ($app/failed.png, $app/failed.txt; $app/failed-ui.xml when the stage never saw the WebView laid out)"
+      echo "::error title=Walks::the $app walk failed ($app/failed.png and failed.txt from a step, or $app/failed-ui.xml when the stage never saw the WebView laid out)"
       ok=no
     fi
   fi

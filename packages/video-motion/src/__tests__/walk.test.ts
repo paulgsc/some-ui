@@ -169,41 +169,64 @@ const LAID: PlaceRead = {
 const SCREEN = { width: 1080, height: 1920 }
 
 describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", () => {
+  const read = (
+    stage: ReturnType<typeof looking>
+  ): ReturnType<typeof placeWhenLaidOut> =>
+    placeWhenLaidOut(stage.read, "dev.paulgsc.someui", SCREEN, stage.wait)
+
   it("looks again past a dump read before the WebView's node was laid out, and past a page read mid-layout", async () => {
     for (const early of [
       { ...LAID, dump: dumpWith("[0,0][0,0]") },
       { ...LAID, innerWidth: 0 },
+      { ...LAID, innerWidth: Number.NaN },
+      { ...LAID, pixelRatio: Number.NaN },
       { ...LAID, dump: "<hierarchy/>" },
       // A node with width, not yet the page's: 1080 / 980 is not 2.625.
       { ...LAID, innerWidth: 980 },
     ]) {
       const stage = looking([early, early, LAID])
-      const { viewport } = await placeWhenLaidOut(
-        stage.read,
-        "dev.paulgsc.someui",
-        SCREEN,
-        stage.wait
-      )
+      const { viewport } = await read(stage)
       expect(viewport.scale).toBeCloseTo(1080 / 411)
-      expect(stage.taken()).toBe(3)
+      // Two early looks, then two laid out that agree.
+      expect(stage.taken()).toBe(4)
     }
   })
 
-  it("reads at once when the first look is laid out", async () => {
-    const stage = looking([LAID])
-    await placeWhenLaidOut(stage.read, "dev.paulgsc.someui", SCREEN, stage.wait)
-    expect(stage.taken()).toBe(1)
+  it("waits for the WebView's box to hold still, its top settled with the insets", async () => {
+    const moving = { ...LAID, dump: dumpWith("[0,300][1080,1794]") }
+    const stage = looking([moving, LAID])
+    const { place } = await read(stage)
+    expect(place(0, 0).y).toBeCloseTo(63 / (1080 / 411))
+    expect(stage.taken()).toBe(3)
   })
 
-  it("gives up within its bound, naming the read with no width and keeping the dump", async () => {
+  it("counts a look that throws as one that saw nothing", async () => {
+    const stage = looking([LAID])
+    let first = true
+    const failing = {
+      ...stage,
+      read: (): Promise<PlaceRead> => {
+        if (first) {
+          first = false
+          return Promise.reject(new Error("Execution context was destroyed"))
+        }
+        return stage.read()
+      },
+    }
+    await read(failing)
+    expect(stage.taken()).toBe(2)
+  })
+
+  it("reads once two looks in a row agree", async () => {
+    const stage = looking([LAID])
+    await read(stage)
+    expect(stage.taken()).toBe(2)
+  })
+
+  it("gives up past its bound, naming the read with no width and keeping the dump", async () => {
     const zero = dumpWith("[0,0][0,0]")
     const stage = looking([{ ...LAID, dump: zero }])
-    const failed = await placeWhenLaidOut(
-      stage.read,
-      "dev.paulgsc.someui",
-      SCREEN,
-      stage.wait
-    ).catch((e: unknown) => e)
+    const failed = await read(stage).catch((e: unknown) => e)
     expect(failed).toBeInstanceOf(WebViewNotLaidOut)
     if (!(failed instanceof WebViewNotLaidOut)) return
     expect(failed.message).toBe(

@@ -128,36 +128,50 @@ export class WebViewNotLaidOut extends Error {
   }
 }
 
-/** Why `read` is not yet a WebView laid out on screen, or null when it is. */
-function notLaidOut(read: PlaceRead, pkg: string): string | null {
+/**
+ * The WebView's box in `read`, if it is laid out there, or why not. Laid
+ * out means the dump's node has width, the page has a width and a pixel
+ * ratio (finite, above 0), and the node's width over the page's is the
+ * page's own device pixel ratio, not a node read mid-layout. That holds for
+ * a page at `width=device-width` and no zoom, as the app's
+ * (`apps/www/index.html`).
+ */
+function laidOut(read: PlaceRead, pkg: string): Box | string {
   let webview: Box
   try {
     webview = webviewBounds(read.dump, pkg)
   } catch (e) {
     return e instanceof Error ? e.message : String(e)
   }
-  if (webview.width <= 0)
+  if (!(webview.width > 0))
     return "the app's WebView is 0 px wide in the screen's dump"
-  if (read.innerWidth <= 0) return "the page is 0 px wide (window.innerWidth)"
-  // Laid out means the two agree: the dump's width over the page's is the
-  // page's own device pixel ratio, not a node read mid-layout.
+  if (!(read.innerWidth > 0) || !Number.isFinite(read.innerWidth))
+    return `the page is ${String(read.innerWidth)} px wide (window.innerWidth)`
+  if (!(read.pixelRatio > 0) || !Number.isFinite(read.pixelRatio))
+    return `the page's pixel ratio is ${String(read.pixelRatio)}`
   const scale = webview.width / read.innerWidth
-  if (Math.abs(scale - read.pixelRatio) > 0.02 * read.pixelRatio) {
+  if (!(Math.abs(scale - read.pixelRatio) <= 0.02 * read.pixelRatio)) {
     return `the dump's WebView (${String(webview.width)} px) and the page (${String(read.innerWidth)} CSS px at ${String(read.pixelRatio)}) disagree`
   }
-  return null
+  return webview
 }
+
+const sameBox = (a: Box, b: Box): boolean =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
 
 /** How long the stage waits for the WebView to be laid out, and how often it looks (WALK9). */
 const LAID_OUT = { ms: 15_000, everyMs: 500 } as const
 
 /**
- * WALK9: the WebView's place, read until the app's WebView is laid out on
- * screen, the dump's node and the page agreeing, at most `wait.ms`. A dump
+ * WALK9: the WebView's place, read once the app's WebView is laid out on
+ * screen (`laidOut`) and two looks in a row give it the same box, so a top
+ * still moving with the system bars' or the keyboard's insets is not read;
+ * looking for `wait.ms`, plus the look under way when it runs out. A dump
  * taken as the app starts, as its keyboard's insets settle or as
  * `uiautomator` turns accessibility on can find the WebView's node not yet
- * laid out (#3489); the stage looks again rather than read that one.
- * Refused with the reason the last look gave, and that look's dump.
+ * laid out (#3489); the stage looks again rather than read that one. A look
+ * that throws is a look that saw nothing. Refused with the reason the last
+ * look gave, and that look's dump.
  */
 export async function placeWhenLaidOut(
   read: () => Promise<PlaceRead>,
@@ -171,13 +185,31 @@ export async function placeWhenLaidOut(
   }
 ): Promise<ReturnType<typeof screenPlace>> {
   const until = wait.now() + wait.ms
+  let before: Box | null = null
   for (;;) {
-    const look = await read()
-    const why = notLaidOut(look, pkg)
-    if (why === null) {
-      return screenPlace(webviewBounds(look.dump, pkg), look.innerWidth, screen)
+    let look: PlaceRead
+    let box: Box | string
+    try {
+      look = await read()
+      box = laidOut(look, pkg)
+    } catch (e) {
+      look = { dump: "", innerWidth: 0, pixelRatio: 0 }
+      box = `the look failed: ${e instanceof Error ? e.message : String(e)}`
     }
-    if (wait.now() >= until) throw new WebViewNotLaidOut(why, look.dump)
+    if (typeof box !== "string") {
+      if (before !== null && sameBox(before, box)) {
+        return screenPlace(box, look.innerWidth, screen)
+      }
+      before = box
+    } else {
+      before = null
+    }
+    if (wait.now() >= until) {
+      throw new WebViewNotLaidOut(
+        typeof box === "string" ? box : "the WebView's box was still moving",
+        look.dump
+      )
+    }
     await wait.sleep(wait.everyMs)
   }
 }
