@@ -84,6 +84,13 @@ const BUSY = '[aria-busy="true"]'
 /** How long a screen may read before it is left unphotographed, said as unreached. */
 const READING_MS = 20_000
 
+/** How many pictures of a screen that began reading after it settled are taken before it is left. */
+const LOOKS = 3
+
+/** Whether anything on the screen is reading now. */
+const reading = (page: Page): Promise<boolean> =>
+  page.evaluate((busy) => document.querySelector(busy) !== null, BUSY)
+
 export async function walk(w: Walk): Promise<Part> {
   const links = new Set<string>()
   const snips: Array<SnipRecord> = []
@@ -95,15 +102,17 @@ export async function walk(w: Walk): Promise<Part> {
 
   const visit = async (route: RouteEntry, path: string): Promise<void> => {
     await w.open(path)
-    const settled = await settle(w.page)
-    if (!settled) {
-      // Never a picture of a screen still reading: it shows the reading line,
-      // not the screen (#3491).
+    // Never a picture of a screen still reading: it shows the reading line,
+    // not the screen (#3491).
+    const stillReading = (): void => {
       unreached.push({
         surface: w.surface,
         route: route.path,
         why: `it was still reading after ${String(READING_MS / 1000)} s`,
       })
+    }
+    if (!(await settle(w.page))) {
+      stillReading()
       return
     }
     const screen = await read(w.page, w.base)
@@ -125,7 +134,16 @@ export async function walk(w: Walk): Promise<Part> {
       return
     }
     const whole = isStage(route.path)
-    const png = await w.camera.shoot(whole)
+    let png = await w.camera.shoot(whole)
+    // A screen can begin reading after settle's last look; such a picture is
+    // dropped, and the screen is settled and shot again, a few times at most.
+    for (let look = 1; await reading(w.page); look++) {
+      if (look >= LOOKS || !(await settle(w.page))) {
+        stillReading()
+        return
+      }
+      png = await w.camera.shoot(whole)
+    }
     const regions = await w.camera.regions(whole)
     const sha256 = await hashOf(png)
     const same = seen.get(sha256)
@@ -270,8 +288,9 @@ export async function pageRegions(
 
 /**
  * Waits for the network to go quiet, for nothing on the screen to be reading
- * (`BUSY`, at most `READING_MS`) and fonts to load, then a beat for late
- * paints. False when the screen was still reading.
+ * (`BUSY`) and fonts to load, then a beat for late paints, and looks again:
+ * while a screen began reading during the beat, it waits again. False when
+ * the screen was still reading after `readingMs` in all.
  */
 export async function settle(
   page: Page,
@@ -280,16 +299,23 @@ export async function settle(
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {
     // A screen that keeps a request open still gets its picture.
   })
-  const read = await page
-    .waitForFunction((busy) => document.querySelector(busy) === null, BUSY, {
-      timeout: readingMs,
-    })
-    .then(() => true)
-    .catch(() => false)
-  if (!read) return false
-  await page.evaluate(() => document.fonts.ready.then(() => true))
-  await page.waitForTimeout(SETTLE_MS)
-  return true
+  const until = Date.now() + readingMs
+  // A screen may start reading only after it first looks idle (it mounts,
+  // then asks home), so it is read again after the beat: what it shows
+  // then is what gets photographed.
+  for (;;) {
+    const read = await page
+      .waitForFunction((busy) => document.querySelector(busy) === null, BUSY, {
+        timeout: Math.max(1, until - Date.now()),
+      })
+      .then(() => true)
+      .catch(() => false)
+    if (!read) return false
+    await page.evaluate(() => document.fonts.ready.then(() => true))
+    await page.waitForTimeout(SETTLE_MS)
+    if (!(await reading(page))) return true
+    if (Date.now() >= until) return false
+  }
 }
 
 type Screen = {
