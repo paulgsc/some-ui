@@ -306,8 +306,8 @@
           "id": "MI8",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "A file the mailbox refused is handed to it again until it is taken or its tries are spent.",
-          "requirement": "When the mailbox refuses a file home put, home hands it again once the last refusal is an hour old, after every file never answered, until the mailbox takes it or the file has 7 answers; any answer but a refusal is final, and every answer is kept as its own row.",
+          "claim": "A file the mailbox refused in a way that could change is handed to it again until it is taken or its tries are spent; one it can never take is final after one answer.",
+          "requirement": "When the mailbox refuses a file home put, home hands it again once the last refusal is an hour old, after every file never answered, until the mailbox takes it or the file has 7 answers. Only a refusal that could change is handed again: a file over the mailbox's size limit, or with a name it can't take, is final after one answer, as is any other answer, and every answer is kept as its own row.",
           "verdict": "holds",
           "conclusion": "A refusal is no longer the end of a file: home tries it again an hour later, up to seven answers in all, so a mailbox that refuses for a few hours catches up once it accepts again. One that refuses for longer leaves those files refused, with every answer kept, and nothing yet tells the owner when a file's tries are spent.",
           "evidence": [
@@ -318,7 +318,7 @@
             },
             {
               "class": "measured",
-              "says": "A pass does not hand a refusal again at 59m59s, does at one hour, and never again once it is taken.",
+              "says": "A pass does not hand a refusal again at 59m59s, does at one hour, and never again once it is taken; a file over the mailbox's size limit or with a name it can't take is answered once and never handed again, while the refused file beside it is, and each handing not taken is counted and logged at error.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             },
             {
@@ -336,7 +336,14 @@
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/lib/mailbox-panels.libsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-24",
+              "change": "Only a refusal that could change is handed again: a file over the mailbox's size limit, or with a name it can't take, is final after one answer (server#1197).",
+              "why": "Retrying a file that can never be taken was wasted work. The owner, 2026-11-24, asked \"Amend MI8 to say a file the mailbox can never take (over its size limit, or a name it can't accept) is final after one answer?\", chose \"Amend MI8 (Recommended)\".",
+              "decision": "https://github.com/paulgsc/server/pull/1197"
+            }
+          ]
         }
       ]
     },
@@ -7088,10 +7095,28 @@
     {
       "id": "jobs-notice",
       "name": "Home tells the phone the morning run is in",
-      "why": "After each mailbox pass home looks at the Jobs run records it holds from the last 12 hours that it has not told of, and tells each phone that asked, through Firebase Cloud Messaging, once per record, in fixed words (RUN4, server#470). A re-run that added no picks is recorded and told to nobody.",
+      "why": "After each mailbox pass home looks at the Jobs run records it holds from the last 12 hours that it has not told of, and tells each phone that asked, through Firebase Cloud Messaging, once per record, in fixed words (RUN4, server#470). A re-run after the picks are in is recorded and told to nobody.",
       "serves": ["morning-run"],
       "witnesses": ["RR3"],
       "segments": [
+        {
+          "id": "ask",
+          "name": "The phone asks for the notice, files its notice token with home, and withdraws it. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:apps/www/src/lib/jobs/notice-native.ts",
+            "some-ui:apps/www/src/lib/jobs/notice.ts",
+            "some-ui:apps/www/src/lib/home-link/jobs.ts"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
         {
           "id": "pass",
           "name": "The notice pass, run after each mailbox pass: reads the run records home holds, decides the words, sends, records what it said and forgets a phone FCM no longer knows. Ours, on home.",
@@ -7104,7 +7129,7 @@
         },
         {
           "id": "sender",
-          "name": "Signs home's service-account JWT, gets an access token and sends one message per phone. Ours, on home.",
+          "name": "Proves to Google it is home, and sends one notice per phone.",
           "owner": "ours",
           "on": "home",
           "paths": ["server:crates/fcm_kit"]
@@ -7125,17 +7150,24 @@
         },
         {
           "id": "register",
-          "name": "The phone asks for the notice and withdraws it (PUT/DELETE /jobs/notice). Ours, on home.",
+          "name": "Home keeps the phones that asked, and forgets one that withdraws. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": ["server:apps/servers/file_host/src/routes/jobs.rs"]
+          "paths": [
+            "server:apps/servers/file_host/src/routes/jobs.rs",
+            "server:apps/servers/file_host/src/handlers/jobs.rs"
+          ]
         }
       ],
       "signals": [
         {
-          "says": "A pass that did anything logs its counts (noticed, skipped, forgotten, unsent) at info, and a storage failure at error. A refused send is a warn only, and the record is kept as told (server#1176); nothing reaches Slack yet.",
+          "says": "Home's log counts each pass's notices; a notice Google turned away is noted as a warning and kept as told, and nothing reaches Slack yet.",
           "status": "live",
-          "ref": "server:apps/servers/file_host/src/mailbox.rs",
+          "ref": "server:apps/servers/file_host/src/mailbox.rs"
+        },
+        {
+          "says": "A notice that failed is counted and reaches the owner in Slack.",
+          "status": "planned",
           "tracked": "server#1176"
         }
       ],
@@ -7144,13 +7176,13 @@
     {
       "id": "snips-pickup",
       "name": "Home fetches the snips, pages and walks bundles an essay names",
-      "why": "A cards essay may show a screen of the app, a public page or a walk, captured by a some-ui workflow run whose bundle GitHub keeps one day. After each mailbox pass home fetches, at most one bundle a pass, the bundle a waiting essay names, checks it whole and caches it for the essay's hand-off; a bundle that is gone or refused is marked gone and the essay refused snip-gone (SNIPS2, some-ui#3116; pages some-ui#3395).",
+      "why": "A cards essay may show a screen of the app, a public page or a walk, captured by a some-ui workflow run whose bundle GitHub keeps one day. After each mailbox pass home fetches, at most one bundle a pass, the bundle a waiting essay names, checks it whole and caches it for the essay's hand-off; a bundle that is gone or refused is marked gone, and the essay is refused as showing a screen home can't fetch (SNIPS2, some-ui#3116; pages some-ui#3395).",
       "serves": ["cards-essay-rendered"],
       "witnesses": ["CE1"],
       "segments": [
         {
           "id": "pass",
-          "name": "The pickup pass, run last in each mailbox pass under its own deadline: looks up a bounded set of commits or runs, downloads one bundle, checks it whole, marks gone or to retry. Ours, on home.",
+          "name": "The pickup pass, run last in each mailbox pass under its own deadline: looks up a bounded set of commits or runs, downloads one bundle, checks it whole, marks gone or to retry, and drops a cached bundle no waiting essay names any more. Ours, on home.",
           "owner": "ours",
           "on": "home",
           "paths": [
@@ -7160,14 +7192,14 @@
         },
         {
           "id": "hand-off",
-          "name": "The essay's hand-off copies what the cache holds into <key>.snips/, .pages/ and .walks/. Ours, on home.",
+          "name": "The essay's hand-off copies what the cache holds beside the essay for its render (the cards essay keeper's). Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": ["server:apps/servers/file_host/src/essay_media.rs"]
+          "paths": ["server:apps/servers/file_host/src/essay_media"]
         },
         {
           "id": "internet",
-          "name": "Home reaches GitHub's Actions API over the internet, with a read-only token.",
+          "name": "Home reaches GitHub, with read-only access.",
           "owner": "network",
           "on": "between",
           "paths": []
@@ -7182,9 +7214,13 @@
       ],
       "signals": [
         {
-          "says": "A pass logs what it fetched and marked gone at info, and its failures by kind at warn only; a pass past its deadline is a warn. No metric and nothing reaches Slack yet (server#1177).",
+          "says": "Home's log notes what each pass fetched, dropped and marked gone; a failed fetch or a pass past its deadline is logged as a warning, and a storage failure as an error.",
           "status": "live",
-          "ref": "server:apps/servers/file_host/src/mailbox.rs",
+          "ref": "server:apps/servers/file_host/src/mailbox.rs"
+        },
+        {
+          "says": "A failed fetch is counted and reaches the owner in Slack.",
+          "status": "planned",
           "tracked": "server#1177"
         }
       ],
