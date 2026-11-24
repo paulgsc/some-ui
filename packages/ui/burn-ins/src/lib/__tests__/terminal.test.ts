@@ -2,9 +2,11 @@
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { ITEM, valueProblem } from "@burn-ins/lib/cards"
 import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
+import { SAMPLES, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
 import type { TerminalFrame } from "@burn-ins/lib/terminal"
 import { TYPING } from "@burn-ins/lib/terminal"
 import { describe, expect, it } from "vitest"
+import { z } from "zod"
 
 /** A card's params with the stamp the renderer gives every card. */
 const stamped = (params: object): object => ({
@@ -235,8 +237,10 @@ describe("the terminal card", () => {
 
     it("shows each line at the time v1 gives it, and a comment once its command is typed", () => {
       for (const t of [0, 800, 1500, 2600, 3600, 5000, 60_000])
-        expect(v2(t).rows.map((r) => [r.line, r.y, r.opacity])).toEqual(
-          at(LOGS, t).rows.map((r) => [r.line, r.y, r.opacity])
+        expect(
+          v2(t).rows.map((r) => [r.line, r.y, r.opacity, r.badge])
+        ).toEqual(
+          at(LOGS, t).rows.map((r) => [r.line, r.y, r.opacity, r.badge])
         )
       expect(said(v2(60_000))).toEqual([
         "$ docker logs render",
@@ -309,6 +313,18 @@ describe("the terminal card", () => {
       expect(JSON.stringify(v2(2345))).toBe(
         JSON.stringify(at(structuredClone(LOGS), 2345, "terminal-v2"))
       )
+    })
+
+    it("shows the sample whole, typed, within the preview's length, under both designs", () => {
+      const sample = z
+        .object({ lines: z.array(z.unknown()) })
+        .passthrough()
+        .parse(SAMPLES.terminal)
+      for (const design of ["terminal-v1", "terminal-v2"]) {
+        const end = at(sample, STILL_SAMPLE_MS - 1, design)
+        expect(end.rows, design).toHaveLength(sample.lines.length)
+        expect(end.rows.every((r) => r.cursor === null)).toBe(true)
+      }
     })
 
     it("refuses what v1 refuses", () => {

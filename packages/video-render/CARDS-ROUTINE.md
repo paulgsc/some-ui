@@ -58,8 +58,8 @@ version 5 with its terminal card typed (`terminal-v2`): a line with a prompt
 shows the prompt, then types its command a character at a time behind a
 cursor. A line after a command must give an `atMs` for when it is typed:
 the card is refused otherwise, and the refusal names the earliest time.
-Typing lengthens a card, about three quarters of a second plus a twentieth of a second
-a character, so a scene's words must run past its last line's time and
+Typing lengthens a card, about three quarters of a second plus 45 milliseconds a
+character, so a scene's words must run past its last line's time and
 typing, or the scene ends before it is shown. Pin it for an essay that
 types commands on screen; home draws it once its render image is rebuilt,
 as for version 5. Versions 2

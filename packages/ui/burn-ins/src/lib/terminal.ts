@@ -114,7 +114,7 @@ type LineDrawing = {
   readonly x: number
   readonly y: number
   readonly spans: ReadonlyArray<Span>
-  /** What `terminal-v2` types, the keyword's and text's characters; 0 for a line with no prompt. */
+  /** What `terminal-v2` types, the keyword's and text's characters; 0 for a line with no prompt, and for every line under v1. */
   readonly typed: number
   readonly badge: BadgeState | undefined
   readonly atMs: number

@@ -75,16 +75,18 @@ describe("the renderer's badge timing", () => {
       DESIGNS[c.kind].map((design: string) => ({ ...c, design }))
     )
     let checked = 0
-    let drawn = 0
     for (const { kind, params, design } of cases) {
       const ends = revealEnds(params)
-      // Some samples are drawn for one frame only (the card's for the short),
-      // and a design may refuse another's sample (v2, a line while typing).
+      // Some samples are drawn for one frame only (the card's for the short).
+      // Every design draws every sample (placement.test.ts); only v1's timed
+      // card, whose lines don't wait for typing, is v1's alone.
       const [p] = [LANDSCAPE, PORTRAIT]
         .map((frame) => prepare({ kind, design, params }, frame))
         .filter((r) => r.ok)
-      if (p === undefined) continue
-      drawn += 1
+      if (p === undefined) {
+        if (params === TIMED && design !== DESIGNS.terminal[0]) continue
+        throw new Error(`${kind} (${design}): no frame takes its sample`)
+      }
       // A kind whose badges the renderer can't see must never open one.
       if (ends.size === 0)
         for (let t = 0; t <= 20_000; t += 50)
@@ -102,8 +104,6 @@ describe("the renderer's badge timing", () => {
       }
     }
     expect(checked).toBeGreaterThanOrEqual(15)
-    // Every kind's samples draw under its first design, and the typed card under v2.
-    expect(drawn).toBeGreaterThan(KINDS.length)
     expect(
       prepare(
         { kind: "terminal", design: "terminal-v2", params: TYPED },
