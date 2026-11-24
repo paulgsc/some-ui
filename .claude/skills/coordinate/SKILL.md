@@ -175,14 +175,14 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
 - On the timer, read each worker's `external_metadata.context_usage`. Above about 70%, have
   the worker wind down and hand its work to a fresh session. Hand over yourself at about 80%
   (#2885).
-- **One coordinator per run** (the owner, Nov 24, answering the question in #3439's handover:
-  "yes, file the hook change and add the skill rule"; #3514). A coordinator does a run, or a
-  day, and no more. The next run gets a fresh session, which reads in from the `[ORCH]`
-  record, the epics and the ledger. The old one hands over by the mid-run steps (below,
-  "Winding down"), which hold at a run's end too, then archives. The reason is cost: every turn re-reads the
-  whole context, so a session carried from run to run pays for its past on every message. On
-  Nov 24 the coordinator that had run since Nov 21 sat at 272k tokens, with about $573 of
-  cached re-reads behind it.
+- **One coordinator per run** (the owner, Nov 24, in session_01LDpdUGY8Wmgub3WwMyxgSp,
+  answering whether to add it here: "yes, file the hook change and add the skill rule";
+  #3514). A coordinator does a run, or a day, and no more. The next run gets a fresh session,
+  which reads in from the `[ORCH]` record, the epics and the ledger. The old one hands over by
+  the mid-run steps (below, "Winding down"), which hold at a run's end too, then archives. The
+  reason is cost: every turn re-reads the whole context, so a session carried from run to run
+  pays for its past on every message. On Nov 24 the coordinator that had run since Nov 21 sat
+  at 272k tokens, with about $573 of cached re-reads behind it.
 - Keep each turn's reads small. Fetch only the fields you need (`gh api … --jq`) rather than an
   MCP listing that returns whole bodies and commit messages, and hand bulky reads (a long
   transcript, a large diff, a log) to a subagent that returns only the answer.
