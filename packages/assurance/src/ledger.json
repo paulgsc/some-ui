@@ -301,6 +301,40 @@
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
           "amendments": []
+        },
+        {
+          "id": "MI8",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A file the mailbox refused is handed to it again until it is taken or its tries are spent.",
+          "requirement": "When the mailbox refuses a file home put, home hands it again once the last refusal is an hour old, after every file never answered, until the mailbox takes it or the file has 7 answers; any answer but a refusal is final, and every answer is kept as its own row.",
+          "verdict": "holds",
+          "conclusion": "A refusal is no longer the end of a file: home tries it again an hour later, up to seven answers in all, so a mailbox that refused for a while (eight days in November) catches up once it accepts again.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A refusal younger than the hour is not due; never-answered files come first; after 7 answers the file stays refused with all 7 rows kept; an added after a refusal is final.",
+              "ref": "server:crates/db/mailbox/src/lib.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A pass does not hand a refusal again at 59m59s, does at one hour, and never again once it is taken.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Before server#1192, any answer was final, so the ~30 files a drifted Worker refused from 2026-11-16 to 11-24 were never put again.",
+              "ref": "server#1192"
+            }
+          ],
+          "proof": [
+            "server:crates/db/mailbox/src/lib.rs#a_refused_file_is_handed_again_until_taken_or_its_tries_are_spent",
+            "server:apps/servers/file_host/src/mailbox/pass.rs#a_conflict_is_final_and_a_refusal_is_handed_again_an_hour_on"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
         }
       ]
     },
