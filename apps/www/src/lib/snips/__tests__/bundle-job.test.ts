@@ -97,15 +97,16 @@ describe("the walks never fail the run the snips come in", () => {
     // After the snips' bundle is uploaded, in this order.
     expect(snips.at).toBeLessThan(download.at)
     expect(download.at).toBeLessThan(write.at)
-    expect(write.at).toBeLessThan(warn.at)
-    expect(warn.at).toBeLessThan(upload.at)
+    expect(write.at).toBeLessThan(upload.at)
+    expect(upload.at).toBeLessThan(warn.at)
     for (const s of [download, write, upload]) {
-      expect(s.text).toContain("continue-on-error: true")
+      // The whole line, as a key of the step: not a comment saying it.
+      expect(s.text).toContain("\n        continue-on-error: true\n")
     }
     expect(warn.text).toContain(
-      "if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'\n"
+      "if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure' || steps.walks-upload.outcome == 'failure'\n"
     )
-    expect(warn.text).toContain("::warning")
+    expect(warn.text).toContain('\n        run: echo "::warning ')
     expect(upload.text).toContain("if: steps.walks.outcome == 'success'\n")
   })
 })

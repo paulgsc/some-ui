@@ -227,14 +227,12 @@ jobs:
               jq -r '.walks[] | "- \(.app): \(.walk.snips | length) steps"' walks-bundle/walks.json
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: Say a walks bundle couldn't be made
-        if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'
-        run: echo "::warning title=Walks::this run's walks bundle couldn't be made; its snips stand (the step above says why)"
       # Retention: one day. Home fetches the walks bundle an essay names by
       # this run (#3476), as it fetches a pages bundle: each run its own, so
       # a later capture never supersedes one an essay still names. A bundle
       # home missed is a new dispatch and a cut list naming the new run.
       - name: Upload the walks bundle
+        id: walks-upload
         if: steps.walks.outcome == 'success'
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -243,6 +241,9 @@ jobs:
           path: walks-bundle
           if-no-files-found: ignore
           retention-days: 1
+      - name: Say a walks bundle couldn't be made
+        if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure' || steps.walks-upload.outcome == 'failure'
+        run: echo "::warning title=Walks::this run's walks bundle couldn't be made or kept; its snips stand (the step above says why)"
 
   apk-clip:
     name: The APK faces for the public site
