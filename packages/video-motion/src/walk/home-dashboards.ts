@@ -1,13 +1,14 @@
 /**
  * The server's dashboards for the public site (the owner on #3401,
- * 2026-11-23, which moves C1071 and C1073): two walks on a throwaway Grafana
+ * 2026-11-23, which moves C1071 and C1073): walks on a throwaway Grafana
  * (`./stage-grafana`) that a Site Assets job starts on GitHub, serving the
  * dashboards compiled from paulgsc/server's jsonnet over a throwaway
  * Prometheus that holds one week of sample telemetry
- * (`./dashboard-telemetry`). Each panel is opened alone (`/d-solo/`) at one
- * size, in the dark theme, over that week. The server episode's faces are the
- * first walk's walkthrough (`home-server`), the cores gap's still the second
- * walk's one screen (`home-cores`). Home is never reached, and no number in
+ * (`./dashboard-telemetry`). Each panel or row is drawn at one size, in the
+ * dark theme, over that week. The server episode's faces are the walkthrough
+ * of `home-server` (and its rows, `home-server-rows`), the cores gap's still
+ * `home-cores`'s one screen; the walks an essay shows (`home-call`,
+ * `home-pipelines`, `home-pressure`) carry the sample band. Home is never reached, and no number in
  * them is home's.
  *
  * Which panels: the owner's (#3401: "the server through its Grafana
@@ -359,6 +360,14 @@ export const homePipelines = {
     ),
 }
 
+/** A grouping of the server episode, by its row's title: one copy of each row's names. */
+function groupingOf(row: string): Grouping {
+  const found = SERVER_GROUPINGS.find((g) => g.row === row)
+  if (found === undefined)
+    throw new Error(`no grouping shoots the row "${row}"`)
+  return found
+}
+
 /**
  * The rows an essay reads to ask whether a slow stage is our code or home's
  * box (the CORES essay): the shared stages and who waits on them; WHO
@@ -371,21 +380,13 @@ export const homePipelines = {
 const PRESSURE_ROWS: ReadonlyArray<
   Pick<Grouping, "dashboard" | "row" | "label">
 > = [
-  {
-    dashboard: FILE_HOST,
-    row: "Shared stages: what other work waits on",
-    label: "What other work waits on",
-  },
+  groupingOf("Shared stages: what other work waits on"),
   {
     dashboard: WHO_DUNNIT,
     row: "CPU — who is using it, and who is waiting",
     label: "Who is using the CPU, and who waits",
   },
-  {
-    dashboard: FILE_HOST,
-    row: "Metal — what the services cost the host",
-    label: "What the services cost the host",
-  },
+  groupingOf("Metal — what the services cost the host"),
 ]
 
 /** Whether a slow stage is our code or the box: its rows, a row a screen, for an essay. */
