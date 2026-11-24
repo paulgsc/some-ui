@@ -280,8 +280,17 @@ page is live and a capture is never made again the same.
    #3395.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
-  stub answers few routes (`compat/stub-routes.json`), so many screens are
-  their empty state. Richer sample fixtures for the stub are a follow-up.
+  stub answers few routes (`compat/stub-routes.json`); the capture lays the
+  snips' sample over them (`apps/mobile/snips/sample-routes.json`, #3476), a
+  Monday at `FROZEN_AT`: Renders expecting the Rust Rounds essay today and
+  the call on Friday, with an older cards essay held for a take; Takes and
+  Needs your attention with last week's takes; and Rust Rounds' week that
+  ended and week that opened. Its test reads each answer as the phone does
+  (`apps/www/src/lib/snips/__tests__/stub-sample.test.ts`), through the one
+  stand-in home the walks' test reads too. A screen the sample doesn't
+  answer for shows what `{}` or an empty list gives it, an empty state or
+  a read it couldn't make sense of; a screen an essay needs gets its answer
+  here.
 
 ## How walks reach home (#3476)
 
@@ -321,7 +330,7 @@ walks}]}`, only the walks the essay names) and each picture at
    made. `record:cards --walks <dir>` checks every picture by its sum, and
    `resolveScreens` plays the steps in the screen-zoom composition: the
    screen held whole above the captions, each step's picture in turn on the
-   walk's timeline stretched to the scene, and a ring on each tap.
+   walk's timeline stretched or pressed to the scene, at most twice its own speed, and a ring on each tap.
 
    **When a bundle can't be had:** `walk-gone` (the run isn't a successful
    Snips Capture run, its bundle expired or was refused, or a named app or
