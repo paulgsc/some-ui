@@ -9,12 +9,26 @@ describe("shuffledBySeed", () => {
     expect(items).toEqual(Array.from({ length: 22 }, (_, i) => i))
   })
 
-  it("gives the same order for the same seed, a zero seed included", () => {
-    for (const seed of [0, 1, 7, 2 ** 32 - 1])
-      expect(shuffledBySeed(["a", "b", "c", "d"], seed)).toEqual(
-        shuffledBySeed(["a", "b", "c", "d"], seed)
-      )
-    expect(shuffledBySeed(["a", "b", "c"], 0)).toHaveLength(3)
+  it("gives the same order for the same seed, and another for another", () => {
+    const items = Array.from({ length: 10 }, (_, i) => i)
+    expect(shuffledBySeed(items, 7)).toEqual(shuffledBySeed(items, 7))
+    expect(shuffledBySeed(items, 7)).not.toEqual(shuffledBySeed(items, 8))
+  })
+
+  it("shuffles from a zero seed too, never stuck at zero", () => {
+    const items = Array.from({ length: 10 }, (_, i) => i)
+    // A generator stuck at zero swaps every place with the first.
+    const stuck = [...items]
+    for (let i = stuck.length - 1; i > 0; i -= 1) {
+      const first = stuck[0]
+      const here = stuck[i]
+      if (first === undefined || here === undefined) continue
+      stuck[0] = here
+      stuck[i] = first
+    }
+    const order = shuffledBySeed(items, 0)
+    expect(order).not.toEqual(items)
+    expect(order).not.toEqual(stuck)
   })
 
   it("draws every order of three about equally often across seeds", () => {
@@ -26,8 +40,8 @@ describe("shuffledBySeed", () => {
     }
     expect(counts.size).toBe(6)
     for (const count of counts.values()) {
-      expect(count).toBeGreaterThan(850)
-      expect(count).toBeLessThan(1150)
+      expect(count).toBeGreaterThan(900)
+      expect(count).toBeLessThan(1100)
     }
   })
 })
