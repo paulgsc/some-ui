@@ -28,7 +28,7 @@ import type { Page, Request } from "playwright-core"
 import { chromium } from "playwright-core"
 
 import { heldStill } from "./held-still"
-import type { Stage } from "./run"
+import type { Stage, WalkViewport } from "./run"
 import { settlePage } from "./stage-sandbox"
 
 /** How long a panel may take to fetch and draw its data. */
@@ -321,6 +321,14 @@ export async function openGrafanaStage(
     /** Where the next screen is taken: a row's box, or the whole screen. */
     let shot: Box | undefined
 
+    /**
+     * The tallest picture taken so far, its walk's screen (#3499): a row
+     * is shot to its own box, and the composition draws each picture as
+     * wide as the screen from its top, so a screen taller than every
+     * picture would only shrink them.
+     */
+    let tallest = 0
+
     /** A panel's query answered since the page navigated, then the page still. */
     const drawn = async (): Promise<void> => {
       // A failed step's screen is the whole page, not the last row's box.
@@ -409,7 +417,13 @@ export async function openGrafanaStage(
     return {
       page,
       version: spec.version,
-      viewport: { ...spec.viewport, scale: 1 },
+      get viewport(): WalkViewport {
+        return {
+          width: spec.viewport.width,
+          height: tallest > 0 ? tallest : spec.viewport.height,
+          scale: 1,
+        }
+      },
       origin,
       place: (x, y) => ({ x, y }),
       open: async (init): Promise<void> => {
@@ -424,6 +438,10 @@ export async function openGrafanaStage(
       },
       settle: drawn,
       shoot: async (path, moving): Promise<void> => {
+        tallest = Math.max(
+          tallest,
+          shot === undefined ? spec.viewport.height : Math.ceil(shot.height)
+        )
         const take = (): Promise<Buffer> =>
           page.screenshot({
             animations: "disabled",

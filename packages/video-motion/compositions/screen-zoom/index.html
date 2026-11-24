@@ -68,12 +68,19 @@
         top: 0;
         transform-origin: 0 0;
       }
+      /* Each picture as wide as the screen, from its top, never stretched:
+         a walk's frame may be shorter than its screen, as a dashboard row
+         is (#3499); one of the screen's shape fills it as before. */
       #camera img {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
         height: 100%;
+        object-fit: contain;
+        object-position: top;
+        /* Below a shorter picture, the ground: never the step before. */
+        background: var(--ground);
         box-shadow: 0 0 0 1px color-mix(in srgb, white 12%, transparent);
       }
       .ring {
