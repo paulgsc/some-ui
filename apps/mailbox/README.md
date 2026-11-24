@@ -279,7 +279,7 @@ check takes it>}`: the file itself has no `schema` key, so it travels wrapped. *
 session, as home holds it>]}`: the events in their home form (paulgsc/server
   `docs/identity.md` invariant 18), so no spoken answer's ticks, nothing said or typed, and no
   audio. **A transcript** is `{"schema":"some-ui.voice-transcript/1","note","of","ref","at",
-"text","language","model","heardAt","words"}`: the note's phone id (the id in its exported file name,
+"text","language","model","heardAt","words","verdict"}`: the note's phone id (the id in its exported file name,
   `<base>_voice-<at>-<id>`, in a Jobs voice entry, and in a drama prompt's `notes` line), what
   it belongs to (`of` is `reflection` with `ref` its session, `jobs` with the pick or scout, `scene` with the drama prompt's
   stamp, `studio` with a Studio take's `<project>:<shot>:<take>`, or an idea answer's `idea:<idea>:<question>`, or `rust-round` with a Rust Rounds card's `<round>:<card>`, or `<round>:<card>:<note>` on a refine card, naming the earlier note, or `interview` with an interview week's `<week>:<question>`, or `<week>:read:<card>` for a teleprompter read), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
@@ -288,7 +288,18 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   how sure the model was of it, 0 to 1, and the language it was heard in (Whisper's code).
   `p` and `language` are left out where home has none for the word; a word's text has no
   length cap, since Whisper's word runs to the next space. `words` may be absent (a transcript
-  filed before it was carried), holds at most 12,000 words, and takes no other key per word. Unlike the other folders, the Worker holds this
+  filed before it was carried), holds at most 12,000 words, and takes no other key per word. `verdict`
+  is what home made of the transcript (HEARD1, paulgsc/server#908), as
+  `voice_repo::verdict::Verdict` serialises it: `{"kind","reasons","rule","signals"}`, `kind` one
+  of `heard`, `garbled`, `nothing_said` or `failed`, `reasons` short words (`low_confidence`,
+  `deadline`), `rule` the thresholds' name (`heard-1`), and `signals` `null` or the eleven
+  numbers and languages it was judged on, each number `null` where home kept none and the
+  detected language `""` where it kept none. Every key is required and no other is taken.
+  `verdict` is `null` for a transcript kept before verdicts were, and may be absent. A take home
+  found silent (`nothing_said`) or never heard (`failed`) is filed with `text` `""`, `language`
+  `null` and `words` empty, so the week's routine stops waiting for it; any other transcript
+  needs text and a language. `src/__tests__/fixtures/home-mailbox-bodies.snapshot.json` holds
+  one body of each shape home's mailbox pass puts, and every one must be taken (MB7). Unlike the other folders, the Worker holds this
   shape itself, because the one thing a transcript must never be is audio: a body with any
   other key is `422`, a name that does not carry the body's `note` is `422`, and so is a body
   that carries audio or names a Drive file, with the reason (`a transcript carries no audio` or
@@ -430,10 +441,12 @@ transcript`, and one that names Drive with `a note names no Drive file`. A name 
   carry the body's `note` is `422`, and so is a body whose text as sent carries a `data:` URI, a
   Drive link or a run of 256 or more base64 characters, by the transcript's tests.
 - **A take ready for pickup** is
-  `{"schema":"some-ui.take-pickup/1","note","ref","heard","labels","readyAt","seq"}`
+  `{"schema":"some-ui.take-pickup/1","note","ref","heard","verdict","labels","readyAt","seq"}`
   (CONVEYOR3, #2875): the take's id (as its transcript's `note`), the shot it belongs to (as its
   transcript's `ref`, `<project>:<shot>:<take>`), what home heard in it (its newest transcript's
-  text when home first files the pickup, so home files one only once it has heard the take), its labels as home keeps them
+  text when home first files the pickup, so home files one only once it has heard the take),
+  what home made of that hearing (`verdict`, as a transcript's, `null` for one heard before
+  verdicts were), its labels as home keeps them
   from that move on (at most 8, each 1 to 32 printable characters with no space at either end,
   `[]` when it has none, never `null`), when it was moved to ready for pickup (the move's `at`, an instant) and that
   move's number on home (`seq`, from 1). A name holds one body for good, so home keeps the

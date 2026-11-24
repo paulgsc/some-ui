@@ -1,0 +1,197 @@
+[
+  {
+    "id": "heard",
+    "folder": "transcript",
+    "name": "transcript-note-311-1.json",
+    "body": {
+      "schema": "some-ui.voice-transcript/1",
+      "of": "rust-round",
+      "ref": "2026-w47:QM-311",
+      "at": "2026-11-21T20:24:02.000Z",
+      "model": "ggml-small.en",
+      "heardAt": "2026-11-21T20:25:10.000Z",
+      "note": "note-311",
+      "text": "The borrow ends before the push.",
+      "language": "en",
+      "words": [
+        {
+          "text": "The",
+          "startMs": 0,
+          "endMs": 180,
+          "p": 0.98,
+          "language": "en"
+        },
+        {
+          "text": "borrow",
+          "startMs": 180,
+          "endMs": 520,
+          "p": 0.91
+        }
+      ],
+      "verdict": {
+        "kind": "heard",
+        "reasons": [],
+        "rule": "heard-1",
+        "signals": {
+          "avgLogprob": -0.3,
+          "compressionRatio": 1.4,
+          "noSpeechProb": 0.01,
+          "unsureShare": 0.0,
+          "language": "en",
+          "languageP": 0.97,
+          "expectedLanguage": "en",
+          "wordsPerSecond": 2.2,
+          "speechMs": 23000,
+          "peakDbfs": -6.0,
+          "rmsDbfs": -28.0
+        }
+      }
+    }
+  },
+  {
+    "id": "garbled",
+    "folder": "transcript",
+    "name": "transcript-note-312-2.json",
+    "body": {
+      "schema": "some-ui.voice-transcript/1",
+      "of": "rust-round",
+      "ref": "2026-w47:QM-312",
+      "at": "2026-11-21T20:24:02.000Z",
+      "model": "ggml-small.en",
+      "heardAt": "2026-11-21T20:25:10.000Z",
+      "note": "note-312",
+      "text": "Obrigado pela atenção.",
+      "language": "en",
+      "words": [],
+      "verdict": {
+        "kind": "garbled",
+        "reasons": ["low_confidence", "off_language"],
+        "rule": "heard-1",
+        "signals": {
+          "avgLogprob": -0.3,
+          "compressionRatio": 1.4,
+          "noSpeechProb": 0.01,
+          "unsureShare": 0.0,
+          "language": "",
+          "languageP": null,
+          "expectedLanguage": "en",
+          "wordsPerSecond": 2.2,
+          "speechMs": 23000,
+          "peakDbfs": null,
+          "rmsDbfs": -28.0
+        }
+      }
+    }
+  },
+  {
+    "id": "nothing-said",
+    "folder": "transcript",
+    "name": "transcript-note-313-1.json",
+    "body": {
+      "schema": "some-ui.voice-transcript/1",
+      "of": "interview",
+      "ref": "2026-w47:q2",
+      "at": "2026-11-21T20:24:02.000Z",
+      "model": "ggml-small.en",
+      "heardAt": "2026-11-21T20:25:10.000Z",
+      "note": "note-313",
+      "text": "",
+      "language": null,
+      "words": [],
+      "verdict": {
+        "kind": "nothing_said",
+        "reasons": [],
+        "rule": "heard-1",
+        "signals": null
+      }
+    }
+  },
+  {
+    "id": "failed",
+    "folder": "transcript",
+    "name": "transcript-note-314-1.json",
+    "body": {
+      "schema": "some-ui.voice-transcript/1",
+      "of": "rust-round",
+      "ref": "2026-w47:QM-311",
+      "at": "2026-11-21T20:24:02.000Z",
+      "model": "ggml-small.en",
+      "heardAt": "2026-11-21T20:25:10.000Z",
+      "note": "note-314",
+      "text": "",
+      "language": null,
+      "words": [],
+      "verdict": {
+        "kind": "failed",
+        "reasons": ["deadline"],
+        "rule": "heard-1",
+        "signals": null
+      }
+    }
+  },
+  {
+    "id": "before-verdicts",
+    "folder": "transcript",
+    "name": "transcript-k3v9qa-1.json",
+    "body": {
+      "schema": "some-ui.voice-transcript/1",
+      "of": "reflection",
+      "ref": "session-7f2a",
+      "at": "2026-11-21T20:24:02.000Z",
+      "model": "ggml-small.en",
+      "heardAt": "2026-11-21T20:25:10.000Z",
+      "note": "k3v9qa",
+      "text": "오늘은 the second scene felt slow.",
+      "language": "ko",
+      "words": [],
+      "verdict": null
+    }
+  },
+  {
+    "id": "pickup",
+    "folder": "pickup",
+    "name": "pickup-take-1-3.json",
+    "body": {
+      "schema": "some-ui.take-pickup/1",
+      "note": "take-1",
+      "ref": "essay:s2:1",
+      "heard": "Here is the second shot.",
+      "verdict": {
+        "kind": "heard",
+        "reasons": [],
+        "rule": "heard-1",
+        "signals": {
+          "avgLogprob": -0.3,
+          "compressionRatio": 1.4,
+          "noSpeechProb": 0.01,
+          "unsureShare": 0.0,
+          "language": "en",
+          "languageP": 0.97,
+          "expectedLanguage": null,
+          "wordsPerSecond": 2.2,
+          "speechMs": 23000,
+          "peakDbfs": -6.0,
+          "rmsDbfs": -28.0
+        }
+      },
+      "labels": [],
+      "readyAt": "2026-11-21T21:00:00.000Z",
+      "seq": 3
+    }
+  },
+  {
+    "id": "pickup-before-verdicts",
+    "folder": "pickup",
+    "name": "pickup-take-2-1.json",
+    "body": {
+      "schema": "some-ui.take-pickup/1",
+      "note": "take-2",
+      "ref": "essay:s3:2",
+      "heard": "And the third.",
+      "verdict": null,
+      "labels": ["keep"],
+      "readyAt": "2026-11-21T21:05:00.000Z",
+      "seq": 1
+    }
+  }
+]
