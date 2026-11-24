@@ -22,11 +22,11 @@ function sources(dir: string): Array<string> {
 }
 
 describe("a reading line (#3491)", () => {
-  it("is a status marked busy, in the caller's words", () => {
+  it("is a line of the screen marked busy, in the caller's words, not a status message (HS3)", () => {
     render(<Reading>Asking home…</Reading>)
-    const line = screen.getByRole("status")
-    expect(line.textContent).toBe("Asking home…")
+    const line = screen.getByText("Asking home…")
     expect(line.getAttribute("aria-busy")).toBe("true")
+    expect(line.getAttribute("role")).toBeNull()
   })
 
   it("is every screen's reading line: none is drawn as a bare paragraph", () => {

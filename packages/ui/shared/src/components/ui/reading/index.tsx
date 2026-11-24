@@ -4,9 +4,11 @@ import { cn } from "../../../lib/utils"
 
 /**
  * What stands in for something read from elsewhere while it reads (home,
- * GitHub, the phone's own store): a quiet line, marked busy, so a screen
- * reader hears the region is still loading and Snips Capture waits for it
- * before taking the screen's picture (#3491). The words are the caller's.
+ * GitHub, the phone's own store): a quiet line of the screen's own, marked
+ * busy, so a screen reader knows the region is still loading and Snips
+ * Capture waits for it before taking the screen's picture (#3491). Not a
+ * status message: what was just done goes on the notice plane (HS3). The
+ * words are the caller's.
  */
 const Reading = ({
   className,
@@ -16,7 +18,6 @@ const Reading = ({
   readonly children: ReactNode
 }): React.JSX.Element => (
   <p
-    role="status"
     aria-busy="true"
     className={cn("text-muted-foreground text-sm", className)}
   >

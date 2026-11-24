@@ -14,7 +14,7 @@ import { settle } from "./capture"
 /** A screen whose reading line (`Reading`, `@some-ui/shared`) goes after `ms`, or never. */
 const screenReading = (ms: number | null): string => `
   <main>
-    <p role="status" aria-busy="true" id="reading">Asking home…</p>
+    <p aria-busy="true" id="reading">Asking home…</p>
     ${
       ms === null
         ? ""
