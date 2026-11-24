@@ -115,15 +115,18 @@ describe("Rust Rounds' walk (#3476)", () => {
       target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=1',
     })
     // The sample with its first fork's options given `recommended` in turn.
-    const recommending = (flags: ReadonlyArray<boolean>): unknown => {
+    // `undefined` leaves the option saying nothing of it.
+    const recommending = (
+      flags: ReadonlyArray<boolean | undefined>
+    ): unknown => {
       const copy = SampleRoutes.parse(structuredClone(sample))
       const route = copy.routes[WEEK_ROUTE]!
       const body = WeekBody.parse(route.body)
       const fork = body.week.tickets[0]!.forks[0]!
-      fork.options = flags.map((recommended, i) => ({
-        ...fork.options[i],
-        recommended,
-      }))
+      fork.options = flags.map((recommended, i) => {
+        const { recommended: _said, ...option } = fork.options[i] ?? {}
+        return recommended === undefined ? option : { ...option, recommended }
+      })
       copy.routes[WEEK_ROUTE] = { ...route, body }
       return copy
     }
@@ -131,9 +134,15 @@ describe("Rust Rounds' walk (#3476)", () => {
       kind: "tap",
       target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=0',
     })
-    expect(
-      rustRounds.sample.safeParse(recommending([true, true, true])).success
-    ).toBe(false)
+    const refused = (value: unknown): ReadonlyArray<string> => {
+      const read = rustRounds.sample.safeParse(value)
+      return read.success ? [] : read.error.issues.map((i) => i.message)
+    }
+    expect(refused(recommending([true, true, true]))).toEqual([
+      "TB-101's first fork has no option but the recommended",
+    ])
+    // An option that says nothing of it never passes for "not recommended".
+    expect(refused(recommending([true, undefined, false]))).not.toEqual([])
   })
 
   it("looks only for words the week's screens say", () => {
