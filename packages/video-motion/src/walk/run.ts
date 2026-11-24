@@ -17,13 +17,13 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { assertNever } from "@some-ui/core-utils"
+import type { WalkFile } from "@some-ui/video-render"
 import type { Page } from "playwright-core"
-import { z } from "zod"
 
 import type { Microphone } from "./microphone"
 import { microphoneScript } from "./microphone"
 import type { ApkStageSpec } from "./stage-apk"
-import { openApkStage } from "./stage-apk"
+import { openApkStage, WebViewNotLaidOut } from "./stage-apk"
 import type { GrafanaStageSpec } from "./stage-grafana"
 import { openGrafanaStage } from "./stage-grafana"
 import type { SandboxStageSpec } from "./stage-sandbox"
@@ -96,36 +96,9 @@ export type Stage = {
   readonly close: () => Promise<void>
 }
 
-/** What a walk leaves beside its snips, as `walk.json` (`some-ui.walk/1`). */
-export const WalkFileSchema = z.strictObject({
-  schema: z.literal("some-ui.walk/1"),
-  app: z.string().min(1),
-  version: z.string().min(1),
-  viewport: z.strictObject({
-    width: z.number().positive(),
-    height: z.number().positive(),
-    scale: z.number().positive(),
-  }),
-  /** Each step's screen, from `atMs` until the next one starts. */
-  snips: z.array(
-    z.strictObject({
-      file: z.string().regex(/^snips\/\d+\.png$/),
-      label: z.string(),
-      atMs: z.number().min(0),
-    })
-  ),
-  /** Each tap: when, and where in the snip before it, in the viewport's units. */
-  taps: z.array(
-    z.strictObject({
-      label: z.string(),
-      atMs: z.number(),
-      x: z.number(),
-      y: z.number(),
-    })
-  ),
-  lengthMs: z.number().min(0),
-})
-export type WalkFile = z.infer<typeof WalkFileSchema>
+/** What a walk leaves beside its snips, as `walk.json`: `@some-ui/video-render`'s, which a cards essay plays too. */
+export { WalkFileSchema } from "@some-ui/video-render"
+export type { WalkFile } from "@some-ui/video-render"
 
 /** How long before a step's screen its tap lands, so the ring is seen first. */
 const TAP_LEAD_MS = 400
@@ -273,7 +246,16 @@ export async function runWalk(
   const refused = stepProblems(walk.steps)
   if (refused.length > 0) throw new Error(refused.join("; "))
   await mkdir(join(out, "snips"), { recursive: true })
-  const stage = await openStage(walk.stage, chrome)
+  const stage = await openStage(walk.stage, chrome).catch(
+    async (e: unknown): Promise<never> => {
+      // The screen as the stage last saw it (WALK9, #3489), the failure's
+      // evidence: no page is open yet to leave failed.png from.
+      if (e instanceof WebViewNotLaidOut) {
+        await writeFile(join(out, "failed-ui.xml"), e.dump)
+      }
+      throw e
+    }
+  )
   try {
     // The first step's page: a failure opening it is that step's too.
     const first = walk.steps[0]?.label ?? walk.app

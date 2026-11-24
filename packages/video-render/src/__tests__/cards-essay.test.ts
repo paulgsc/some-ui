@@ -24,7 +24,7 @@ import { showcase } from "./showcase"
 
 /** Cheat-sheet's versions, from the silent first on. */
 const CHEAT_SHEET = await Promise.all(
-  [1, 2, 3, 4, 5, 6].map((v) =>
+  [1, 2, 3, 4, 5, 6, 7].map((v) =>
     readSeries(join(import.meta.dirname, "../sample/series/cheat-sheet"), v)
   )
 )
@@ -113,7 +113,7 @@ describe("a cards essay", () => {
       "plays cues",
       "background is an image",
       "captions",
-      "only a walkthrough plays",
+      "an essay plays a walk as a screen scene",
     ])
       expect(problems).toContain(reason)
   })
@@ -214,6 +214,20 @@ describe("the essays being published (#3476)", () => {
         (what) =>
           `${RUST}.json: cheat-sheet v4: it lacks ${what}${what === "a music bed" ? "" : " carrying the brand"}, which every video in cheat-sheet carries (bookends.ts); pin the newest version that does`
       )
+    )
+  })
+
+  it("pin v7, typed commands, keeping v6's bookends", async () => {
+    const files = await folder()
+    files.set(`${NIXOS}.json`, await at(7))
+    files.set(`${RUST}.json`, await at(7))
+    expect(cardsPublishProblems(files, seriesOf)).toEqual([])
+    const v7 = held("cheat-sheet", 7)
+    const v6 = held("cheat-sheet", 6)
+    expect(v7?.designs.terminal).toBe("terminal-v2")
+    expect(v7 && { ...v7, version: 6, designs: v6?.designs }).toEqual(v6)
+    expect({ ...v7?.designs, terminal: v6?.designs.terminal }).toEqual(
+      v6?.designs
     )
   })
 

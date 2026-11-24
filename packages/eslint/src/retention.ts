@@ -115,7 +115,8 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     ttlDays: 1,
   },
   // The APK's walks (WALK1, apps/mobile/walk), after the snips in the same
-  // job: read by a person right after the run; nothing kept.
+  // job: read by this run's bundle and apk-clip jobs and by a person right
+  // after the run; nothing kept across runs.
   {
     kind: "artifact",
     name: "walks-${{ github.run_id }}",
@@ -129,6 +130,16 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
   {
     kind: "artifact",
     name: "snips-bundle-${{ github.sha }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 1,
+  },
+  // The APK's walks as a bundle (#3476, docs/snips.md "How walks reach
+  // home"): what home fetches for the essay that names the run. Each run is
+  // its own lineage, as a pages bundle is, so each lives out its day.
+  {
+    kind: "artifact",
+    name: "walks-bundle-${{ github.run_id }}",
     workflows: ["Snips Capture"],
     keep: 1,
     ttlDays: 1,

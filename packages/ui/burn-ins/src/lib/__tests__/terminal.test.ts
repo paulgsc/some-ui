@@ -2,8 +2,11 @@
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { ITEM, valueProblem } from "@burn-ins/lib/cards"
 import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
+import { SAMPLES, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
 import type { TerminalFrame } from "@burn-ins/lib/terminal"
+import { TYPING } from "@burn-ins/lib/terminal"
 import { describe, expect, it } from "vitest"
+import { z } from "zod"
 
 /** A card's params with the stamp the renderer gives every card. */
 const stamped = (params: object): object => ({
@@ -13,15 +16,17 @@ const stamped = (params: object): object => ({
 
 const terminal = (
   params: object,
-  frame: FrameSize = LANDSCAPE
+  frame: FrameSize = LANDSCAPE,
+  design = "terminal-v1"
 ): ReturnType<typeof prepare> =>
-  prepare(
-    { kind: "terminal", design: "terminal-v1", params: stamped(params) },
-    frame
-  )
+  prepare({ kind: "terminal", design, params: stamped(params) }, frame)
 
-const at = (params: object, t: number): TerminalFrame => {
-  const p = terminal(params)
+const at = (
+  params: object,
+  t: number,
+  design = "terminal-v1"
+): TerminalFrame => {
+  const p = terminal(params, LANDSCAPE, design)
   if (!p.ok) throw new Error(p.problems.join("; "))
   const f = frameAt(p.value, t)
   if (f.kind !== "terminal") throw new Error(f.kind)
@@ -188,5 +193,152 @@ describe("the terminal card", () => {
     expect(crowded.ok ? [] : crowded.problems).toEqual([
       "the terminal burn-in (terminal-v1): 8 lines don't fit the window",
     ])
+  })
+
+  describe("terminal-v2, which types its commands (#3476)", () => {
+    const lead = ITEM.leadMs + TYPING.leadMs
+    /** When a command of `n` characters, appearing at `at`, lets the next line come. */
+    const free = (at: number, n: number): number =>
+      at + TYPING.leadMs + n * TYPING.charMs + TYPING.afterMs
+    /** The diagnosis essay's first look: a command, what it prints, then the next. */
+    const LOGS = {
+      kicker: "TERMINAL · ON HOME",
+      title: "What the render worker said",
+      bar: "home",
+      lines: [
+        { prompt: "$", keyword: "docker logs", text: " render", badge: "main" },
+        {
+          text: "render: waits for room on home",
+          badge: "you",
+          atMs: free(ITEM.leadMs, 18),
+        },
+        {
+          prompt: "$",
+          keyword: "ls",
+          text: " /essays",
+          comment: "  # given?",
+          atMs: free(ITEM.leadMs, 18) + ITEM.gapMs,
+        },
+      ],
+    }
+    const v2 = (t: number): TerminalFrame => at(LOGS, t, "terminal-v2")
+    const said = (f: TerminalFrame): ReadonlyArray<string> =>
+      f.rows.map((r) => r.spans.map((s) => s.text).join(""))
+
+    it("shows the prompt first, then types the command a character at a time behind a cursor", () => {
+      expect(said(v2(ITEM.leadMs))).toEqual(["$ "])
+      expect(said(v2(lead))).toEqual(["$ d"])
+      expect(said(v2(lead + 5 * TYPING.charMs))).toEqual(["$ docker"])
+      expect(v2(lead + 5 * TYPING.charMs).rows[0]?.cursor).not.toBeNull()
+      const typed = lead + 18 * TYPING.charMs
+      expect(said(v2(typed))).toEqual(["$ docker logs render"])
+      expect(v2(typed).rows[0]?.cursor).toBeNull()
+    })
+
+    it("shows each line at the time v1 gives it, and a comment once its command is typed", () => {
+      for (const t of [0, 800, 1500, 2600, 3600, 5000, 60_000])
+        expect(
+          v2(t).rows.map((r) => [r.line, r.y, r.opacity, r.badge])
+        ).toEqual(
+          at(LOGS, t).rows.map((r) => [r.line, r.y, r.opacity, r.badge])
+        )
+      expect(said(v2(60_000))).toEqual([
+        "$ docker logs render",
+        "render: waits for room on home",
+        "$ ls /essays  # given?",
+      ])
+      expect(v2(60_000).rows.every((r) => r.cursor === null)).toBe(true)
+    })
+
+    it("refuses a line that would appear while a command is still typing, naming when it may", () => {
+      const early = terminal(
+        {
+          title: "Too soon",
+          lines: [
+            { prompt: "$", keyword: "docker logs", text: " render" },
+            { text: "render: waits for room on home" },
+          ],
+        },
+        LANDSCAPE,
+        "terminal-v2"
+      )
+      expect(early.ok ? [] : early.problems).toEqual([
+        `the terminal burn-in (terminal-v2): line 2 appears while line 1 is still typing: give it an atMs of ${free(ITEM.leadMs, 18)} or later`,
+      ])
+      // v1 draws the same card.
+      expect(
+        terminal(
+          {
+            title: "Too soon",
+            lines: [
+              { prompt: "$", keyword: "docker logs", text: " render" },
+              { text: "render: waits for room on home" },
+            ],
+          },
+          LANDSCAPE
+        ).ok
+      ).toBe(true)
+    })
+
+    it("types nothing on a card with no prompt, which draws as v1 draws it", () => {
+      const plain = {
+        ...WHERE_VALUES_LIVE,
+        lines: WHERE_VALUES_LIVE.lines.filter((l) => !("prompt" in l)),
+      }
+      for (const t of [0, 900, 2000, 3500, 60_000])
+        expect(at(plain, t, "terminal-v2")).toEqual(at(plain, t, "terminal-v1"))
+    })
+
+    it("draws the same frame for the same card at the same moment, pinned", () => {
+      const f = v2(lead + 5 * TYPING.charMs)
+      expect(f.rows).toEqual([
+        {
+          line: 0,
+          x: f.rows[0]?.x,
+          y: f.rows[0]?.y,
+          spans: [
+            { text: "$ ", colour: expect.any(String), part: "prompt" },
+            { text: "docker", colour: expect.any(String), part: "keyword" },
+          ],
+          opacity: 1,
+          badge: expect.anything(),
+          cursor: {
+            x: (f.rows[0]?.x ?? 0) + 8 * 28 * 0.6,
+            y: expect.any(Number),
+            width: 28 * 0.6,
+            height: 28 * 1.15,
+          },
+        },
+      ])
+      expect(JSON.stringify(v2(2345))).toBe(
+        JSON.stringify(at(structuredClone(LOGS), 2345, "terminal-v2"))
+      )
+    })
+
+    it("shows the sample whole, typed, within the preview's length, under both designs", () => {
+      const sample = z
+        .object({ lines: z.array(z.unknown()) })
+        .passthrough()
+        .parse(SAMPLES.terminal)
+      for (const design of ["terminal-v1", "terminal-v2"]) {
+        const end = at(sample, STILL_SAMPLE_MS - 1, design)
+        expect(end.rows, design).toHaveLength(sample.lines.length)
+        expect(end.rows.every((r) => r.cursor === null)).toBe(true)
+      }
+    })
+
+    it("refuses what v1 refuses", () => {
+      const p = terminal(
+        {
+          title: "Too wide",
+          lines: [{ prompt: "$", keyword: "x".repeat(200) }],
+        },
+        LANDSCAPE,
+        "terminal-v2"
+      )
+      expect(p.ok ? [] : p.problems).toEqual([
+        "the terminal burn-in (terminal-v2): line 1 doesn't fit the window",
+      ])
+    })
   })
 })

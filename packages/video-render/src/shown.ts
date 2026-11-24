@@ -14,9 +14,9 @@
  * screen). The phrases and sources are policy, moved with the story.
  *
  * What "shows" means: a scene in the same chapter whose picture is a
- * `screen` from a source that is ours (`OURS`): a snip of the app or a
- * Clips Library frame. A card, a public page and a spoken card's stage are
- * not.
+ * `screen` from a source that is ours (`OURS`): a snip of the app, a
+ * Clips Library frame or a walk through the app (`./walk`). A card, a
+ * public page and a spoken card's stage are not.
  */
 
 import type { CutList, Picture, Shot } from "./cut-list"
@@ -61,7 +61,7 @@ const SURFACE_SOURCES: ReadonlyArray<Source> = [
 
 /** The screens that show each kind of surface: ours, never a public page. */
 const OURS: Readonly<Record<SurfaceKind, ReadonlyArray<string>>> = {
-  app: ["snips", "clips"],
+  app: ["snips", "clips", "walks"],
 }
 
 /** Which kinds of surface a scene's own words and sources speak of. */
