@@ -16,11 +16,13 @@ import { PREVIEW_WORDS } from "@/lib/template-preview/words"
 
 import type {
   Board,
+  Coming,
   HeldBy,
   Now,
   Refusal,
   RenderEpisode,
   RenderFailed,
+  WaitsOn,
 } from "./model"
 import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
@@ -492,6 +494,52 @@ export function liveLine(board: Board): string {
   }
 }
 
+/**
+ * What an owed video waits on (#3478, #3480), by home's word for it. A take
+ * home couldn't hear is the owner's to look at: its line is followed by the
+ * way to Needs your attention (`COMING_ATTENTION`).
+ */
+const WAITS_WORDS = {
+  "essay-refused":
+    "Home refused the essay before making it, and sent you an alert saying where the reason is.",
+  "essay-waiting":
+    "The essay came, and waits for a take it plays to reach home.",
+  "not-final": "It waits for home to make the week's record final.",
+  "take-unheard": "It waits on a take home couldn't hear.",
+  "take-hearing": "It waits for home to hear a take.",
+  "not-written":
+    "Nothing was written for it: the Monday routine didn't write the essay.",
+  "week-missing":
+    "The week hasn't reached home: the weekly routine wrote none, or home hasn't read it yet.",
+} as const satisfies Record<WaitsOn, string>
+
+/** The way from a row that waits on an unheard take to where it is heard. */
+export const COMING_ATTENTION = "See Needs your attention."
+
+export type ComingLines = {
+  /** The feed's name, then when it was or is expected. */
+  readonly line: string
+  /** What it waits on, where home says. */
+  readonly waits: string | null
+  /** Whether the row leads to Needs your attention. */
+  readonly toAttention: boolean
+}
+
+/**
+ * A row under Coming: when it is expected, or that it is late (#3478), and
+ * what it waits on, said whenever home says it, on its own day too.
+ */
+export function comingLines(coming: Coming): ComingLines {
+  const when = coming.overdue
+    ? `Was expected ${dayOf(coming.on)}. Not here yet.`
+    : `Expected ${dayOf(coming.on)}.`
+  return {
+    line: `${feedName(coming.feed)}. ${when}`,
+    waits: coming.waitsOn === undefined ? null : WAITS_WORDS[coming.waitsOn],
+    toAttention: coming.waitsOn === "take-unheard",
+  }
+}
+
 export const RENDERS_WORDS = {
   heading: "Renders",
   intro:
@@ -503,7 +551,6 @@ export const RENDERS_WORDS = {
   failed: "Couldn't finish",
   done: "Finished lately",
   coming: "Coming",
-  expected: (on: string): string => `Expected ${dayOf(on)}.`,
   nothingComing: "Nothing is expected soon.",
   gaveWay: (times: number): string =>
     times === 1

@@ -1,0 +1,19 @@
+{
+  "id": "C1428",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/feeds/renders.rs",
+    "some-ui:apps/www/src/lib/renders",
+    "some-ui:apps/www/src/components/studio/renders.tsx"
+  ],
+  "chose": "Renders' Coming keeps an owed essay's Monday, and the call's Friday, once it has passed: the row stays, said late (`overdue`), with what it waits on where home knows (`waitsOn`: a refused essay, an essay waiting for a take, a week not final, a take home couldn't hear or is still hearing, nothing written, no week sent), said on its own day too. Home reads the newest four Rust Rounds and interview weeks it holds, up from C387's two, so a late essay stays listed for three Mondays after its own, then leaves. The call's day is the Friday after its newest week's end, kept once passed rather than rolled to the next Friday. A take home couldn't hear leads to Needs your attention.",
+  "options": [
+    "Keep a passed day listed as late, with what it waits on",
+    "Drop a passed day, as C387 chose, and leave lateness to Slack alone"
+  ],
+  "gray": "C387 listed the essay's Monday only while it was today or later, so an owed essay that never came left Coming on the Tuesday and the board read as a quiet week. The owner, 2026-11-24 (#3478): Monday came, the essays didn't, and nothing said why. Which reasons to name, and in what words, no check settles.",
+  "undo": "On home (feeds::renders): set ROUND_WEEKS_READ back to 2 and list an essay's Monday only while it is today or later; compute the call's day from the newest week again and roll it forward to the next such weekday once passed (cadence), dropping FeedSeen's newest_week_to; drop `overdue` and `waitsOn`. On the phone, drop `comingLines`' late and waits-on lines. Nothing is stored.",
+  "refs": ["#3478", "#3480", "server#1155"],
+  "moves": "C387"
+}
