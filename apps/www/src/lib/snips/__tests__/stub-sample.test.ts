@@ -23,8 +23,14 @@ import {
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
+import { CONVEYOR_WORDS, nowStation, ROW_TAGS } from "@/lib/renders/conveyor"
 import { readBoard } from "@/lib/renders/model"
-import { comingLines, failedLine } from "@/lib/renders/words"
+import {
+  comingLines,
+  failedLine,
+  liveLine,
+  nowLines,
+} from "@/lib/renders/words"
 import { FROZEN_AT } from "@/lib/snips"
 import { readTakes } from "@/lib/take-library/model"
 import { readAttention } from "@/lib/take-reconcile/model"
@@ -44,8 +50,6 @@ describe("the snips' sample (#3476)", () => {
     const read = readBoard(await ask("/renders"))
     if (read.kind !== "read") throw new Error(`unread: ${read.kind}`)
     const { board } = read
-    expect(board.now).toBeNull()
-    expect(board.waiting).toEqual([])
     expect(board.done).toEqual([])
     expect(board.coming).toEqual([
       {
@@ -68,6 +72,41 @@ describe("the snips' sample (#3476)", () => {
     expect(board.failed.map(failedLine)).toEqual([
       expect.stringMatching(/^Home couldn't make out 1 recording /),
     ])
+  })
+
+  it("shows on Renders the conveyor's first two stations: one essay waiting for an oven while home hears a take, another in line behind it", async () => {
+    const read = readBoard(await ask("/renders"))
+    if (read.kind !== "read") throw new Error(`unread: ${read.kind}`)
+    const { now, waiting } = read.board
+    if (now === null) throw new Error("nothing under way")
+    expect([now.feed, now.key, now.state, now.heldBy]).toEqual([
+      "cards-essay",
+      "render-lane-2026-11-01",
+      "waiting",
+      "memory",
+    ])
+    expect(CONVEYOR_WORDS.stations[nowStation(now)]).toBe("Waiting for an oven")
+    expect(nowLines(now)).toMatchObject({
+      line: expect.stringMatching(/^Waiting for room on home/),
+      // A share, if none made yet: a bar with none sweeps, or pulses where
+      // motion is reduced as the walk's and the snips' screens are, and so
+      // never holds still for its picture.
+      percent: 0,
+      left: null,
+    })
+    expect(waiting.map((row) => [row.feed, row.key])).toEqual([
+      ["cards-essay", "take-conveyor-2026-11-01"],
+    ])
+    expect(ROW_TAGS.waiting).toBe("In line")
+    // Studio's line above its tiles says it too.
+    expect(liveLine(read.board)).toMatch(/^Waiting for room: /)
+    // Handed over this Monday morning, the one in line after the one at the oven.
+    const frozen = Date.parse(FROZEN_AT) / 1000
+    const handedOver = waiting.map((row) => row.at)
+    expect(handedOver.every((at) => now.since < at && at < frozen)).toBe(true)
+    expect(now.since).toBeGreaterThan(Date.parse(`${TODAY}T00:00:00Z`) / 1000)
+    // While home is still hearing the take the Rust Rounds essay waits on.
+    expect(read.board.coming[0]?.waitsOn).toBe("take-hearing")
   })
 
   it("lists on Needs your attention the take a held cards essay plays, and a Rust Rounds one", async () => {
