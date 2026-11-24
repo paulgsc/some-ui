@@ -179,11 +179,18 @@ jobs:
           nix develop .#ci-playwright --command pnpm --filter @some-ui/video-motion exec \
             bash scripts/dashboards-on-sample.sh "$GITHUB_WORKSPACE/server-checkout" "$RUNNER_TEMP/dashboards" \
             home-call home-pipelines
+          echo "Dashboards walked from paulgsc/server at $(git -C server-checkout rev-parse HEAD), on sample telemetry." >> "$GITHUB_STEP_SUMMARY"
+      # Every walk that drew, kept even when the other failed: the bundle
+      # leaves out a folder with no walk.json.
+      - name: Gather the dashboard walks
+        if: always()
+        run: |
           mkdir -p "$GITHUB_WORKSPACE/dashboard-walks"
           for app in home-call home-pipelines; do
-            mv "$RUNNER_TEMP/dashboards/walk-$app" "$GITHUB_WORKSPACE/dashboard-walks/$app"
+            if [ -f "$RUNNER_TEMP/dashboards/walk-$app/walk.json" ]; then
+              mv "$RUNNER_TEMP/dashboards/walk-$app" "$GITHUB_WORKSPACE/dashboard-walks/$app"
+            fi
           done
-          echo "Dashboards walked from paulgsc/server at $(git -C server-checkout rev-parse HEAD), on sample telemetry." >> "$GITHUB_STEP_SUMMARY"
       - name: Say the dashboards were not walked
         if: failure()
         run: echo "::warning title=Dashboards::the server's dashboards were not walked in this run, so its walks bundle holds none; its snips stand"
@@ -191,11 +198,12 @@ jobs:
       # the walks bundle; a later look is a dispatch away, the walks being on
       # sample data.
       - name: Upload the dashboard walks
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: walks-dashboards-${{ github.run_id }}
           path: dashboard-walks
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 1
 
   bundle:

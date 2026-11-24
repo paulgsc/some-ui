@@ -29,17 +29,17 @@ import { chapterIndexes } from "./voices"
 export type SurfaceKind = "app" | "dashboard"
 
 /**
- * The walks of the Grafana stage (`@some-ui/video-motion`'s
- * `home-dashboards`): the server's dashboards drawn from its jsonnet on
- * the sample week, never home's numbers. A walk of one shows a dashboard,
- * and any other walk the app. Its test holds it to the walks there are.
+ * The walks of the Grafana stage an essay can show (`@some-ui/video-motion`'s
+ * `home-dashboards`, C1481): the server's dashboards drawn from its jsonnet
+ * on the sample week, each screen banded as sample data, and walked by Snips
+ * Capture into the walks bundle home fetches. A walk of one shows a
+ * dashboard, and any other walk the app. Its test holds it to the walks
+ * that carry the band; the landing's own (`home-server`, …) carry none and
+ * reach no bundle.
  */
 export const DASHBOARD_WALKS: ReadonlySet<string> = new Set([
   "home-call",
   "home-pipelines",
-  "home-server",
-  "home-server-rows",
-  "home-cores",
 ])
 
 /** A phrase that places something on a surface of ours. */
@@ -58,9 +58,10 @@ const SURFACE_PHRASES: ReadonlyArray<Phrase> = [
   { kind: "app", says: /\bthe (?:phone|APK|web app) shows\b/iu },
   { kind: "app", says: /\b(?:[Ii]n|[Oo]n|[Uu]nder) Studio\b/u },
   { kind: "app", says: /(?<!(?:YouTube|Android) )\bStudio['’]s\b/u },
-  // Every dashboard an essay names is ours, as Grafana is home's.
+  // Grafana is home's, so a line naming it speaks of our dashboards. A
+  // bare "dashboard" is left out: lines say it of Cloudflare's, the Play
+  // Console's and YouTube Studio's too.
   { kind: "dashboard", says: /\bGrafana\b/u },
-  { kind: "dashboard", says: /\bdashboards?\b/iu },
 ]
 
 /** A file that draws a surface of ours, by its repository and path. */

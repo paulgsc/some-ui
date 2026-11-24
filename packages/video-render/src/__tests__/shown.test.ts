@@ -144,8 +144,7 @@ describe("a chapter that speaks of our dashboards (C1481)", () => {
   it("names Grafana or a dashboard, or cites the server's dashboards", () => {
     for (const line of [
       "Grafana shows it in the app.",
-      "The weekly call's dashboard has no failed video.",
-      "Every dashboard is green.",
+      "The weekly call's row in Grafana has no failed video.",
     ])
       expect([line, [...surfacesSpoken(said("S", line))]]).toEqual([
         line,
@@ -168,6 +167,14 @@ describe("a chapter that speaks of our dashboards (C1481)", () => {
     expect([...surfacesSpoken(cited)]).toEqual(["dashboard"])
   })
 
+  it("isn't a line naming another's dashboard", () => {
+    for (const line of [
+      "Deploy it from Cloudflare's dashboard.",
+      "The Play Console dashboard lists the release.",
+    ])
+      expect([line, [...surfacesSpoken(said("S", line))]]).toEqual([line, []])
+  })
+
   it("shows a walk of the Grafana stage, and only that", () => {
     const chapter = (picture: Shot["picture"]): CutList =>
       cutList([
@@ -177,7 +184,7 @@ describe("a chapter that speaks of our dashboards (C1481)", () => {
     expect(unshownProblems(chapter(walk("home-call")))).toEqual([])
     for (const other of [walk("rust-rounds"), screen])
       expect(unshownProblems(chapter(other))).toEqual([
-        "D1: it speaks of our dashboard and its chapter shows none: show it as a walk of the dashboards (home-call, home-pipelines, home-server, home-server-rows, home-cores), not a card (SHOW1)",
+        "D1: it speaks of our dashboard and its chapter shows none: show it as a walk of the dashboards (home-call, home-pipelines), not a card (SHOW1)",
       ])
   })
 

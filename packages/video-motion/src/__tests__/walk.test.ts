@@ -263,13 +263,22 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
     expect(SAMPLE_BAND).toMatch(/sample/i)
   })
 
-  it("are each a walk SHOW1 counts as showing our dashboards, and no other is (C1481)", () => {
+  it("hold SHOW1's dashboard walks to the ones banded as sample data (C1481)", () => {
     const sample = homeServer.sample.parse(HOME_SAMPLE)
     const walked = Object.values(dashboards).flatMap((entry) =>
       typeof entry === "object" && "walk" in entry ? [entry.walk(sample)] : []
     )
     for (const walk of walked) expect(walk.stage.kind).toBe("grafana")
-    expect(new Set(walked.map((walk) => walk.app))).toEqual(DASHBOARD_WALKS)
+    // Those an essay can show carry the sample band, as Snips Capture walks them.
+    expect(
+      new Set(
+        walked
+          .filter(
+            (w) => w.stage.kind === "grafana" && w.stage.band === SAMPLE_BAND
+          )
+          .map((w) => w.app)
+      )
+    ).toEqual(DASHBOARD_WALKS)
   })
 
   it("a visit stays on the stage: a path from /, never another origin", () => {
