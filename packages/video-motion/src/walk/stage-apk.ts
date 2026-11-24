@@ -106,6 +106,82 @@ export function webviewBounds(xml: string, pkg: string): Box {
   throw new Error("the app's WebView is not on screen")
 }
 
+/** One look at the WebView's place: the screen's dump and the page's own width and pixel ratio. */
+export type PlaceRead = {
+  readonly dump: string
+  readonly innerWidth: number
+  readonly pixelRatio: number
+}
+
+/**
+ * The stage could not see the app's WebView laid out (WALK9): `why` names
+ * the read that had no width, and `dump` is the screen's last dump, kept
+ * beside the walk's failure (`./run`).
+ */
+export class WebViewNotLaidOut extends Error {
+  constructor(
+    why: string,
+    readonly dump: string
+  ) {
+    super(`the WebView was never laid out: ${why}`)
+    this.name = "WebViewNotLaidOut"
+  }
+}
+
+/** Why `read` is not yet a WebView laid out on screen, or null when it is. */
+function notLaidOut(read: PlaceRead, pkg: string): string | null {
+  let webview: Box
+  try {
+    webview = webviewBounds(read.dump, pkg)
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e)
+  }
+  if (webview.width <= 0)
+    return "the app's WebView is 0 px wide in the screen's dump"
+  if (read.innerWidth <= 0) return "the page is 0 px wide (window.innerWidth)"
+  // Laid out means the two agree: the dump's width over the page's is the
+  // page's own device pixel ratio, not a node read mid-layout.
+  const scale = webview.width / read.innerWidth
+  if (Math.abs(scale - read.pixelRatio) > 0.02 * read.pixelRatio) {
+    return `the dump's WebView (${String(webview.width)} px) and the page (${String(read.innerWidth)} CSS px at ${String(read.pixelRatio)}) disagree`
+  }
+  return null
+}
+
+/** How long the stage waits for the WebView to be laid out, and how often it looks (WALK9). */
+const LAID_OUT = { ms: 15_000, everyMs: 500 } as const
+
+/**
+ * WALK9: the WebView's place, read until the app's WebView is laid out on
+ * screen, the dump's node and the page agreeing, at most `wait.ms`. A dump
+ * taken as the app starts, as its keyboard's insets settle or as
+ * `uiautomator` turns accessibility on can find the WebView's node not yet
+ * laid out (#3489); the stage looks again rather than read that one.
+ * Refused with the reason the last look gave, and that look's dump.
+ */
+export async function placeWhenLaidOut(
+  read: () => Promise<PlaceRead>,
+  pkg: string,
+  screen: { readonly width: number; readonly height: number },
+  wait: {
+    readonly ms: number
+    readonly everyMs: number
+    readonly now: () => number
+    readonly sleep: (ms: number) => Promise<void>
+  }
+): Promise<ReturnType<typeof screenPlace>> {
+  const until = wait.now() + wait.ms
+  for (;;) {
+    const look = await read()
+    const why = notLaidOut(look, pkg)
+    if (why === null) {
+      return screenPlace(webviewBounds(look.dump, pkg), look.innerWidth, screen)
+    }
+    if (wait.now() >= until) throw new WebViewNotLaidOut(why, look.dump)
+    await wait.sleep(wait.everyMs)
+  }
+}
+
 /** The version the installed package says it is (`dumpsys package`). */
 export function versionOf(dumpsys: string): string {
   const name = /versionName=(\S+)/.exec(dumpsys)?.[1]
@@ -159,18 +235,25 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
     })
     // Read from the accessibility tree, as Snips Capture's release pass reads
     // the screen: `device.info` needs Playwright's driver app on the device.
-    // A dump left by an earlier run is never read as this one.
-    await device.shell("rm -f /sdcard/walk-ui.xml")
-    await device.shell("uiautomator dump /sdcard/walk-ui.xml")
-    const bounds = webviewBounds(
-      (await device.shell("cat /sdcard/walk-ui.xml")).toString("utf8"),
-      spec.pkg
-    )
-    const innerWidth = Number(await page.evaluate("window.innerWidth"))
-    const { viewport, place } = screenPlace(
-      bounds,
-      innerWidth,
-      pngSize(await device.screenshot())
+    // A dump left by an earlier look is never read as this one.
+    const look = async (): Promise<PlaceRead> => {
+      await device.shell("rm -f /sdcard/walk-ui.xml")
+      await device.shell("uiautomator dump /sdcard/walk-ui.xml")
+      return {
+        dump: (await device.shell("cat /sdcard/walk-ui.xml")).toString("utf8"),
+        innerWidth: Number(await page.evaluate("window.innerWidth")),
+        pixelRatio: Number(await page.evaluate("window.devicePixelRatio")),
+      }
+    }
+    const { viewport, place } = await placeWhenLaidOut(
+      look,
+      spec.pkg,
+      pngSize(await device.screenshot()),
+      {
+        ...LAID_OUT,
+        now: () => Date.now(),
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      }
     )
     return {
       page,

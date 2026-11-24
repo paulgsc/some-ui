@@ -12,10 +12,13 @@ import {
 } from "@video-motion/walk/microphone"
 import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
+import type { PlaceRead } from "@video-motion/walk/stage-apk"
 import {
+  placeWhenLaidOut,
   screenPlace,
   versionOf,
   webviewBounds,
+  WebViewNotLaidOut,
 } from "@video-motion/walk/stage-apk"
 import {
   walkthroughProblems,
@@ -119,6 +122,96 @@ describe("the APK stage's places (WALK1)", () => {
     expect(() => versionOf("Unable to find package")).toThrow(
       "the app is not installed"
     )
+  })
+})
+
+/** A screen's dump holding the app's WebView at `bounds`. */
+const dumpWith = (bounds: string): string =>
+  `<hierarchy><node class="android.webkit.WebView" package="dev.paulgsc.someui" bounds="${bounds}" /></hierarchy>`
+
+/**
+ * The looks a stage takes, in turn, the last repeated, on a clock that each
+ * look and each wait moves on: Snips Capture run 45321427650's Jobs walk
+ * read its one dump while the app stalled as accessibility came on (#3489).
+ */
+function looking(looks: ReadonlyArray<PlaceRead>): {
+  read: () => Promise<PlaceRead>
+  wait: Parameters<typeof placeWhenLaidOut>[3]
+  taken: () => number
+} {
+  let t = 0
+  let i = 0
+  return {
+    read: (): Promise<PlaceRead> => {
+      const look = looks[Math.min(i, looks.length - 1)]!
+      i += 1
+      t += 1_000
+      return Promise.resolve(look)
+    },
+    wait: {
+      ms: 15_000,
+      everyMs: 500,
+      now: () => t,
+      sleep: (ms): Promise<void> => {
+        t += ms
+        return Promise.resolve()
+      },
+    },
+    taken: () => i,
+  }
+}
+
+const LAID: PlaceRead = {
+  dump: dumpWith("[0,63][1080,1794]"),
+  innerWidth: 411,
+  pixelRatio: 2.625,
+}
+const SCREEN = { width: 1080, height: 1920 }
+
+describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", () => {
+  it("looks again past a dump read before the WebView's node was laid out, and past a page read mid-layout", async () => {
+    for (const early of [
+      { ...LAID, dump: dumpWith("[0,0][0,0]") },
+      { ...LAID, innerWidth: 0 },
+      { ...LAID, dump: "<hierarchy/>" },
+      // A node with width, not yet the page's: 1080 / 980 is not 2.625.
+      { ...LAID, innerWidth: 980 },
+    ]) {
+      const stage = looking([early, early, LAID])
+      const { viewport } = await placeWhenLaidOut(
+        stage.read,
+        "dev.paulgsc.someui",
+        SCREEN,
+        stage.wait
+      )
+      expect(viewport.scale).toBeCloseTo(1080 / 411)
+      expect(stage.taken()).toBe(3)
+    }
+  })
+
+  it("reads at once when the first look is laid out", async () => {
+    const stage = looking([LAID])
+    await placeWhenLaidOut(stage.read, "dev.paulgsc.someui", SCREEN, stage.wait)
+    expect(stage.taken()).toBe(1)
+  })
+
+  it("gives up within its bound, naming the read with no width and keeping the dump", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    const stage = looking([{ ...LAID, dump: zero }])
+    const failed = await placeWhenLaidOut(
+      stage.read,
+      "dev.paulgsc.someui",
+      SCREEN,
+      stage.wait
+    ).catch((e: unknown) => e)
+    expect(failed).toBeInstanceOf(WebViewNotLaidOut)
+    if (!(failed instanceof WebViewNotLaidOut)) return
+    expect(failed.message).toBe(
+      "the WebView was never laid out: the app's WebView is 0 px wide in the screen's dump"
+    )
+    expect(failed.dump).toBe(zero)
+    // Each look 1 s and each wait 0.5 s: 11 looks reach the 15 s bound.
+    expect(stage.taken()).toBe(11)
   })
 })
 

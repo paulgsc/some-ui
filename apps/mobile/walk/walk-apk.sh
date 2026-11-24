@@ -77,7 +77,7 @@ walk() {
       ok=no
     elif ! (cd "$repo" && pnpm --filter @some-ui/video-motion motion walk "$app" \
       --sample "$sample" --out "$walks/$app"); then
-      echo "::error title=Walks::the $app walk failed ($app/failed.png, $app/failed.txt)"
+      echo "::error title=Walks::the $app walk failed ($app/failed.png, $app/failed.txt; $app/failed-ui.xml when the stage never saw the WebView laid out)"
       ok=no
     fi
   fi
