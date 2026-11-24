@@ -18,7 +18,9 @@
  *   its orange line, it sheds load, the render lane pauses interactive
  *   work's rivals, and the transcriber's oldest note waits past its
  *   promise. The window ends inside one such night, so the rows' stats
- *   show it as it happens;
+ *   show it as it happens. file_host nears its own CPU cap then, and only
+ *   then is it throttled, so WHO DUNNIT's CPU row tells a service held by
+ *   its cap from a box that is full;
  * - file_host restarts twice (deploys), NATS is down for twenty minutes one
  *   night, a scraper meets the rate limiter one afternoon, and ESPN stops
  *   answering for most of an hour one morning;
@@ -29,8 +31,8 @@
  * `Math.random`'s.
  *
  * Which series and labels: those the walked rows' queries read, at
- * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard, OUTBOUND
- * and CALL, as `./home-dashboards` names them), with the label values the
+ * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard, OUTBOUND,
+ * CALL and WHO DUNNIT, as `./home-dashboards` names them), with the label values the
  * server exports (`metrics/refusals.rs`, `metrics/rate_limit.rs`,
  * `crates/outbound`, `metrics/contention.rs`). A panel whose query moves to a
  * series this does not write draws "No data", which the walk's stage
@@ -695,66 +697,94 @@ function allSeries(): ReadonlyArray<Series> {
       (t) => (laneAt(t).why === "settling" ? 0.02 : 0)
     ),
     // The metal: each service against its own limits, and the disks.
-    ...SERVICES.flatMap(({ name, group, cores, memGiB, base, mem }) => [
-      counter(
-        "container_cpu_usage_seconds_total",
-        { name },
-        (t) =>
-          cores *
-          clamp(
-            base *
-              (0.6 + daily(t)) *
-              (rendering(t) && group === "file_host" ? 2.4 : 1) +
-              noise(`cpu-${name}`, 0.04)(t),
-            0.005,
-            0.99
-          )
-      ),
-      gauge("container_spec_cpu_quota", { name }, () => cores * 100_000),
-      gauge("container_spec_cpu_period", { name }, () => 100_000),
-      gauge(
-        "container_memory_working_set_bytes",
-        { name },
-        (t) =>
-          memGiB *
-          GIB *
-          clamp(
-            mem +
-              0.1 * daily(t) +
-              (rendering(t) && group === "file_host" ? 0.22 : 0) +
-              noise(`mem-${name}`, 0.02)(t),
-            0.05,
-            0.99
-          )
-      ),
-      gauge("container_spec_memory_limit_bytes", { name }, () => memGiB * GIB),
-      counter(
-        "namedprocess_namegroup_read_bytes_total",
-        { groupname: group },
-        (t) =>
-          (backingUp(t) ? 40 : 1) *
-          (group === "file_host" ? 900_000 : 120_000) *
-          (0.5 + daily(t))
-      ),
-      counter(
-        "namedprocess_namegroup_write_bytes_total",
-        { groupname: group },
-        (t) =>
-          (group === "redis-server" && backingUp(t) ? 20 : 1) *
-          (group === "file_host" ? 400_000 : 60_000) *
-          (0.5 + daily(t))
-      ),
-      counter(
-        "container_network_receive_bytes_total",
-        { name },
-        (t) => (group === "file_host" ? 180_000 : 20_000) * (0.4 + daily(t))
-      ),
-      counter(
-        "container_network_transmit_bytes_total",
-        { name },
-        (t) => (group === "file_host" ? 420_000 : 15_000) * (0.4 + daily(t))
-      ),
-    ]),
+    ...SERVICES.flatMap(({ name, group, cores, memGiB, base, mem }) => {
+      // The share of its own cap it uses: file_host nears it while the render holds the box.
+      const used = (t: number): number =>
+        clamp(
+          base *
+            (0.6 + daily(t)) *
+            (rendering(t) && group === "file_host" ? 2.4 : 1) +
+            noise(`cpu-${name}`, 0.04)(t),
+          0.005,
+          0.99
+        )
+      // The scheduler's periods held back by the cap (cAdvisor's CFS counters):
+      // next to none until a service nears its cap, then most of them.
+      const throttled = (t: number): number =>
+        clamp((used(t) - 0.8) * 4, 0, 0.8) +
+        Math.max(0, noise(`throttle-${name}`, 0.006)(t))
+      return [
+        counter(
+          "container_cpu_usage_seconds_total",
+          { name },
+          (t) => cores * used(t)
+        ),
+        counter(
+          "namedprocess_namegroup_cpu_seconds_total",
+          { groupname: group, mode: "user" },
+          (t) => cores * used(t) * 0.8
+        ),
+        counter(
+          "namedprocess_namegroup_cpu_seconds_total",
+          { groupname: group, mode: "system" },
+          (t) => cores * used(t) * 0.2
+        ),
+        counter("container_cpu_cfs_periods_total", { name }, () => 10),
+        counter(
+          "container_cpu_cfs_throttled_periods_total",
+          { name },
+          (t) => 10 * throttled(t)
+        ),
+        gauge("container_spec_cpu_quota", { name }, () => cores * 100_000),
+        gauge("container_spec_cpu_period", { name }, () => 100_000),
+        gauge(
+          "container_memory_working_set_bytes",
+          { name },
+          (t) =>
+            memGiB *
+            GIB *
+            clamp(
+              mem +
+                0.1 * daily(t) +
+                (rendering(t) && group === "file_host" ? 0.22 : 0) +
+                noise(`mem-${name}`, 0.02)(t),
+              0.05,
+              0.99
+            )
+        ),
+        gauge(
+          "container_spec_memory_limit_bytes",
+          { name },
+          () => memGiB * GIB
+        ),
+        counter(
+          "namedprocess_namegroup_read_bytes_total",
+          { groupname: group },
+          (t) =>
+            (backingUp(t) ? 40 : 1) *
+            (group === "file_host" ? 900_000 : 120_000) *
+            (0.5 + daily(t))
+        ),
+        counter(
+          "namedprocess_namegroup_write_bytes_total",
+          { groupname: group },
+          (t) =>
+            (group === "redis-server" && backingUp(t) ? 20 : 1) *
+            (group === "file_host" ? 400_000 : 60_000) *
+            (0.5 + daily(t))
+        ),
+        counter(
+          "container_network_receive_bytes_total",
+          { name },
+          (t) => (group === "file_host" ? 180_000 : 20_000) * (0.4 + daily(t))
+        ),
+        counter(
+          "container_network_transmit_bytes_total",
+          { name },
+          (t) => (group === "file_host" ? 420_000 : 15_000) * (0.4 + daily(t))
+        ),
+      ]
+    }),
     gauge(
       "node_filesystem_size_bytes",
       { mountpoint: "/", fstype: "ext4" },
@@ -830,6 +860,14 @@ function allSeries(): ReadonlyArray<Series> {
       )
     ),
     counter("node_pressure_cpu_waiting_seconds_total", {}, waiting),
+    // The run queue, for WHO DUNNIT's load against CPU: the busy cores and those waiting.
+    gauge(
+      "node_load1",
+      {},
+      (t) =>
+        [0, 1, 2, 3].reduce((sum, core) => sum + busy(core, t), 0) +
+        4 * waiting(t)
+    ),
     ...weekJobs(),
   ]
   return series

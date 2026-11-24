@@ -168,7 +168,9 @@ Since you, months later, are the listener:
      "Grafana", or cites `paulgsc/server`'s
      `infra/grafana/dashboards/`, shows a walk of them, `home-call` (the
      weekly call's rows: each week made into a video, the Rust Rounds and
-     mock interview essays) or `home-pipelines` (the pipelines' graphs),
+     mock interview essays), `home-pipelines` (the pipelines' graphs) or
+     `home-pressure` (the shared stages, WHO DUNNIT's CPU row and file_host's
+     metal: whether a slow stage is our code or the box),
      from the same Snips Capture run as the essay's other walks. They are
      drawn from the server's jsonnet on a made-up week, and each screen says
      so; say it in the narration too, never as home's numbers. A dashboard

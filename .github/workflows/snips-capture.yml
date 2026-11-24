@@ -147,8 +147,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-  # The server's dashboards an essay shows (#3476, C1481): `home-call` and
-  # `home-pipelines`, walked on a throwaway Grafana over the sample week, as
+  # The server's dashboards an essay shows (#3476, C1481): `home-call`,
+  # `home-pipelines` and `home-pressure`, walked on a throwaway Grafana over the sample week, as
   # Site Assets walks the landing's (packages/video-motion/scripts/
   # dashboards-on-sample.sh), handed to the bundle job as walks so they
   # reach home in this run's walks bundle. A failure here is a warning, as a
@@ -178,7 +178,7 @@ jobs:
             --filter='@some-ui/video-motion^...' --concurrency=100%
           nix develop .#ci-playwright --command pnpm --filter @some-ui/video-motion exec \
             bash scripts/dashboards-on-sample.sh "$GITHUB_WORKSPACE/server-checkout" "$RUNNER_TEMP/dashboards" \
-            home-call home-pipelines
+            home-call home-pipelines home-pressure
           echo "Dashboards walked from paulgsc/server at $(git -C server-checkout rev-parse HEAD), on sample telemetry." >> "$GITHUB_STEP_SUMMARY"
       # Every walk that drew, kept even when the other failed: the bundle
       # leaves out a folder with no walk.json.
@@ -186,7 +186,7 @@ jobs:
         if: always()
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dashboard-walks"
-          for app in home-call home-pipelines; do
+          for app in home-call home-pipelines home-pressure; do
             if [ -f "$RUNNER_TEMP/dashboards/walk-$app/walk.json" ]; then
               mv "$RUNNER_TEMP/dashboards/walk-$app" "$GITHUB_WORKSPACE/dashboard-walks/$app"
             fi
