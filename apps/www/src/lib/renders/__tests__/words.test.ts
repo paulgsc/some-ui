@@ -632,6 +632,12 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(failedLine(row("page-gone", 3))).toMatch(
       /^It shows 3 pages .*those pictures as the essay names them\. Take the pages again/
     )
+    expect(failedLine(row("walk-missing", 2))).toMatch(
+      /^It plays 2 walks through the app .*once it can fetch them\.$/
+    )
+    expect(failedLine(row("walk-gone", 1))).toMatch(
+      /^It plays a walk through the app .*that walk as the essay names it\. Run Snips Capture again/
+    )
     // Named, where home names every take (itemNames): never by id.
     const named = {
       ...row("take-unheard", 2),
@@ -686,12 +692,20 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     const clipMissing = failedLine(row("clip-missing"))
     const pageMissing = failedLine(row("page-missing"))
     const pageGone = failedLine(row("page-gone"))
+    const walkMissing = failedLine(row("walk-missing"))
+    const walkGone = failedLine(row("walk-gone"))
     expect(snipMissing).toMatch(/names a picture its capture holds/)
     expect(snipGone).toMatch(/Re-run that Snips Capture/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)
     expect(pageMissing).toMatch(/home couldn't get, or that no capture made/)
     expect(pageGone).toMatch(/Take the pages? again with Public Pages Capture/)
+    expect(walkMissing).toMatch(
+      /a walk through the app that home couldn't get yet/
+    )
+    expect(walkGone).toMatch(/Run Snips Capture again/)
     const lines = [
+      walkMissing,
+      walkGone,
       missing,
       unheard,
       snipMissing,

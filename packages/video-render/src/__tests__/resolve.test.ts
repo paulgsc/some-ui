@@ -1,5 +1,5 @@
 import { LOOKS, VOICES } from "@video-render/plans"
-import { designOf, resolve } from "@video-render/resolve"
+import { designOf, musicOf, resolve } from "@video-render/resolve"
 import { capture, cutList, series, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
@@ -71,6 +71,22 @@ describe("resolve", () => {
       "S2: the series has no click sound",
       "the music is up-between-lines, and the series has no music bed",
     ])
+  })
+})
+
+describe("the bed's mode where a video sets none (#3476)", () => {
+  it("is its look's, but a series naming a bed plays it under the plain look too", () => {
+    expect(musicOf("plain", series())).toBe("under-voice")
+    expect(musicOf("plain", series({ music: undefined }))).toBe("off")
+    expect(musicOf("lively", series())).toBe("up-between-lines")
+    const plain = resolve(cutList([shot("S1")], { look: "plain" }), series())
+    expect(plain.ok && plain.value.music).toBe("under-voice")
+    // A video's own mode still wins, as a call without its bed sets "off".
+    const off = resolve(
+      cutList([shot("S1")], { look: "plain", music: "off" }),
+      series()
+    )
+    expect(off.ok && off.value.music).toBe("off")
   })
 })
 

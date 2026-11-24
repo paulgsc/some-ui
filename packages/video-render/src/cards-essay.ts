@@ -22,6 +22,7 @@
 
 import { z } from "zod"
 
+import { bookendProblems, bookendsOf, isSeriesId } from "./bookends"
 import { CALL_VOICES } from "./call"
 import type { ChapterMark } from "./chapters"
 import { withoutStop } from "./chapters"
@@ -33,6 +34,7 @@ import { ESSAY_VOICES } from "./essay"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
 import { withSeries } from "./series"
+import { unshownProblems } from "./shown"
 import type { HeardSpokenCard, HeardTurn, SpokenScene } from "./spoken-card"
 import { spokenCardProblems, spokenScenes } from "./spoken-card"
 import {
@@ -96,9 +98,11 @@ export const CARDS_VOICE_ROLES: Readonly<Record<CardsSpeaker, VoiceRole>> = {
 
 /**
  * The longest a spoken essay runs, by its words: the weekly call's part,
- * ten minutes (owner, 2026-11-14). A longer subject is two essays (C373).
+ * twelve minutes, the owner's bound for the diagnosis essay ("at most 12
+ * minutes", #3476), as policy that moves with the story (C1426, which moves
+ * C373's ten). A longer subject is two essays.
  */
-export const CARDS_MOST_MS = 600_000
+export const CARDS_MOST_MS = 720_000
 
 /** A slug, then the stamp's day: `<slug>-<YYYY-MM-DD>`. */
 export const CARDS_KEY = /^[a-z0-9]+(-[a-z0-9]+)*-(\d{4}-\d{2}-\d{2})$/
@@ -194,7 +198,7 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
       .filter((s) => s.spoken?.role === "walk")
       .map(
         (s) =>
-          `${s.id}: it narrates a walk's stop, which only a walkthrough plays`
+          `${s.id}: it narrates a walkthrough's stop: an essay plays a walk as a screen scene (from: "walks")`
       ),
     ...shots
       .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
@@ -651,6 +655,51 @@ export function cardsFolderProblems(
       .filter((name) => name !== "index.json" && !listed.has(name))
       .map((name) => `${name}: the index doesn't list it`),
   ]
+}
+
+/**
+ * The first day an essay owes what `cardsPublishProblems` holds: an essay
+ * already published before it keeps what it was published with, so the
+ * folder is never refused for one (#3476).
+ */
+export const PUBLISH_SINCE = "2026-11-24"
+
+/**
+ * What the essays being published, the newest day's, owe that an older one
+ * didn't (#3476): what every video in their series carries
+ * (`bookends.ts`), so a bookend their series' version lacks or a bed one
+ * turns off for itself, since only a series opts out, never a video; and a
+ * screen of ours in each chapter that speaks of one (`shown.ts`, SHOW1). An
+ * older essay keeps what it was published with, and one the folder check
+ * refuses is that check's to report.
+ */
+export function cardsPublishProblems(
+  files: ReadonlyMap<string, unknown>,
+  seriesOf: (id: string, version: number) => Series | null
+): Array<string> {
+  const index = parseCardsIndex(files.get("index.json"))
+  const essays = index.ok ? index.value.essays : []
+  const newest = dayOf(essays[0]?.key)
+  return essays
+    .filter(({ key }) => dayOf(key) === newest && dayOf(key) >= PUBLISH_SINCE)
+    .flatMap(({ key }) => {
+      const essay = parseCardsEssay(key, files.get(`${key}.json`))
+      if (!essay.ok) return []
+      const series = seriesOf(essay.value.series.id, essay.value.series.version)
+      if (series === null) return []
+      const bed = isSeriesId(series.id) && bookendsOf(series.id).has("bed")
+      return [
+        ...bookendProblems(series).map(
+          (p) => `${p}; pin the newest version that does`
+        ),
+        ...(essay.value.music === "off" && bed
+          ? [
+              `it turns the music bed off, and every video in ${series.id} plays it: leave "music" out`,
+            ]
+          : []),
+        ...unshownProblems(essay.value),
+      ].map((p) => `${key}.json: ${p}`)
+    })
 }
 
 /**

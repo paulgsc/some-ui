@@ -121,20 +121,29 @@ export const SAMPLES: Readonly<
     bar: "scratchpad",
     lines: [
       { comment: "# a sample: the commands are made up", badge: "next" },
+      // Each line after a command comes once it is typed (terminal-v2), and
+      // all of them within the preview's six seconds.
       {
         prompt: "$",
         keyword: "scratch run foo.rs",
         comment: "  # compile, lint, run",
         badge: "main",
+        atMs: 1300,
       },
       {
         prompt: "$",
         keyword: "scratch watch foo.rs",
         comment: "  # on every save",
         badge: "pr",
+        atMs: 2900,
       },
-      { prompt: "$", text: "export API_KEY=<from the vault>", badge: "you" },
-      { comment: "# std only: no crates", badge: "gap" },
+      { comment: "# std only: no crates", badge: "gap", atMs: 4550 },
+      {
+        prompt: "$",
+        text: "export API_KEY=<vault>",
+        badge: "you",
+        atMs: 4600,
+      },
     ],
   },
   "cheat-sheet": {

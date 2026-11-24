@@ -146,6 +146,11 @@ export const WORDS = {
       about:
         "A dark window with a title bar; commands in blue, comments muted, in a monospace.",
     },
+    "terminal-v2": {
+      name: "Typed window",
+      about:
+        "The same window; each command typed a character at a time behind a block cursor, and what it prints after it.",
+    },
     "sheet-v1": {
       name: "Rows",
       about:
@@ -184,6 +189,7 @@ export const WORDS = {
     | "plate-v1"
     | "badge-v1"
     | "terminal-v1"
+    | "terminal-v2"
     | "sheet-v1"
     | "legend-v1"
     | "rule-v1"

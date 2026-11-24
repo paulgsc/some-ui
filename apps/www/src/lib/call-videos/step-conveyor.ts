@@ -69,6 +69,8 @@ const HELD: {
   "snip-gone": { aside: "counter", why: "missingInput" },
   "page-missing": { aside: "counter", why: "missingInput" },
   "page-gone": { aside: "counter", why: "missingInput" },
+  "walk-missing": { aside: "counter", why: "missingInput" },
+  "walk-gone": { aside: "counter", why: "missingInput" },
   "clip-missing": { aside: "counter", why: "missingInput" },
   recorder: { aside: "burnt", why: "couldNot" },
 }

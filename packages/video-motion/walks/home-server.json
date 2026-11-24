@@ -2,36 +2,89 @@
   "schema": "some-ui.walkthrough/1",
   "app": "home-server",
   "platform": "My home server",
-  "stage": "Last week, as it ran",
+  "stage": "A sample week, from CI",
   "fill": {
     "title": "file_host",
     "captions": [
       "Answering,|all week",
       "Up since|it last started",
-      "Each service,|up and down",
-      "What the limiter|turns away",
-      "Every refusal,|by reason",
-      "The limiter's|tokens and clients"
+      "Latency,|by route",
+      "Requests,|by outcome",
+      "Requests,|by caller",
+      "Not OK,|in 24 hours",
+      "Free memory,|against a render",
+      "Memory pressure,|against its limit",
+      "The transcriber,|now",
+      "Who waits|on it",
+      "CPU, against|each limit",
+      "Memory, against|each limit",
+      "Connections,|against capacity",
+      "Messages,|by kind",
+      "Refusals,|by reason",
+      "The limiter's|tokens"
     ],
     "chapters": [
       {
-        "title": "Is it up?",
+        "title": "Is it up|and well",
         "from": 0,
         "narration": [
-          "This is the server behind my apps, on a machine at home, through its own dashboard.",
-          "First, whether it answered all week, and how long since it last restarted."
+          "Whether file_host is up and well, and where to look first, read together as one row of its dashboard.",
+          "In this week's last minutes a render holds the cores, so latency is past its orange line and the server is shedding load.",
+          "Like every row here, it's jsonnet and libsonnet in the server's repository, built in CI by the image my home server runs, so every panel is in the commit history."
         ]
       },
       {
-        "title": "Saying no",
-        "from": 3,
+        "title": "Mine, or|the load's",
+        "from": 2,
         "narration": [
-          "A server also has to say no: a rate limiter per client, and refusals when it is too busy.",
-          "These panels count what it turned away last week, and why."
+          "Traffic, latency and errors side by side tell me whether a slowdown is my code or the load. In this week each night's render shows as latency spikes on every route and refused requests, while the traffic itself keeps its usual shape."
+        ]
+      },
+      {
+        "title": "Asking the|outside",
+        "from": 4,
+        "narration": [
+          "What file_host asks other services, and whether they answered. In this week the mailbox stopped answering for twenty minutes on the last evening, which is most of the day's count of calls that weren't OK."
+        ]
+      },
+      {
+        "title": "When the|render runs",
+        "from": 6,
+        "narration": [
+          "The render lane decides when a video may render on four cores without starving what I'm doing.",
+          "On the last night it paused the render while I used the app, stopped it once when memory pressure passed its limit, and let it run again once that had cleared."
+        ]
+      },
+      {
+        "title": "Who waits|on what",
+        "from": 8,
+        "narration": [
+          "The stages other work waits on, the transcriber first: whether it keeps its promise, how long the oldest note has waited, and who is held up behind it. In this week each night's render holds it past its promise."
+        ]
+      },
+      {
+        "title": "What it|costs",
+        "from": 10,
+        "narration": [
+          "What each service costs the host against its own limits: CPU, memory, disk reads and writes, and how full each disk is. Here file_host nears its CPU limit while the render runs, and the media disk is past its orange line."
+        ]
+      },
+      {
+        "title": "Who is|connected",
+        "from": 12,
+        "narration": [
+          "Who is connected over WebSocket and how they talk: phones and a desktop, the guard's occupancy against its capacity, and the errors, which here are queues filling while the render runs."
+        ]
+      },
+      {
+        "title": "Saying no,|and why",
+        "from": 14,
+        "narration": [
+          "How the server says no: what the rate limiter turns away, what it sheds when it's too busy, and whether the limiter is enforcing at all. In this week a scraper meets the limiter one afternoon, and each night's render makes it shed load."
         ]
       }
     ],
     "cta": "Source on|GitHub",
-    "badges": ["Runs at home", "Rust and Axum"]
+    "badges": ["Dashboards as code", "Rust and Axum"]
   }
 }

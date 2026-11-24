@@ -9,7 +9,13 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, CardLink, CardLinkBody, Notice } from "@some-ui/shared"
+import {
+  Button,
+  CardLink,
+  CardLinkBody,
+  Notice,
+  Reading,
+} from "@some-ui/shared"
 import { FilePick } from "@soundbites/components/file-pick"
 import { IdeaCapture } from "@soundbites/components/idea"
 import type { Idea, IdeaStage } from "@soundbites/lib/idea/model"
@@ -377,11 +383,7 @@ export const IdeaShelf = ({
 
   switch (screen.kind) {
     case "loading": {
-      return (
-        <p className="text-muted-foreground text-sm">
-          {STUDIO_WORDS.idea.reading}
-        </p>
-      )
+      return <Reading>{STUDIO_WORDS.idea.reading}</Reading>
     }
     case "unreadable": {
       return (

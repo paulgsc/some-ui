@@ -22,6 +22,7 @@
     "./cues": "./src/cues.ts",
     "./node": "./src/node.ts",
     "./snip": "./src/snip.ts",
+    "./walk": "./src/walk.ts",
     "./testing": "./src/testing.ts",
     "./thumbnail": "./src/thumbnail.ts"
   },

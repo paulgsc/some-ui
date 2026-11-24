@@ -25,6 +25,7 @@ import {
   CardLink,
   CardLinkBody,
   Notice,
+  Reading,
   TakeButton,
   TakeRow,
   usePager,
@@ -1815,8 +1816,7 @@ export const Studio = ({
   const { dispatch } = runtime
   const { shelf, screen } = state
 
-  if (shelf.kind === "reading")
-    return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+  if (shelf.kind === "reading") return <Reading>{WORDS.reading}</Reading>
   if (shelf.kind === "unreadable")
     return (
       <Notice

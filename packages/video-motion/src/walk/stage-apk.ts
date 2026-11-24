@@ -13,9 +13,9 @@
  */
 
 import { writeFile } from "node:fs/promises"
-import type { AndroidDevice } from "playwright-core"
 import { _android as android } from "playwright-core"
 
+import { heldStill } from "./held-still"
 import type { Stage, WalkViewport } from "./run"
 import { settlePage } from "./stage-sandbox"
 
@@ -106,6 +106,153 @@ export function webviewBounds(xml: string, pkg: string): Box {
   throw new Error("the app's WebView is not on screen")
 }
 
+/** One look at the WebView's place: the screen's dump and the page's own width and pixel ratio. */
+export type PlaceRead = {
+  readonly dump: string
+  readonly innerWidth: number
+  readonly pixelRatio: number
+}
+
+/**
+ * The stage could not see the app's WebView laid out (WALK9): `why` names
+ * the read that had no width, and `dump` is the screen's last dump, kept
+ * beside the walk's failure (`./run`).
+ */
+export class WebViewNotLaidOut extends Error {
+  constructor(
+    why: string,
+    readonly dump: string
+  ) {
+    super(`the WebView was never laid out: ${why}`)
+    this.name = "WebViewNotLaidOut"
+  }
+}
+
+/**
+ * The WebView's box in `read`, if it is laid out there, or why not. Laid
+ * out means the dump's node has width, the page has a width and a pixel
+ * ratio (finite, above 0), and the node's width over the page's is the
+ * page's own device pixel ratio, not a node read mid-layout. That holds for
+ * a page at `width=device-width` and no zoom, as the app's
+ * (`apps/www/index.html`).
+ */
+function laidOut(read: PlaceRead, pkg: string): Box | string {
+  let webview: Box
+  try {
+    webview = webviewBounds(read.dump, pkg)
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e)
+  }
+  if (!(webview.width > 0))
+    return "the app's WebView is 0 px wide in the screen's dump"
+  if (!(read.innerWidth > 0) || !Number.isFinite(read.innerWidth))
+    return `the page is ${String(read.innerWidth)} px wide (window.innerWidth)`
+  if (!(read.pixelRatio > 0) || !Number.isFinite(read.pixelRatio))
+    return `the page's pixel ratio is ${String(read.pixelRatio)}`
+  const scale = webview.width / read.innerWidth
+  if (!(Math.abs(scale - read.pixelRatio) <= 0.02 * read.pixelRatio)) {
+    return `the dump's WebView (${String(webview.width)} px) and the page (${String(read.innerWidth)} CSS px at ${String(read.pixelRatio)}) disagree`
+  }
+  return webview
+}
+
+const sameBox = (a: Box, b: Box): boolean =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+
+/** How long the stage waits for the WebView to be laid out, and how often it looks (WALK9). */
+const LAID_OUT = { ms: 15_000, everyMs: 500, lookMs: 5_000 } as const
+
+/**
+ * Look `n`'s one call to the device (WALK9): its own file, dumped and read
+ * then removed, the dump ended by the device a second before the look's
+ * own `lookMs`, so a look held up past it can't write or remove a later
+ * look's file.
+ */
+export function lookCommand(n: number, lookMs: number): string {
+  const file = `/sdcard/walk-ui-${String(n)}.xml`
+  const seconds = Math.max(1, Math.floor(lookMs / 1000) - 1)
+  return `timeout ${String(seconds)} uiautomator dump ${file} >/dev/null && cat ${file}; rm -f ${file}`
+}
+
+/** `p`, or a refusal once `ms` have passed without it (a look that never ends). */
+function within<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`it took longer than ${String(ms / 1000)} s`))
+      }, ms)
+    }),
+  ]).finally(() => {
+    clearTimeout(timer)
+  })
+}
+
+/**
+ * WALK9: the WebView's place, read once the app's WebView is laid out on
+ * screen (`laidOut`) and two looks in a row give it the same box, so a top
+ * still moving with the system bars' or the keyboard's insets is not read;
+ * never starting a look after `wait.ms`, and holding each look to
+ * `wait.lookMs` (a `uiautomator dump` or a page that never answers), so the
+ * wait gives up within `wait.ms` and one look's `wait.lookMs`, past timer
+ * slack. A dump taken as the app starts, as its keyboard's insets settle or
+ * as `uiautomator` turns accessibility on can find the WebView's node not
+ * yet laid out (#3489); the stage looks again rather than read that one. A
+ * look that throws is a look that saw nothing. Refused with the reason the
+ * last look gave, and the last screen's dump a look read (empty when no look
+ * read one).
+ */
+export async function placeWhenLaidOut(
+  read: () => Promise<PlaceRead>,
+  pkg: string,
+  screen: { readonly width: number; readonly height: number },
+  wait: {
+    readonly ms: number
+    readonly everyMs: number
+    readonly now: () => number
+    readonly sleep: (ms: number) => Promise<void>
+    /** How long one look may take. */
+    readonly lookMs: number
+    /** `p`, or a refusal once `ms` have passed without it. */
+    readonly limit: <T>(p: Promise<T>, ms: number) => Promise<T>
+  }
+): Promise<ReturnType<typeof screenPlace>> {
+  const until = wait.now() + wait.ms
+  /** The box the look before saw laid out, if it did. */
+  let before: Box | null = null
+  let dump = ""
+  for (;;) {
+    let why: string
+    try {
+      const look = await wait.limit(read(), wait.lookMs)
+      // Only a screen's dump is kept as the evidence: not the error a look
+      // whose dump failed reads back instead.
+      if (look.dump.includes("<hierarchy")) dump = look.dump
+      const box = laidOut(look, pkg)
+      if (typeof box === "string") {
+        why = box
+        before = null
+      } else if (before !== null && sameBox(before, box)) {
+        return screenPlace(box, look.innerWidth, screen)
+      } else {
+        why =
+          before === null
+            ? "the WebView was laid out only on the last look"
+            : "the WebView's box was still moving"
+        before = box
+      }
+    } catch (e) {
+      why = `the look failed: ${e instanceof Error ? e.message : String(e)}`
+      before = null
+    }
+    if (wait.now() + wait.everyMs > until) {
+      throw new WebViewNotLaidOut(why, dump)
+    }
+    await wait.sleep(wait.everyMs)
+  }
+}
+
 /** The version the installed package says it is (`dumpsys package`). */
 export function versionOf(dumpsys: string): string {
   const name = /versionName=(\S+)/.exec(dumpsys)?.[1]
@@ -116,18 +263,6 @@ export function versionOf(dumpsys: string): string {
 /** The PNG's size, read from its header. */
 function pngSize(png: Buffer): { width: number; height: number } {
   return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
-}
-
-/** The screen once two pictures a second apart agree, or the last one. */
-async function still(device: AndroidDevice): Promise<Buffer> {
-  let last = await device.screenshot()
-  for (let i = 0; i < STILL_TRIES; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 1_000))
-    const now = await device.screenshot()
-    if (now.equals(last)) return now
-    last = now
-  }
-  return last
 }
 
 export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
@@ -159,18 +294,27 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
     })
     // Read from the accessibility tree, as Snips Capture's release pass reads
     // the screen: `device.info` needs Playwright's driver app on the device.
-    // A dump left by an earlier run is never read as this one.
-    await device.shell("rm -f /sdcard/walk-ui.xml")
-    await device.shell("uiautomator dump /sdcard/walk-ui.xml")
-    const bounds = webviewBounds(
-      (await device.shell("cat /sdcard/walk-ui.xml")).toString("utf8"),
-      spec.pkg
-    )
-    const innerWidth = Number(await page.evaluate("window.innerWidth"))
-    const { viewport, place } = screenPlace(
-      bounds,
-      innerWidth,
-      pngSize(await device.screenshot())
+    // Each look its own file, in one call the device ends (`lookCommand`).
+    let looks = 0
+    const look = async (): Promise<PlaceRead> => {
+      looks += 1
+      const read = await device.shell(lookCommand(looks, LAID_OUT.lookMs))
+      return {
+        dump: read.toString("utf8"),
+        innerWidth: Number(await page.evaluate("window.innerWidth")),
+        pixelRatio: Number(await page.evaluate("window.devicePixelRatio")),
+      }
+    }
+    const { viewport, place } = await placeWhenLaidOut(
+      look,
+      spec.pkg,
+      pngSize(await device.screenshot()),
+      {
+        ...LAID_OUT,
+        now: () => Date.now(),
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        limit: within,
+      }
     )
     return {
       page,
@@ -186,7 +330,12 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
       shoot: async (path, moving): Promise<void> => {
         await writeFile(
           path,
-          moving ? await device.screenshot() : await still(device)
+          moving
+            ? await device.screenshot()
+            : // The last screen if none held: a phone's clock or a spinner
+              // may never stop, and the walk still wants its picture.
+              (await heldStill(() => device.screenshot(), STILL_TRIES, 1_000))
+                .png
         )
       },
       problems: (): ReadonlyArray<string> => errors,
