@@ -291,7 +291,10 @@ export const SAMPLE_BAND = "Sample data: a made-up week, not home's"
 /**
  * The rows of CALL an essay shows (the "it didn't run" essay, #3476): each
  * week made into a video, then the Rust Rounds and mock interview essays,
- * by their titles in paulgsc/server's `call.jsonnet`.
+ * then LANE, when the render may run (the server episode's grouping, so its
+ * title is written once), by their titles in paulgsc/server's
+ * `call.jsonnet`. LANE comes last, so a cut list's steps of the rows before
+ * it still name the same screens.
  */
 const CALL_ROWS: ReadonlyArray<Pick<Grouping, "dashboard" | "row" | "label">> =
   [
@@ -310,6 +313,7 @@ const CALL_ROWS: ReadonlyArray<Pick<Grouping, "dashboard" | "row" | "label">> =
       row: "Mock interview essays, the seventh job",
       label: "Mock interview essays",
     },
+    groupingOf("LANE: when the render may run"),
   ]
 
 /** The weekly call's dashboard, a row a screen, for an essay. */

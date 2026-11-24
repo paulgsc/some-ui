@@ -19,6 +19,7 @@ import {
   microphoneScript,
   murmurWav,
 } from "@video-motion/walk/microphone"
+import { renders } from "@video-motion/walk/renders"
 import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
 import { rustRounds } from "@video-motion/walk/rust-rounds"
@@ -73,6 +74,18 @@ describe("a walk's steps (WALK1)", () => {
         { label: "Waits", action: { kind: "dwell", ms: 0 }, holdMs: 0 },
       ])
     ).toEqual(["Waits: it is held no time", "Waits: it dwells no time"])
+  })
+
+  it("a scroll names the part it brings into view", () => {
+    const scroll = (target: string): Step => ({
+      label: "Scrolls",
+      action: { kind: "scroll", target },
+      holdMs: 1000,
+    })
+    expect(stepProblems([open, scroll('h2:has-text("Coming")')])).toEqual([])
+    expect(stepProblems([open, scroll(" ")])).toEqual([
+      "Scrolls: it scrolls to nothing",
+    ])
   })
 
   it("Jobs' walk reads its story sample and walks in order", () => {
@@ -205,6 +218,87 @@ describe("Rust Rounds' walk (#3476)", () => {
         routes: { "GET /api/v1/rust-weeks": { body: { weeks: [] } } },
       }).success
     ).toBe(false)
+  })
+})
+
+describe("Studio › Renders' walk (#3476)", () => {
+  const sample: unknown = JSON.parse(
+    repoFile("apps/mobile/snips/sample-routes.json")
+  )
+  const RENDERS = "GET /api/v1/renders"
+
+  it("reads the snips' sample: the essay at the oven, the one in line, down to Coming, then Run it again", () => {
+    const walk = renders.walk(renders.sample.parse(sample))
+    expect(walk.app).toBe("renders")
+    expect(walk.stage).toMatchObject({ kind: "apk", path: "/journal/renders" })
+    expect(stepProblems(walk.steps)).toEqual([])
+    const again =
+      'a[href$="/journal/renders/cards-essay/rust-scratchpad-2026-10-29"]'
+    expect(walk.steps.map((s) => [s.action, s.until])).toEqual([
+      [{ kind: "open" }, 'a[href$="/journal/cards/render-lane-2026-11-01"]'],
+      [
+        {
+          kind: "scroll",
+          target: 'a[href$="/journal/cards/take-conveyor-2026-11-01"]',
+        },
+        'a[href$="/journal/cards/take-conveyor-2026-11-01"] >> text=In line',
+      ],
+      [{ kind: "scroll", target: again }, again],
+      [
+        { kind: "scroll", target: 'h2:has-text("Coming")' },
+        'h2:has-text("Coming")',
+      ],
+      [{ kind: "tap", target: again }, 'h1:has-text("Run it again")'],
+    ])
+  })
+
+  it("looks only for words the board and Run it again say", () => {
+    const literals = [
+      "apps/www/src/lib/renders/words.ts",
+      "apps/www/src/lib/renders/conveyor.ts",
+      "apps/www/src/lib/renders/again/words.ts",
+    ].flatMap((path) =>
+      [
+        ...repoFile(path)
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/\/\/.*$/gm, "")
+          .matchAll(/"((?:[^"\\]|\\.)*)"/g),
+      ].map((m) => m[1] ?? "")
+    )
+    const walk = renders.walk(renders.sample.parse(sample))
+    const said = walk.steps
+      .flatMap((step) => [
+        step.until ?? "",
+        step.action.kind === "scroll" ? step.action.target : "",
+      ])
+      .flatMap((selector) =>
+        [...selector.matchAll(/has-text\("([^"]+)"\)|text=(.+)$/g)].map(
+          (m) => m[1] ?? m[2] ?? ""
+        )
+      )
+    expect(said).toContain("In line")
+    expect(said).toContain("Coming")
+    for (const text of said) expect(literals, text).toContain(text)
+  })
+
+  it("refuses a board with nothing at the oven, or nothing in line", () => {
+    const board = (
+      change: (body: Record<string, unknown>) => void
+    ): unknown => {
+      const copy = SampleRoutes.parse(structuredClone(sample))
+      const route = copy.routes[RENDERS]!
+      const body = z.looseObject({}).parse(route.body)
+      change(body)
+      copy.routes[RENDERS] = { ...route, body }
+      return copy
+    }
+    for (const changed of [
+      board((b) => (b.now = null)),
+      board((b) => (b.waiting = [])),
+      board((b) => (b.failed = [])),
+    ]) {
+      expect(renders.sample.safeParse(changed).success).toBe(false)
+    }
   })
 })
 
@@ -633,7 +727,12 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
       "Each week made into a video",
       "Rust Rounds essays, the fourth job",
       "Mock interview essays, the seventh job",
+      "LANE: when the render may run",
     ])
+    // No step taps, so each row's picture may be shorter than the walk's
+    // screen, the tallest row's (WALK10's `walkPictureProblem`): LANE's
+    // height moves the screen, never another row's shape.
+    expect(call.steps.every((step) => step.action.kind !== "tap")).toBe(true)
     // Only the Rust Rounds row's longest wait is empty, with nothing waiting.
     expect(call.stage).toMatchObject({
       noData: { "Rust Rounds essays, the fourth job": 1 },
