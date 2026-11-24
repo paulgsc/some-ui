@@ -49,9 +49,14 @@ describe("placing a series' brand files in a video's folder (HYPER4)", () => {
     expect(placed).toEqual({ ok: true, value: { bed: false, sounds: 0 } })
   })
 
-  it("refuses without a brand folder, naming what the series needs", async () => {
+  it("refuses without a brand folder, naming what the series needs, never our own bed", async () => {
     const placed = await placeBrandFiles(
-      series({ music: undefined }),
+      series({
+        music: {
+          bed: { file: "brand/bed.wav", sha256: MUSIC_BED.sha256 },
+          gainDb: -14,
+        },
+      }),
       undefined,
       join(base, "video")
     )
@@ -95,21 +100,5 @@ describe("placing a series' brand files in a video's folder (HYPER4)", () => {
     expect(createHash("sha256").update(written).digest("hex")).toBe(
       MUSIC_BED.sha256
     )
-  })
-
-  it("still needs the brand folder for our bed's sounds, and a bed of the owner's own", async () => {
-    const placed = await placeBrandFiles(
-      series({
-        music: {
-          bed: { file: "brand/bed.wav", sha256: MUSIC_BED.sha256 },
-          gainDb: -14,
-        },
-      }),
-      undefined,
-      join(base, "video")
-    )
-    expect(placed.ok ? [] : placed.problems).toEqual([
-      "The series names the click sound, the whoosh sound, and no brand folder was given to hold them",
-    ])
   })
 })

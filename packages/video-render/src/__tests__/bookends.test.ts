@@ -1,13 +1,7 @@
 /** One schema for every video: its intro, outro and music bed (#3476). */
 import { readdir } from "node:fs/promises"
 import { join } from "node:path"
-import {
-  BOOKEND_OPT_OUTS,
-  bookendProblems,
-  BOOKENDS,
-  bookendsOf,
-  SERIES_IDS,
-} from "@video-render/bookends"
+import { bookendProblems, SERIES_IDS } from "@video-render/bookends"
 import { callFormat } from "@video-render/call"
 import { CARDS_SERIES } from "@video-render/cards-essay"
 import { reportFormat } from "@video-render/engagement-report-video"
@@ -49,15 +43,6 @@ describe("every video's bookends", () => {
         .map((e) => e.name),
     ]
     expect([...SERIES_IDS].sort()).toEqual(folders.sort())
-  })
-
-  it("are all on unless a series names what it leaves out, and why", () => {
-    for (const id of SERIES_IDS) {
-      const out = BOOKEND_OPT_OUTS[id]
-      expect(bookendsOf(id).size).toBe(BOOKENDS.length - (out?.off.length ?? 0))
-      if (out) expect(out.why.length).toBeGreaterThan(20)
-    }
-    expect([...bookendsOf("cheat-sheet")]).toEqual(["intro", "outro", "bed"])
   })
 
   it("are carried by every template's newest version, in the series it pins", async () => {

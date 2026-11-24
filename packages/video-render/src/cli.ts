@@ -36,9 +36,7 @@
  * checks paulgsc/testing's `cards/` folder before it is published
  * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
  * cards essay in a version of its series this checkout holds, and no essay
- * file it forgets, and the newest day's essays each in a version of its
- * series that carries what every video in it carries: its intro, outro and
- * music bed, and with a screen of ours in each chapter that speaks of one
+ * file it forgets; and the newest day's essays' bookends and SHOW1
  * (`cardsPublishProblems`, #3476). What only drawing finds is
  * `record:cards`' to refuse.
  * With a clone of each repository the essays cite, it also holds every

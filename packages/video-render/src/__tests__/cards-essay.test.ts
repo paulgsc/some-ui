@@ -12,6 +12,7 @@ import {
   joinedTake,
   laidTake,
   parseCardsEssay,
+  PUBLISH_SINCE,
   voicedCardsCutList,
 } from "@video-render/cards-essay"
 import type { CutList } from "@video-render/cut-list"
@@ -21,13 +22,13 @@ import { describe, expect, it } from "vitest"
 
 import { showcase } from "./showcase"
 
-/** Cheat-sheet's versions 1 and 2, the silent and the first spoken. */
+/** Cheat-sheet's versions, from the silent first on. */
 const CHEAT_SHEET = await Promise.all(
-  [1, 2].map((v) =>
+  [1, 2, 3, 4, 5, 6].map((v) =>
     readSeries(join(import.meta.dirname, "../sample/series/cheat-sheet"), v)
   )
 )
-const V1 = (id: string, version: number): Series | null => {
+const held = (id: string, version: number): Series | null => {
   const read = CHEAT_SHEET[version - 1]
   return id === "cheat-sheet" && read?.ok === true ? read.value : null
 }
@@ -66,7 +67,7 @@ async function folder(): Promise<Map<string, unknown>> {
 
 describe("a cards essay", () => {
   it("is each showcase, keyed by its slug and its stamp's day", async () => {
-    expect(cardsFolderProblems(await folder(), V1)).toEqual([])
+    expect(cardsFolderProblems(await folder(), held)).toEqual([])
   })
 
   it("is refused for a key that isn't its stamp's day, or isn't a key", async () => {
@@ -129,7 +130,7 @@ describe("the cards folder", () => {
     const files = await folder()
     files.delete(`${RUST}.json`)
     files.set("stray-2026-11-01.json", await showcase("rust-scratchpad"))
-    expect(cardsFolderProblems(files, V1)).toEqual([
+    expect(cardsFolderProblems(files, held)).toEqual([
       `${RUST}.json: the index lists it, and there is no such file`,
       "stray-2026-11-01.json: the index doesn't list it",
     ])
@@ -139,7 +140,7 @@ describe("the cards folder", () => {
     const files = await folder()
     const cut = await showcase("rust-scratchpad")
     files.set(`${RUST}.json`, { ...cut, series: { ...cut.series, version: 9 } })
-    expect(cardsFolderProblems(files, V1)).toEqual([
+    expect(cardsFolderProblems(files, held)).toEqual([
       `${RUST}.json: cheat-sheet has no version 9`,
     ])
   })
@@ -152,7 +153,7 @@ describe("the cards folder", () => {
       look: "lively",
       burnIns: [{ kind: "headline", params: {} }],
     })
-    const problems = cardsFolderProblems(files, V1)
+    const problems = cardsFolderProblems(files, held)
     for (const p of problems) expect(p).toMatch(new RegExp(`^${RUST}\\.json: `))
     // Only resolving against the series says these, so the essay got there.
     const said = problems.join("\n")
@@ -168,30 +169,39 @@ describe("the cards folder", () => {
       [{ key: NIXOS }, { key: NIXOS }],
     ]) {
       files.set("index.json", { schema: CARDS_INDEX_SCHEMA, essays })
-      expect(cardsFolderProblems(files, V1).join("\n")).toContain(
+      expect(cardsFolderProblems(files, held).join("\n")).toContain(
         "newest first, each once"
       )
     }
   })
 })
 
-/** Every version of cheat-sheet this checkout holds, by version. */
-const HELD = new Map<number, Series>()
-for (let v = 1; v <= 6; v++) {
-  const read = await readSeries(
-    join(import.meta.dirname, "../sample/series/cheat-sheet"),
-    v
-  )
-  if (read.ok) HELD.set(v, read.value)
-}
-
 describe("the essays being published (#3476)", () => {
-  const seriesOf = (id: string, version: number): Series | null =>
-    id === "cheat-sheet" ? (HELD.get(version) ?? null) : null
-  const at = async (version: number): Promise<CutList> => {
+  const seriesOf = held
+  const NIXOS = `nixos-upgrade-${PUBLISH_SINCE}`
+  const RUST = `rust-scratchpad-${PUBLISH_SINCE}`
+  /** The showcase in cheat-sheet `version`, stamped on `day`. */
+  const at = async (
+    version: number,
+    day: string = PUBLISH_SINCE
+  ): Promise<CutList> => {
     const cut = await showcase("nixos-upgrade")
-    return { ...cut, series: { ...cut.series, version } }
+    return {
+      ...cut,
+      series: { ...cut.series, version },
+      stamp: cut.stamp && { ...cut.stamp, date: day },
+    }
   }
+  /** A folder of two essays of the same day, both in version 6. */
+  const folder = async (): Promise<Map<string, unknown>> =>
+    new Map<string, unknown>([
+      [
+        "index.json",
+        { schema: CARDS_INDEX_SCHEMA, essays: [{ key: NIXOS }, { key: RUST }] },
+      ],
+      [`${NIXOS}.json`, await at(6)],
+      [`${RUST}.json`, await at(6)],
+    ])
 
   it("pin a version of their series with its intro, outro and bed", async () => {
     const files = await folder()
@@ -243,16 +253,23 @@ describe("the essays being published (#3476)", () => {
   it("are the newest day's: an older essay keeps the version it pinned", async () => {
     const files = await folder()
     const older = "rust-scratchpad-2026-11-01"
-    const old = await at(4)
     files.set("index.json", {
       schema: CARDS_INDEX_SCHEMA,
       essays: [{ key: NIXOS }, { key: older }],
     })
-    files.set(`${NIXOS}.json`, await at(6))
-    files.set(`${older}.json`, {
-      ...old,
-      stamp: old.stamp && { ...old.stamp, date: "2026-11-01" },
-    })
+    files.set(`${older}.json`, await at(4, "2026-11-01"))
+    expect(cardsPublishProblems(files, seriesOf)).toEqual([])
+  })
+
+  it("never refuse a folder whose newest essay was published before the rule", async () => {
+    const day = "2026-11-23"
+    const files = new Map<string, unknown>([
+      [
+        "index.json",
+        { schema: CARDS_INDEX_SCHEMA, essays: [{ key: `merge-queue-${day}` }] },
+      ],
+      [`merge-queue-${day}.json`, await at(5, day)],
+    ])
     expect(cardsPublishProblems(files, seriesOf)).toEqual([])
   })
 })
@@ -331,9 +348,9 @@ describe("a spoken essay (EXPLAIN6)", () => {
   it("is the newest in the folder; an older silent essay stays as first served", async () => {
     const files = await folder()
     files.set(`${RUST}.json`, await silent("rust-scratchpad"))
-    expect(cardsFolderProblems(files, V1)).toEqual([])
+    expect(cardsFolderProblems(files, held)).toEqual([])
     files.set(`${NIXOS}.json`, await silent("nixos-upgrade"))
-    expect(cardsFolderProblems(files, V1).join("\n")).toContain(
+    expect(cardsFolderProblems(files, held).join("\n")).toContain(
       `${NIXOS}.json: it's silent, and the newest essay is spoken`
     )
   })

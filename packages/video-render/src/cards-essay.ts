@@ -656,6 +656,13 @@ export function cardsFolderProblems(
 }
 
 /**
+ * The first day an essay owes what `cardsPublishProblems` holds: an essay
+ * already published before it keeps what it was published with, so the
+ * folder is never refused for one (#3476).
+ */
+export const PUBLISH_SINCE = "2026-11-24"
+
+/**
  * What the essays being published, the newest day's, owe that an older one
  * didn't (#3476): what every video in their series carries
  * (`bookends.ts`), so a bookend their series' version lacks or a bed one
@@ -672,23 +679,20 @@ export function cardsPublishProblems(
   const essays = index.ok ? index.value.essays : []
   const newest = dayOf(essays[0]?.key)
   return essays
-    .filter(({ key }) => dayOf(key) === newest)
+    .filter(({ key }) => dayOf(key) === newest && dayOf(key) >= PUBLISH_SINCE)
     .flatMap(({ key }) => {
       const essay = parseCardsEssay(key, files.get(`${key}.json`))
       if (!essay.ok) return []
       const series = seriesOf(essay.value.series.id, essay.value.series.version)
       if (series === null) return []
-      const bed =
-        isSeriesId(series.id) && bookendsOf(series.id).has("bed")
-          ? series.id
-          : null
+      const bed = isSeriesId(series.id) && bookendsOf(series.id).has("bed")
       return [
         ...bookendProblems(series).map(
           (p) => `${p}; pin the newest version that does`
         ),
-        ...(essay.value.music === "off" && bed !== null
+        ...(essay.value.music === "off" && bed
           ? [
-              `it turns the music bed off, and every video in ${bed} plays it: leave "music" out`,
+              `it turns the music bed off, and every video in ${series.id} plays it: leave "music" out`,
             ]
           : []),
         ...unshownProblems(essay.value),

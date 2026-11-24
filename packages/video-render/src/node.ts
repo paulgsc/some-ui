@@ -430,8 +430,6 @@ export async function renderFolder(
     brand,
     ...rest
   } = options
-  // Without home's brand folder its files must already be in `root`; our
-  // own bed is written either way (#3476).
   const placed =
     brand === undefined
       ? await placeOurBed(series.value, root)

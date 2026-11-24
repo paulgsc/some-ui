@@ -9,20 +9,14 @@
  * as one:
  *
  * - a show's template (`format.ts`): its shape's `brand.intro` and
- *   `brand.outro` (the weekly call, the engagement report, Rust Rounds, the
- *   interview and game essays, Playoff Delta);
+ *   `brand.outro`;
  * - its series alone, for a video drawn with no template (a cards essay):
  *   the series' own `intro` and `outro` (`series.ts`).
  *
  * The bed is always the series' `music`. Ours (`MUSIC_BED`) is synthesised
  * by home itself where a video is rendered (`placeBrandFiles`), so a series
- * that names it needs nothing laid on home.
- *
- * A series version is never edited once a video pins it, so the policy
- * holds the newest version of each series, and of each template, to it
- * (`__tests__/bookends.test.ts`), and a cards essay being published to a
- * version that carries what its series keeps on (`cardsFolderProblems`).
- * Older videos keep the versions they pinned.
+ * that names it needs nothing laid on home. Older videos keep the versions
+ * they pinned.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -30,7 +24,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type { Shape } from "./format"
 import type { Series } from "./series"
 
-export const BOOKENDS = ["intro", "outro", "bed"] as const
+const BOOKENDS = ["intro", "outro", "bed"] as const
 
 export type Bookend = (typeof BOOKENDS)[number]
 
@@ -55,7 +49,7 @@ export const isSeriesId = (id: string): id is SeriesId =>
   SERIES_IDS.some((known) => known === id)
 
 /** A series' bookends left out, and why, in a sentence. */
-export type OptOut = {
+type OptOut = {
   readonly off: ReadonlyArray<Bookend>
   readonly why: string
 }
@@ -64,7 +58,7 @@ export type OptOut = {
  * The bookends a series leaves out, as policy (C771: moved with the story,
  * each move a call). Every bookend of a series not named here is on.
  */
-export const BOOKEND_OPT_OUTS: Readonly<Partial<Record<SeriesId, OptOut>>> = {
+const BOOKEND_OPT_OUTS: Readonly<Partial<Record<SeriesId, OptOut>>> = {
   "build-journal-short": {
     off: BOOKENDS,
     why: "The Build Journal's shorts are the owner's own, cut on the phone in Soundbites, which pins this series' version 1 and draws no composition; they move when Soundbites does",

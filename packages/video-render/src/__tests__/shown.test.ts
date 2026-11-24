@@ -35,6 +35,8 @@ describe("a line that speaks of our app", () => {
       "Every Monday, a new week arrives on the phone.",
       "That is what the phone shows: error E0507, underlined.",
       "Watch it in Studio, under Renders.",
+      "In Studio, under Renders, it waits.",
+      "Studio’s Renders list holds it.",
       "Its answers stay in the APK until they're sent.",
       "Open it in the web app.",
     ])
@@ -50,13 +52,16 @@ describe("a line that speaks of our app", () => {
       "A release of www, the web app, went out without its renderer.",
       "Set the thumbnail in YouTube Studio, under its upload page.",
       "YouTube Studio's upload page is by hand.",
+      "Android Studio's emulator boots it.",
+      "Grafana shows it in the app.",
     ])
       expect([line, [...surfacesSpoken(said("S", line))]]).toEqual([line, []])
   })
 
   it("cites a file that draws one of its screens", () => {
     const cite = (path: string): Shot =>
-      said("S", "The take is laid at its place.", {
+      shot("S", {
+        picture: { kind: "card" },
         spoken: {
           role: "scene",
           narration: "The take is laid at its place.",

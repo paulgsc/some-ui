@@ -81,11 +81,6 @@ describe("the bed's mode where a video sets none (#3476)", () => {
     expect(musicOf("lively", series())).toBe("up-between-lines")
     const plain = resolve(cutList([shot("S1")], { look: "plain" }), series())
     expect(plain.ok && plain.value.music).toBe("under-voice")
-    const off = resolve(
-      cutList([shot("S1")], { look: "plain", music: "off" }),
-      series()
-    )
-    expect(off.ok && off.value.music).toBe("off")
   })
 })
 

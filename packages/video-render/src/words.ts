@@ -105,7 +105,6 @@ function lookCard(look: Look): PlanWords {
       { what: "Captions", how: CAPTION_WORDS[r.captions] },
       {
         what: "Music",
-        // A series that plays a bed plays it under this look too (#3476).
         how:
           r.music === "off"
             ? "Off, unless the series plays a bed"

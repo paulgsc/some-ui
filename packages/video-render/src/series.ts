@@ -39,7 +39,7 @@ import {
   problemsOf,
 } from "./cut-list"
 import type { Composition, CutList, Parsed, Picture, Shot } from "./cut-list"
-import { CastIdSchema, ThemeIdSchema } from "./format"
+import { CastIdSchema, showId, ThemeIdSchema } from "./format"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, ms, SOUNDS, TRANSITIONS } from "./vocabulary"
 import { VoicesIdSchema } from "./voices"
@@ -68,7 +68,7 @@ const SeriesSceneSchema = z.object({
      */
     z.object({
       kind: z.literal("brand"),
-      motion: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+      motion: showId,
     }),
   ]),
   durationMs: ms.min(100),

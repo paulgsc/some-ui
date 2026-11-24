@@ -30,16 +30,17 @@ type Phrase = { readonly kind: SurfaceKind; readonly says: RegExp }
 
 /**
  * The phrases a line uses to place something on our app: on the phone or
- * the APK, in the web app, in Studio (never YouTube's).
+ * the APK, in the web app, in Studio (never YouTube's or Android's). "The
+ * app" alone is left out: a line says it of other people's apps too.
  */
 const SURFACE_PHRASES: ReadonlyArray<Phrase> = [
   {
     kind: "app",
-    says: /\b(?:on|in) (?:the|your|my|our) (?:phone|APK|web app|app)\b/iu,
+    says: /\b(?:on|in) (?:the|your|my|our) (?:phone|APK|web app)\b/iu,
   },
-  { kind: "app", says: /\bthe (?:phone|app|APK|web app) shows\b/iu },
-  { kind: "app", says: /\b(?:in|on|under) Studio\b/u },
-  { kind: "app", says: /(?<!YouTube )\bStudio's\b/u },
+  { kind: "app", says: /\bthe (?:phone|APK|web app) shows\b/iu },
+  { kind: "app", says: /\b(?:[Ii]n|[Oo]n|[Uu]nder) Studio\b/u },
+  { kind: "app", says: /(?<!(?:YouTube|Android) )\bStudio['’]s\b/u },
 ]
 
 /** A file that draws a surface of ours, by its repository and path. */
