@@ -577,7 +577,7 @@ export const SHOW: Show = {
 /** A still's or cut's file name: its number, two digits, as a walk names it. */
 const two = (n: number): string => String(n).padStart(2, "0")
 
-/** A route as a file's name: `/settings/data` is `settings~data`. */
+/** A route as a file's name, its slashes as tildes: settings/data is settings~data. */
 const routeSlug = (route: Route): string => route.slice(1).replaceAll("/", "~")
 
 /** Where the build finds a face's asset (output.ts, `SITE_MEDIA_DIR`), by key. */
