@@ -10,7 +10,7 @@
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Notice, useConfirmSheet } from "@some-ui/shared"
+import { Button, Notice, Reading, useConfirmSheet } from "@some-ui/shared"
 import type { TemplateId } from "@some-ui/video-render"
 import { templateFormat } from "@some-ui/video-render"
 import { useNavigate } from "@tanstack/react-router"
@@ -71,7 +71,7 @@ const Standing = ({
   const { home } = state
   switch (home.kind) {
     case "reading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "unpaired": {
       return (
