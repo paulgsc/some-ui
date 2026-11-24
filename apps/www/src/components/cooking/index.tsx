@@ -14,6 +14,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Reading,
   StationStrip,
 } from "@some-ui/shared"
 import type { Station } from "@some-ui/shared"
@@ -669,7 +670,7 @@ export const CookingPage = ({
     pending: () => (
       <>
         {heading}
-        <p className="text-muted-foreground text-sm">{W.reading}</p>
+        <Reading>{W.reading}</Reading>
       </>
     ),
     failed: (_error, retry) => (

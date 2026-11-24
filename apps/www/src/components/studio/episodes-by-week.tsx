@@ -11,7 +11,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { cn, dayOf, weekOf } from "@some-ui/core-utils"
-import { Button, Dot } from "@some-ui/shared"
+import { Button, Dot, Reading } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
@@ -269,9 +269,7 @@ export const EpisodesView = ({
           onTryAgain={() => onTryAgain(one.feed)}
         />
       ))}
-      {empty && reading && (
-        <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
-      )}
+      {empty && reading && <Reading>{WORDS.reading}</Reading>}
       {empty && !reading && trouble.length === 0 && (
         <p className="text-muted-foreground text-sm">
           {chip === "all" ? WORDS.noneAtAll : WORDS.none(chip)}

@@ -74,6 +74,68 @@ export type Walk = {
 /** How long a screen may take to settle: a slowed emulator renders late. */
 const SETTLE_MS = 2_500
 
+/**
+ * What a screen still reading marks itself with (`Reading`, `@some-ui/shared`;
+ * a route still loading, `RoutePending`): the app's reads of home go through
+ * the phone's own HTTP, which `networkidle` can't see (#3491).
+ */
+const BUSY = '[aria-busy="true"]'
+
+/** How long a screen may read before it is left unphotographed, said as unreached. */
+const READING_MS = 20_000
+
+/** How many pictures of a screen that began reading after it settled are taken before it is left. */
+const LOOKS = 3
+
+/**
+ * Starts noting whether anything on the screen reads, at any moment from
+ * now until `sawReading`: a line that comes and goes between two looks, as
+ * a read that lands while a picture is taken, is noted too (#3491). What it
+ * notes is kept on the page's root, as `data-snips-*`, which no screen reads.
+ */
+const watchReading = (page: Page): Promise<void> =>
+  page.evaluate((busy) => {
+    const root = document.documentElement
+    // Each watch's own number, from a count that only grows in this document.
+    const watch = String(Number(root.dataset["snipsWatches"] ?? "0") + 1)
+    root.dataset["snipsWatches"] = watch
+    root.dataset["snipsWatch"] = watch
+    root.dataset["snipsSaw"] =
+      document.querySelector(busy) === null ? "" : "yes"
+    const reads = (node: Node): boolean =>
+      node instanceof Element &&
+      (node.matches(busy) || node.querySelector(busy) !== null)
+    const observer = new MutationObserver((records): void => {
+      // A later watch, or `sawReading`, ends this one.
+      if (root.dataset["snipsWatch"] !== watch) {
+        observer.disconnect()
+        return
+      }
+      for (const record of records) {
+        if (record.type === "attributes" && reads(record.target))
+          root.dataset["snipsSaw"] = "yes"
+        for (const node of record.addedNodes)
+          if (reads(node)) root.dataset["snipsSaw"] = "yes"
+      }
+    })
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-busy"],
+    })
+  }, BUSY)
+
+/** Whether anything read since `watchReading`, or reads now; ends the watch. */
+const sawReading = (page: Page): Promise<boolean> =>
+  page.evaluate((busy) => {
+    const root = document.documentElement
+    const saw = root.dataset["snipsSaw"] === "yes"
+    root.dataset["snipsWatch"] = ""
+    root.dataset["snipsSaw"] = ""
+    return saw || document.querySelector(busy) !== null
+  }, BUSY)
+
 export async function walk(w: Walk): Promise<Part> {
   const links = new Set<string>()
   const snips: Array<SnipRecord> = []
@@ -85,7 +147,24 @@ export async function walk(w: Walk): Promise<Part> {
 
   const visit = async (route: RouteEntry, path: string): Promise<void> => {
     await w.open(path)
-    await settle(w.page)
+    // Never a picture of a screen still reading: it shows the reading line,
+    // not the screen (#3491).
+    const stillReading = (): void => {
+      unreached.push({
+        surface: w.surface,
+        route: route.path,
+        why: `it was still reading after ${String(READING_MS / 1000)} s`,
+      })
+    }
+    if (!(await settle(w.page))) {
+      stillReading()
+      return
+    }
+    // A screen can begin reading after settle's last look, and its read can
+    // land while the picture is taken; a picture taken while anything read
+    // since settle is dropped, and the screen settled and shot again, a few
+    // times at most.
+    await watchReading(w.page)
     const screen = await read(w.page, w.base)
     for (const link of screen.links) links.add(link)
     if (screen.notFound) {
@@ -105,7 +184,15 @@ export async function walk(w: Walk): Promise<Part> {
       return
     }
     const whole = isStage(route.path)
-    const png = await w.camera.shoot(whole)
+    let png = await w.camera.shoot(whole)
+    for (let look = 1; await sawReading(w.page); look++) {
+      if (look >= LOOKS || !(await settle(w.page))) {
+        stillReading()
+        return
+      }
+      await watchReading(w.page)
+      png = await w.camera.shoot(whole)
+    }
     const regions = await w.camera.regions(whole)
     const sha256 = await hashOf(png)
     const same = seen.get(sha256)
@@ -248,13 +335,37 @@ export async function pageRegions(
   return regionsOf(measured, { width, height })
 }
 
-/** Waits for the network to go quiet and fonts to load, then a beat for late paints. */
-async function settle(page: Page): Promise<void> {
+/**
+ * Waits for the network to go quiet, for nothing on the screen to be reading
+ * (`BUSY`) and fonts to load, then a beat for late paints: while anything
+ * read at any moment of the beat, it waits again. False when
+ * the screen was still reading after `readingMs` in all.
+ */
+export async function settle(
+  page: Page,
+  readingMs: number = READING_MS
+): Promise<boolean> {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {
     // A screen that keeps a request open still gets its picture.
   })
-  await page.evaluate(() => document.fonts.ready.then(() => true))
-  await page.waitForTimeout(SETTLE_MS)
+  const until = Date.now() + readingMs
+  // A screen may start reading only after it first looks idle (it mounts,
+  // then asks home), so it is read again after the beat: what it shows
+  // then is what gets photographed.
+  for (;;) {
+    const read = await page
+      .waitForFunction((busy) => document.querySelector(busy) === null, BUSY, {
+        timeout: Math.max(1, until - Date.now()),
+      })
+      .then(() => true)
+      .catch(() => false)
+    if (!read) return false
+    await page.evaluate(() => document.fonts.ready.then(() => true))
+    await watchReading(page)
+    await page.waitForTimeout(SETTLE_MS)
+    if (!(await sawReading(page))) return true
+    if (Date.now() >= until) return false
+  }
 }
 
 type Screen = {

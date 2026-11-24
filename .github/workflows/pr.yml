@@ -291,6 +291,14 @@ jobs:
         run: |
           nix develop .#ci-playwright --command pnpm --filter www test:sw
 
+      # Snips Capture's wait for a screen to read (SN2, #3491) needs a real
+      # page: the rest of the capture runs only in Snips Capture itself.
+      - name: E2E — the snips capture waits for a screen to read (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'snips_settle')
+        run: |
+          nix develop .#ci-playwright --command \
+            pnpm --filter www test:e2e tests/snips/settle.spec.ts
+
       # docs/ui-fit calls its Playwright layer "the actual gate", and until #899
       # nothing ran it: it lived behind `pnpm test:ui-fit`, which no workflow
       # invoked, so a panel could paint outside its rect for months with every

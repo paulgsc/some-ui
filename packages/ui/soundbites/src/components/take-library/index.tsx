@@ -26,6 +26,7 @@ import {
   Dot,
   Input,
   Notice,
+  Reading,
   TakeList,
 } from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
@@ -651,7 +652,7 @@ const Unread = ({
   const { read } = state
   switch (read.kind) {
     case "reading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "read": {
       return null
