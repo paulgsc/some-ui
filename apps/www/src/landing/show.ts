@@ -833,16 +833,23 @@ export const everyScene = (
   episode: ResolvedEpisode
 ): ReadonlyArray<ResolvedScene> => episode.pool?.snacks ?? episode.scenes
 
-/** Every asset key the show names, once each, a pool's every snack's included. */
+/**
+ * Every asset key the show names, once each: first what every visit can
+ * show (each episode's scenes, a pool's first draw), then the rest of each
+ * pool. The build spends the page's preview budget in this order
+ * (`render-public-site.ts`), so a face on every page comes before a snack
+ * drawn now and then.
+ */
 export function showMediaKeys(
   episodes: ReadonlyArray<ResolvedEpisode>
 ): ReadonlyArray<string> {
+  const keys = (scenes: ReadonlyArray<ResolvedScene>): Array<string> =>
+    scenes.flatMap((s) => s.faces.map((f) => f.key))
   return [
-    ...new Set(
-      episodes.flatMap((e) =>
-        everyScene(e).flatMap((s) => s.faces.map((f) => f.key))
-      )
-    ),
+    ...new Set([
+      ...episodes.flatMap((e) => keys(e.scenes)),
+      ...episodes.flatMap((e) => keys(everyScene(e))),
+    ]),
   ]
 }
 

@@ -10,7 +10,7 @@
 // With a Snips Capture bundle (docs/snips.md), it also copies each route's
 // still the show names (a `screen` face, #3473) from the bundle's APK
 // pictures, the release build's where it has one. A route the show names
-// that the capture did not photograph fails the run.
+// that the capture did not photograph is a warning on the run (below).
 //
 // Beside each face it writes the face's preview (`previewKey`): a still
 // itself, or a clip's middle frame (a cut opens on its fade in), 40 px on its long edge, as WebP, which the landing shows in the
@@ -21,7 +21,7 @@
 // run: the producer's own output, not the landing, is where that shows.
 
 import { execFileSync } from "node:child_process"
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs"
+import { appendFileSync, copyFileSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { previewKey } from "@/landing/render"
 import type { EpisodeId } from "@/landing/show"
@@ -38,7 +38,7 @@ const [episode, renderDir, outDir, bundleDir] = [
 const known = EPISODES.find((id) => id === episode)
 if (known === undefined || renderDir === undefined || outDir === undefined) {
   throw new Error(
-    "usage: tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>]"
+    "usage: tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>, needed when the episode names route stills]"
   )
 }
 const render = resolve(renderDir)
@@ -177,9 +177,13 @@ function apkPictures(bundle: string): ReadonlyArray<Picture> {
   })
 }
 
-// A route the show names that the capture didn't photograph fails the run,
-// as a walk face the render lacks does: the producer's own output, not the
-// landing, is where that shows (#3473). So does a run with no bundle.
+// A route the show names that the capture didn't photograph is called out
+// loudly, as a warning on the run and in its summary (#3473), but doesn't
+// fail it: a red run would cost far more than the face. Pages and home read
+// only green Snips Capture runs (fetch-site-media.sh, docs/snips.md), so
+// failing here would drop this run's Jobs faces and every essay's snips for
+// one missing still. The face shows its title card until a capture has it.
+// A run given no bundle at all is a mistake in how it was called, and fails.
 if (screens.length > 0) {
   if (bundleDir === undefined)
     throw new Error(
@@ -190,10 +194,13 @@ if (screens.length > 0) {
   const missing = screens.filter(
     ({ route }) => !pictures.some((p) => p.route === route)
   )
-  if (missing.length > 0)
-    throw new Error(
-      `the capture photographed none of: ${missing.map((m) => m.route).join(", ")} (the bundle's manifest lists each route it could not show under \`unreached\`)`
-    )
+  for (const { route, key } of missing) {
+    const line = `The landing names ${route}, which this capture did not photograph (see the manifest's \`unreached\`): ${key} shows its title card.`
+    process.stdout.write(`::warning title=Landing faces::${line}\n`)
+    const summary = process.env["GITHUB_STEP_SUMMARY"]
+    if (summary !== undefined && summary !== "")
+      appendFileSync(summary, `- ${line}\n`)
+  }
   for (const { route, key } of screens) {
     const found =
       pictures.find((p) => p.route === route && p.build === "release") ??

@@ -14,6 +14,7 @@ import {
   SHOW,
   SHOW_SCHEMA,
   showFor,
+  showMediaKeys,
   slotOf,
   WALKTHROUGH_FILES,
 } from "@/landing/show"
@@ -512,5 +513,37 @@ describe("timedScenes", () => {
       ["The longest", ["ccc", "a second line"]],
     ])
     expect(timedScenes(server)).toBe(server.scenes)
+  })
+})
+
+describe("showMediaKeys", () => {
+  it("names what every visit shows before the rest of a pool, each key once", () => {
+    const got = resolveShow(
+      showOf({
+        draw: 1,
+        pool: [
+          {
+            copy: { title: "A", narration: ["a"], draft: false },
+            faces: [{ snip: 1 }, { snip: 2 }],
+            from: ["#3473"],
+          },
+          {
+            copy: { title: "B", narration: ["b"], draft: false },
+            faces: [{ snip: 3 }, { snip: 2 }],
+            from: ["#3473"],
+          },
+        ],
+      }),
+      walks
+    )
+    if (!got.ok) throw new Error(got.problems.join("; "))
+    expect(showMediaKeys(got.episodes)).toEqual([
+      "stills/android/01.png",
+      "stills/android/02.png",
+      // The server episode's scenes, shown every visit, before the pool's rest.
+      "stills/server/01.png",
+      "stills/server/02.png",
+      "stills/android/03.png",
+    ])
   })
 })

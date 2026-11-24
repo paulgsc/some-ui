@@ -13,7 +13,7 @@ import { drawSnacks } from "@/landing/draw"
 import { landingMochi } from "@/landing/mochi"
 import { drawPools } from "@/landing/pool-dom"
 import type { LandingMedia } from "@/landing/render"
-import { landingMediaKeys, renderLanding } from "@/landing/render"
+import { landingMediaKeys, previewKey, renderLanding } from "@/landing/render"
 import { SHOW, showFor } from "@/landing/show"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
@@ -27,13 +27,19 @@ const resolved = showFor(
 )
 if (!resolved.ok) throw new Error(resolved.problems.join("; "))
 const EPISODES = resolved.episodes
-// Every face's asset carried, so every place holds a clip or still to go stale.
+// Every face's asset carried, with its preview, so every place holds a
+// clip or still and a preview to go stale.
 const MEDIA: LandingMedia = new Map(
   landingMediaKeys(LANDING_WORDS, EPISODES).map((key) => [
     key,
-    { width: 1080, height: 1920 },
+    { width: 1080, height: 1920, preview: previewKey(key) },
   ])
 )
+
+/** Whether `src` is `key`'s asset or its preview, as the page serves them. */
+const isOwn = (src: string | null, key: string): boolean =>
+  src !== null &&
+  (src.endsWith(`/${key}`) || src.endsWith(`/${previewKey(key)}`))
 const PAGE = renderLanding(
   resumeData.fullstack,
   landingMochi(),
@@ -54,8 +60,10 @@ const seeded = (seed: number): (() => number) => {
 const pooled = EPISODES.filter((e) => e.pool !== null)
 
 describe("drawPools", () => {
-  it("has a pool to draw from", () => {
-    expect(pooled.length).toBeGreaterThan(0)
+  it("has one pool to draw from", () => {
+    // One pool, so the test's seeded draw is the one drawPools makes: the
+    // seed's first numbers are that pool's.
+    expect(pooled).toHaveLength(1)
   })
 
   for (const seed of [1, 2, 3, 5, 8, 13, 21, 34]) {
@@ -95,6 +103,13 @@ describe("drawPools", () => {
           expect(list[place]?.querySelector("h4")?.textContent).toBe(
             snack.title
           )
+          // The list's scene holds the snack's lines and no other.
+          expect(
+            [
+              ...(list.at(place)?.querySelectorAll(".scene-copy > h4 ~ p") ??
+                []),
+            ].map((p) => p.textContent)
+          ).toEqual(snack.narration)
           snack.faces.forEach((face, j) => {
             const places = [
               cubes.at(j)?.at(place),
@@ -106,7 +121,7 @@ describe("drawPools", () => {
               expect(at.getAttribute("data-slot")).toBe(face.slot)
               // Every picture in the place is this face's, or its preview.
               for (const media of at.querySelectorAll("[src]"))
-                expect(media.getAttribute("src")).toContain(face.key)
+                expect(isOwn(media.getAttribute("src"), face.key)).toBe(true)
               const label =
                 at.querySelector(".band-title span") ??
                 at.querySelector(".caption p")
@@ -119,6 +134,21 @@ describe("drawPools", () => {
                 ),
               ].at(j)
               expect(skeleton?.getAttribute("data-skeleton")).toBe(face.slot)
+              // Whole: the drawn snack's own skeleton, its preview included.
+              const template = document.querySelector<HTMLTemplateElement>(
+                `template.pool[data-episode="${id}"]`
+              )
+              const own = [
+                ...([...(template?.content.querySelectorAll(".snack") ?? [])]
+                  .at(at)
+                  ?.querySelectorAll(".skeleton") ?? []),
+              ].at(j)
+              expect(own).toBeDefined()
+              expect(skeleton?.outerHTML).toBe(own?.outerHTML)
+              const previews = [...(skeleton?.querySelectorAll("img") ?? [])]
+              expect(previews.length).toBeGreaterThan(0)
+              for (const img of previews)
+                expect(isOwn(img.getAttribute("src"), face.key)).toBe(true)
             }
           })
         })
