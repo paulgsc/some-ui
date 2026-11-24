@@ -58,7 +58,8 @@ export type SceneTracks = {
  * view until the next scene's do, the last held until the episode comes
  * round again. On the page's first round, before any of the episode's
  * scenes has played, the first plate shows instead (`intro`, once, for
- * `introS` seconds of the show's clock).
+ * `introS` seconds of the show's clock: until the first place's plate has
+ * faded in).
  */
 export type PlateTracks = {
   readonly loop: Track
@@ -534,7 +535,8 @@ function platesOf(
           : next === undefined
             ? held(HIDDEN)
             : null,
-      introS: first,
+      // Until plate 0 has faded in and the last out, so the hand-off is seamless.
+      introS: first + PLATE_FADE_S,
     }
   })
 }

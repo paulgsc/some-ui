@@ -724,7 +724,10 @@
         .dash-band {
           grid-area: 2 / 1 / 3 / 4;
           display: grid;
+          grid-template-rows: minmax(0, 1fr);
           aspect-ratio: 1440 / 700;
+          min-height: 0;
+          overflow: hidden;
         }
         .plate {
           grid-area: 1 / 1;

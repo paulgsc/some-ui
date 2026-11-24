@@ -581,7 +581,9 @@ export const SHOW: Show = {
     {
       id: "server",
       kicker: "At home",
-      title: "file_host, the server behind them",
+      // Every visit draws four groupings in any order, so what holds for
+      // all of them (code, sample data) is said here, not in one chapter.
+      title: "file_host's dashboards: code, drawn on sample data",
       walkthrough: "home-server",
       // A pool of every grouping the owner named (C1441), a dashboard's row
       // each; the first four are the draw a page with no script shows.
@@ -591,13 +593,19 @@ export const SHOW: Show = {
           {
             copy: { chapter: 0 },
             faces: [{ snip: 1 }, { snip: 2 }],
-            row: { row: 1, label: "file_host › file_host" },
+            row: {
+              row: 1,
+              label: "Health and golden signals, on file_host's dashboard",
+            },
             from: ["#3401", "C1441"],
           },
           {
             copy: { chapter: 1 },
             faces: [{ snip: 3 }, { snip: 4 }],
-            row: { row: 2, label: "file_host › Traffic, latency & errors" },
+            row: {
+              row: 2,
+              label: "Traffic, latency and errors, on file_host's dashboard",
+            },
             from: ["#3401", "C1441"],
           },
           {
@@ -605,14 +613,18 @@ export const SHOW: Show = {
             faces: [{ snip: 5 }, { snip: 6 }],
             row: {
               row: 3,
-              label: "OUTBOUND › What file_host asks the outside",
+              label:
+                "What file_host asks the outside, on its outbound dashboard",
             },
             from: ["#3401", "C1441"],
           },
           {
             copy: { chapter: 3 },
             faces: [{ snip: 7 }, { snip: 8 }],
-            row: { row: 4, label: "CALL › LANE: when the render may run" },
+            row: {
+              row: 4,
+              label: "When the render may run, on the call's dashboard",
+            },
             from: ["#3401", "C1441"],
           },
           {
@@ -620,7 +632,7 @@ export const SHOW: Show = {
             faces: [{ snip: 9 }, { snip: 10 }],
             row: {
               row: 5,
-              label: "file_host › Shared stages: what other work waits on",
+              label: "What other work waits on, on file_host's dashboard",
             },
             from: ["#3401", "C1441"],
           },
@@ -629,20 +641,28 @@ export const SHOW: Show = {
             faces: [{ snip: 11 }, { snip: 12 }],
             row: {
               row: 6,
-              label: "file_host › Metal — what the services cost the host",
+              label:
+                "What the services cost the host, on file_host's dashboard",
             },
             from: ["#3401", "C1441"],
           },
           {
             copy: { chapter: 6 },
             faces: [{ snip: 13 }, { snip: 14 }],
-            row: { row: 7, label: "file_host › Realtime — WebSocket" },
+            row: {
+              row: 7,
+              label:
+                "Who is connected over WebSocket, on file_host's dashboard",
+            },
             from: ["#3401", "C1441"],
           },
           {
             copy: { chapter: 7 },
             faces: [{ snip: 15 }, { snip: 16 }],
-            row: { row: 8, label: "file_host › Rate limiting & refusals" },
+            row: {
+              row: 8,
+              label: "Rate limiting and refusals, on file_host's dashboard",
+            },
             from: ["#3401", "C1441"],
           },
         ],

@@ -302,7 +302,7 @@ describe("the dashboard band's plates (C1443)", () => {
       // until the first place's faces turn in.
       expect(first?.intro?.keyframes).toContain("from { opacity: 1; }")
       expect(last?.intro?.keyframes).toContain("from { opacity: 0; }")
-      expect(first?.introS).toBe(e.scenes.at(0)?.on[0])
+      expect(first?.introS).toBeCloseTo((e.scenes.at(0)?.on[0] ?? 0) + 0.6, 6)
       for (const middle of e.plates.slice(1, -1))
         expect(middle.intro).toBeNull()
     }

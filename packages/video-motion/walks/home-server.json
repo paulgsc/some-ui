@@ -28,9 +28,9 @@
         "title": "Is it up|and well",
         "from": 0,
         "narration": [
-          "These are my server's own dashboards, a row at a time, the way I read them: each row together answers one question. This one is whether file_host is up and well, and where to look first.",
+          "Whether file_host is up and well, and where to look first, read together as one row of its dashboard.",
           "In this week's last minutes a render holds the cores, so latency is past its orange line and the server is shedding load.",
-          "They're jsonnet and libsonnet in its repository, built in CI by the image my home server runs, so every panel is in the commit history. The numbers are a made-up week in a throwaway Prometheus."
+          "Like every row here, it's jsonnet and libsonnet in the server's repository, built in CI by the image my home server runs, so every panel is in the commit history."
         ]
       },
       {
