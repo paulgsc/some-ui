@@ -1,0 +1,19 @@
+{
+  "id": "C1442",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "packages/video-motion/src/walk/dashboard-telemetry.ts",
+    "packages/video-motion/src/walk/stage-grafana.ts"
+  ],
+  "chose": "The sample week behind the rows tells one story so each row's colours decide something: a nightly render (23:20 to 00:50) takes every core, so latency crosses its orange line, the server sheds load (REFUSALS red), the transcriber's oldest note waits past its promise (SLOW), and the lane pauses the render for interactive work (one stop, orange). The window ends at 00:00 inside such a night, so the rows' instant stats show it as it happens. Besides: two deploys (RESTARTS 2), NATS down twenty minutes, a scraper meeting the limiter, an hour of ESPN timeouts and a few unanswered mailbox calls (NOT OK orange), a nightly backup as iowait. Every outcome happens at least a little, since a bar of no length is drawn unevenly. The stage draws every pixel on the CPU (Chromium's GPU raster paths off), since a canvas chart's antialiasing otherwise differed by a pixel between loads; with it, fresh runs give identical screens.",
+  "options": [
+    "a week whose stats are all green at its end (C1433, moved)",
+    "a week that ends inside the nightly render, so the rows show a live decision (chosen)",
+    "a different incident at the end, such as an outage"
+  ],
+  "gray": "What the made-up week shows is on the public page, and no check or earlier decision settles which story the rows tell.",
+  "undo": "Record a call that moves this one, and change the windows in dashboard-telemetry.ts.",
+  "refs": ["#3401", "#3472"],
+  "moves": "C1433"
+}

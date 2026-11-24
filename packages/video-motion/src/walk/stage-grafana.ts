@@ -102,12 +102,75 @@ async function interFaces(page: Page, origin: string): Promise<string> {
   })()`
 }
 
+/**
+ * The query parameter a dashboard page carries to be shot as one of its
+ * rows, by title. Grafana rewrites a dashboard's URL once it loads, so the
+ * stage reads it from the page's own request, not from the address shown.
+ */
+export const ROW_PARAM = "walk-row"
+
+/** The row a page's request names, if it names one. */
+const rowOf = (url: string): string | undefined =>
+  new URL(url).searchParams.get(ROW_PARAM) ?? undefined
+
+/** A box on the screen. */
+type Box = { x: number; y: number; width: number; height: number }
+
+/** A row's title, and its toggle, in Grafana 13's dashboard, by their test ids. */
+const rowTitle = (title: string): string =>
+  `[data-testid="data-testid dashboard-row-title-${title.replaceAll('"', '\\"')}"]`
+const rowToggle = (title: string): string =>
+  `[data-testid="data-testid dashboard-row-toggle-for-${title.replaceAll('"', '\\"')}"]`
+
+/**
+ * Where a row is on the screen: from its title to the bottom of the last of
+ * its panels (those whose top lies between its title and the next row's),
+ * the screen's full width; or none, if it has no panel on screen (a
+ * collapsed row).
+ */
+async function rowBox(page: Page, title: string): Promise<Box | undefined> {
+  const tops = async (selector: string): Promise<Array<Box>> => {
+    const boxes: Array<Box> = []
+    for (const e of await page.locator(selector).all()) {
+      const box = await e.boundingBox()
+      if (box !== null) boxes.push(box)
+    }
+    return boxes
+  }
+  const [own] = await tops(rowTitle(title))
+  if (own === undefined) return undefined
+  const next = (await tops('[data-testid^="data-testid dashboard-row-title-"]'))
+    .map((b) => b.y)
+    .filter((y) => y > own.y + 1)
+    .reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY)
+  const bottoms = (await tops("[data-viz-panel-key]"))
+    .filter((b) => b.y > own.y && b.y < next)
+    .map((b) => b.y + b.height)
+  const width = page.viewportSize()?.width
+  if (bottoms.length === 0 || width === undefined) return undefined
+  const y = Math.max(0, Math.floor(own.y - 8))
+  return { x: 0, y, width, height: Math.ceil(Math.max(...bottoms) + 8) - y }
+}
+
 export async function openGrafanaStage(
   spec: GrafanaStageSpec,
   chrome: string
 ): Promise<Stage> {
   const origin = new URL(spec.origin).origin
-  const browser = await chromium.launch({ executablePath: chrome })
+  // Every pixel drawn on the CPU, one way: a canvas (uPlot's charts, a
+  // stat's sparkline) drawn on the GPU's raster paths can differ by a pixel
+  // of antialiasing from one load to the next.
+  const browser = await chromium.launch({
+    executablePath: chrome,
+    args: [
+      "--disable-gpu",
+      "--disable-accelerated-2d-canvas",
+      "--disable-gpu-rasterization",
+      "--disable-partial-raster",
+      "--disable-skia-runtime-opts",
+      "--force-color-profile=srgb",
+    ],
+  })
   try {
     const context = await browser.newContext({
       viewport: spec.viewport,
@@ -127,6 +190,8 @@ export async function openGrafanaStage(
     // Which document a request belongs to: one from a page the walk has left
     // may fail as it is cancelled, which is no problem of the page shown.
     let documents = 0
+    // The page last asked for, as asked (Grafana rewrites what it shows).
+    let requested = ""
     page.on("pageerror", (e) => problems.push(e.message))
     // A popup's first navigation has no frame yet, and `frame()` throws
     // for it: such a request is not the page's own.
@@ -150,6 +215,7 @@ export async function openGrafanaStage(
       if (request.isNavigationRequest() && isMainFrame(request)) {
         atNavigation = queries
         documents += 1
+        requested = request.url()
       }
       const document = documents
       try {
@@ -179,8 +245,26 @@ export async function openGrafanaStage(
     })
     await reached(page, origin)
 
+    /** Nothing in flight, no panel loading, and the page still. */
+    const idle = async (): Promise<void> => {
+      await page.waitForLoadState("networkidle", { timeout: DRAWN_MS })
+      await page
+        .locator('[aria-label="Panel loading bar"]')
+        .first()
+        .waitFor({ state: "detached", timeout: DRAWN_MS })
+      await settlePage(page)
+    }
+
+    /** Where the next screen is taken: a row's box, or the whole screen. */
+    let shot: Box | undefined
+
     /** A panel's query answered since the page navigated, then the page still. */
     const drawn = async (): Promise<void> => {
+      // A row walked before may have grown the screen.
+      const size = page.viewportSize()
+      if (size?.height !== spec.viewport.height) {
+        await page.setViewportSize(spec.viewport)
+      }
       const by = Date.now() + DRAWN_MS
       while (queries <= atNavigation) {
         // A query that failed is the reason, not the wait.
@@ -190,16 +274,55 @@ export async function openGrafanaStage(
         }
         await page.waitForTimeout(100)
       }
-      await page.waitForLoadState("networkidle", { timeout: DRAWN_MS })
-      await page
-        .locator('[aria-label="Panel loading bar"]')
-        .first()
-        .waitFor({ state: "detached", timeout: DRAWN_MS })
-      await settlePage(page)
+      await idle()
+      // A page that names a row is shot as that row: opened if collapsed,
+      // brought to the top of the screen, and drawn there, since Grafana
+      // draws only the panels in view.
+      const row = rowOf(requested)
+      if (row !== undefined) {
+        const title = page.locator(rowTitle(row))
+        if ((await title.count()) !== 1) {
+          throw new Error(`${page.url()} has no row "${row}"`)
+        }
+        // Grafana keeps its own scroll, so the screen grows down to the row
+        // instead, by the walk's height below its title: then the row is in
+        // view, and its panels mount and draw.
+        const at = await title.boundingBox()
+        if (at === null) throw new Error(`the row "${row}" is not on the page`)
+        await page.setViewportSize({
+          width: spec.viewport.width,
+          height: Math.ceil(at.y) + spec.viewport.height,
+        })
+        const toggle = page.locator(rowToggle(row))
+        const collapsed = (await toggle.getAttribute("aria-label")) ?? ""
+        if (collapsed.startsWith("Expand row")) await toggle.click()
+        // Its panels mount once in view, then draw.
+        const by = Date.now() + DRAWN_MS
+        while ((await rowBox(page, row)) === undefined) {
+          if (Date.now() > by) {
+            throw new Error(
+              `the row "${row}" showed no panel in ${String(DRAWN_MS)} ms`
+            )
+          }
+          await page.waitForTimeout(100)
+        }
+        await idle()
+        shot = await rowBox(page, row)
+        if (shot === undefined)
+          throw new Error(`the row "${row}" shows no panel`)
+      } else {
+        shot = undefined
+      }
       // A panel whose series the telemetry lacks draws this, not the panel
-      // ("No data" by default, "no data" where a panel sets its own).
-      if ((await page.getByText(NO_DATA).count()) > 0) {
-        throw new Error(`${page.url()} drew no data`)
+      // ("No data" by default, "no data" where a panel sets its own); on a
+      // row, only its own panels count.
+      const empty = await page.getByText(NO_DATA).all()
+      for (const text of empty) {
+        const box = await text.boundingBox()
+        const inShot =
+          shot === undefined ||
+          (box !== null && box.y >= shot.y && box.y < shot.y + shot.height)
+        if (inShot) throw new Error(`${page.url()} drew no data`)
       }
     }
 
@@ -222,7 +345,11 @@ export async function openGrafanaStage(
       settle: drawn,
       shoot: async (path, moving): Promise<void> => {
         const take = (): Promise<Buffer> =>
-          page.screenshot({ animations: "disabled", caret: "hide" })
+          page.screenshot({
+            animations: "disabled",
+            caret: "hide",
+            ...(shot === undefined ? {} : { clip: shot }),
+          })
         // A failed walk's last screen is taken as it is.
         if (moving) {
           await writeFile(path, await take())

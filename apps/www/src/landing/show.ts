@@ -244,7 +244,9 @@ export const SHOW: Show = {
       walkthrough: "home-server",
       scenes: [
         { copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] },
-        { copy: { chapter: 1 }, faces: [{ snip: 4 }, { snip: 5 }] },
+        { copy: { chapter: 1 }, faces: [{ snip: 3 }, { snip: 4 }] },
+        { copy: { chapter: 2 }, faces: [{ snip: 5 }, { snip: 6 }] },
+        { copy: { chapter: 3 }, faces: [{ snip: 7 }, { snip: 8 }] },
       ],
     },
   ],

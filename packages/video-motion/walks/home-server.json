@@ -8,26 +8,42 @@
     "captions": [
       "Answering,|all week",
       "Up since|it last started",
-      "Each service,|up and down",
-      "What the limiter|turns away",
-      "Every refusal,|by reason",
-      "The limiter's|tokens and clients"
+      "Latency,|by route",
+      "Requests,|by outcome",
+      "Requests,|by caller",
+      "Not answered,|in 24 hours",
+      "Free memory,|against a render",
+      "Memory pressure,|against its limit"
     ],
     "chapters": [
       {
-        "title": "Dashboards|as code",
+        "title": "Is it up|and well",
         "from": 0,
         "narration": [
-          "These are the dashboards of file_host, the server behind my apps. They're jsonnet and libsonnet in its repository, built in CI by the image my home server runs, so every panel is in the commit history.",
-          "The numbers are sample data: a GitHub job loads a made-up week into a throwaway Prometheus and photographs these panels. My server's real numbers stay at home."
+          "These are my server's own dashboards, a row at a time, the way I read them: each row together answers one question. This one is whether file_host is up and well, and where to look first.",
+          "They're jsonnet and libsonnet in its repository, built in CI by the image my home server runs, so every panel is in the commit history. The numbers are a made-up week in a throwaway Prometheus."
         ]
       },
       {
-        "title": "Why these|panels",
-        "from": 3,
+        "title": "Mine, or|the load's",
+        "from": 2,
         "narration": [
-          "I picked the panels that say whether it stays up and how it says no: restarts, the services it needs, and what the rate limiter turns away.",
-          "They lean towards staying up and refusing well, not towards speed yet. When my questions change, new dashboards are one pull request away."
+          "Traffic, latency and errors side by side tell me whether a slowdown is my code or the load. In this week a nightly render takes the cores, latency crosses its line, and the server sheds what it can't serve in time."
+        ]
+      },
+      {
+        "title": "Asking the|outside",
+        "from": 4,
+        "narration": [
+          "What file_host asks other services, and whether they answered: here an hour of ESPN timing out one morning, and the mailbox missing a few answers late on the last evening."
+        ]
+      },
+      {
+        "title": "When the|render runs",
+        "from": 6,
+        "narration": [
+          "The render lane decides when a video may render on four cores without starving what I'm doing: it pauses for interactive work, and holds free memory and pressure against their limits.",
+          "These rows lean towards staying up and refusing well, not towards speed yet. When my questions change, new dashboards are one pull request away."
         ]
       }
     ],

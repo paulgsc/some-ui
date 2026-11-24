@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs"
 import {
   homeCores,
   homeServer,
+  homeServerRows,
   panelPath,
+  rowPath,
+  SERVER_GROUPINGS,
 } from "@video-motion/walk/home-dashboards"
 import { jobs } from "@video-motion/walk/jobs"
 import {
@@ -17,6 +20,7 @@ import {
   versionOf,
   webviewBounds,
 } from "@video-motion/walk/stage-apk"
+import { ROW_PARAM } from "@video-motion/walk/stage-grafana"
 import {
   walkthroughProblems,
   WalkthroughSchema,
@@ -198,19 +202,24 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
     })
   })
 
-  it("walks the server's six panels and the cores' one, each a step the runner takes", () => {
+  it("walks each grouping's two panels, each grouping's row, and the cores' one panel", () => {
     const sample = homeServer.sample.parse(HOME_SAMPLE)
     const server = homeServer.walk(sample)
+    const rows = homeServerRows.walk(sample)
     const cores = homeCores.walk(sample)
     expect(server.stage).toMatchObject({
       kind: "grafana",
       version: "0.0.0+4b98b6f2d410",
     })
-    expect(server.steps).toHaveLength(6)
+    expect(server.steps).toHaveLength(2 * SERVER_GROUPINGS.length)
     expect(stepProblems(server.steps)).toEqual([])
     expect(server.steps.slice(1).map((step) => step.action.kind)).toEqual(
-      Array.from({ length: 5 }, () => "visit")
+      Array.from({ length: 2 * SERVER_GROUPINGS.length - 1 }, () => "visit")
     )
+    expect(rows.steps.map((step) => step.label)).toEqual(
+      SERVER_GROUPINGS.map((g) => g.label)
+    )
+    expect(stepProblems(rows.steps)).toEqual([])
     expect(cores.steps).toHaveLength(1)
     expect(cores.stage.kind === "grafana" ? cores.stage.page : "").toMatch(
       /^\/d-solo\/who-dunnit-forensic\/\?.*panelId=32/
@@ -237,7 +246,18 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
     }
   })
 
-  it("the server clip's words fit its walk of six screens", () => {
+  it("a row's page is its whole dashboard, in kiosk, naming the row the stage shoots", () => {
+    const sample = homeServer.sample.parse(HOME_SAMPLE)
+    for (const grouping of SERVER_GROUPINGS) {
+      const url = new URL(rowPath(grouping, sample), sample.origin)
+      expect(url.pathname).toBe(`/d/${grouping.dashboard}/`)
+      expect(url.searchParams.get(ROW_PARAM)).toBe(grouping.row)
+      expect(url.searchParams.has("kiosk")).toBe(true)
+      expect(url.search.endsWith("&kiosk")).toBe(true)
+    }
+  })
+
+  it("the server episode's words fit its walk, a chapter a grouping", () => {
     const words = WalkthroughSchema.parse(
       JSON.parse(
         readFileSync(
@@ -246,7 +266,11 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
         )
       )
     )
-    const snips = Array.from({ length: 6 }, (_, i) => ({
+    const screens = 2 * SERVER_GROUPINGS.length
+    expect(words.fill.chapters.map((c) => c.from)).toEqual(
+      SERVER_GROUPINGS.map((_, i) => 2 * i)
+    )
+    const snips = Array.from({ length: screens }, (_, i) => ({
       file: `snips/0${String(i + 1)}.png`,
       label: `panel ${String(i + 1)}`,
       atMs: i * 2400,
@@ -259,7 +283,7 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
         viewport: { width: 1000, height: 640, scale: 1 },
         snips,
         taps: [],
-        lengthMs: 6 * 2400,
+        lengthMs: screens * 2400,
       })
     ).toEqual([])
   })

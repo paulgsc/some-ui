@@ -34,7 +34,7 @@ import { HYPERFRAMES_VERSION } from "./pin"
 import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
 import { openMetrics, WEEK } from "./walk/dashboard-telemetry"
-import { homeCores, homeServer } from "./walk/home-dashboards"
+import { homeCores, homeServer, homeServerRows } from "./walk/home-dashboards"
 import { jobs } from "./walk/jobs"
 import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
@@ -81,6 +81,7 @@ const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["suspender-ledger", entry(suspenderLedger)],
   ["jobs", entry(jobs)],
   ["home-server", entry(homeServer)],
+  ["home-server-rows", entry(homeServerRows)],
   ["home-cores", entry(homeCores)],
 ])
 

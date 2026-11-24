@@ -117,7 +117,7 @@ if ! ready; then
 fi
 
 # 5. The walks.
-for app in home-server home-cores; do
+for app in home-server home-server-rows home-cores; do
   rm -rf "$out/walk-$app"
   pnpm -s motion walk "$app" --sample "$work/sample/walk.json" --out "$out/walk-$app"
 done

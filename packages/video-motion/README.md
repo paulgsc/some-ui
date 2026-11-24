@@ -46,20 +46,25 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
     (`src/walk/jobs.ts`), against the stand-in home answering its story sample
     (`apps/www/tests/walk/jobs-week.json`), run by `apps/mobile/walk/walk-apk.sh` inside
     Snips Capture's emulator.
-  - **grafana** (`src/walk/stage-grafana.ts`): a throwaway Grafana, each panel opened alone
-    (`/d-solo/`) at one size, dark, in UTC, over the sample week (`WEEK`). It holds no key: the
-    Grafana lets an anonymous Viewer read. Every request is fetched by the stage: another
-    origin is refused, a redirect fails the walk (one to the login page would be
-    photographed), service workers and sockets are blocked, and a panel that draws "No data"
-    fails it. `scripts/dashboards-on-sample.sh <server checkout> <out>` builds that Grafana
-    on any machine with docker: paulgsc/server's jsonnet compiled by the dashboard-builder
-    image its release pins, a Prometheus loaded with one made-up week
-    (`src/walk/dashboard-telemetry.ts`, written by `motion dashboards-sample`), both images
-    pinned by the same release, then walks `home-server` (six panels of file_host's
-    dashboard) and `home-cores` (the CPU panel) there (`src/walk/home-dashboards.ts`). Site
-    Assets' `dashboards` job runs it for the landing's server episode and cores gap (the
-    owner on #3401, 2026-11-23: never home's own numbers). The same server commit gives the
-    same screens, byte for byte. A step may `visit` another page of the stage's own origin.
+  - **grafana** (`src/walk/stage-grafana.ts`): a throwaway Grafana, each page opened at one
+    size, dark, in UTC, over the sample week (`WEEK`). A page is a single panel (`/d-solo/`),
+    or a whole dashboard in kiosk that names one of its rows (`walk-row`, `ROW_PARAM`): the
+    stage opens the row if collapsed, grows the screen down to it so its panels mount, and
+    shoots just that row. It holds no key: the Grafana lets an anonymous Viewer read. Every
+    request is fetched by the stage: another origin is refused, a redirect fails the walk
+    (one to the login page would be photographed), service workers and sockets are blocked,
+    and a panel (on a row, one of its own) that draws "no data" fails it. Grafana's own Inter
+    is given to every page before its scripts run, and every pixel is drawn on the CPU, so
+    the same telemetry gives the same bytes. `scripts/dashboards-on-sample.sh <server
+checkout> <out>` builds that Grafana on any machine with docker: paulgsc/server's jsonnet
+    compiled by the dashboard-builder image its release pins, a Prometheus loaded with one
+    made-up week (`src/walk/dashboard-telemetry.ts`, written by `motion dashboards-sample`),
+    both images pinned by the same release. It then walks `home-server` (each grouping's two
+    panels, a phone's faces), `home-server-rows` (each grouping's whole row, a wide screen's)
+    and `home-cores` (the CPU panel), from `src/walk/home-dashboards.ts`'s
+    `SERVER_GROUPINGS`. Site Assets' `dashboards` job runs it for the landing's server episode
+    and cores gap (the owner on #3401, 2026-11-23 and 2026-11-24: never home's own numbers;
+    a scene is one grouping). A step may `visit` another page of the stage's own origin.
 
   A walk can also be given a microphone (`src/walk/microphone.ts`, WALK3): the page's
   audio `getUserMedia` answers a canned clip, so the app's own recorder records it.

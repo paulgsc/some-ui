@@ -2,26 +2,39 @@
  * The sample telemetry the public site's dashboard walks are drawn on
  * (`./home-dashboards`; the owner on #3401, 2026-11-23: "generate the
  * dashboard with mock telemetry … it's deterministic and automatic"). One
- * week of every series the walked panels query, one sample a minute, written
- * as OpenMetrics for `promtool tsdb create-blocks-from openmetrics`, so a
- * throwaway Prometheus holds it and a throwaway Grafana draws the panels from
- * it. Nothing here is home's: no machine is read, and the same code gives the
- * same bytes, so the same dashboards give the same pictures.
+ * week of every series the walked rows and panels query, one sample a
+ * minute, written as OpenMetrics for `promtool tsdb create-blocks-from
+ * openmetrics`, so a throwaway Prometheus holds it and a throwaway Grafana
+ * draws the dashboards from it. Nothing here is home's: no machine is read,
+ * and the same code gives the same bytes, so the same dashboards give the
+ * same pictures.
  *
- * The week is a fixed one in the past (`WEEK`), and its shape is chosen to
- * show what the panels are for: file_host restarts twice (deploys), NATS is
- * down once for twenty minutes, a scraper meets the rate limiter one
- * afternoon, and each night a render job takes all four cores, so work
- * queues for them (PSI's CPU waiting) while they are busy. The noise is
- * the repo's one seeded draw (`unitIntervalBySeed`, `@some-ui/core-utils`),
- * keyed by series and instant, never the clock's or `Math.random`'s.
+ * The week is a fixed one in the past (`WEEK`), and it tells one story, so a
+ * row's colours say what a real decision would turn on (the owner,
+ * 2026-11-24: "the holistic combination in colour gives you one decision"):
  *
- * Which series and labels: those the panels' queries read, at
- * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard 943,
- * 945, 946, 922, 926, 927 and WHO DUNNIT's 32, as `./home-dashboards` names
- * them), with the label values file_host exports (`metrics/refusals.rs`,
- * `metrics/rate_limit.rs`). A panel whose query moves to a series this does
- * not write draws "No data", which the walk's stage refuses.
+ * - each night from 23:20 to 00:50 a render job takes every core: work
+ *   queues for them (PSI's CPU waiting), file_host's p95 latency crosses
+ *   its orange line, it sheds load, the render lane pauses interactive
+ *   work's rivals, and the transcriber's oldest note waits past its
+ *   promise. The window ends inside one such night, so the rows' stats
+ *   show it as it happens;
+ * - file_host restarts twice (deploys), NATS is down for twenty minutes one
+ *   night, a scraper meets the rate limiter one afternoon, and ESPN stops
+ *   answering for most of an hour one morning;
+ * - a backup each night at 04:00 makes the disk, not the cores, the wait.
+ *
+ * The noise is the repo's one seeded draw (`unitIntervalBySeed`,
+ * `@some-ui/core-utils`), keyed by series and instant, never the clock's or
+ * `Math.random`'s.
+ *
+ * Which series and labels: those the walked rows' queries read, at
+ * paulgsc/server's `infra/grafana/dashboards` (file_host's dashboard, OUTBOUND
+ * and CALL, as `./home-dashboards` names them), with the label values the
+ * server exports (`metrics/refusals.rs`, `metrics/rate_limit.rs`,
+ * `crates/outbound`, `metrics/contention.rs`). A panel whose query moves to a
+ * series this does not write draws "No data", which the walk's stage
+ * refuses.
  */
 
 import { fnv1a, unitIntervalBySeed } from "@some-ui/core-utils"
@@ -32,7 +45,7 @@ export const WEEK = { to: "2026-11-16T00:00:00Z", days: 7 } as const
 /** One sample a minute, as a scrape every 60 s. */
 const STEP_S = 60
 
-/** Samples before the window, so a `rate(…[5m])` at its first instant has some. */
+/** Samples before the window, so a `rate(…[15m])` at its first instant has some. */
 const LEAD_S = 3600
 
 const HOUR_S = 3600
@@ -42,7 +55,7 @@ const DAY_S = 86_400
 const at = (iso: string): number => Date.parse(iso) / 1000
 
 /** Whether `t` is in [from, to). */
-const within = (t: number, from: string, to: string): boolean =>
+const within = (t: number, [from, to]: readonly [string, string]): boolean =>
   t >= at(from) && t < at(to)
 
 /** file_host's deploys: each a restart, down for the minute it starts in. */
@@ -57,6 +70,12 @@ const NATS_DOWN = ["2026-11-12T03:00:00Z", "2026-11-12T03:20:00Z"] as const
 /** A scraper that meets the rate limiter, one afternoon. */
 const SCRAPER = ["2026-11-11T14:00:00Z", "2026-11-11T14:40:00Z"] as const
 
+/** ESPN stops answering the game feed for most of an hour, one morning. */
+const ESPN_DOWN = ["2026-11-10T09:00:00Z", "2026-11-10T09:50:00Z"] as const
+
+/** The mailbox Worker misses a few answers late on the last evening. */
+const MAILBOX_SLOW = ["2026-11-15T22:00:00Z", "2026-11-15T22:20:00Z"] as const
+
 /** The hour of the UTC day `t` falls in, with its fraction. */
 const hourOf = (t: number): number => (((t % DAY_S) + DAY_S) % DAY_S) / HOUR_S
 
@@ -64,10 +83,16 @@ const hourOf = (t: number): number => (((t % DAY_S) + DAY_S) % DAY_S) / HOUR_S
 const daily = (t: number): number =>
   0.5 + 0.5 * Math.cos((2 * Math.PI * (hourOf(t) - 20)) / 24)
 
-/** The nightly render job, 02:00 to 03:30: every core busy while it runs. */
+/** The nightly render job, 23:20 to 00:50: every core busy while it runs. */
 const rendering = (t: number): boolean => {
   const h = hourOf(t)
-  return h >= 2 && h < 3.5
+  return h >= 23 + 20 / 60 || h < 50 / 60
+}
+
+/** The render's first ten minutes, while the lane settles on it. */
+const renderStarting = (t: number): boolean => {
+  const h = hourOf(t)
+  return h >= 23 + 20 / 60 && h < 23.5
 }
 
 /** The nightly backup, 04:00 to 04:20: the disk, not the cores, is the wait. */
@@ -87,44 +112,575 @@ function startedAt(t: number): number {
   return started
 }
 
+/** A series' noise at an instant, from a seed keyed by both, in [-scale/2, scale/2). */
+const noise =
+  (key: string, scale: number): ((t: number) => number) =>
+  (t) =>
+    (unitIntervalBySeed(fnv1a(`${key}@${String(t)}`)) - 0.5) * scale
+
+const clamp = (x: number, lo: number, hi: number): number =>
+  Math.min(hi, Math.max(lo, x))
+
+const GIB = 1024 ** 3
+
 type Labels = Readonly<Record<string, string>>
 
-/** A series: its name, labels, and its value at each instant (a counter's is its running total). */
+/**
+ * A series: a gauge's value at each instant, or a counter's rate per second,
+ * which `openMetrics` sums into its running total from 0.
+ */
 type Series = {
   readonly name: string
   readonly labels: Labels
-  readonly value: (t: number) => number
+  readonly kind: "gauge" | "counter"
+  readonly at: (t: number) => number
 }
 
-/** A metric family: its OpenMetrics name and type, and its series. */
-type Family = {
-  readonly name: string
-  readonly type: "gauge" | "counter"
-  readonly series: ReadonlyArray<Series>
-}
-
-/** A gauge of one series. */
 const gauge = (
   name: string,
   labels: Labels,
   value: (t: number) => number
-): Family => ({ name, type: "gauge", series: [{ name, labels, value }] })
+): Series => ({ name, labels, kind: "gauge", at: value })
+
+const counter = (
+  name: string,
+  labels: Labels,
+  rate: (t: number) => number
+): Series => ({ name, labels, kind: "counter", at: rate })
+
+/** A histogram's upper bounds, in seconds. */
+const LE = [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30] as const
 
 /**
- * A counter from its rate: the running total of `rate(t)` per second over
- * each step, from 0 at the first instant.
+ * A histogram's buckets for requests at `rate` a second whose 95th
+ * percentile is `p95` seconds: an exponential spread with that quantile,
+ * as each bucket's cumulative counter.
  */
-function counter(
+function buckets(
+  name: string,
+  labels: Labels,
   rate: (t: number) => number,
-  times: ReadonlyArray<number>
-): (t: number) => number {
-  const totals = new Map<number, number>()
-  let total = 0
-  for (const t of times) {
-    totals.set(t, total)
-    total += Math.max(0, rate(t)) * STEP_S
+  p95: (t: number) => number
+): ReadonlyArray<Series> {
+  const share = (le: number, t: number): number =>
+    1 - Math.exp((-Math.log(20) * le) / Math.max(1e-3, p95(t)))
+  return [
+    ...LE.map((le) =>
+      counter(
+        name,
+        { ...labels, le: String(le) },
+        (t) => rate(t) * share(le, t)
+      )
+    ),
+    counter(name, { ...labels, le: "+Inf" }, rate),
+  ]
+}
+
+/** file_host's routes, each a share of its traffic and its p95 when nothing holds the box. */
+const ROUTES = [
+  { route: "/api/sessions", share: 0.45, p95: 0.06 },
+  { route: "/api/jobs/digest", share: 0.25, p95: 0.12 },
+  { route: "/api/signals", share: 0.2, p95: 0.03 },
+  { route: "/ws", share: 0.1, p95: 0.02 },
+] as const
+
+/** Whom file_host calls (`crates/outbound`), each with its host and pace a minute. */
+const CALLERS = [
+  { caller: "game_feed", host: "espn", perMin: 4, p95: 0.8, bytes: 60_000 },
+  {
+    caller: "mailbox",
+    host: "mailbox_worker",
+    perMin: 6,
+    p95: 0.35,
+    bytes: 4000,
+  },
+  { caller: "nudge", host: "web_push", perMin: 1.5, p95: 0.25, bytes: 800 },
+  { caller: "snips", host: "github_raw", perMin: 0.4, p95: 0.6, bytes: 25_000 },
+] as const
+
+/** The services the Metal row reads, by container and by process group. */
+const SERVICES = [
+  {
+    name: "file-host-server",
+    group: "file_host",
+    cores: 2,
+    memGiB: 2,
+    base: 0.35,
+    mem: 0.55,
+  },
+  {
+    name: "orchestrator-service",
+    group: "orchestrator",
+    cores: 1,
+    memGiB: 1,
+    base: 0.12,
+    mem: 0.38,
+  },
+  {
+    name: "some-redis",
+    group: "redis-server",
+    cores: 0.5,
+    memGiB: 0.5,
+    base: 0.08,
+    mem: 0.62,
+  },
+  {
+    name: "nats-server",
+    group: "nats-server",
+    cores: 0.5,
+    memGiB: 0.25,
+    base: 0.05,
+    mem: 0.3,
+  },
+] as const
+
+/** Every series the walked rows read, over the week. */
+function allSeries(): ReadonlyArray<Series> {
+  const up = (t: number): number => (restarting(t) ? 0 : 1)
+  const natsUp = (t: number): number => (within(t, NATS_DOWN) ? 0 : 1)
+  const one = (): number => 1
+  const zero = (): number => 0
+  const scraper = (t: number): boolean => within(t, SCRAPER)
+
+  // file_host's traffic: requests a second, and how slow while the render holds the box.
+  const traffic = (t: number): number =>
+    1.2 + 6 * daily(t) + noise("traffic", 0.8)(t) + (scraper(t) ? 9 : 0)
+  const slowdown = (t: number): number =>
+    rendering(t)
+      ? 6 + noise("slow", 1.5)(t)
+      : 1 + Math.max(0, noise("slow", 0.4)(t))
+  const shed = (t: number): number =>
+    rendering(t) ? 0.35 + noise("shed", 0.1)(t) : 0
+  const rejected = (t: number): number =>
+    (scraper(t) ? 2.6 : 0) + Math.max(0, noise("rejected", 0.004)(t))
+
+  // The cores: how busy each is, and work queued for them.
+  const busy = (core: number, t: number): number =>
+    clamp(
+      (rendering(t) ? 0.95 : 0.06 + 0.3 * daily(t) + (scraper(t) ? 0.25 : 0)) +
+        noise(`busy-${String(core)}`, 0.06)(t),
+      0.01,
+      0.995
+    )
+  const iowait = (t: number): number => (backingUp(t) ? 0.14 : 0.004)
+  const waiting = (t: number): number =>
+    rendering(t)
+      ? 0.62 + noise("wait", 0.12)(t)
+      : 0.015 + 0.04 * daily(t) + Math.max(0, noise("wait", 0.12)(t)) * 0.1
+  const cpuShare = (mode: string, core: number, t: number): number => {
+    const b = busy(core, t)
+    const w = Math.min(iowait(t), 1 - b)
+    const shares: Readonly<Record<string, number>> = {
+      idle: 1 - b - w,
+      iowait: w,
+      system: b * 0.3,
+      user: b * 0.7,
+    }
+    return shares[mode] ?? 0
   }
-  return (t) => totals.get(t) ?? 0
+
+  // The render lane: what it says, and why.
+  // While the render runs, interactive work that arrives in the evening
+  // makes the lane pause it (and count a stop); once that work is done it
+  // runs; its first ten minutes it settles.
+  const interactive = (t: number): boolean => rendering(t) && daily(t) > 0.55
+  const verb = (t: number): "run" | "pause" =>
+    renderStarting(t) || interactive(t) ? "pause" : "run"
+  const why = (t: number): "clear" | "busy" | "settling" =>
+    renderStarting(t) ? "settling" : interactive(t) ? "busy" : "clear"
+  const memFree = (t: number): number =>
+    (rendering(t) ? 2.1 : 9.5 - 2 * daily(t)) * GIB +
+    noise("memfree", 0.3)(t) * GIB
+  const pressure = (t: number): number =>
+    rendering(t) ? 22 + noise("psi", 8)(t) : 2 + Math.max(0, noise("psi", 3)(t))
+
+  // The transcriber's queue: notes waiting, and the oldest's wait, which the render holds up.
+  const waitingNotes = (t: number): number =>
+    rendering(t)
+      ? 7
+      : Math.max(0, Math.round(1 + 2 * daily(t) + noise("notes", 2)(t)))
+  const oldestWait = (t: number): number => {
+    const h = hourOf(t)
+    const sinceRender =
+      h >= 23 + 20 / 60
+        ? (h - 23 - 20 / 60) * HOUR_S
+        : h < 50 / 60
+          ? (h + 40 / 60) * HOUR_S
+          : 0
+    return rendering(t)
+      ? 600 + sinceRender
+      : 90 + Math.max(0, noise("oldest", 120)(t))
+  }
+
+  const series: Array<Series> = [
+    // Is it up: scrapes, probes, dependencies, restarts.
+    gauge("up", { job: "file_host" }, up),
+    gauge("up", { job: "nats" }, natsUp),
+    gauge("up", { job: "orchestrator" }, one),
+    gauge("up", { job: "redis" }, one),
+    gauge("probe_success", { job: "websocket_blackbox_http" }, up),
+    gauge("redis_up", { job: "redis" }, one),
+    gauge("gnatsd_varz_connections", { job: "nats" }, (t) =>
+      natsUp(t) === 1 ? 6 : 0
+    ),
+    gauge("process_start_time_seconds", { job: "file_host" }, startedAt),
+    gauge(
+      "service_info",
+      { job: "file_host", git_sha: "sample", built_at: "sample" },
+      one
+    ),
+    ...["sqlite", "schema", "redis"].map((dependency) =>
+      gauge("dependency_up", { dependency }, one)
+    ),
+    gauge("dependency_up", { dependency: "nats" }, natsUp),
+    // The nudge waker, passing every minute.
+    gauge("nudge_waker_enabled", {}, one),
+    gauge("nudge_waker_interval_seconds", {}, () => 60),
+    gauge("nudge_waker_last_attempt_timestamp_seconds", {}, (t) => t - 20),
+    gauge("nudge_waker_pass_failing", { error: "none" }, zero),
+    // Traffic, latency and errors.
+    ...ROUTES.flatMap(({ route, share, p95 }) => [
+      counter(
+        "http_requests_total",
+        { route, status: "200" },
+        (t) => traffic(t) * share * 0.96 - shed(t) * share
+      ),
+      counter(
+        "http_requests_total",
+        { route, status: "404" },
+        (t) => traffic(t) * share * 0.03
+      ),
+      counter(
+        "http_requests_total",
+        { route, status: "429" },
+        (t) => rejected(t) * share
+      ),
+      counter("http_requests_total", { route, status: "500" }, (t) =>
+        restarting(t) || within(t, NATS_DOWN) ? 0.2 * share : 0
+      ),
+      ...buckets(
+        "http_request_duration_seconds_bucket",
+        { route },
+        (t) => traffic(t) * share,
+        (t) => p95 * slowdown(t)
+      ),
+    ]),
+    counter(
+      "http_requests_total",
+      { route: "/ready", status: "200" },
+      () => 1 / 15
+    ),
+    counter(
+      "tracing_events_total",
+      { level: "error", target: "file_host::nats" },
+      (t) => (within(t, NATS_DOWN) ? 0.05 : 0)
+    ),
+    counter(
+      "tracing_events_total",
+      { level: "error", target: "file_host::render" },
+      (t) => (renderStarting(t) ? 0.004 : 0)
+    ),
+    counter(
+      "tracing_events_total",
+      { level: "error", target: "outbound::espn" },
+      (t) => (within(t, ESPN_DOWN) ? 0.03 : 0)
+    ),
+    // Refusals and the limiter.
+    counter("refusals_total", { stage: "http", reason: "load_shed" }, shed),
+    counter("refusals_total", { stage: "http", reason: "timeout" }, (t) =>
+      rendering(t) ? 0.05 : 0
+    ),
+    counter("refusals_total", { stage: "http", reason: "body_limit" }, zero),
+    counter("refusals_total", { stage: "http", reason: "pool_timeout" }, zero),
+    counter("refusals_total", { stage: "ws", reason: "global_capacity" }, zero),
+    counter("refusals_total", { stage: "ws", reason: "queue_full" }, (t) =>
+      rendering(t) ? 0.08 : 0
+    ),
+    counter("refusals_total", { stage: "ws", reason: "permit_timeout" }, zero),
+    counter(
+      "rate_limit_decisions_total",
+      { limiter: "http", outcome: "allowed" },
+      traffic
+    ),
+    counter(
+      "rate_limit_decisions_total",
+      { limiter: "http", outcome: "rejected" },
+      rejected
+    ),
+    gauge("rate_limit_tokens_available", { job: "file_host" }, (t) =>
+      Math.max(
+        0,
+        scraper(t)
+          ? 3 + Math.abs(noise("tokens", 4)(t))
+          : 96 - 34 * daily(t) + noise("tokens", 4)(t)
+      )
+    ),
+    gauge("rate_limit_active_clients", { job: "file_host" }, (t) =>
+      Math.max(
+        1,
+        Math.round(
+          2 + 9 * daily(t) + noise("clients", 1.5)(t) + (scraper(t) ? 1 : 0)
+        )
+      )
+    ),
+    gauge("rate_limit_capacity_per_minute", {}, () => 600),
+    // Realtime: who is connected, and how they talk.
+    gauge("ws_client_connections", { client_type: "phone" }, (t) =>
+      Math.round(1 + 2 * daily(t))
+    ),
+    gauge("ws_client_connections", { client_type: "desktop" }, (t) =>
+      daily(t) > 0.4 ? 1 : 0
+    ),
+    gauge("ws_client_connections", { client_type: "probe" }, one),
+    gauge("ws_connections", { state: "connected" }, (t) =>
+      Math.round(2 + 2 * daily(t) + (daily(t) > 0.4 ? 1 : 0))
+    ),
+    gauge("ws_connection_guard_occupancy", {}, (t) =>
+      Math.round(2 + 2 * daily(t) + (daily(t) > 0.4 ? 1 : 0))
+    ),
+    gauge("ws_connection_guard_capacity", {}, () => 32),
+    counter(
+      "ws_connection_messages_total",
+      { message_type: "event" },
+      (t) => 0.5 + 3 * daily(t)
+    ),
+    counter(
+      "ws_connection_messages_total",
+      { message_type: "ping" },
+      () => 0.2
+    ),
+    counter(
+      "ws_connection_messages_total",
+      { message_type: "subscribe" },
+      (t) => 0.02 + 0.05 * daily(t)
+    ),
+    counter(
+      "ws_connection_errors_total",
+      { error_type: "queue_full", phase: "send" },
+      (t) => (rendering(t) ? 0.08 : 0)
+    ),
+    counter(
+      "ws_connection_errors_total",
+      { error_type: "closed", phase: "read" },
+      (t) => (restarting(t) ? 0.3 : 0.001)
+    ),
+    // Shared stages: the transcriber, and what waits on it.
+    counter(
+      "stage_attempts_total",
+      { stage: "transcriber", result: "done" },
+      (t) => (rendering(t) ? 0.001 : 0.01 + 0.02 * daily(t))
+    ),
+    counter(
+      "stage_attempts_total",
+      { stage: "transcriber", result: "retry" },
+      (t) => (rendering(t) ? 0.002 : 0)
+    ),
+    gauge("stage_attempts_per_item", { stage: "transcriber" }, () => 3),
+    gauge("stage_waiting", { stage: "transcriber" }, waitingNotes),
+    gauge("stage:oldest_waiting:seconds", { stage: "transcriber" }, oldestWait),
+    gauge("stage_promise_seconds", { stage: "transcriber" }, () => 900),
+    gauge("cards_essays_waiting_on_takes", {}, (t) => (rendering(t) ? 2 : 0)),
+    // The render lane.
+    gauge("lane_last_decision_timestamp_seconds", {}, (t) => t - 5),
+    // Tonight's render has been paused once for interactive work.
+    gauge("lane_stops", {}, (t) =>
+      rendering(t) && !renderStarting(t) ? 1 : 0
+    ),
+    gauge("lane_signal_readable", {}, one),
+    ...(["run", "pause", "stop"] as const).map((v) =>
+      gauge("lane_verb", { verb: v }, (t) => (verb(t) === v ? 1 : 0))
+    ),
+    ...(
+      ["clear", "busy", "memory", "pressure", "unknown", "settling"] as const
+    ).map((w) => gauge("lane_why", { why: w }, (t) => (why(t) === w ? 1 : 0))),
+    ...(["run", "pause"] as const).flatMap((v) =>
+      (["clear", "busy", "settling"] as const).map((w) =>
+        counter("lane_ticks_total", { verb: v, why: w }, (t) =>
+          verb(t) === v && why(t) === w ? 0.2 : 0
+        )
+      )
+    ),
+    counter("lane_busy_ticks_total", { kind: "transcribe" }, (t) =>
+      rendering(t) ? 0.12 : 0.02 * daily(t)
+    ),
+    counter(
+      "lane_busy_ticks_total",
+      { kind: "speech" },
+      (t) => 0.03 * daily(t)
+    ),
+    gauge("lane_interactive_waiting", {}, (t) =>
+      rendering(t) && daily(t) > 0.55 ? 1 : 0
+    ),
+    gauge("lane_batch_active", {}, (t) => (rendering(t) ? 1 : 0)),
+    gauge("lane_batch_job_present", {}, (t) =>
+      rendering(t) || hourOf(t) >= 23 ? 1 : 0
+    ),
+    gauge("lane_idle", {}, (t) => (rendering(t) ? 0 : daily(t) < 0.2 ? 1 : 0)),
+    gauge("lane_mem_available_bytes", {}, memFree),
+    gauge("lane_floor_bytes", {}, () => 1.5 * GIB),
+    gauge("lane_batch_peak_bytes", {}, () => 3 * GIB),
+    gauge("lane_declared_peak_bytes", {}, () => 4 * GIB),
+    gauge("lane_memory_pressure_pct", {}, pressure),
+    gauge("lane_pressure_limit_pct", {}, () => 20),
+    counter(
+      "contention_outcomes_total",
+      { worker: "render", what: "excused" },
+      (t) => (rendering(t) ? 0.01 : 0)
+    ),
+    counter(
+      "contention_outcomes_total",
+      { worker: "render", what: "judged_anyway" },
+      (t) => (rendering(t) ? 0.002 : 0)
+    ),
+    counter(
+      "contention_outcomes_total",
+      { worker: "transcriber", what: "marked" },
+      (t) => (rendering(t) ? 0.004 : 0)
+    ),
+    counter(
+      "contention_outcomes_total",
+      { worker: "transcriber", what: "unreadable" },
+      // Rare, but not never: a bar of no length is drawn unevenly, by a pixel.
+      (t) => (rendering(t) && renderStarting(t) ? 0.0004 : 0)
+    ),
+    // The metal: each service against its own limits, and the disks.
+    ...SERVICES.flatMap(({ name, group, cores, memGiB, base, mem }) => [
+      counter(
+        "container_cpu_usage_seconds_total",
+        { name },
+        (t) =>
+          cores *
+          clamp(
+            base *
+              (0.6 + daily(t)) *
+              (rendering(t) && group === "file_host" ? 2.4 : 1) +
+              noise(`cpu-${name}`, 0.04)(t),
+            0.005,
+            0.99
+          )
+      ),
+      gauge("container_spec_cpu_quota", { name }, () => cores * 100_000),
+      gauge("container_spec_cpu_period", { name }, () => 100_000),
+      gauge(
+        "container_memory_working_set_bytes",
+        { name },
+        (t) =>
+          memGiB *
+          GIB *
+          clamp(
+            mem +
+              0.1 * daily(t) +
+              (rendering(t) && group === "file_host" ? 0.22 : 0) +
+              noise(`mem-${name}`, 0.02)(t),
+            0.05,
+            0.99
+          )
+      ),
+      gauge("container_spec_memory_limit_bytes", { name }, () => memGiB * GIB),
+      counter(
+        "namedprocess_namegroup_read_bytes_total",
+        { groupname: group },
+        (t) =>
+          (backingUp(t) ? 40 : 1) *
+          (group === "file_host" ? 900_000 : 120_000) *
+          (0.5 + daily(t))
+      ),
+      counter(
+        "namedprocess_namegroup_write_bytes_total",
+        { groupname: group },
+        (t) =>
+          (group === "redis-server" && backingUp(t) ? 20 : 1) *
+          (group === "file_host" ? 400_000 : 60_000) *
+          (0.5 + daily(t))
+      ),
+      counter(
+        "container_network_receive_bytes_total",
+        { name },
+        (t) => (group === "file_host" ? 180_000 : 20_000) * (0.4 + daily(t))
+      ),
+      counter(
+        "container_network_transmit_bytes_total",
+        { name },
+        (t) => (group === "file_host" ? 420_000 : 15_000) * (0.4 + daily(t))
+      ),
+    ]),
+    gauge(
+      "node_filesystem_size_bytes",
+      { mountpoint: "/", fstype: "ext4" },
+      () => 460 * GIB
+    ),
+    gauge(
+      "node_filesystem_avail_bytes",
+      { mountpoint: "/", fstype: "ext4" },
+      (t) => (125 - ((t - at(WEEK.to)) / DAY_S) * -0.4) * GIB
+    ),
+    gauge(
+      "node_filesystem_size_bytes",
+      { mountpoint: "/srv/media", fstype: "ext4" },
+      () => 916 * GIB
+    ),
+    gauge(
+      "node_filesystem_avail_bytes",
+      { mountpoint: "/srv/media", fstype: "ext4" },
+      () => 140 * GIB
+    ),
+    // Outbound: whom file_host asks, and whether they answered.
+    ...CALLERS.flatMap(({ caller, host, perMin, p95, bytes }) => {
+      const down = (t: number): boolean =>
+        (caller === "game_feed" && within(t, ESPN_DOWN)) ||
+        (caller === "mailbox" && within(t, MAILBOX_SLOW))
+      const rate = (t: number): number => (perMin / 60) * (0.6 + 0.8 * daily(t))
+      return [
+        counter(
+          "outbound_requests_total",
+          { caller, host, outcome: "ok" },
+          (t) => (down(t) ? rate(t) * 0.2 : rate(t))
+        ),
+        counter(
+          "outbound_requests_total",
+          {
+            caller,
+            host,
+            outcome: caller === "game_feed" ? "timeout" : "no_answer",
+          },
+          (t) => (down(t) ? rate(t) * 0.8 : 0)
+        ),
+        counter(
+          "outbound_requests_total",
+          { caller, host, outcome: "refused_5xx" },
+          (t) =>
+            caller === "nudge" && hourOf(t) >= 12 && hourOf(t) < 12.1
+              ? rate(t)
+              : 0
+        ),
+        ...buckets(
+          "outbound_request_duration_seconds_bucket",
+          { caller },
+          rate,
+          (t) =>
+            down(t)
+              ? caller === "game_feed"
+                ? 18
+                : 6
+              : p95 * (1 + Math.max(0, noise(`ob-${caller}`, 0.3)(t)))
+        ),
+        counter("outbound_sent_bytes_total", { caller }, (t) => rate(t) * 600),
+        counter("outbound_received_bytes_total", { caller }, (t) =>
+          down(t) ? rate(t) * bytes * 0.2 : rate(t) * bytes
+        ),
+      ]
+    }),
+    // The cores: busy, waiting and iowait, as WHO DUNNIT reads them.
+    ...[0, 1, 2, 3].flatMap((core) =>
+      ["idle", "iowait", "system", "user"].map((mode) =>
+        counter("node_cpu_seconds_total", { cpu: String(core), mode }, (t) =>
+          cpuShare(mode, core, t)
+        )
+      )
+    ),
+    counter("node_pressure_cpu_waiting_seconds_total", {}, waiting),
+  ]
+  return series
 }
 
 /** Every instant the telemetry holds, in order. */
@@ -136,166 +692,6 @@ function instants(): ReadonlyArray<number> {
   return times
 }
 
-/** Every family the walked panels read, over `times`. */
-function families(times: ReadonlyArray<number>): ReadonlyArray<Family> {
-  // A series' noise at an instant, from a seed keyed by both: the same
-  // whatever order the series are built or read in.
-  const jitter =
-    (key: string, scale: number): ((t: number) => number) =>
-    (t) =>
-      (unitIntervalBySeed(fnv1a(`${key}@${String(t)}`)) - 0.5) * scale
-
-  const fileHostUp = (t: number): number => (restarting(t) ? 0 : 1)
-  const natsUp = (t: number): number => (within(t, ...NATS_DOWN) ? 0 : 1)
-  const always = (): number => 1
-
-  const allowedJitter = jitter("allowed", 1.2)
-  const rejectedJitter = jitter("rejected", 0.02)
-  const allowed = (t: number): number =>
-    1.5 + 7 * daily(t) + allowedJitter(t) + (within(t, ...SCRAPER) ? 9 : 0)
-  const rejected = (t: number): number =>
-    (within(t, ...SCRAPER) ? 2.6 : 0) + Math.max(0, rejectedJitter(t))
-
-  const shedJitter = jitter("shed", 0.08)
-  const refusal = (
-    stage: "http" | "ws",
-    reason: string,
-    rate: (t: number) => number
-  ): Series => ({
-    name: "refusals_total",
-    labels: { stage, reason },
-    value: counter(rate, times),
-  })
-  const none = (): number => 0
-
-  const tokensJitter = jitter("tokens", 4)
-  const clientsJitter = jitter("clients", 1.5)
-
-  const busyJitter = Array.from({ length: 4 }, (_, core) =>
-    jitter(`busy-${String(core)}`, 0.06)
-  )
-  const waitJitter = jitter("wait", 0.12)
-  /** How much of a core's minute it was busy, 0 to 1. */
-  const busy = (core: number, t: number): number => {
-    const base = rendering(t)
-      ? 0.95
-      : 0.06 + 0.3 * daily(t) + (within(t, ...SCRAPER) ? 0.25 : 0)
-    return Math.min(0.995, Math.max(0.01, base + (busyJitter[core]?.(t) ?? 0)))
-  }
-  const iowait = (t: number): number => (backingUp(t) ? 0.14 : 0.004)
-  /** PSI's "some" CPU waiting: work queued for a core, which a render makes most of. */
-  const waiting = (t: number): number =>
-    rendering(t)
-      ? 0.62 + waitJitter(t)
-      : 0.015 + 0.04 * daily(t) + Math.max(0, waitJitter(t)) * 0.1
-
-  const cores = [0, 1, 2, 3]
-  const modes = ["idle", "iowait", "system", "user"] as const
-  const share = (
-    mode: (typeof modes)[number],
-    core: number,
-    t: number
-  ): number => {
-    const b = busy(core, t)
-    const w = Math.min(iowait(t), 1 - b)
-    const shares: Readonly<Record<(typeof modes)[number], number>> = {
-      idle: 1 - b - w,
-      iowait: w,
-      system: b * 0.3,
-      user: b * 0.7,
-    }
-    return shares[mode]
-  }
-
-  return [
-    {
-      name: "up",
-      type: "gauge",
-      series: [
-        { name: "up", labels: { job: "file_host" }, value: fileHostUp },
-        { name: "up", labels: { job: "nats" }, value: natsUp },
-        { name: "up", labels: { job: "orchestrator" }, value: always },
-        { name: "up", labels: { job: "redis" }, value: always },
-      ],
-    },
-    gauge("probe_success", { job: "websocket_blackbox_http" }, fileHostUp),
-    gauge("redis_up", { job: "redis" }, always),
-    gauge("gnatsd_varz_connections", { job: "nats" }, (t) =>
-      natsUp(t) === 1 ? 6 : 0
-    ),
-    gauge("process_start_time_seconds", { job: "file_host" }, startedAt),
-    {
-      name: "rate_limit_decisions",
-      type: "counter",
-      series: [
-        {
-          name: "rate_limit_decisions_total",
-          labels: { limiter: "http", outcome: "allowed" },
-          value: counter(allowed, times),
-        },
-        {
-          name: "rate_limit_decisions_total",
-          labels: { limiter: "http", outcome: "rejected" },
-          value: counter(rejected, times),
-        },
-      ],
-    },
-    {
-      name: "refusals",
-      type: "counter",
-      series: [
-        refusal("http", "timeout", (t) => (rendering(t) ? 0.05 : 0)),
-        refusal("http", "load_shed", (t) =>
-          rendering(t) ? 0.35 + shedJitter(t) : 0
-        ),
-        refusal("http", "body_limit", none),
-        refusal("http", "pool_timeout", none),
-        refusal("ws", "global_capacity", none),
-        refusal("ws", "queue_full", (t) => (rendering(t) ? 0.08 : 0)),
-        refusal("ws", "permit_timeout", none),
-      ],
-    },
-    gauge("rate_limit_tokens_available", { job: "file_host" }, (t) =>
-      Math.max(
-        0,
-        within(t, ...SCRAPER)
-          ? 3 + Math.abs(tokensJitter(t))
-          : 96 - 34 * daily(t) + tokensJitter(t)
-      )
-    ),
-    gauge("rate_limit_active_clients", { job: "file_host" }, (t) =>
-      Math.max(
-        1,
-        Math.round(
-          2 + 9 * daily(t) + clientsJitter(t) + (within(t, ...SCRAPER) ? 1 : 0)
-        )
-      )
-    ),
-    {
-      name: "node_cpu_seconds",
-      type: "counter",
-      series: cores.flatMap((core) =>
-        modes.map((mode) => ({
-          name: "node_cpu_seconds_total",
-          labels: { cpu: String(core), mode },
-          value: counter((t) => share(mode, core, t), times),
-        }))
-      ),
-    },
-    {
-      name: "node_pressure_cpu_waiting_seconds",
-      type: "counter",
-      series: [
-        {
-          name: "node_pressure_cpu_waiting_seconds_total",
-          labels: {},
-          value: counter(waiting, times),
-        },
-      ],
-    },
-  ]
-}
-
 /** A label set as OpenMetrics writes it, in its keys' order. */
 const labelText = (labels: Labels): string => {
   const pairs = Object.entries(labels).map(([k, v]) => `${k}="${v}"`)
@@ -303,18 +699,41 @@ const labelText = (labels: Labels): string => {
 }
 
 /**
+ * A series' metric family: a counter's name less `_total`, anything else's
+ * own name, as `unknown` (a histogram's buckets are written as counters of
+ * their own, which no query here tells apart).
+ */
+function familyOf(s: Series): { readonly name: string; readonly type: string } {
+  if (s.kind === "counter" && s.name.endsWith("_total")) {
+    return { name: s.name.slice(0, -"_total".length), type: "counter" }
+  }
+  return { name: s.name, type: s.kind === "gauge" ? "gauge" : "unknown" }
+}
+
+/**
  * The week's telemetry as OpenMetrics text, a line at a time: each family's
- * TYPE, then each of its series in time order, then `# EOF`. Values carry
- * six decimals, so the text is the same on every machine.
+ * TYPE, then each of its series in time order, then `# EOF`. A counter's
+ * total is its rate summed over each step, never below 0. Values carry six
+ * decimals, so the text is the same on every machine.
  */
 export function* openMetrics(): Generator<string> {
   const times = instants()
-  for (const family of families(times)) {
-    yield `# TYPE ${family.name} ${family.type}\n`
-    for (const series of family.series) {
-      const head = `${series.name}${labelText(series.labels)} `
+  const byFamily = new Map<string, { type: string; series: Array<Series> }>()
+  for (const s of allSeries()) {
+    const { name, type } = familyOf(s)
+    const family = byFamily.get(name) ?? { type, series: [] }
+    family.series.push(s)
+    byFamily.set(name, family)
+  }
+  for (const [name, { type, series }] of byFamily) {
+    yield `# TYPE ${name} ${type}\n`
+    for (const s of series) {
+      const head = `${s.name}${labelText(s.labels)} `
+      let total = 0
       for (const t of times) {
-        yield `${head}${series.value(t).toFixed(6)} ${String(t)}\n`
+        const value = s.kind === "gauge" ? s.at(t) : total
+        yield `${head}${value.toFixed(6)} ${String(t)}\n`
+        if (s.kind === "counter") total += Math.max(0, s.at(t)) * STEP_S
       }
     }
   }

@@ -25,6 +25,7 @@ import { z } from "zod"
 
 import { WEEK } from "./dashboard-telemetry"
 import type { Step, Walk } from "./run"
+import { ROW_PARAM } from "./stage-grafana"
 
 /** What the Site Assets job writes for the walks: the sample week, and where its Grafana answers. */
 const SampleSchema = z.strictObject({
@@ -47,16 +48,63 @@ type Panel = {
 }
 
 const FILE_HOST = "file-host-dashboard"
+const OUTBOUND = "outbound"
+const CALL = "call"
 const WHO_DUNNIT = "who-dunnit-forensic"
 
-/** file_host's dashboard, in the order the clip shows it (#3401's list). */
-const SERVER_PANELS: ReadonlyArray<Panel> = [
-  { dashboard: FILE_HOST, id: 943, label: "Availability" },
-  { dashboard: FILE_HOST, id: 945, label: "Up for" },
-  { dashboard: FILE_HOST, id: 946, label: "Services, up and down" },
-  { dashboard: FILE_HOST, id: 922, label: "Rate limited" },
-  { dashboard: FILE_HOST, id: 926, label: "Refusals by reason" },
-  { dashboard: FILE_HOST, id: 927, label: "The limiter's tokens" },
+/**
+ * One of the server episode's scenes: a grouping, a row of one of the
+ * dashboards, by its dashboard's uid and its title in that dashboard's
+ * jsonnet, shot whole for a wide screen; and the two panels of it a phone
+ * shows instead (the owner, 2026-11-24: "the holistic combination in colour
+ * gives you one decision, not one pane … keep the current single-panel
+ * snaps on mobile").
+ */
+type Grouping = {
+  readonly dashboard: string
+  readonly row: string
+  readonly label: string
+  readonly panels: readonly [Panel, Panel]
+}
+
+/** The server episode's groupings, a scene each, in the show's order. */
+export const SERVER_GROUPINGS: ReadonlyArray<Grouping> = [
+  {
+    dashboard: FILE_HOST,
+    row: "file_host",
+    label: "Is it up and well",
+    panels: [
+      { dashboard: FILE_HOST, id: 943, label: "Availability" },
+      { dashboard: FILE_HOST, id: 945, label: "Up for" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Traffic, latency & errors",
+    label: "Traffic, latency and errors",
+    panels: [
+      { dashboard: FILE_HOST, id: 909, label: "Latency by route" },
+      { dashboard: FILE_HOST, id: 908, label: "Requests by outcome" },
+    ],
+  },
+  {
+    dashboard: OUTBOUND,
+    row: "What file_host asks the outside",
+    label: "What it asks the outside",
+    panels: [
+      { dashboard: OUTBOUND, id: 7, label: "Requests, by caller" },
+      { dashboard: OUTBOUND, id: 4, label: "Not answered, 24 hours" },
+    ],
+  },
+  {
+    dashboard: CALL,
+    row: "LANE: when the render may run",
+    label: "When the render may run",
+    panels: [
+      { dashboard: CALL, id: 35, label: "Free memory against a render" },
+      { dashboard: CALL, id: 36, label: "Memory pressure" },
+    ],
+  },
 ]
 
 /** WHO DUNNIT's "CPU — busy vs waiting", of home's four cores. */
@@ -68,6 +116,12 @@ const CORES_PANEL: Panel = {
 
 /** Every panel at one size: the frame a walkthrough draws a screen in, and the card's still. */
 const VIEWPORT = { width: 1000, height: 640 } as const
+
+/**
+ * A row's screen: wide enough that a row of six stats keeps every title and
+ * number legible, tall enough to hold the tallest walked row whole.
+ */
+const ROW_VIEWPORT = { width: 1440, height: 1600 } as const
 
 /** How long each panel holds in the clip. */
 const HOLD_MS = 2400
@@ -87,19 +141,39 @@ export function panelPath(panel: Panel, sample: Sample): string {
   return `/d-solo/${panel.dashboard}/?${query.toString()}`
 }
 
+/**
+ * A grouping's row, on its whole dashboard over the sample's window, dark,
+ * in UTC, with no refresh, in kiosk (no menus; a bare `kiosk`, as Grafana
+ * reads it), naming the row so the stage shoots only that row (`ROW_PARAM`,
+ * `./stage-grafana`).
+ */
+export function rowPath(grouping: Grouping, sample: Sample): string {
+  const to = Date.parse(sample.to)
+  const from = to - sample.days * 86_400_000
+  const query = new URLSearchParams({
+    orgId: "1",
+    from: String(from),
+    to: String(to),
+    theme: "dark",
+    timezone: "utc",
+    refresh: "",
+    [ROW_PARAM]: grouping.row,
+  })
+  return `/d/${grouping.dashboard}/?${query.toString()}&kiosk`
+}
+
+/** A walk of pages, one screen each, at one size. */
 function walkOf(
   app: string,
-  panels: ReadonlyArray<Panel>,
-  sample: Sample
+  pages: ReadonlyArray<{ readonly label: string; readonly path: string }>,
+  sample: Sample,
+  viewport: { readonly width: number; readonly height: number }
 ): Walk {
-  const [first] = panels
-  if (first === undefined) throw new Error(`${app} names no panel`)
-  const steps: ReadonlyArray<Step> = panels.map((panel, i) => ({
-    label: panel.label,
-    action:
-      i === 0
-        ? { kind: "open" }
-        : { kind: "visit", path: panelPath(panel, sample) },
+  const [first] = pages
+  if (first === undefined) throw new Error(`${app} names no page`)
+  const steps: ReadonlyArray<Step> = pages.map((page, i) => ({
+    label: page.label,
+    action: i === 0 ? { kind: "open" } : { kind: "visit", path: page.path },
     holdMs: HOLD_MS,
   }))
   return {
@@ -108,19 +182,54 @@ function walkOf(
       kind: "grafana",
       version: sample.version,
       origin: sample.origin,
-      page: panelPath(first, sample),
-      viewport: VIEWPORT,
+      page: first.path,
+      viewport,
     },
     steps,
   }
 }
 
+const panelPages = (
+  panels: ReadonlyArray<Panel>,
+  sample: Sample
+): ReadonlyArray<{ readonly label: string; readonly path: string }> =>
+  panels.map((panel) => ({
+    label: panel.label,
+    path: panelPath(panel, sample),
+  }))
+
+/** The server episode on a phone: each grouping's two panels, in order. */
 export const homeServer = {
   sample: SampleSchema,
-  walk: (sample: Sample): Walk => walkOf("home-server", SERVER_PANELS, sample),
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-server",
+      panelPages(
+        SERVER_GROUPINGS.flatMap((g) => g.panels),
+        sample
+      ),
+      sample,
+      VIEWPORT
+    ),
+}
+
+/** The server episode on a wide screen: each grouping's whole row, in order. */
+export const homeServerRows = {
+  sample: SampleSchema,
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-server-rows",
+      SERVER_GROUPINGS.map((g) => ({
+        label: g.label,
+        path: rowPath(g, sample),
+      })),
+      sample,
+      ROW_VIEWPORT
+    ),
 }
 
 export const homeCores = {
   sample: SampleSchema,
-  walk: (sample: Sample): Walk => walkOf("home-cores", [CORES_PANEL], sample),
+  walk: (sample: Sample): Walk =>
+    walkOf("home-cores", panelPages([CORES_PANEL], sample), sample, VIEWPORT),
 }
