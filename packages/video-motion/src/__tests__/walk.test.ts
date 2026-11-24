@@ -89,9 +89,26 @@ describe("Rust Rounds' walk (#3476)", () => {
     expect(walk.steps.at(-1)?.until).toBe(`button:has-text("Send to home")`)
   })
 
-  it("looks only for words the week's screens say", () => {
-    const words = repoFile("packages/ui/rust-rounds/src/lib/week-play/words.ts")
+  it("picks the first fork's first option not recommended", () => {
     const walk = rustRounds.walk(rustRounds.sample.parse(sample))
+    const picked = walk.steps.find((s) => s.label === "An option picked")
+    expect(picked?.action).toEqual({
+      kind: "tap",
+      target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=1',
+    })
+  })
+
+  it("looks only for words the week's screens say", () => {
+    // The words table's string literals, its comments left out, so a reworded
+    // button can't pass on a comment that still says the old words.
+    const literals = [
+      ...repoFile("packages/ui/rust-rounds/src/lib/week-play/words.ts")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "")
+        .matchAll(/"((?:[^"\\]|\\.)*)"|`([^`]*)`/g),
+    ].map((m) => m[1] ?? m[2] ?? "")
+    const read = rustRounds.sample.parse(sample)
+    const walk = rustRounds.walk(read)
     const said = walk.steps
       .flatMap((step) => [
         step.until,
@@ -104,12 +121,17 @@ describe("Rust Rounds' walk (#3476)", () => {
       // The sample's own words (the company, a ticket, an exercise).
       .filter(
         (text) =>
-          !text.startsWith("TB-") &&
-          text !== "Tallowbrook" &&
-          text !== "A struct of plain fields still moves"
+          text !== read.company &&
+          text !== `${read.ticket.id} · ${read.ticket.title}` &&
+          text !== read.ticket.academy[0]?.title
       )
     expect(said.length).toBeGreaterThan(5)
-    for (const text of said) expect(words, text).toContain(text)
+    for (const text of said) {
+      expect(
+        literals.some((l) => l.includes(text.replace(/^"|"$/g, ""))),
+        text
+      ).toBe(true)
+    }
   })
 
   it("refuses a sample that serves no week", () => {

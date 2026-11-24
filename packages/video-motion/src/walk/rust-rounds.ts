@@ -27,7 +27,15 @@ const TicketSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   academy: z.array(z.object({ title: z.string().min(1) })).min(1),
-  forks: z.array(z.object({ options: z.array(z.unknown()).min(2) })).min(1),
+  forks: z
+    .array(
+      z.object({
+        options: z
+          .array(z.object({ recommended: z.boolean().optional() }))
+          .min(2),
+      })
+    )
+    .min(1),
 })
 
 /** The snips' sample, as much of it as the walk reads. */
@@ -57,7 +65,18 @@ const SampleSchema = z
       return z.NEVER
     }
     const [ticket] = week.data.week.tickets
-    return { company: week.data.week.company.name, ticket: ticket! }
+    // The option the walk picks: the first fork's first not recommended, as
+    // a decision may be. Read from the sample, so an edit there that leaves
+    // every option recommended fails here, not in a picture.
+    const pick = ticket!.forks[0]!.options.findIndex((o) => !o.recommended)
+    if (pick < 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: `${ticket!.id}'s first fork has no option but the recommended`,
+      })
+      return z.NEVER
+    }
+    return { company: week.data.week.company.name, ticket: ticket!, pick }
   })
 type Sample = z.infer<typeof SampleSchema>
 
@@ -73,7 +92,7 @@ const TAKE_MS = 4_000
 /** A button by the words it shows. */
 const button = (words: string): string => `button:has-text("${words}")`
 
-function walkOf({ company, ticket }: Sample): Walk {
+function walkOf({ company, ticket, pick }: Sample): Walk {
   return {
     app: "rust-rounds",
     stage: { kind: "apk", pkg: PKG, path: "/rust-rounds", home: HOME },
@@ -121,17 +140,20 @@ function walkOf({ company, ticket }: Sample): Walk {
       {
         label: "Your decisions",
         action: { kind: "tap", target: button("On to your decisions") },
-        until: "text=Your decisions",
+        // Exact, so the academy's own "On to your decisions" never answers it.
+        until: 'text="Your decisions"',
         holdMs: 2600,
       },
       {
         label: "An option picked",
-        // The first fork's second option: not the recommended one, as a
-        // decision may be (the shared decision pick's pressed buttons).
+        // The first fork's first option not recommended (the sample's
+        // `pick`), among the shared decision pick's pressed buttons; the
+        // decision pick is the voice page's one group.
         action: {
           kind: "tap",
-          target: '[role="group"] >> nth=0 >> button[aria-pressed] >> nth=1',
+          target: `[role="group"] >> nth=0 >> button[aria-pressed] >> nth=${String(pick)}`,
         },
+        until: `[role="group"] >> nth=0 >> button[aria-pressed="true"]`,
         holdMs: 2000,
       },
       {
