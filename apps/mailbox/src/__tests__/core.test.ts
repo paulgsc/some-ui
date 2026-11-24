@@ -3626,3 +3626,161 @@ describe("a capture's snip list (SNIPS2, #3116)", () => {
     ).toEqual({ error: "recording must be an mp4 or webm" })
   })
 })
+
+/**
+ * MB7: every body home's mailbox pass puts, as paulgsc/server's
+ * `mailbox::pass::transcript_body` and `pickup_body` build it, is taken
+ * whole. `fixtures/home-mailbox-bodies.snapshot.json` holds one of each
+ * shape home files: heard, garbled, silent, failed, kept before verdicts,
+ * and a pickup with and without its verdict.
+ */
+describe("what home puts (MB7)", () => {
+  type Filed = {
+    readonly id: string
+    readonly folder: Folder
+    readonly name: string
+    readonly body: Readonly<Record<string, unknown>>
+  }
+  const isObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value)
+  const FOLDERS_HOME_PUTS: ReadonlyArray<Folder> = ["transcript", "pickup"]
+  const read: unknown = JSON.parse(
+    readFileSync(
+      fileURLToPath(
+        new URL("fixtures/home-mailbox-bodies.snapshot.json", import.meta.url)
+          .href
+      ),
+      "utf8"
+    )
+  )
+  const filed: ReadonlyArray<Filed> = (Array.isArray(read) ? read : []).map(
+    (item: unknown): Filed => {
+      if (!isObject(item) || !isObject(item.body)) {
+        throw new Error("each fixture is an object with a body")
+      }
+      const folder = FOLDERS_HOME_PUTS.find((f) => f === item.folder)
+      const { id, name, body } = item
+      if (
+        folder === undefined ||
+        typeof id !== "string" ||
+        typeof name !== "string"
+      ) {
+        throw new Error("each fixture names its id, folder and name")
+      }
+      return { id, folder, name, body }
+    }
+  )
+
+  it("holds every shape home files", () => {
+    expect(filed.map((item) => item.id)).toEqual([
+      "heard",
+      "garbled",
+      "nothing-said",
+      "failed",
+      "before-verdicts",
+      "pickup",
+      "pickup-before-verdicts",
+    ])
+  })
+
+  it.each(filed.map((item) => [item.id, item] as const))(
+    "takes home's %s body",
+    async (_id, item) => {
+      const response = await put(deps(), item.folder, item.name, {
+        token: HOME,
+        body: JSON.stringify(item.body),
+      })
+      expect([response.status, await response.text()]).toEqual([
+        201,
+        expect.any(String),
+      ])
+    }
+  )
+
+  const transcript = filed.find((item) => item.id === "heard")
+  const silence = filed.find((item) => item.id === "nothing-said")
+  if (transcript === undefined || silence === undefined) {
+    throw new Error("the fixture lost a case")
+  }
+  const { verdict } = transcript.body
+  if (!isObject(verdict) || !isObject(verdict.signals)) {
+    throw new Error("the heard fixture carries its verdict and signals")
+  }
+  const { signals } = verdict
+  const refuses = async (
+    item: Filed,
+    body: Record<string, unknown>,
+    why: string
+  ): Promise<void> => {
+    const response = await put(deps(), item.folder, item.name, {
+      token: HOME,
+      body: JSON.stringify(body),
+    })
+    expect([response.status, await response.text()]).toEqual([
+      422,
+      expect.stringContaining(why),
+    ])
+  }
+  const SHAPE = "verdict must be what home made of it"
+
+  it.each([
+    ["a kind home has no name for", { ...verdict, kind: "fine" }],
+    ["a key a verdict lacks", { ...verdict, score: 1 }],
+    ["a missing key", { kind: "heard", reasons: [], rule: "heard-1" }],
+    ["a reason that is not a word", { ...verdict, reasons: ["a b"] }],
+    ["a rule that is not a word", { ...verdict, rule: "" }],
+    [
+      "a signal home has no name for",
+      { ...verdict, signals: { ...signals, loud: 1 } },
+    ],
+    [
+      "a signal that is not a number",
+      { ...verdict, signals: { ...signals, avgLogprob: "low" } },
+    ],
+    [
+      "a language that is not a code",
+      { ...verdict, signals: { ...signals, language: "English" } },
+    ],
+    [
+      "speech that is not whole milliseconds",
+      { ...verdict, signals: { ...signals, speechMs: 1.5 } },
+    ],
+    ["a verdict that is not an object", "heard"],
+  ] as const)("refuses %s", async (_what, bad) => {
+    await refuses(transcript, { ...transcript.body, verdict: bad }, SHAPE)
+  })
+
+  it("files no text only for a take home heard nothing in", async () => {
+    const heardVerdict = { ...verdict, signals: null }
+    await refuses(
+      silence,
+      { ...silence.body, verdict: heardVerdict },
+      "text must be what home heard"
+    )
+    await refuses(
+      silence,
+      { ...silence.body, verdict: null },
+      "text must be what home heard"
+    )
+    await refuses(
+      silence,
+      { ...silence.body, of: "reflection", ref: "session-7f2a" },
+      "text must be what home heard"
+    )
+    const { verdict: _v, ...unjudged } = silence.body
+    await refuses(silence, unjudged, "text must be what home heard")
+    await refuses(
+      silence,
+      { ...silence.body, language: "en" },
+      "language must be null for a take home heard nothing in"
+    )
+    await refuses(
+      silence,
+      {
+        ...silence.body,
+        words: [{ text: "x", startMs: 0, endMs: 1 }],
+      },
+      "words must be empty for a take home heard nothing in"
+    )
+  })
+})

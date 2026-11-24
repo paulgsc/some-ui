@@ -92,6 +92,11 @@ describe(
         "container_cpu_usage_seconds_total",
         "node_cpu_seconds_total",
         "node_pressure_cpu_waiting_seconds_total",
+        // WHO DUNNIT's CPU row, for the essay on code or box.
+        "namedprocess_namegroup_cpu_seconds_total",
+        "container_cpu_cfs_periods_total",
+        "container_cpu_cfs_throttled_periods_total",
+        "node_load1",
         // CALL's rows an essay walks (#3476).
         "call_weeks_held",
         "call_render_weeks_waiting",
@@ -124,6 +129,15 @@ describe(
             k.startsWith("node_cpu_seconds_total") && k.includes('mode="idle"')
         )
       ).toHaveLength(4)
+    })
+
+    // WALK11: a label the server's closed enum names, and only those, so a
+    // legend reads as home's would (file_host `call_weeks::lane::Kind`).
+    it("names the lane's busy kinds as file_host does: voice and rust_rounds", () => {
+      const kinds = Array.from(once.all.keys())
+        .filter((k) => k.split("{")[0] === "lane_busy_ticks_total")
+        .map((k) => /kind="([^"]+)"/.exec(k)?.[1])
+      expect(kinds.sort()).toEqual(["rust_rounds", "voice"])
     })
 
     it("ends on a Monday with this week's essays waiting for their deadline and nothing failed (#3476)", () => {

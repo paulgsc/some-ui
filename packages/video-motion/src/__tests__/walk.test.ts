@@ -5,6 +5,7 @@ import {
   homeCall,
   homeCores,
   homePipelines,
+  homePressure,
   homeServer,
   homeServerRows,
   panelPath,
@@ -642,6 +643,30 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
       pipelines.stage.kind === "grafana" ? pipelines.stage.page : ""
     ).toMatch(/^\/d-solo\/pipelines\/\?.*panelId=1/)
     expect(SAMPLE_BAND).toMatch(/sample/i)
+  })
+
+  it("walks the rows that tell a slow stage held by our caps from a full box, banded as sample data", () => {
+    const walk = homePressure.walk(homeServer.sample.parse(HOME_SAMPLE))
+    expect(stepProblems(walk.steps)).toEqual([])
+    expect(walk.stage).toMatchObject({ kind: "grafana", band: SAMPLE_BAND })
+    expect(walk.stage).not.toHaveProperty("noData")
+    const pages = walk.steps.map((step, i) =>
+      i === 0 && walk.stage.kind === "grafana"
+        ? walk.stage.page
+        : step.action.kind === "visit"
+          ? step.action.path
+          : ""
+    )
+    expect(
+      pages.map((page) => {
+        const url = new URL(page, "http://g")
+        return [url.pathname, url.searchParams.get(ROW_PARAM)]
+      })
+    ).toEqual([
+      ["/d/file-host-dashboard/", "Shared stages: what other work waits on"],
+      ["/d/who-dunnit-forensic/", "CPU — who is using it, and who is waiting"],
+      ["/d/file-host-dashboard/", "Metal — what the services cost the host"],
+    ])
   })
 
   it("hold SHOW1's dashboard walks to the ones banded as sample data (C1481)", () => {
