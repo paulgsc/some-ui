@@ -243,11 +243,12 @@ describe("Studio › Renders' walk (#3476)", () => {
         },
         'a[href$="/journal/cards/take-conveyor-2026-11-01"] >> text=In line',
       ],
-      [{ kind: "scroll", target: again }, again],
       [
         { kind: "scroll", target: 'h2:has-text("Coming")' },
         'h2:has-text("Coming")',
       ],
+      // Scrolled to right before it is tapped, so the tap's place is read in view.
+      [{ kind: "scroll", target: again }, again],
       [{ kind: "tap", target: again }, 'h1:has-text("Run it again")'],
     ])
   })
@@ -281,7 +282,7 @@ describe("Studio › Renders' walk (#3476)", () => {
     for (const text of said) expect(literals, text).toContain(text)
   })
 
-  it("refuses a board with nothing at the oven, or nothing in line", () => {
+  it("refuses a board it can't walk: no essay at the oven, in line or that couldn't finish, nothing coming, or a row that opens no page", () => {
     const board = (
       change: (body: Record<string, unknown>) => void
     ): unknown => {
@@ -296,6 +297,13 @@ describe("Studio › Renders' walk (#3476)", () => {
       board((b) => (b.now = null)),
       board((b) => (b.waiting = [])),
       board((b) => (b.failed = [])),
+      board((b) => (b.coming = [])),
+      // A preview has no Run it again page, and a key with no day no essay page.
+      board((b) => (b.failed = [{ feed: "preview", key: "promo-1", at: 1 }])),
+      board(
+        (b) =>
+          (b.waiting = [{ feed: "cards-essay", key: "take-conveyor", at: 1 }])
+      ),
     ]) {
       expect(renders.sample.safeParse(changed).success).toBe(false)
     }

@@ -17,6 +17,7 @@
  * from the sample's rows.
  */
 
+import { CARDS_KEY } from "@some-ui/video-render"
 import { z } from "zod"
 
 import type { Walk } from "./run"
@@ -24,9 +25,14 @@ import type { Walk } from "./run"
 /** Home's board, as the sample serves it. */
 const RENDERS = "GET /api/v1/renders"
 
-const RowSchema = z.object({
-  feed: z.string().min(1),
-  key: z.string().min(1),
+/**
+ * A cards essay's row: its tile opens the essay's page, and one that couldn't
+ * finish leads to Run it again, by its key (`CARDS_KEY`; another key's row
+ * opens nothing).
+ */
+const EssaySchema = z.object({
+  feed: z.literal("cards-essay"),
+  key: z.string().regex(CARDS_KEY),
 })
 
 /** The snips' sample, as much of it as the walk reads. */
@@ -38,15 +44,9 @@ const SampleSchema = z
   .transform((sample, ctx) => {
     const board = z
       .object({
-        // A cards essay at the oven and one in line: each opens its essay's page.
-        now: RowSchema.extend({
-          feed: z.literal("cards-essay"),
-          state: z.literal("waiting"),
-        }),
-        waiting: z
-          .array(RowSchema.extend({ feed: z.literal("cards-essay") }))
-          .min(1),
-        failed: z.array(RowSchema).min(1),
+        now: EssaySchema.extend({ state: z.literal("waiting") }),
+        waiting: z.array(EssaySchema).min(1),
+        failed: z.array(EssaySchema).min(1),
         coming: z.array(z.unknown()).min(1),
       })
       .safeParse(sample.routes[RENDERS]?.body)
@@ -93,18 +93,19 @@ function walkOf({ now, inLine, failed }: Sample): Walk {
         holdMs: 2600,
       },
       {
-        label: "One that couldn't finish",
-        action: { kind: "scroll", target: again },
-        until: again,
-        holdMs: 2200,
-      },
-      {
-        // The page's last part, so the row above it, and its way to Run it
-        // again, stay on screen for the tap that follows.
         label: "Coming",
         action: { kind: "scroll", target: 'h2:has-text("Coming")' },
         until: 'h2:has-text("Coming")',
         holdMs: 3000,
+      },
+      {
+        // Back to the row that couldn't finish if Coming took it off screen,
+        // so the tap's place is read with it in view: the click would scroll
+        // to it only after.
+        label: "One that couldn't finish",
+        action: { kind: "scroll", target: again },
+        until: again,
+        holdMs: 2200,
       },
       {
         label: "Run it again",

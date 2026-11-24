@@ -88,7 +88,10 @@ describe("the snips' sample (#3476)", () => {
     expect(CONVEYOR_WORDS.stations[nowStation(now)]).toBe("Waiting for an oven")
     expect(nowLines(now)).toMatchObject({
       line: expect.stringMatching(/^Waiting for room on home/),
-      percent: null,
+      // A share, if none made yet: a bar with none sweeps, or pulses where
+      // motion is reduced as the walk's and the snips' screens are, and so
+      // never holds still for its picture.
+      percent: 0,
       left: null,
     })
     expect(waiting.map((row) => [row.feed, row.key])).toEqual([

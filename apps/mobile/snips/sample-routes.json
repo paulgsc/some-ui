@@ -636,7 +636,7 @@
           "gaveWay": 0,
           "heldBy": "memory",
           "stuck": false,
-          "estimate": null,
+          "estimate": { "share": 0, "secondsLeft": null },
           "progress": null
         },
         "waiting": [
