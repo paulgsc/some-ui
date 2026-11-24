@@ -98,9 +98,11 @@ export const CARDS_VOICE_ROLES: Readonly<Record<CardsSpeaker, VoiceRole>> = {
 
 /**
  * The longest a spoken essay runs, by its words: the weekly call's part,
- * ten minutes (owner, 2026-11-14). A longer subject is two essays (C373).
+ * twelve minutes, the owner's bound for the diagnosis essay ("at most 12
+ * minutes", #3476), as policy that moves with the story (C1426, which moves
+ * C373's ten). A longer subject is two essays.
  */
-export const CARDS_MOST_MS = 600_000
+export const CARDS_MOST_MS = 720_000
 
 /** A slug, then the stamp's day: `<slug>-<YYYY-MM-DD>`. */
 export const CARDS_KEY = /^[a-z0-9]+(-[a-z0-9]+)*-(\d{4}-\d{2}-\d{2})$/

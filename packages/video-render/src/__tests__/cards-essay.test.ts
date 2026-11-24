@@ -325,15 +325,29 @@ describe("a spoken essay (EXPLAIN6)", () => {
     ).toContain("no letter or digit")
   })
 
-  it("is refused past ten minutes by its words, and told to split", async () => {
+  it("is refused past twelve minutes by its words, and told to split, and takes one past C373's ten", async () => {
     const cut = await showcase("nixos-upgrade")
-    const long = "a long sentence of words that teach something ".repeat(40)
-    const shots = cut.shots.map((s) =>
-      s.spoken?.role === "scene"
-        ? { ...s, spoken: { ...s.spoken, narration: long } }
-        : s
+    const lasting = (n: number): typeof cut => ({
+      ...cut,
+      shots: cut.shots.map((s) =>
+        s.spoken?.role === "scene"
+          ? {
+              ...s,
+              spoken: {
+                ...s.spoken,
+                narration:
+                  "a long sentence of words that teach something ".repeat(n),
+              },
+            }
+          : s
+      ),
+    })
+    // About 12.3 minutes by its words: past the bound, named in the refusal.
+    expect(refusal(lasting(40))).toContain(
+      "a spoken essay runs at most 12: split it into two essays"
     )
-    expect(refusal({ ...cut, shots })).toContain("split it into two essays")
+    // About 10.2 minutes: past C373's ten, inside twelve (C1426).
+    expect(refusal(lasting(32))).toBe("")
   })
 
   it("is said in silence in version 1: a spoken line there is refused", async () => {
