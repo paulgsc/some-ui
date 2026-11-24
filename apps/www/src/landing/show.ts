@@ -834,9 +834,9 @@ export const everyScene = (
 ): ReadonlyArray<ResolvedScene> => episode.pool?.snacks ?? episode.scenes
 
 /**
- * Every asset key the show names, once each: first what every visit can
- * show (each episode's scenes, a pool's first draw), then the rest of each
- * pool. The build spends the page's preview budget in this order
+ * Every asset key the show names, once each: first what a page is built
+ * with (each episode's scenes, a pool's first draw, which a reader with no
+ * script always sees), then the rest of each pool. The build spends the page's preview budget in this order
  * (`render-public-site.ts`), so a face on every page comes before a snack
  * drawn now and then.
  */

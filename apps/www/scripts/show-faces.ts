@@ -7,6 +7,8 @@
 //
 //   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>]
 //
+// The snips bundle is needed whenever the episode names route stills.
+//
 // With a Snips Capture bundle (docs/snips.md), it also copies each route's
 // still the show names (a `screen` face, #3473) from the bundle's APK
 // pictures, the release build's where it has one. A route the show names
@@ -196,7 +198,12 @@ if (screens.length > 0) {
   )
   for (const { route, key } of missing) {
     const line = `The landing names ${route}, which this capture did not photograph (see the manifest's \`unreached\`): ${key} shows its title card.`
-    process.stdout.write(`::warning title=Landing faces::${line}\n`)
+    // A workflow command's data escapes %, CR and LF.
+    const data = line
+      .replaceAll("%", "%25")
+      .replaceAll("\r", "%0D")
+      .replaceAll("\n", "%0A")
+    process.stdout.write(`::warning title=Landing faces::${data}\n`)
     const summary = process.env["GITHUB_STEP_SUMMARY"]
     if (summary !== undefined && summary !== "")
       appendFileSync(summary, `- ${line}\n`)

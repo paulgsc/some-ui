@@ -60,22 +60,21 @@ const seeded = (seed: number): (() => number) => {
 const pooled = EPISODES.filter((e) => e.pool !== null)
 
 describe("drawPools", () => {
-  it("has one pool to draw from", () => {
-    // One pool, so the test's seeded draw is the one drawPools makes: the
-    // seed's first numbers are that pool's.
-    expect(pooled).toHaveLength(1)
+  it("has a pool to draw from", () => {
+    expect(pooled.length).toBeGreaterThan(0)
   })
 
   for (const seed of [1, 2, 3, 5, 8, 13, 21, 34]) {
     it(`puts each drawn snack whole in its place, nothing of the built draw left (seed ${String(seed)})`, () => {
       document.body.innerHTML = PAGE
       drawPools(seeded(seed))
+      // The same draws drawPools made: one source, each pool in turn in the
+      // page's order (the episodes'), each taking its shuffle's numbers.
+      const replay = seeded(seed)
       for (const episode of pooled) {
         const pool = episode.pool
         if (pool === null) continue
-        // The same draw drawPools made, from the same seed's first numbers
-        // for this pool (one pool, so its numbers are the first).
-        const drawn = drawSnacks(pool.snacks.length, pool.draw, seeded(seed))
+        const drawn = drawSnacks(pool.snacks.length, pool.draw, replay)
         const id = episode.id
         const copy = [
           ...document.querySelectorAll(`.copy[data-copy="${id}"] .scene`),
@@ -90,8 +89,8 @@ describe("drawPools", () => {
             `.episode[data-episode="${id}"] .scene-flat`
           ),
         ]
-        drawn.forEach((at, place) => {
-          const snack = pool.snacks.at(at)
+        drawn.forEach((index, place) => {
+          const snack = pool.snacks.at(index)
           if (snack === undefined) throw new Error("no snack")
           expect(
             copy[place]?.querySelector(".scene-title span")?.textContent
@@ -140,7 +139,7 @@ describe("drawPools", () => {
               )
               const own = [
                 ...([...(template?.content.querySelectorAll(".snack") ?? [])]
-                  .at(at)
+                  .at(index)
                   ?.querySelectorAll(".skeleton") ?? []),
               ].at(j)
               expect(own).toBeDefined()
