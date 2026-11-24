@@ -1,0 +1,15 @@
+{
+  "id": "C1482",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": ["prototypes/essays/it-didnt-run-worked-cases-2026-11-24.json"],
+  "chose": "Part 2 of \"it didn't run\" is a worked-case essay, a member of the cards-essay family on cheat-sheet v7 with no new card kind, scene kind or series: each case is a run of scenes, symptom, one question, one command as a typed terminal card with home's output as the owner pasted it (ids cut to 8 characters, no spoken words, lines trimmed and said to be), then a decision card naming what it rules out. A case whose outputs or screen are not in hand does not ship: the third case (essays \"In line\" or \"Waiting for an oven\") is split into its own part, which waits on the owner's output for what the two new essays wait on and on a sample snip of the episode page in that state.",
+  "options": [
+    "worked cases in the cards-essay family, a case missing its outputs or screen split out (chosen)",
+    "a reference sheet of every command, with no case to read them against",
+    "all three cases in one essay, the third told without its outputs"
+  ],
+  "gray": "The owner asked for a granular tutorial, not an overview; how a case is cut into scenes, which outputs are trimmed, and whether a case waiting on outputs ships or waits are on the screen, and no check settles them.",
+  "undo": "Record a call that moves this one; publish the cases as a reference or fold the third back in once its outputs and screen exist.",
+  "refs": ["#3476", "#3508", "#3512"]
+}
