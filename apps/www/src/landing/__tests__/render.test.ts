@@ -58,6 +58,18 @@ const firstFaces = clipScene.faces
 const POOLED = EPISODES.flatMap((e) => e.pool?.snacks ?? []).filter(
   (s) => s.faces[0].key === firstFaces[0].key
 ).length
+/**
+ * The dashboard band's plate rules (C1443) in a head's CSS: each plate's
+ * class and the tracks it names, in order. Read with one fixed pattern, so
+ * nothing taken from the page is ever read as a pattern itself.
+ */
+const plateRules = (
+  css: string
+): Array<{ plate: string; names: Array<string> }> =>
+  [...css.matchAll(/\.dash-band \.(s-\d+) \{ animation-name: ([^;]+);/g)].map(
+    (m) => ({ plate: m[1], names: m[2].split(", ") })
+  )
+
 /** A build given that scene's two faces, the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
   [firstFaces[0].key, { width: 1080, height: 1920 }],
@@ -436,17 +448,16 @@ describe("renderLanding", () => {
       // Its first plate shows on the page's first round, and its last does
       // not, until the episode has played.
       const head = renderLandingHead(LANDING_WORDS, EPISODES)
+      const rules = plateRules(head)
       const first = plates.at(0)?.[1] ?? ""
       const last = plates.at(-1)?.[1] ?? ""
-      expect(head).toMatch(
-        new RegExp(
-          `\\.dash-band \\.${first} \\{ animation-name: ${first}, (s-\\d+);`
-        )
-      )
-      const intro = (n: string): string =>
-        new RegExp(
-          `\\.dash-band \\.${n} \\{ animation-name: ${n}, (s-\\d+);`
-        ).exec(head)?.[1] ?? ""
+      // Each names its own loop first, then its first round's track.
+      const intro = (n: string): string => {
+        const names = rules.find((r) => r.plate === n)?.names ?? []
+        expect(names, n).toHaveLength(2)
+        expect(names[0]).toBe(n)
+        return names[1] ?? ""
+      }
       expect(head).toContain(
         `@keyframes ${intro(first)} { from { opacity: 1; } to { opacity: 1; } }`
       )
@@ -482,15 +493,13 @@ describe("renderLanding", () => {
     for (const name of names) {
       // A dashboard band's plate (C1443) is named under the band, and its
       // first-round track only beside its loop's, on the same element.
-      const plate = new RegExp(
-        `\\.dash-band \\.(s-\\d+) \\{ animation-name: (?:s-\\d+, )?${name}[;,]`
-      ).exec(wide)
-      if (plate === null) {
+      const plate = plateRules(wide).find((r) => r.names.includes(name))
+      if (plate === undefined) {
         expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
       }
       // Every element a track moves names it, beside the one clock's class.
       expect(classLists).toContainEqual(
-        expect.arrayContaining(["tk", plate?.[1] ?? name])
+        expect.arrayContaining(["tk", plate?.plate ?? name])
       )
     }
     const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
