@@ -175,6 +175,23 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
 - On the timer, read each worker's `external_metadata.context_usage`. Above about 70%, have
   the worker wind down and hand its work to a fresh session. Hand over yourself at about 80%
   (#2885).
+- **One coordinator per run** (the owner, Nov 24, in session_01LDpdUGY8Wmgub3WwMyxgSp,
+  answering whether to add it here: "yes, file the hook change and add the skill rule";
+  #3514). A coordinator does a run, or a day, and no more. The next run gets a fresh session,
+  which reads in from the `[ORCH]` record, the epics and the ledger. The old one hands over by
+  the mid-run steps (below, "Winding down"), which hold at a run's end too, then archives. The
+  reason is cost: every turn re-reads the whole context, so a session carried from run to run
+  pays for its past on every message. On Nov 24 the coordinator that had run since Nov 21 sat
+  at 272k tokens, with about $573 of cached re-reads behind it.
+- Keep each turn's reads small. Fetch only the fields you need (`gh api … --jq`) rather than an
+  MCP listing that returns whole bodies and commit messages, and hand bulky reads (a long
+  transcript, a large diff, a log) to a subagent that returns only the answer.
+- A background helper that edits files works in its own clone in the scratchpad, never in
+  your checkout. Not `isolation: "worktree"`: that worktree sits under `.claude/worktrees/`
+  inside the checkout, where it shows as untracked. The cloud platform's Stop hook blocks the
+  end of every turn while your checkout has uncommitted or untracked changes, and it can't
+  tell a helper's unfinished work from forgotten work: on Nov 24 it fired about ten times,
+  each a full re-read (#3514).
 - A message reaches a session mid-turn only when its turn ends, sometimes batched with
   others. Restate whatever it supersedes (#2814, Nov 10).
 - Never pipe a command whose exit code matters (#2814, Nov 10; server `CLAUDE.md`).
@@ -264,6 +281,12 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
 ## Choir
 
 - Build and verify locally, in parallel. A pushed branch with no PR runs no CI (#2823).
+- After pushing, check `git rev-parse -q --verify origin/<branch>`. A push creates that ref
+  only where the clone fetches every branch; a single-branch clone, or a push made another
+  way (another clone, the GitHub API), leaves it missing. Then the platform's Stop hook
+  compares against `origin/HEAD`, reports the pushed commits as unpushed with "no remote
+  branch", and blocks every turn's end. Create the ref with
+  `git fetch origin <branch>:refs/remotes/origin/<branch>` (#3514).
 - Before a some-ui PR, run the whole `www` vitest suite, not only the folders you touched
   (#2814, Nov 9).
 - When your branch is ready, send the coordinator `ready <name> <repo> <branch>`, and open the
