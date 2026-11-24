@@ -37,10 +37,10 @@ test.describe("the capture's wait for a screen to read (SN2)", () => {
   }) => {
     // Longer than the beat `settle` takes after a screen has read (2.5 s), so
     // only the wait for the reading line explains its going.
-    await page.setContent(screenReading(4_000))
+    await page.setContent(screenReading(6_000))
     const from = Date.now()
-    expect(await settle(page, 8_000)).toBe(true)
-    expect(Date.now() - from).toBeGreaterThanOrEqual(4_000)
+    expect(await settle(page, 10_000)).toBe(true)
+    expect(Date.now() - from).toBeGreaterThanOrEqual(6_000)
     expect(await page.locator('[aria-busy="true"]').count()).toBe(0)
   })
 

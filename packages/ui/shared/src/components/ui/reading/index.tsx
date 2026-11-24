@@ -5,8 +5,8 @@ import { cn } from "../../../lib/utils"
 /**
  * What stands in for something read from elsewhere while it reads (home,
  * GitHub, the phone's own store): a quiet line of the screen's own, marked
- * busy, so a screen reader knows the region is still loading and Snips
- * Capture waits for it before taking the screen's picture (#3491). Not a
+ * `aria-busy`, which Snips Capture waits on before taking the screen's
+ * picture (#3491) and assistive tech may read as still loading. Not a
  * status message: what was just done goes on the notice plane (HS3). The
  * words are the caller's.
  */

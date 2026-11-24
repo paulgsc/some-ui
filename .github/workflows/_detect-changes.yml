@@ -158,6 +158,7 @@ jobs:
               - 'apps/www/src/lib/study-nudge/**'
             snips_settle:
               - 'apps/www/tests/snips/**'
+              - 'apps/www/src/lib/snips/**'
               - 'apps/www/playwright.config.ts'
             # The registry is in the set on purpose: binding a new key
             # delegates size authority to a component the panel sweep has
