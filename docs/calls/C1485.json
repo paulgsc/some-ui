@@ -1,0 +1,14 @@
+{
+  "id": "C1485",
+  "made": "2026-11-24",
+  "by": "owner",
+  "paths": ["some-ui:packages/ui/burn-ins/src/lib/burn-in.ts"],
+  "chose": "The owner (2026-11-24, verbatim with elisions marked, in the coordinator session, answering ask #3527; 'thin part' is voice transcription of Tin Bird): \"No, don't keep the corner empty. The thin part is always it's orthogonal to the content in that sense. It's on top of the content, and if, for example, the content is important, right? Because if we say to keep the corner empty, then we kind of are going to have the collision of like the content doesn't fit, and then we have to do awkward things to get the content to fit. When in fact you could have fit if you just use that space. So you just use the space and accept that sometimes the thin part covers content. Oftentimes it's not the most important content, and most important thing is we can update the translucence of the thin part. ... We can put it to the top corner, the top right, left, or the bottom left, or even at the center, or whatever. Or we can make it translucent, or we can kind of fade it away for the purpose of giving the content fast authority ... But it's orthogonal. That is, they shouldn't be competing as if it's in a race to write to the same thing. ... these are two orthogonal layers, and from the character layer point of view, it's just being given like generic spatial input. The actual granular content, it's not literally looking, right? ... We're just emulating and creating an immersion.\" So the character layer floats over the card and never reserves room: the content uses the whole card, and the character may cover part of it. The character's placement (any corner, or the center), translucency and fade are its own parameters. Where it looks or points is a generic point in the frame it is given, never a reading of the content.",
+  "options": [
+    "Carve a corner region: the card's body leaves the corner free for the host",
+    "Declare the host an exception: it floats over the card, and cards keep their full size"
+  ],
+  "gray": "The burn-ins' layout says regions never overlap, so either choice changes how every card is laid out, a look the owner sees on every video.",
+  "undo": "Carve a corner region out of the card body in the burn-ins' geometry and place the host there. Only the owner can move this call.",
+  "refs": ["#3527", "#3521", "#3522"]
+}
