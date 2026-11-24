@@ -10,6 +10,7 @@ import type { WalkFile, WalkRecord } from "@video-render/walk"
 import {
   parseWalks,
   parseWalksGiven,
+  walkPictureProblem,
   WALKS_GIVEN_SCHEMA,
   WALKS_SCHEMA,
   walkSlice,
@@ -116,6 +117,32 @@ describe("a run's walks (#3476)", () => {
     })
     // The last part runs to the walk's end.
     expect(walkSlice(WALK, 2, 3).lengthMs).toBe(2600)
+  })
+})
+
+describe("a walk's picture, as its screen holds it (WALK10, #3499)", () => {
+  // The call dashboard's essay rows, as Snips Capture run 45368180054 shot them.
+  const rows = { viewport: { width: 1440, height: 498, scale: 1 }, taps: [] }
+
+  it("takes a dashboard's rows, each its screen's width and no taller", () => {
+    for (const height of [498, 346])
+      expect(walkPictureProblem(rows, { width: 1440, height })).toBeNull()
+    // Under a screen taller than its rows, as that run recorded, too.
+    const grown = { ...rows, viewport: { ...rows.viewport, height: 1600 } }
+    expect(walkPictureProblem(grown, { width: 1440, height: 346 })).toBeNull()
+  })
+
+  it("refuses a picture taller than its screen, which would be cut off", () => {
+    expect(walkPictureProblem(rows, { width: 1440, height: 520 })).toBe(
+      "is taller than its walk's screen"
+    )
+  })
+
+  it("takes only its screen's shape where the walk taps, so a tap lands on its control", () => {
+    expect(walkPictureProblem(WALK, { width: 1081, height: 1921 })).toBeNull()
+    expect(walkPictureProblem(WALK, { width: 1081, height: 1500 })).toBe(
+      "isn't the shape its walk's screen is"
+    )
   })
 })
 
