@@ -40,6 +40,7 @@ export type SurfaceKind = "app" | "dashboard"
 export const DASHBOARD_WALKS: ReadonlySet<string> = new Set([
   "home-call",
   "home-pipelines",
+  "home-pressure",
 ])
 
 /** A phrase that places something on a surface of ours. */
