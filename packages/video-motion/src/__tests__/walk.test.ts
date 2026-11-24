@@ -297,6 +297,23 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
     })
   })
 
+  it("keeps the last screen's dump, not the error a failed dump reads back", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    const stage = looking([
+      { ...LAID, dump: zero },
+      {
+        ...LAID,
+        dump: "cat: /sdcard/walk-ui-2.xml: No such file or directory",
+      },
+    ])
+    const failed = await read(stage).catch((e: unknown) => e)
+    expect(failed).toMatchObject({
+      message:
+        "the WebView was never laid out: the app's WebView is not on screen",
+      dump: zero,
+    })
+  })
+
   it("keeps the last dump a look read when the last look throws", async () => {
     const zero = dumpWith("[0,0][0,0]")
     const stage = looking([{ ...LAID, dump: zero }])

@@ -182,13 +182,14 @@ function within<T>(p: Promise<T>, ms: number): Promise<T> {
  * screen (`laidOut`) and two looks in a row give it the same box, so a top
  * still moving with the system bars' or the keyboard's insets is not read;
  * never starting a look after `wait.ms`, and holding each look to
- * `wait.lookMs` (a `uiautomator dump` or a page that never answers), so it
- * gives up within `wait.ms` and one look's `wait.lookMs`. A dump
+ * `wait.lookMs` (a `uiautomator dump` or a page that never answers), so the
+ * wait gives up within `wait.ms` and one look's `wait.lookMs`, past timer
+ * slack. A dump
  * taken as the app starts, as its keyboard's insets settle or as
  * `uiautomator` turns accessibility on can find the WebView's node not yet
  * laid out (#3489); the stage looks again rather than read that one. A look
  * that throws is a look that saw nothing. Refused with the reason the last
- * look gave, and the last dump a look read.
+ * look gave, and the last screen's dump a look read.
  */
 export async function placeWhenLaidOut(
   read: () => Promise<PlaceRead>,
@@ -213,7 +214,9 @@ export async function placeWhenLaidOut(
     let why: string
     try {
       const look = await wait.limit(read(), wait.lookMs)
-      if (look.dump !== "") dump = look.dump
+      // Only a screen's dump is kept as the evidence: not the error a look
+      // whose dump failed reads back instead.
+      if (look.dump.includes("<hierarchy")) dump = look.dump
       const box = laidOut(look, pkg)
       if (typeof box === "string") {
         why = box
@@ -291,12 +294,18 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
     })
     // Read from the accessibility tree, as Snips Capture's release pass reads
     // the screen: `device.info` needs Playwright's driver app on the device.
-    // A dump left by an earlier look is never read as this one.
+    // Each look its own file, dumped and read in one call the device ends
+    // after 4 s, so a look held up past its 5 s (WALK9) and still running
+    // can't write or remove a later look's file.
+    let looks = 0
     const look = async (): Promise<PlaceRead> => {
-      await device.shell("rm -f /sdcard/walk-ui.xml")
-      await device.shell("uiautomator dump /sdcard/walk-ui.xml")
+      looks += 1
+      const file = `/sdcard/walk-ui-${String(looks)}.xml`
+      const read = await device.shell(
+        `timeout 4 uiautomator dump ${file} >/dev/null && cat ${file}; rm -f ${file}`
+      )
       return {
-        dump: (await device.shell("cat /sdcard/walk-ui.xml")).toString("utf8"),
+        dump: read.toString("utf8"),
         innerWidth: Number(await page.evaluate("window.innerWidth")),
         pixelRatio: Number(await page.evaluate("window.devicePixelRatio")),
       }
