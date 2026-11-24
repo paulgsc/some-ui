@@ -185,6 +185,30 @@ export function parseWalksGiven(value: unknown): Parsed<WalksGiven> {
     : { ok: false, problems: problemsOf(parsed.error, "walks") }
 }
 
+/** How far a picture's shape may stray from its walk's screen: 2%. */
+const SHAPE_SLACK = 0.02
+
+/**
+ * Why a walk's picture can't be drawn as its walk says, or null (WALK10, #3499).
+ * The screen-zoom composition draws each picture across the walk's screen,
+ * as wide as it, from its top, and never stretches it. Taps land in the
+ * screen's units, so a walk with taps takes only pictures of its screen's
+ * shape; one with none, such as a dashboard's rows, also takes a picture
+ * shorter than its screen, never a taller one, which would be cut off.
+ */
+export function walkPictureProblem(
+  walk: Pick<WalkFile, "viewport" | "taps">,
+  size: { readonly width: number; readonly height: number }
+): string | null {
+  const tall = (walk.viewport.height * size.width) / walk.viewport.width
+  const slack = SHAPE_SLACK * tall
+  if (walk.taps.length > 0)
+    return Math.abs(size.height - tall) > slack
+      ? "isn't the shape its walk's screen is"
+      : null
+  return size.height > tall + slack ? "is taller than its walk's screen" : null
+}
+
 /** Where a handed walk's picture sits in `<key>.walks/` and the video's folder: `<run>/<app>/snips/<NN>.png`. */
 export const walkPicturePath = (run: string, name: string): string =>
   `${run}/${name}`

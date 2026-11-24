@@ -15,11 +15,24 @@ describe("parseCutList", () => {
     "concat:a.png|b.png",
     "-h",
     "a/../../x.png",
+    "~/x.png",
+    "~x.png",
   ])("refuses %s as a file", (source) => {
     const parsed = parseCutList(cutList([still(source)]))
     expect(parsed.ok ? [] : parsed.problems).toContain(
       "shots.0.picture.source: names a file inside the video's folder"
     )
+  })
+
+  it("takes a snip of a nested route, named by its route's slug", () => {
+    const parsed = parseCutList(
+      cutList([
+        still(
+          "snips/apk/android/debug-journal~takes~attention-0123456789ab.png"
+        ),
+      ])
+    )
+    expect(parsed.ok ? [] : parsed.problems).toEqual([])
   })
 
   it("refuses times that run backwards", () => {
