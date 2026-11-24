@@ -140,9 +140,81 @@ const WIPED = "clip-path: inset(0 0 100% 0);"
 const TYPED_NOT = "clip-path: inset(0 100% 0 0);"
 const WHOLE = "clip-path: inset(0 0 0 0);"
 
-/** The copy block's angle for episode `k` of `n`: the next episode's face rises from the right. */
-const copyAngle = (k: number, n: number): string =>
-  `transform: translateZ(calc(-1 * var(--depth))) rotateY(${num((-360 * k) / n)}deg);`
+/**
+ * The copy block is a cube about Y, as the media blocks are about X
+ * (C1424): four faces, whatever the show's episodes, which sit on them
+ * spread evenly where they divide four (two face each other), else one
+ * after another, the rest blank.
+ */
+export const COPY_FACES = 4
+
+/** The face episode `k` of `n` sits on. */
+export const copyFaceOf = (k: number, n: number): number =>
+  COPY_FACES % n === 0 ? (k * COPY_FACES) / n : k
+
+/** The copy cube's perspective, in its widths (`.ring`'s 340cqi). */
+const COPY_PERSPECTIVE = 3.4
+
+/**
+ * How much the copy cube shrinks at `deg`, so it never reaches past its
+ * block: a square turned off square-on is wider than its side (its diagonal
+ * at 45 degrees), and perspective widens it again. 1 square-on, about 0.8
+ * at 45 degrees: the largest scale whose four corners, projected, stay
+ * within half a width of the middle.
+ */
+export function copyScaleAt(deg: number): number {
+  const a = (deg * Math.PI) / 180
+  const reach = Math.max(
+    ...[
+      [0.5, 0.5],
+      [0.5, -0.5],
+      [-0.5, 0.5],
+      [-0.5, -0.5],
+    ].map(([x = 0, z = 0]) => {
+      // Turned about Y, about the cube's middle, half a width behind the face.
+      const xr = x * Math.cos(a) + z * Math.sin(a)
+      const zr = -x * Math.sin(a) + z * Math.cos(a) - 0.5
+      return Math.abs(xr) * (COPY_PERSPECTIVE / (COPY_PERSPECTIVE - zr))
+    })
+  )
+  return Math.min(1, 0.5 / reach)
+}
+
+/** The copy cube at `deg`, at its scale there: the next episode's face rises from the right. */
+const copyAt = (deg: number): string =>
+  `transform: translateZ(calc(-1 * var(--depth))) scale(${num(copyScaleAt(deg))}) rotateY(${num(deg)}deg);`
+
+/** The copy cube's angle at `face`. */
+const faceDeg = (face: number): number => (-360 * face) / COPY_FACES
+
+/** An ease in and out, as CSS's `ease-in-out` draws it near enough. */
+const easeInOut = (t: number): number => t * t * (3 - 2 * t)
+
+/** Samples of a turn per quarter turn: its scale is drawn from them. */
+const COPY_SAMPLES = 8
+
+/**
+ * The copy cube's turn from face `from` to face `to`, beginning at `start`:
+ * its angle eased in and out, and its scale at every angle on the way,
+ * sampled and drawn straight between.
+ */
+function copyTurn(
+  from: number,
+  to: number,
+  start: number
+): ReadonlyArray<Point> {
+  const a = faceDeg(from)
+  const b = faceDeg(to)
+  const steps = Math.max(1, Math.round((Math.abs(b - a) / 90) * COPY_SAMPLES))
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps
+    return {
+      at: start + t * EPISODE_TURN_S,
+      css: copyAt(a + (b - a) * easeInOut(t)),
+      ...(i < steps ? { ease: "linear" } : {}),
+    }
+  })
+}
 
 /** A cube's angle for scene `s`: the next face rises from below. */
 const cubeAngle = (s: number): string =>
@@ -197,10 +269,15 @@ export function showTimeline(
     keyframes: keyframes(
       copyName,
       cycleS,
-      times.flatMap((e, k) => [
-        { at: e.start, css: copyAngle(k - 1, n), ease: "ease-in-out" },
-        { at: e.start + EPISODE_TURN_S, css: copyAngle(k, n) },
-      ])
+      // Always turning on: the first episode comes round again from past
+      // the last, through any blank face between them.
+      times.flatMap((e, k) =>
+        copyTurn(
+          k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n),
+          copyFaceOf(k, n),
+          e.start
+        )
+      )
     ),
   }
 
@@ -277,8 +354,8 @@ export function showTimeline(
     const cubes: readonly [Track, Track] = [cube(), cube()]
     const scenes = e.scenes.map((s, i): SceneTracks => {
       // The last scene's copy stays through the copy block's whole turn,
-      // which leaves its face turned away (120 degrees or more: a show is
-      // two or three episodes, one a project, which resolveShow holds), so
+      // which leaves its face turned away (90 degrees or more: each
+      // episode has a face of its own on the copy cube, copyFaceOf), so
       // its hidden back takes it out of sight: the turning face is never
       // blank. The last episode's stays through the turn that begins the
       // cycle again.

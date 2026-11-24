@@ -1,0 +1,16 @@
+{
+  "id": "C1424",
+  "made": "2026-11-24",
+  "by": "owner",
+  "moves": "C1422",
+  "paths": [
+    "apps/www/landing/index.html",
+    "apps/www/src/landing/render.ts",
+    "apps/www/src/landing/timeline.ts",
+    "apps/www/src/landing/show.ts",
+    "apps/www/src/landing/README.md"
+  ],
+  "chose": "On the landing's wide stage every block faces the viewport square-on at rest, with no fixed pitch or yaw (C1422's camera tilt, which #3470's spec suggested, is gone); its depth shows only as it turns, the faces coming round on a closed, rounded shell. The copy block on the left is a cube in the same family: four faces about Y, an episode a face (two episodes face each other; three take three faces and the fourth stays blank), turning on through the blank face as the show begins again. The owner, 2026-11-24, after previewing the landing: \"In the web app, the two cubes on the right have a permanent 'angled' banking orientation. Why? The point of the back face being visible is for the moment it's rotating: that's when we see the back faces, the complete immersion of a cube, which by the way includes the left container. But that doesn't mean we give them a bank angle. They should face the viewport.\"",
+  "undo": "Restore the .cube-camera wrapper and its rotateX/rotateY in render.ts and landing/index.html, and the copy ring's one face per episode (copyAngle over the episode count, --faces from episodes.length).",
+  "refs": ["#3470", "#3471"]
+}

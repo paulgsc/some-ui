@@ -808,32 +808,29 @@
         .show:hover .skeleton::after {
           animation-play-state: paused;
         }
+        /* Every block is a cube in one family (C1424): it faces the
+           reader square-on at rest, and its depth shows as it turns, the
+           faces coming round on a closed, rounded shell. Its perspective
+           is about three and a half of its widths, counted in its own
+           width (the block is the container its cqi reads). The copy cube
+           shrinks a little as it turns, so it stays within its block
+           (copyScaleAt, timeline.ts). */
+        .block {
+          container-type: inline-size;
+        }
         .ring {
           container-type: inline-size;
           height: 100%;
-          perspective: 1400px;
+          perspective: 340cqi;
         }
-        /* A cube stands as tall as its episode's narrowest picture needs
-           (--tall, its height over its width, render.ts), its depth half
-           that, and the reader sees it a little from below and aside
-           (the camera, C1422), so the next face's edge and one end
-           show at rest and through every turn. Its perspective is about
-           three and a half of its edges, counted in the cube's own width
-           (its block is the container its cqi reads). */
-        .block--cube {
-          container-type: inline-size;
-        }
+        /* A media cube stands as tall as its episode's narrowest picture
+           needs (--tall, its height over its width, render.ts), and turns
+           about X, so its depth is half its height. */
         .ring--cube {
           --faces: 4;
           --depth: calc(50cqi * var(--tall));
           aspect-ratio: 1 / var(--tall);
           perspective: calc(340cqi * var(--tall));
-        }
-        .cube-camera {
-          height: 100%;
-          transform-style: preserve-3d;
-          transform: translateZ(calc(-1 * var(--depth))) rotateX(9deg)
-            rotateY(-11deg) translateZ(var(--depth));
         }
         /* Above the copy ring's depth (.block .ring .ring-turn, below),
            which assumes square faces. */

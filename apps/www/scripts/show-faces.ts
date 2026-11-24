@@ -7,11 +7,10 @@
 //
 //   tsx scripts/show-faces.ts <episode> <render folder> <site-assets folder> [<snips bundle>]
 //
-// The snips bundle is needed whenever the episode names route stills.
-//
-// With a Snips Capture bundle (docs/snips.md), it also copies each route's
-// still the show names (a `screen` face, #3473) from the bundle's APK
-// pictures, the release build's where it has one. A route the show names
+// From the Snips Capture bundle (docs/snips.md), which it needs whenever
+// the episode names route stills, it copies each route's still the show
+// names (a `screen` face, #3473) from the bundle's APK pictures, the
+// release build's where it has one. A route the show names
 // that the capture did not photograph is a warning on the run (below).
 //
 // Beside each face it writes the face's preview (`previewKey`): a still

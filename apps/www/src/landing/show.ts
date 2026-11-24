@@ -16,6 +16,8 @@
  */
 import type { FileRoutesByFullPath } from "@/routeTree.gen"
 
+import { COPY_FACES } from "./timeline.ts"
+
 /** A path with an index's trailing `/` dropped, as Snips Capture names a route (`pathOf`). */
 type Address<P extends string> = P extends `${infer Head}/`
   ? Head extends ""
@@ -729,9 +731,10 @@ export function resolveShow(
     labels.set(face.key, named ?? face.label)
   }
   if (episodes.length < 2) problems.push("the show needs two episodes or more")
-  // An episode a project, once each: the copy block's turn between them is
-  // then at least 120 degrees, which the timeline relies on to take an
-  // episode's copy out of sight (timeline.ts).
+  // The copy block is a cube: an episode a face, so four at most.
+  if (episodes.length > COPY_FACES)
+    problems.push(`the show has room for ${String(COPY_FACES)} episodes`)
+  // An episode a project, once each.
   const ids = show.episodes.map((episode) => episode.id)
   if (new Set(ids).size < ids.length)
     problems.push("the show names an episode twice")
@@ -836,9 +839,9 @@ export const everyScene = (
 /**
  * Every asset key the show names, once each: first what a page is built
  * with (each episode's scenes, a pool's first draw, which a reader with no
- * script always sees), then the rest of each pool. The build spends the page's preview budget in this order
- * (`render-public-site.ts`), so a face on every page comes before a snack
- * drawn now and then.
+ * script always sees), then the rest of each pool. The build spends the
+ * page's preview budget in this order (`render-public-site.ts`), so a face
+ * on every page comes before a snack drawn now and then.
  */
 export function showMediaKeys(
   episodes: ReadonlyArray<ResolvedEpisode>
