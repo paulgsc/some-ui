@@ -86,6 +86,46 @@ describe("readBoard", () => {
     if (read.kind === "read") expect(underWay(read.board)).toBe(true)
   })
 
+  it("reads an owed video's lateness and what it waits on (#3478)", () => {
+    const late = {
+      ...BOARD,
+      coming: [
+        { feed: "call", on: "2026-11-13", overdue: false },
+        {
+          feed: "rust-essay",
+          on: "2026-11-23",
+          overdue: true,
+          key: "2026-w47",
+          waitsOn: "take-unheard",
+        },
+      ],
+    }
+    const read = readBoard(answer(200, late))
+    expect(read.kind === "read" && read.board.coming).toEqual(late.coming)
+  })
+
+  it("reads a home from before lateness as on time, and a new reason as none", () => {
+    const read = readBoard(
+      answer(200, {
+        ...BOARD,
+        coming: [
+          { feed: "call", on: "2026-11-13" },
+          {
+            feed: "interview-essay",
+            on: "2026-11-23",
+            overdue: true,
+            key: 47,
+            waitsOn: "a-reason-from-later",
+          },
+        ],
+      })
+    )
+    expect(read.kind === "read" && read.board.coming).toEqual([
+      { feed: "call", on: "2026-11-13", overdue: false },
+      { feed: "interview-essay", on: "2026-11-23", overdue: true },
+    ])
+  })
+
   it("reads a home with nothing to say", () => {
     const empty = { now: null, waiting: [], failed: [], done: [], coming: [] }
     const read = readBoard(answer(200, empty))

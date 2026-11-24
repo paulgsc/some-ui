@@ -3724,9 +3724,9 @@
           "kind": "OA6",
           "property": "outcome",
           "claim": "An essay that fails to render, waits too long, is refused, or a worker that keeps failing, reads as such to the owner rather than as a quiet week.",
-          "requirement": "Slack is told when a week's essay render fails (RustEssayRenderFailed, naming renders/rust-essay-worker/<week>.failed.log on home's database drive), when a held essay has waited unrendered (RustEssayRenderOverdue), when an essay is refused (RustEssayRefused, naming <week>.refused.log), and when the rust_essays worker keeps failing (RustEssaysFailing); the Renders page shows a failed entry.",
+          "requirement": "Slack is told when a week's essay render fails (RustEssayRenderFailed, naming renders/rust-essay-worker/<week>.failed.log on home's database drive), when a held essay has waited unrendered (RustEssayRenderOverdue), when an essay is refused (RustEssayRefused, naming <week>.refused.log), when the rust_essays worker keeps failing (RustEssaysFailing), and when a week's owed essay is past its Monday and has never reached the worker (RustEssayOverdue, InterviewEssayOverdue); the Renders page shows a failed entry, and keeps an owed essay under Coming once its Monday has passed, said late, with what it waits on where home knows (a refused essay, a take home couldn't hear or is still hearing, a week not final, nothing written).",
           "verdict": "unproven",
-          "conclusion": "Structural: the four alerts and their promtool tests are on home's rules, and the Renders page names an essay's failed entry as Studio names the essay (RR17); no essay has yet failed on home, which only home can show.",
+          "conclusion": "Structural: the four alerts on a given essay and their promtool tests are on home's rules, and the Renders page names an essay's failed entry as Studio names the essay (RR17), and says an owed essay late with what it waits on; the two alerts on an owed essay that never reached the worker are in review (server#1155), so the widened family is unproven until they are on home's rules; no essay has yet failed on home, which only home can show.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
@@ -3743,13 +3743,30 @@
               "class": "structural",
               "says": "The Renders page names each render, a Rust Rounds essay's failed one included, by Studio's own names for its feed and episode (FEED_FACTS, FEED_WORDS), whose essay names are tested.",
               "ref": "some-ui:apps/www/src/lib/renders/words.ts"
+            },
+            {
+              "class": "structural",
+              "says": "RustEssayOverdue and InterviewEssayOverdue fire on the board's own Coming read once an owed essay's Monday has passed and it was never given to the worker, each with a promtool test; CallWeekOverdue says the same of the call's week. In review, not yet on home's rules.",
+              "ref": "server#1155"
+            },
+            {
+              "class": "structural",
+              "says": "The Renders page keeps an owed video under Coming once its day has passed, says it is late and what it waits on in the owner's words, and leads to Needs your attention for a take home couldn't hear; its words and its read of an older home are tested.",
+              "ref": "some-ui:apps/www/src/lib/renders/__tests__/words.test.ts"
             }
           ],
           "watch": {
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-24",
+              "change": "The requirement widens to an owed essay that never reached the worker: two alerts (RustEssayOverdue, InterviewEssayOverdue) once its Monday has passed, and the Renders page keeping it under Coming, late, with what it waits on.",
+              "why": "The family was drawn from the worker's folders: an essay the routine never wrote, or one held by a take home couldn't hear, left Coming on the Tuesday and fired nothing, so an owed essay read as a quiet week (#3478, #3480).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3478"
+            }
+          ]
         },
         {
           "id": "EV4",
