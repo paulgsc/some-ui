@@ -19,16 +19,37 @@
     "height": 1080
   },
   "defaultLook": "plain",
+  "music": {
+    "bed": {
+      "file": "brand/music-bed-v1.wav",
+      "sha256": "f815f02a429d5efb5db39e03a175f17ae1d09b3ddea1c935555d06687b9bd89f"
+    },
+    "gainDb": -14
+  },
   "sounds": {},
   "soundGainDb": -8,
   "designs": {
     "status-badge": "badge-v1",
-    "terminal": "terminal-v2",
+    "terminal": "terminal-v1",
     "cheat-sheet": "sheet-v1",
     "legend": "legend-v1",
     "rule": "rule-v1",
     "flow": "flow-v1",
     "bars": "bars-v1",
     "captions": "broadcast"
+  },
+  "intro": {
+    "picture": {
+      "kind": "brand",
+      "motion": "brand-v1"
+    },
+    "durationMs": 3000
+  },
+  "outro": {
+    "picture": {
+      "kind": "brand",
+      "motion": "brand-v1"
+    },
+    "durationMs": 3000
   }
 }
