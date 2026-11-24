@@ -4,7 +4,7 @@
  * was read before under a notice that says so. Its words are the caller's.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, Notice, Reading } from "@some-ui/shared"
 import type { QueryKey, UseQueryOptions } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
 
@@ -39,9 +39,7 @@ export function ReadList<T, K extends QueryKey>({
   children: (value: T) => ReactNode
 }): JSX.Element {
   return matchQueryOutcome(queryOutcome(useQuery(query)), {
-    pending: () => (
-      <p className="text-muted-foreground text-sm">{words.reading}</p>
-    ),
+    pending: () => <Reading>{words.reading}</Reading>,
     failed: (error, retry) => (
       <div className="flex flex-col gap-2">
         <p className="text-sm">

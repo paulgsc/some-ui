@@ -74,6 +74,16 @@ export type Walk = {
 /** How long a screen may take to settle: a slowed emulator renders late. */
 const SETTLE_MS = 2_500
 
+/**
+ * What a screen still reading marks itself with (`Reading`, `@some-ui/shared`;
+ * a route still loading, `RoutePending`): the app's reads of home go through
+ * the phone's own HTTP, which `networkidle` can't see (#3491).
+ */
+const BUSY = '[aria-busy="true"]'
+
+/** How long a screen may read before it is left unphotographed, said as unreached. */
+const READING_MS = 20_000
+
 export async function walk(w: Walk): Promise<Part> {
   const links = new Set<string>()
   const snips: Array<SnipRecord> = []
@@ -85,7 +95,17 @@ export async function walk(w: Walk): Promise<Part> {
 
   const visit = async (route: RouteEntry, path: string): Promise<void> => {
     await w.open(path)
-    await settle(w.page)
+    const settled = await settle(w.page)
+    if (!settled) {
+      // Never a picture of a screen still reading: it shows the reading line,
+      // not the screen (#3491).
+      unreached.push({
+        surface: w.surface,
+        route: route.path,
+        why: `it was still reading after ${String(READING_MS / 1000)} s`,
+      })
+      return
+    }
     const screen = await read(w.page, w.base)
     for (const link of screen.links) links.add(link)
     if (screen.notFound) {
@@ -248,13 +268,25 @@ export async function pageRegions(
   return regionsOf(measured, { width, height })
 }
 
-/** Waits for the network to go quiet and fonts to load, then a beat for late paints. */
-async function settle(page: Page): Promise<void> {
+/**
+ * Waits for the network to go quiet, for nothing on the screen to be reading
+ * (`BUSY`, at most `READING_MS`) and fonts to load, then a beat for late
+ * paints. False when the screen was still reading.
+ */
+async function settle(page: Page): Promise<boolean> {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {
     // A screen that keeps a request open still gets its picture.
   })
+  const read = await page
+    .waitForFunction((busy) => document.querySelector(busy) === null, BUSY, {
+      timeout: READING_MS,
+    })
+    .then(() => true)
+    .catch(() => false)
+  if (!read) return false
   await page.evaluate(() => document.fonts.ready.then(() => true))
   await page.waitForTimeout(SETTLE_MS)
+  return true
 }
 
 type Screen = {
