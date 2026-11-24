@@ -33,9 +33,13 @@ export type { HomeLink } from "./runtime"
 
 let link: HomeLink | null = null
 
-/** The page's clock, which the link keeps home's busy and its pace on. */
-export const LINK_CLOCK: Pick<HomeLinkPorts, "now" | "after"> = {
+/**
+ * The page's clocks: the wall clock the link keeps home's busy on and dates
+ * what it keeps, and the forward-only one its pace measures waits by.
+ */
+export const LINK_CLOCK: Pick<HomeLinkPorts, "now" | "since" | "after"> = {
   now: () => Date.now(),
+  since: () => performance.now(),
   after,
 }
 
