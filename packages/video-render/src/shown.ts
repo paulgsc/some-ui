@@ -14,16 +14,33 @@
  * screen). The phrases and sources are policy, moved with the story.
  *
  * What "shows" means: a scene in the same chapter whose picture is a
- * `screen` from a source that is ours (`OURS`): a snip of the app, a
- * Clips Library frame or a walk through the app (`./walk`). A card, a
- * public page and a spoken card's stage are not.
+ * `screen` of that surface (`shows`): for the app, a snip, a Clips Library
+ * frame or a walk through the app (`./walk`); for our dashboards, a walk of
+ * the Grafana stage on the sample week (`DASHBOARD_WALKS`, C1481). A card,
+ * a public page and a spoken card's stage are not.
  */
+
+import { assertNever } from "@some-ui/core-utils"
 
 import type { CutList, Picture, Shot } from "./cut-list"
 import { chapterIndexes } from "./voices"
 
-/** What kind of surface of ours a line speaks of. */
-export type SurfaceKind = "app"
+/** What kind of surface of ours a line speaks of: the app, or our Grafana dashboards. */
+export type SurfaceKind = "app" | "dashboard"
+
+/**
+ * The walks of the Grafana stage an essay can show (`@some-ui/video-motion`'s
+ * `home-dashboards`, C1481): the server's dashboards drawn from its jsonnet
+ * on the sample week, each screen banded as sample data, and walked by Snips
+ * Capture into the walks bundle home fetches. A walk of one shows a
+ * dashboard, and any other walk the app. Its test holds it to the walks
+ * that carry the band; the landing's own (`home-server`, …) carry none and
+ * reach no bundle.
+ */
+export const DASHBOARD_WALKS: ReadonlySet<string> = new Set([
+  "home-call",
+  "home-pipelines",
+])
 
 /** A phrase that places something on a surface of ours. */
 type Phrase = { readonly kind: SurfaceKind; readonly says: RegExp }
@@ -41,6 +58,10 @@ const SURFACE_PHRASES: ReadonlyArray<Phrase> = [
   { kind: "app", says: /\bthe (?:phone|APK|web app) shows\b/iu },
   { kind: "app", says: /\b(?:[Ii]n|[Oo]n|[Uu]nder) Studio\b/u },
   { kind: "app", says: /(?<!(?:YouTube|Android) )\bStudio['’]s\b/u },
+  // Grafana is home's, so a line naming it speaks of our dashboards. A
+  // bare "dashboard" is left out: lines say it of Cloudflare's, the Play
+  // Console's and YouTube Studio's too.
+  { kind: "dashboard", says: /\bGrafana\b/u },
 ]
 
 /** A file that draws a surface of ours, by its repository and path. */
@@ -57,11 +78,17 @@ const SURFACE_SOURCES: ReadonlyArray<Source> = [
     repo: "paulgsc/some-ui",
     path: /^(?:apps\/www\/src|packages\/ui\/[^/]+\/src)\/(?!.*(?:__tests__\/|\.test\.tsx$)).*\.tsx$/u,
   },
+  {
+    kind: "dashboard",
+    repo: "paulgsc/server",
+    path: /^infra\/grafana\/dashboards\//u,
+  },
 ]
 
-/** The screens that show each kind of surface: ours, never a public page. */
-const OURS: Readonly<Record<SurfaceKind, ReadonlyArray<string>>> = {
-  app: ["snips", "clips", "walks"],
+/** The screens that show each kind of surface, in a line for whoever wrote the essay. */
+const OURS: Readonly<Record<SurfaceKind, string>> = {
+  app: "a snip, a clip frame or a walk through the app",
+  dashboard: `a walk of the dashboards (${[...DASHBOARD_WALKS].join(", ")})`,
 }
 
 /** Which kinds of surface a scene's own words and sources speak of. */
@@ -78,9 +105,27 @@ export function surfacesSpoken(shot: Shot): ReadonlySet<SurfaceKind> {
   return kinds
 }
 
-/** Whether `picture` shows a surface of kind `kind`. */
-const shows = (picture: Picture, kind: SurfaceKind): boolean =>
-  picture.kind === "screen" && OURS[kind].includes(picture.of.from)
+/** Whether `picture` shows a surface of kind `kind`: ours, never a public page. */
+function shows(picture: Picture, kind: SurfaceKind): boolean {
+  if (picture.kind !== "screen") return false
+  const { of } = picture
+  const dashboard = of.from === "walks" && DASHBOARD_WALKS.has(of.app)
+  switch (kind) {
+    case "app": {
+      return (
+        of.from === "snips" ||
+        of.from === "clips" ||
+        (of.from === "walks" && !dashboard)
+      )
+    }
+    case "dashboard": {
+      return dashboard
+    }
+    default: {
+      return assertNever(kind)
+    }
+  }
+}
 
 /**
  * Every chapter of `cut` that speaks of a surface of ours and shows none,
@@ -105,7 +150,7 @@ export function unshownProblems(cut: CutList): Array<string> {
       if (shown) continue
       told.add(key)
       problems.push(
-        `${shot.id}: it speaks of our ${kind} and its chapter shows none: show it as a screen (${OURS[kind].join(" or ")}), not a card (SHOW1)`
+        `${shot.id}: it speaks of our ${kind} and its chapter shows none: show it as ${OURS[kind]}, not a card (SHOW1)`
       )
     }
   })

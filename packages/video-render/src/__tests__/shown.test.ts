@@ -1,5 +1,5 @@
 /** Our own surfaces are shown, not described (#3476, SHOW1). */
-import type { Shot } from "@video-render/cut-list"
+import type { CutList, Shot } from "@video-render/cut-list"
 import { surfacesSpoken, unshownProblems } from "@video-render/shown"
 import { cutList, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
@@ -53,7 +53,6 @@ describe("a line that speaks of our app", () => {
       "Set the thumbnail in YouTube Studio, under its upload page.",
       "YouTube Studio's upload page is by hand.",
       "Android Studio's emulator boots it.",
-      "Grafana shows it in the app.",
     ])
       expect([line, [...surfacesSpoken(said("S", line))]]).toEqual([line, []])
   })
@@ -101,7 +100,7 @@ describe("a chapter that speaks of our app", () => {
       said("L4", "The phone shows the error."),
     ])
     expect(unshownProblems(cut)).toEqual([
-      "L3: it speaks of our app and its chapter shows none: show it as a screen (snips or clips or walks), not a card (SHOW1)",
+      "L3: it speaks of our app and its chapter shows none: show it as a snip, a clip frame or a walk through the app, not a card (SHOW1)",
     ])
   })
 
@@ -132,5 +131,76 @@ describe("a chapter that speaks of our app", () => {
       said("L1", "A week arrives on the phone.", { picture: page }),
     ])
     expect(unshownProblems(cut)).toHaveLength(1)
+  })
+})
+
+/** A walk scene's picture: `app`'s walk in Snips Capture run 1. */
+const walk = (app: string): Shot["picture"] => ({
+  kind: "screen",
+  of: { from: "walks", run: "1", app },
+})
+
+describe("a chapter that speaks of our dashboards (C1481)", () => {
+  it("names Grafana or a dashboard, or cites the server's dashboards", () => {
+    for (const line of [
+      "Grafana shows it in the app.",
+      "The weekly call's row in Grafana has no failed video.",
+    ])
+      expect([line, [...surfacesSpoken(said("S", line))]]).toEqual([
+        line,
+        ["dashboard"],
+      ])
+    const cited = shot("S", {
+      picture: { kind: "card" },
+      spoken: {
+        role: "scene",
+        narration: "Its rows are code.",
+        sources: [
+          {
+            repo: "paulgsc/server",
+            path: "infra/grafana/dashboards/call.jsonnet",
+            lines: [1, 2],
+          },
+        ],
+      },
+    })
+    expect([...surfacesSpoken(cited)]).toEqual(["dashboard"])
+  })
+
+  it("isn't a line naming another's dashboard", () => {
+    for (const line of [
+      "Deploy it from Cloudflare's dashboard.",
+      "The Play Console dashboard lists the release.",
+    ])
+      expect([line, [...surfacesSpoken(said("S", line))]]).toEqual([line, []])
+  })
+
+  it("shows a walk of the Grafana stage, and only that", () => {
+    const chapter = (picture: Shot["picture"]): CutList =>
+      cutList([
+        said("D1", "Grafana shows no failure.", { chapter: "Grafana." }),
+        said("D2", "Here it is.", { picture }),
+      ])
+    expect(unshownProblems(chapter(walk("home-call")))).toEqual([])
+    for (const other of [walk("rust-rounds"), screen])
+      expect(unshownProblems(chapter(other))).toEqual([
+        "D1: it speaks of our dashboard and its chapter shows none: show it as a walk of the dashboards (home-call, home-pipelines), not a card (SHOW1)",
+      ])
+  })
+
+  it("never shows the app by a walk of the dashboards", () => {
+    const cut = cutList([
+      said("A1", "A week arrives on the phone.", { chapter: "One." }),
+      said("A2", "Here it is.", { picture: walk("home-call") }),
+    ])
+    expect(unshownProblems(cut)).toHaveLength(1)
+    expect(
+      unshownProblems(
+        cutList([
+          said("A1", "A week arrives on the phone.", { chapter: "One." }),
+          said("A2", "Here it is.", { picture: walk("rust-rounds") }),
+        ])
+      )
+    ).toEqual([])
   })
 })

@@ -125,8 +125,16 @@ if ! ready; then
   exit 1
 fi
 
-# 5. The walks.
+# 5. The walks: each one tried, so one that fails costs no other its
+# pictures, and the run fails after the last if any did.
+failed=()
 for app in "${apps[@]}"; do
   rm -rf "$out/walk-$app"
-  pnpm -s motion walk "$app" --sample "$work/sample/walk.json" --out "$out/walk-$app"
+  if ! pnpm -s motion walk "$app" --sample "$work/sample/walk.json" --out "$out/walk-$app"; then
+    failed+=("$app")
+  fi
 done
+if [ ${#failed[@]} -gt 0 ]; then
+  echo "These walks failed: ${failed[*]}" >&2
+  exit 1
+fi

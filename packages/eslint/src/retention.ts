@@ -124,6 +124,16 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 0,
     ttlDays: 1,
   },
+  // The server's dashboards an essay shows (#3476, C1481), walked on sample
+  // telemetry: read by this run's bundle job, which writes them into the
+  // walks bundle; nothing kept across runs.
+  {
+    kind: "artifact",
+    name: "walks-dashboards-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
   // The bundle home picks up after the run (SNIPS2): the newest is kept for
   // its day, an older one superseded once a newer capture succeeds. A missed
   // one is a re-run away, the capture being deterministic.

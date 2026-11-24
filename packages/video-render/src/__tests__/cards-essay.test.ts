@@ -185,7 +185,9 @@ describe("the essays being published (#3476)", () => {
     version: number,
     day: string = PUBLISH_SINCE
   ): Promise<CutList> => {
-    const cut = await showcase("nixos-upgrade")
+    // Its lines name no surface of ours, so SHOW1 holds it only where a
+    // test adds one.
+    const cut = await showcase("rust-scratchpad")
     return {
       ...cut,
       series: { ...cut.series, version },
