@@ -13,7 +13,7 @@
  * episode's cubes leave as the next episode's copy turns in. Until they first
  * arrive, their places stand as skeletons of what is coming (C1185).
  */
-import type { ResolvedEpisode } from "./show.ts"
+import type { ResolvedEpisode, ResolvedScene } from "./show.ts"
 
 /** Characters a second the copy streams at. */
 export const STREAM_CPS = 38
@@ -75,6 +75,28 @@ export type Timeline = {
   /** The copy block's turn about Y, an episode a face. */
   readonly copy: Track
   readonly episodes: ReadonlyArray<EpisodeTracks>
+}
+
+/**
+ * The scenes the show's clock times: an episode's own, or,
+ * for a pool, each place timed for whichever snack a visit draws into it:
+ * the pool's longest title, and its longest line at each place.
+ */
+export function timedScenes(
+  episode: ResolvedEpisode
+): ReadonlyArray<ResolvedScene> {
+  if (episode.pool === null) return episode.scenes
+  const longest = (texts: ReadonlyArray<string>): string =>
+    texts.reduce((a, b) => ([...b].length > [...a].length ? b : a), "")
+  const { snacks } = episode.pool
+  const lines = Math.max(0, ...snacks.map((s) => s.narration.length))
+  const narration = Array.from({ length: lines }, (_, l) =>
+    longest(snacks.map((s) => s.narration[l] ?? ""))
+  )
+  const title = longest(snacks.map((s) => s.title))
+  // A snack shorter than its place's time holds its words on screen for
+  // the rest: a one-line snack is read longer, never cut short.
+  return episode.scenes.map((scene) => ({ ...scene, title, narration }))
 }
 
 /** A number for CSS, rounded to three places with no trailing zeros. */
@@ -248,7 +270,7 @@ export function showTimeline(
     const start = at
     const turn = copyTurnS(k, n)
     at += turn
-    const scenes = episode.scenes.map((scene): SceneTimes => {
+    const scenes = timedScenes(episode).map((scene): SceneTimes => {
       const sceneStart = at
       let cursor = sceneStart + TITLE_S
       const lines = scene.narration.map((line): readonly [number, number] => {
@@ -364,7 +386,9 @@ export function showTimeline(
       const following = e.scenes.at(i + 1)?.start ?? e.end + leave
       const blockName = name()
       const titleName = name()
-      const scene = episodes.at(k)?.scenes.at(i)
+      const episode = episodes.at(k)
+      const scene =
+        episode === undefined ? undefined : timedScenes(episode).at(i)
       const titleChars = Math.max(1, chars(scene?.title ?? ""))
       const label = (j: 0 | 1): Track => {
         const labelName = name()
