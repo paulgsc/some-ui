@@ -13,7 +13,7 @@ import type { JSX, ReactNode } from "react"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
 import { isOpening, questionOfDay } from "@some-ui/interview-week"
-import { BundleReview, Button, Notice, TakeRow } from "@some-ui/shared"
+import { BundleReview, Button, Notice, Reading, TakeRow } from "@some-ui/shared"
 import type {
   BundleIntent,
   TakeItemView,
@@ -451,7 +451,7 @@ export const Opening = ({
   const { state, run } = held
   switch (state.screen) {
     case "loading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "unreadable": {
       return (

@@ -14,7 +14,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
-import { Button, Input, Notice } from "@some-ui/shared"
+import { Button, Input, Notice, Reading } from "@some-ui/shared"
 
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
@@ -226,7 +226,7 @@ export const EpisodesList = ({
 }): JSX.Element | null => {
   switch (list.kind) {
     case "reading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "unpaired": {
       return (

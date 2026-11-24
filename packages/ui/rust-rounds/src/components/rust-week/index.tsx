@@ -63,6 +63,7 @@ import {
   CodeCard,
   ConfirmSheet,
   Notice,
+  Reading,
   TakeItem,
   TakeRow,
   Textarea,
@@ -773,7 +774,7 @@ const Screen = (
   }
   switch (state.screen) {
     case "loading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "unreadable": {
       return (
