@@ -1,7 +1,8 @@
 /**
  * SN1: snips-capture.yml's bundle job names, in a build step's `run:` before
- * the step that runs its script, every workspace package each script (`snips-bundle.ts`, `walks-bundle.ts`) and the
- * `@/lib` modules it imports import. The test reads the workflow's text; it
+ * the step that runs its script, every workspace package each script
+ * (`snips-bundle.ts`, `walks-bundle.ts`) and the `@/lib` modules it imports
+ * import. The test reads the workflow's text; it
  * does not run a build. A fresh checkout has no `dist/`, and
  * tsx resolves `@some-ui/*` through it: the first dispatch on main (run
  * 44057475902) failed with ERR_MODULE_NOT_FOUND once the script began to

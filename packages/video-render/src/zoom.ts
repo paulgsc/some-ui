@@ -125,7 +125,9 @@ export const wholePicture = (
  * A walk played as a scene's picture (#3476): the screen-zoom composition
  * held whole, as `wholePicture` holds a screen, showing each of the walk's
  * screens in turn on the walk's own timeline, stretched or pressed to the
- * scene's length, with a ring where each tap lands. `files` are the walk's
+ * scene's length but never faster than twice the walk's own speed (C1427):
+ * past that the steps the scene has no time for are not shown. A ring
+ * marks where each tap lands. `files` are the walk's
  * pictures in its steps' order, under `dir` in the video's folder.
  */
 export function walkPicture(

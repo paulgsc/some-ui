@@ -330,7 +330,10 @@ walks}]}`, only the walks the essay names) and each picture at
    made. `record:cards --walks <dir>` checks every picture by its sum, and
    `resolveScreens` plays the steps in the screen-zoom composition: the
    screen held whole above the captions, each step's picture in turn on the
-   walk's timeline stretched or pressed to the scene, at most twice its own speed, and a ring on each tap.
+   walk's timeline stretched or pressed to the scene, and a ring on each
+   tap. It never plays faster than twice the walk's own speed (C1427): a
+   part longer than that ends with the scene, its last steps not shown, so
+   a scene names the steps its words have time for.
 
    **When a bundle can't be had:** `walk-gone` (the run isn't a successful
    Snips Capture run, its bundle expired or was refused, or a named app or

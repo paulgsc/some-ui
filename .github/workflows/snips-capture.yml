@@ -163,10 +163,10 @@ jobs:
           pattern: snips-*-${{ github.run_id }}
           path: snips-bundle
           merge-multiple: true
-      # What scripts/snips-bundle.ts imports from the workspace, built: a fresh
-      # checkout has no dist/, and tsx resolves a package through it (SN1;
-      # src/lib/snips/__tests__/bundle-job.test.ts holds this list to the
-      # script's imports). @some-ui/video-render, whose snip schema the
+      # What scripts/snips-bundle.ts and scripts/walks-bundle.ts import from
+      # the workspace, built: a fresh checkout has no dist/, and tsx resolves
+      # a package through it (SN1; src/lib/snips/__tests__/bundle-job.test.ts
+      # holds this list to the scripts' imports). @some-ui/video-render, whose snip schema the
       # script reads, has no build of its own (tsx reads its src): naming it
       # builds what it imports.
       - name: Build what the bundle script imports
@@ -188,7 +188,7 @@ jobs:
             echo "| --- | --- | --- |"
             jq -r '.unreached[] | "| \(.surface) | `\(.route)` | \(.why) |"' snips-bundle/manifest.json
           } >> "$GITHUB_STEP_SUMMARY"
-      # Retention: one day, the repo's default. Home picks the bundle up after
+      # Retention: one day, its family's TTL. Home picks the bundle up after
       # the run (SNIPS2), so the newest one is kept for that day (keep 1 in
       # packages/eslint/src/retention.ts) rather than swept at once. A bundle
       # home missed is a re-run away: the workflow is deterministic, so the
@@ -202,15 +202,20 @@ jobs:
           retention-days: 1
       # The APK's walks, as a bundle home fetches for an essay that plays one
       # (#3476, docs/snips.md "How walks reach home"): none when no walk was
-      # made, so the download takes a pattern, which finds none quietly. After
-      # the snips' bundle is uploaded, so a walk that fails its check never
-      # keeps the snips from home.
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      # made, so the download takes a pattern, which finds none quietly. A
+      # walks failure is a warning, as a failed walk is (apk-clip), and never
+      # fails the run: home takes the snips' bundle only from a successful run.
+      - id: walks-download
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: walks-${{ github.run_id }}
           path: walks
           merge-multiple: true
       - name: Write the walks bundle
+        id: walks
+        if: steps.walks-download.outcome == 'success'
+        continue-on-error: true
         run: |
           nix develop .#ci --command pnpm --filter www exec tsx scripts/walks-bundle.ts \
             "$GITHUB_WORKSPACE/walks" "$GITHUB_WORKSPACE/walks-bundle" "$GITHUB_SHA" "$GITHUB_RUN_ID"
@@ -226,7 +231,11 @@ jobs:
       # this run (#3476), as it fetches a pages bundle: each run its own, so
       # a later capture never supersedes one an essay still names. A bundle
       # home missed is a new dispatch and a cut list naming the new run.
+      - name: Say a walks bundle couldn't be made
+        if: steps.walks-download.outcome == 'failure' || steps.walks.outcome == 'failure'
+        run: echo "::warning title=Walks::this run's walks bundle couldn't be made; its snips stand (the step above says why)"
       - name: Upload the walks bundle
+        if: steps.walks.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: walks-bundle-${{ github.run_id }}

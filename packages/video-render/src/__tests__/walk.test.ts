@@ -199,12 +199,12 @@ describe("a walk scene in a cards essay (#3476)", () => {
     ).rejects.toThrow(/its first step comes before its last/)
     await expect(
       playing({ from: "walks", run: "run-1", app: "rust-rounds" })
-    ).rejects.toThrow()
+    ).rejects.toThrow(/a capture run's id, in digits/)
     await expect(
       playing({ from: "walks", run: RUN, app: "Rust Rounds" })
-    ).rejects.toThrow()
+    ).rejects.toThrow(/a walk's app, a slug/)
     await expect(
       playing({ from: "walks", run: RUN, app: "rust-rounds", steps: [0, 2] })
-    ).rejects.toThrow()
+    ).rejects.toThrow(/steps\.0/)
   })
 })
