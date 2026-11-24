@@ -149,7 +149,10 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
 `audience-gates.test.ts` enforces the file-level half: a file outside the gates that names a
 gated path as a string literal must import `hasAudience`, and the gated paths are recomputed
 from the route tree on every run, so moving a page under a gate or adding a gate directory is
-checked against every existing link. What is left is inside such a file.
+checked against every existing link. Two lists in the test skip a path that names something
+other than a link: `SERVER_PATHS` (a request to home of the same name) and `NAMED_NOT_LINKED`
+(the landing's `screen` faces, which name the APK screen a still shows). What is left is
+inside such a file.
 
 - _Claim:_ in `apps/www/src` outside the gate directories, every `Link`, `<Navigate`,
   `navigate(` or `redirect(` whose `to` is the path of a route under a gate directory sits in

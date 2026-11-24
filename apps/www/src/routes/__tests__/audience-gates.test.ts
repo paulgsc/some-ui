@@ -117,6 +117,20 @@ const SERVER_PATHS: ReadonlyArray<readonly [string, string, string]> = [
   ],
 ]
 
+/**
+ * Where a file names gated routes without linking to them: `file`, the
+ * pattern each such name is written in, and why. Only text matching the
+ * pattern is skipped, so any other quoted gated path in the file still
+ * fails.
+ */
+const NAMED_NOT_LINKED: ReadonlyArray<readonly [string, RegExp, string]> = [
+  [
+    "src/landing/show.ts",
+    /\bscreen:\s*"\/[^"]*"/g,
+    "a `screen` face of the static landing names the APK route whose Snips Capture still it shows (#3473); Pages has no app to link into",
+  ],
+]
+
 const IMPORTS_HAS_AUDIENCE =
   /import\s*\{[^}]*\bhasAudience\b[^}]*\}\s*from\s*["']@\/lib\/build-profile["']/
 
@@ -235,9 +249,16 @@ describe("audience gates", () => {
     )
     // Guards against scanning nothing (a wrong root reads as all-clear).
     expect(files).toContain("src/main.tsx")
+    // An exemption for a file that moved or went would pass silently.
+    for (const [file] of [...SERVER_PATHS, ...NAMED_NOT_LINKED])
+      expect(files, file).toContain(file)
 
     const unguarded = files.flatMap((file) => {
-      const source = readFileSync(join(APP_ROOT, file), "utf8")
+      const read = readFileSync(join(APP_ROOT, file), "utf8")
+      const source = NAMED_NOT_LINKED.filter(([f]) => f === file).reduce(
+        (text, [, named]) => text.replace(named, ""),
+        read
+      )
       if (IMPORTS_HAS_AUDIENCE.test(source)) return []
       return gated
         .flatMap((g) => g.paths)
