@@ -14,6 +14,7 @@ import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
 import type { PlaceRead } from "@video-motion/walk/stage-apk"
 import {
+  lookCommand,
   placeWhenLaidOut,
   screenPlace,
   versionOf,
@@ -295,6 +296,23 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
       message:
         "the WebView was never laid out: the WebView was laid out only on the last look",
     })
+  })
+
+  it("gives each look its own file, its dump ended by the device before the look's own bound", () => {
+    expect(lookCommand(1, 5_000)).toBe(
+      "timeout 4 uiautomator dump /sdcard/walk-ui-1.xml >/dev/null && cat /sdcard/walk-ui-1.xml; rm -f /sdcard/walk-ui-1.xml"
+    )
+    // A late look's rm or dump never names a later look's file.
+    const files = (n: number): Array<string> =>
+      lookCommand(n, 5_000).match(/\/sdcard\/\S+\.xml/g) ?? []
+    expect(new Set(files(2))).toEqual(new Set(["/sdcard/walk-ui-2.xml"]))
+    expect(files(2).some((f) => files(3).includes(f))).toBe(false)
+    for (const lookMs of [2_000, 5_000, 12_000]) {
+      const seconds = Number(
+        /^timeout (\d+) /.exec(lookCommand(1, lookMs))?.[1]
+      )
+      expect(seconds * 1000).toBeLessThan(lookMs)
+    }
   })
 
   it("keeps the last screen's dump, not the error a failed dump reads back", async () => {

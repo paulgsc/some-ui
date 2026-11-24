@@ -162,6 +162,18 @@ const sameBox = (a: Box, b: Box): boolean =>
 /** How long the stage waits for the WebView to be laid out, and how often it looks (WALK9). */
 const LAID_OUT = { ms: 15_000, everyMs: 500, lookMs: 5_000 } as const
 
+/**
+ * Look `n`'s one call to the device (WALK9): its own file, dumped and read
+ * then removed, the dump ended by the device a second before the look's
+ * own `lookMs`, so a look held up past it can't write or remove a later
+ * look's file.
+ */
+export function lookCommand(n: number, lookMs: number): string {
+  const file = `/sdcard/walk-ui-${String(n)}.xml`
+  const seconds = Math.max(1, Math.floor(lookMs / 1000) - 1)
+  return `timeout ${String(seconds)} uiautomator dump ${file} >/dev/null && cat ${file}; rm -f ${file}`
+}
+
 /** `p`, or a refusal once `ms` have passed without it (a look that never ends). */
 function within<T>(p: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -184,12 +196,12 @@ function within<T>(p: Promise<T>, ms: number): Promise<T> {
  * never starting a look after `wait.ms`, and holding each look to
  * `wait.lookMs` (a `uiautomator dump` or a page that never answers), so the
  * wait gives up within `wait.ms` and one look's `wait.lookMs`, past timer
- * slack. A dump
- * taken as the app starts, as its keyboard's insets settle or as
- * `uiautomator` turns accessibility on can find the WebView's node not yet
- * laid out (#3489); the stage looks again rather than read that one. A look
- * that throws is a look that saw nothing. Refused with the reason the last
- * look gave, and the last screen's dump a look read.
+ * slack. A dump taken as the app starts, as its keyboard's insets settle or
+ * as `uiautomator` turns accessibility on can find the WebView's node not
+ * yet laid out (#3489); the stage looks again rather than read that one. A
+ * look that throws is a look that saw nothing. Refused with the reason the
+ * last look gave, and the last screen's dump a look read (empty when no look
+ * read one).
  */
 export async function placeWhenLaidOut(
   read: () => Promise<PlaceRead>,
@@ -294,16 +306,11 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
     })
     // Read from the accessibility tree, as Snips Capture's release pass reads
     // the screen: `device.info` needs Playwright's driver app on the device.
-    // Each look its own file, dumped and read in one call the device ends
-    // after 4 s, so a look held up past its 5 s (WALK9) and still running
-    // can't write or remove a later look's file.
+    // Each look its own file, in one call the device ends (`lookCommand`).
     let looks = 0
     const look = async (): Promise<PlaceRead> => {
       looks += 1
-      const file = `/sdcard/walk-ui-${String(looks)}.xml`
-      const read = await device.shell(
-        `timeout 4 uiautomator dump ${file} >/dev/null && cat ${file}; rm -f ${file}`
-      )
+      const read = await device.shell(lookCommand(looks, LAID_OUT.lookMs))
       return {
         dump: read.toString("utf8"),
         innerWidth: Number(await page.evaluate("window.innerWidth")),
