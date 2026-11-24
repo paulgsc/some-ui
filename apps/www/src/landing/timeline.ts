@@ -29,7 +29,7 @@ export const HOLD_S = 4
  * two that face each other) takes twice as long, so every turn runs at one
  * speed.
  */
-export const EPISODE_TURN_S = 1.4
+export const QUARTER_TURN_S = 1.4
 /** Seconds a band's label takes to type in once its face has arrived. */
 const LABEL_S = 0.9
 
@@ -177,10 +177,16 @@ const easeInOut = (t: number): number => t * t * (3 - 2 * t)
 
 /** Seconds the copy block takes to turn to episode `k` of `n`: a quarter's time a quarter. */
 export function copyTurnS(k: number, n: number): number {
-  const from =
-    k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n)
-  return EPISODE_TURN_S * (copyFaceOf(k, n) - from)
+  return QUARTER_TURN_S * (copyFaceOf(k, n) - copyFromFace(k, n))
 }
+
+/**
+ * The face the copy cube turns to episode `k` of `n` from: the episode
+ * before's, or for the first, the last's a whole turn back, so the cube
+ * always turns on.
+ */
+const copyFromFace = (k: number, n: number): number =>
+  k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n)
 
 /** Samples of a turn per quarter turn: its scale is drawn from them. */
 const COPY_SAMPLES = 8
@@ -267,12 +273,7 @@ export function showTimeline(
       // Always turning on: the first episode comes round again from past
       // the last, through any blank face between them.
       times.flatMap((e, k) =>
-        copyTurn(
-          k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n),
-          copyFaceOf(k, n),
-          e.start,
-          e.turn
-        )
+        copyTurn(copyFromFace(k, n), copyFaceOf(k, n), e.start, e.turn)
       )
     ),
   }
@@ -286,7 +287,7 @@ export function showTimeline(
     const isLast = k === n - 1
     // The next episode's turn takes this pair away, half way through; the
     // first episode's, as the cycle begins again, the last pair.
-    const leave = times[(k + 1) % n]?.turn ?? EPISODE_TURN_S
+    const leave = times[(k + 1) % n]?.turn ?? QUARTER_TURN_S
     const gone = leave / 2
     const leaving: ReadonlyArray<Point> = isLast
       ? [
@@ -434,7 +435,7 @@ export function showTimeline(
   })
   return {
     cycleS,
-    openS: times[0]?.turn ?? EPISODE_TURN_S,
+    openS: times[0]?.turn ?? QUARTER_TURN_S,
     copy,
     episodes: episodeTracks,
   }

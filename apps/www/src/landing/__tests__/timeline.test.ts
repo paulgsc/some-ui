@@ -8,9 +8,9 @@ import {
   copyFaceOf,
   copyScaleAt,
   copyTurnS,
-  EPISODE_TURN_S,
   faceOn,
   HOLD_S,
+  QUARTER_TURN_S,
   showTimeline,
   STREAM_CPS,
   TITLE_S,
@@ -90,7 +90,7 @@ describe("showTimeline", () => {
 
   it("plays every episode in turn, in one cycle", () => {
     expect(timeline.cycleS).toBeCloseTo(startOf(3), 6)
-    expect(timeline.openS).toBe(2 * EPISODE_TURN_S)
+    expect(timeline.openS).toBe(2 * QUARTER_TURN_S)
   })
 
   it("turns a scene's cubes only once its copy has landed, then types each label", () => {
@@ -173,22 +173,22 @@ describe("showTimeline", () => {
 
   it("turns the copy cube at one speed: a quarter's time a quarter, the wrap through the blank face included", () => {
     expect([0, 1, 2].map((k) => copyTurnS(k, 3))).toEqual([
-      2 * EPISODE_TURN_S,
-      EPISODE_TURN_S,
-      EPISODE_TURN_S,
+      2 * QUARTER_TURN_S,
+      QUARTER_TURN_S,
+      QUARTER_TURN_S,
     ])
     // Two episodes face each other: every turn is two quarters.
     expect([0, 1].map((k) => copyTurnS(k, 2))).toEqual([
-      2 * EPISODE_TURN_S,
-      2 * EPISODE_TURN_S,
+      2 * QUARTER_TURN_S,
+      2 * QUARTER_TURN_S,
     ])
     expect([0, 1, 2, 3].map((k) => copyTurnS(k, 4))).toEqual(
-      Array.from({ length: 4 }, () => EPISODE_TURN_S)
+      Array.from({ length: 4 }, () => QUARTER_TURN_S)
     )
     // In the keyframes, the wrap's half way is 90 degrees in, and comes at
     // a quarter's time.
     const copy = frames(timeline.copy.keyframes)
-    const half = copy.find((f) => f.at === pct(EPISODE_TURN_S))
+    const half = copy.find((f) => f.at === pct(QUARTER_TURN_S))
     expect(half?.css).toContain("rotateY(90deg)")
   })
 
