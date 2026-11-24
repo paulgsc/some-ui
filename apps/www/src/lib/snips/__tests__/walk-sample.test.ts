@@ -5,15 +5,11 @@
  * hold, not one that only looks right in a file. Its routes are laid over
  * the stand-in home's base routes, as `stub-home.mjs --routes` lays them.
  */
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
-import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Digest } from "@some-ui/job-desk"
 import { sampleDigest } from "@some-ui/job-desk/sample"
 import sample from "@tests/walk/jobs-week.json"
 import { describe, expect, it } from "vitest"
-import { z } from "zod"
 
 import { exchangeInterviewWeeks } from "@/lib/interview-week/home"
 import { isClosed } from "@/lib/interview-week/spec"
@@ -24,55 +20,12 @@ import type { JobEvent } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { FROZEN_AT } from "@/lib/snips"
 
-/** The stand-in home's base routes (`apps/mobile/compat`), which the sample is laid over. */
-const BASE = resolve(
-  import.meta.dirname,
-  "../../../../../mobile/compat/stub-routes.json"
-)
+import { BASE_ROUTES, routesOf, standInHome } from "./stand-in-home"
 
-/** A routes file as `stub-home.mjs` reads it. */
-const RoutesSchema = z.object({
-  routes: z.record(
-    z.string(),
-    z.object({
-      status: z.number().optional(),
-      body: z.unknown().optional(),
-      echo: z.string().optional(),
-    })
-  ),
-})
-type Route = z.infer<typeof RoutesSchema>["routes"][string]
+/** As the walk lays them: its sample over the stand-in home's base routes. */
+const routes = { ...BASE_ROUTES, ...routesOf(sample) }
 
-const routes: Readonly<Record<string, Route>> = {
-  ...RoutesSchema.parse(JSON.parse(readFileSync(BASE, "utf8"))).routes,
-  ...RoutesSchema.parse(sample).routes,
-}
-
-/** A route key's path as a pattern, as `stub-home.mjs` reads it: each `:name` is one segment. */
-const matches = (key: string, asked: string): boolean =>
-  new RegExp(
-    `^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/:[a-z]+/gi, "[^/]+")}$`
-  ).test(asked)
-
-/** The stand-in home, answering as `stub-home.mjs` does, under home's `/api/v1`. */
-const home: HomeCall = (method, path, body) => {
-  const asked = `${method} /api/v1${path.split("?")[0] ?? ""}`
-  const route = Object.hasOwn(routes, asked)
-    ? routes[asked]
-    : (Object.entries(routes).find(([key]) => matches(key, asked))?.[1] ?? {
-        status: 200,
-        body: {},
-      })
-  const answer: HomeAnswer = {
-    status: route.status ?? 200,
-    body: JSON.stringify(
-      route.echo === undefined
-        ? (route.body ?? null)
-        : { [route.echo]: typeof body === "string" ? JSON.parse(body) : null }
-    ),
-  }
-  return Promise.resolve(answer)
-}
+const home = standInHome(routes)
 
 describe("the Jobs walk's story sample (WALK2)", () => {
   it("is laid over the stand-in home's base routes", () => {
