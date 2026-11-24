@@ -279,7 +279,10 @@ export const BRAND_SOUNDS = "sounds"
 
 /**
  * Our synthesised bed (`MUSIC_BED`), written into `root` where `series`
- * pins it by its sum; whether it did. Needs no brand folder.
+ * pins it by its sum; whether it did. Needs no brand folder. It places
+ * nothing else: without home's brand folder (`renderFolder` given no
+ * `brand`), the series' other files, its sounds or a bed of the owner's
+ * own, must already be in `root`, and the renderer refuses one that isn't.
  */
 export async function placeOurBed(
   series: Series,

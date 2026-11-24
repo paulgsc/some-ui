@@ -252,12 +252,14 @@ describe("the essays being published (#3476)", () => {
 
   it("are the newest day's: an older essay keeps the version it pinned", async () => {
     const files = await folder()
-    const older = "rust-scratchpad-2026-11-01"
+    // Both after the rules landed, so only the day keeps the older one out.
+    const newer = "nixos-upgrade-2026-11-25"
     files.set("index.json", {
       schema: CARDS_INDEX_SCHEMA,
-      essays: [{ key: NIXOS }, { key: older }],
+      essays: [{ key: newer }, { key: RUST }],
     })
-    files.set(`${older}.json`, await at(4, "2026-11-01"))
+    files.set(`${newer}.json`, await at(6, "2026-11-25"))
+    files.set(`${RUST}.json`, await at(4))
     expect(cardsPublishProblems(files, seriesOf)).toEqual([])
   })
 

@@ -36,8 +36,8 @@
  * checks paulgsc/testing's `cards/` folder before it is published
  * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
  * cards essay in a version of its series this checkout holds, and no essay
- * file it forgets; and the newest day's essays' bookends and SHOW1
- * (`cardsPublishProblems`, #3476). What only drawing finds is
+ * file it forgets; and the newest day's essays' bookends and SHOW1, from
+ * `PUBLISH_SINCE` (`cardsPublishProblems`, #3476). What only drawing finds is
  * `record:cards`' to refuse.
  * With a clone of each repository the essays cite, it also holds every
  * line's sources to its stamp's commit (#3036, `claims.ts`), and notes a
