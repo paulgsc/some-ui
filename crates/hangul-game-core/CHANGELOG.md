@@ -1,5 +1,11 @@
 # @some-ui/hangul-game-core
 
+## 0.0.11
+
+### Patch Changes
+
+- Update WASM source for hangul-game-core
+
 ## 0.0.10
 
 ### Patch Changes
