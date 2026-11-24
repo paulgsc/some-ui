@@ -203,11 +203,9 @@ jobs:
   apk-clip:
     name: The APK faces for the public site
     # The bundle, for the stills of the app's routes the show names (#3473).
-    # Only the APK half is required: a web capture or bundle that failed
-    # leaves the route stills out (their faces show title cards), never the
-    # Jobs walk's faces.
+    # A run whose web half or bundle fails is red, and pages.yml reads only
+    # green runs' faces (fetch-site-media.sh), so this waits on both.
     needs: [apk, bundle]
-    if: ${{ always() && needs.apk.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -221,7 +219,6 @@ jobs:
           name: walks-${{ github.run_id }}
           path: walks
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        continue-on-error: true
         with:
           name: snips-bundle-${{ github.sha }}
           path: snips-bundle
