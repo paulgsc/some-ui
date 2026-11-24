@@ -43,12 +43,10 @@ export const TerminalLayer = ({
           {r.badge === null ? null : <Badge mark={r.badge} units={units} />}
           {r.cursor === null ? null : (
             <div
+              data-cursor
               className="bi-panel"
               style={{
-                left: cq(r.cursor.x),
-                top: cq(r.cursor.y),
-                width: cq(r.cursor.width),
-                height: cq(r.cursor.height),
+                ...units.placed(r.cursor),
                 background: INK.text,
                 opacity: r.opacity,
               }}

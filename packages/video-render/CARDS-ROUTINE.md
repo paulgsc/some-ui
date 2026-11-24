@@ -56,9 +56,13 @@ version 4 with a chart card, `bars`: pin it only for an essay that shows one,
 since home draws it only once its render image is rebuilt. Version 6 is
 version 5 with its terminal card typed (`terminal-v2`): a line with a prompt
 shows the prompt, then types its command a character at a time behind a
-cursor, and the lines after it wait until it is typed. Pin it for an essay
-that types commands on screen; home draws it once its render image is
-rebuilt, as for version 5. Versions 2
+cursor. A line after a command must give an `atMs` for when it is typed:
+the card is refused otherwise, and the refusal names the earliest time.
+Typing lengthens a card, about three quarters of a second plus a twentieth of a second
+a character, so a scene's words must run past its last line's time and
+typing, or the scene ends before it is shown. Pin it for an essay that
+types commands on screen; home draws it once its render image is rebuilt,
+as for version 5. Versions 2
 and 3 keep one narrator for every card, and version 1 essays are silent, from
 before this routine; each still plays as it did, and is never rewritten.
 Each scene says something, in a `spoken` field:

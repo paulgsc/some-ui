@@ -132,9 +132,16 @@ export const SAMPLES: Readonly<
         keyword: "scratch watch foo.rs",
         comment: "  # on every save",
         badge: "pr",
+        // Each after the command before it is typed (terminal-v2).
+        atMs: 3500,
       },
-      { prompt: "$", text: "export API_KEY=<from the vault>", badge: "you" },
-      { comment: "# std only: no crates", badge: "gap" },
+      {
+        prompt: "$",
+        text: "export API_KEY=<from the vault>",
+        badge: "you",
+        atMs: 5200,
+      },
+      { comment: "# std only: no crates", badge: "gap", atMs: 7400 },
     ],
   },
   "cheat-sheet": {

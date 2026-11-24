@@ -194,6 +194,10 @@ describe("the terminal card", () => {
   })
 
   describe("terminal-v2, which types its commands (#3476)", () => {
+    const lead = ITEM.leadMs + TYPING.leadMs
+    /** When a command of `n` characters, appearing at `at`, lets the next line come. */
+    const free = (at: number, n: number): number =>
+      at + TYPING.leadMs + n * TYPING.charMs + TYPING.afterMs
     /** The diagnosis essay's first look: a command, what it prints, then the next. */
     const LOGS = {
       kicker: "TERMINAL · ON HOME",
@@ -201,14 +205,23 @@ describe("the terminal card", () => {
       bar: "home",
       lines: [
         { prompt: "$", keyword: "docker logs", text: " render", badge: "main" },
-        { text: "render: waits for room on home" },
-        { prompt: "$", keyword: "ls", text: " /essays", comment: "  # given?" },
+        {
+          text: "render: waits for room on home",
+          badge: "you",
+          atMs: free(ITEM.leadMs, 18),
+        },
+        {
+          prompt: "$",
+          keyword: "ls",
+          text: " /essays",
+          comment: "  # given?",
+          atMs: free(ITEM.leadMs, 18) + ITEM.gapMs,
+        },
       ],
     }
     const v2 = (t: number): TerminalFrame => at(LOGS, t, "terminal-v2")
     const said = (f: TerminalFrame): ReadonlyArray<string> =>
       f.rows.map((r) => r.spans.map((s) => s.text).join(""))
-    const lead = ITEM.leadMs + TYPING.leadMs
 
     it("shows the prompt first, then types the command a character at a time behind a cursor", () => {
       expect(said(v2(ITEM.leadMs))).toEqual(["$ "])
@@ -220,15 +233,12 @@ describe("the terminal card", () => {
       expect(v2(typed).rows[0]?.cursor).toBeNull()
     })
 
-    it("holds what a command prints until it is typed, and types a comment's command before its comment", () => {
-      const typed = lead + 18 * TYPING.charMs
-      expect(said(v2(typed + TYPING.afterMs - 1))).toHaveLength(1)
-      expect(said(v2(typed + TYPING.afterMs))).toEqual([
-        "$ docker logs render",
-        "render: waits for room on home",
-      ])
-      const end = said(v2(60_000))
-      expect(end).toEqual([
+    it("shows each line at the time v1 gives it, and a comment once its command is typed", () => {
+      for (const t of [0, 800, 1500, 2600, 3600, 5000, 60_000])
+        expect(v2(t).rows.map((r) => [r.line, r.y, r.opacity])).toEqual(
+          at(LOGS, t).rows.map((r) => [r.line, r.y, r.opacity])
+        )
+      expect(said(v2(60_000))).toEqual([
         "$ docker logs render",
         "render: waits for room on home",
         "$ ls /essays  # given?",
@@ -236,23 +246,72 @@ describe("the terminal card", () => {
       expect(v2(60_000).rows.every((r) => r.cursor === null)).toBe(true)
     })
 
-    it("is the same frame for the same card at the same moment", () => {
-      for (const t of [0, 900, 1234, 2500, 4000, 60_000])
-        expect(JSON.stringify(v2(t))).toBe(JSON.stringify(v2(t)))
+    it("refuses a line that would appear while a command is still typing, naming when it may", () => {
+      const early = terminal(
+        {
+          title: "Too soon",
+          lines: [
+            { prompt: "$", keyword: "docker logs", text: " render" },
+            { text: "render: waits for room on home" },
+          ],
+        },
+        LANDSCAPE,
+        "terminal-v2"
+      )
+      expect(early.ok ? [] : early.problems).toEqual([
+        `the terminal burn-in (terminal-v2): line 2 appears while line 1 is still typing: give it an atMs of ${free(ITEM.leadMs, 18)} or later`,
+      ])
+      // v1 draws the same card.
+      expect(
+        terminal(
+          {
+            title: "Too soon",
+            lines: [
+              { prompt: "$", keyword: "docker logs", text: " render" },
+              { text: "render: waits for room on home" },
+            ],
+          },
+          LANDSCAPE
+        ).ok
+      ).toBe(true)
     })
 
-    it("draws and refuses what v1 does, and leaves v1 untyped", () => {
-      expect(at(LOGS, 60_000, "terminal-v1").rows.map((r) => r.cursor)).toEqual(
-        [null, null, null]
-      )
-      expect(said(at(LOGS, ITEM.leadMs + 1, "terminal-v1"))).toEqual([
-        "$ docker logs render",
+    it("types nothing on a card with no prompt, which draws as v1 draws it", () => {
+      const plain = {
+        ...WHERE_VALUES_LIVE,
+        lines: WHERE_VALUES_LIVE.lines.filter((l) => !("prompt" in l)),
+      }
+      for (const t of [0, 900, 2000, 3500, 60_000])
+        expect(at(plain, t, "terminal-v2")).toEqual(at(plain, t, "terminal-v1"))
+    })
+
+    it("draws the same frame for the same card at the same moment, pinned", () => {
+      const f = v2(lead + 5 * TYPING.charMs)
+      expect(f.rows).toEqual([
+        {
+          line: 0,
+          x: f.rows[0]?.x,
+          y: f.rows[0]?.y,
+          spans: [
+            { text: "$ ", colour: expect.any(String), part: "prompt" },
+            { text: "docker", colour: expect.any(String), part: "keyword" },
+          ],
+          opacity: 1,
+          badge: expect.anything(),
+          cursor: {
+            x: (f.rows[0]?.x ?? 0) + 8 * 28 * 0.6,
+            y: expect.any(Number),
+            width: 28 * 0.6,
+            height: 28 * 1.15,
+          },
+        },
       ])
-      const v1End = at(LOGS, 60_000, "terminal-v1")
-      const v2End = v2(60_000)
-      expect(v2End.rows.map((r) => [r.x, r.y])).toEqual(
-        v1End.rows.map((r) => [r.x, r.y])
+      expect(JSON.stringify(v2(2345))).toBe(
+        JSON.stringify(at(structuredClone(LOGS), 2345, "terminal-v2"))
       )
+    })
+
+    it("refuses what v1 refuses", () => {
       const p = terminal(
         {
           title: "Too wide",

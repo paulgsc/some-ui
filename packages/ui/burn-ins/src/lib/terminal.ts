@@ -16,11 +16,13 @@
  * and refuses the same lines, and types its commands: a line with a prompt
  * shows the prompt as v1 shows a line, then its keyword and text appear a
  * character every `TYPING.charMs` behind a steady block cursor, and its
- * comment once the last character is typed. A line after it waits until it
- * is typed (`typedTimes`), so what a command prints never shows before the
- * command. A line with no prompt (output, a comment) appears as in v1. Every
- * frame is a function of the drawing and `t` alone: the same card at the same
- * moment is the same frame.
+ * comment once the last character is typed. Every line appears at the time
+ * v1 gives it, so a badge spells itself out when the renderer's `revealEnds`
+ * says (BS1); instead the card is refused when another line would appear
+ * while a command is still typing, naming the earliest time that line may
+ * take, so what a command prints never shows before the command. A line with
+ * no prompt (output, a comment) appears as in v1. Every frame is a function
+ * of the drawing and `t` alone.
  */
 
 import { z } from "zod"
@@ -60,7 +62,7 @@ import type { Parsed } from "./parsed"
 
 export const TERMINAL_DESIGNS = ["terminal-v1", "terminal-v2"] as const
 
-export type TerminalDesign = (typeof TERMINAL_DESIGNS)[number]
+type TerminalDesign = (typeof TERMINAL_DESIGNS)[number]
 
 const LineSchema = z
   .strictObject({
@@ -200,9 +202,20 @@ const lineText = (l: Line): string =>
     .map((s) => s.text)
     .join("")
 
+/** When a line of `typed` characters, appearing at `atMs`, has its last typed. */
+const typedEnd = (typed: number, atMs: number): number =>
+  atMs + TYPING.leadMs + typed * TYPING.charMs
+
+/** How many characters `design` types of `l`: its keyword and text, for a line with a prompt under v2. */
+const typedOf = (l: Line, design: TerminalDesign): number =>
+  design === "terminal-v2" && l.prompt !== ""
+    ? [...l.keyword, ...l.text].length
+    : 0
+
 export function drawTerminal(
   p: TerminalParams,
-  g: Geometry
+  g: Geometry,
+  design: TerminalDesign
 ): Parsed<TerminalDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
@@ -230,6 +243,18 @@ export function drawTerminal(
         : 0
     const why = textProblem(`line ${i + 1}`, lineText(l), SIZE_PX, width, reach)
     return why === null ? [] : [why]
+  })
+  p.lines.forEach((l, i) => {
+    const typed = typedOf(l, design)
+    const at = times[i] ?? 0
+    if (typed === 0) return
+    const free = typedEnd(typed, at) + TYPING.afterMs
+    times.forEach((other, j) => {
+      if (j !== i && other >= at && other < free)
+        problems.push(
+          `line ${j + 1} appears while line ${i + 1} is still typing: give it an atMs of ${free} or later`
+        )
+    })
   })
   const barText = p.bar === "" ? null : p.bar
   const barX = box.x + PAD_X + 3 * DOT_STEP
@@ -291,34 +316,13 @@ export function drawTerminal(
         x: textX,
         y: top + i * pitch,
         spans: spansOf(l),
-        typed: l.prompt === "" ? 0 : [...l.keyword, ...l.text].length,
+        typed: typedOf(l, design),
         badge: l.badge,
         atMs: times[i] ?? 0,
         opens: opens[i] ?? false,
       })),
     },
   }
-}
-
-/** When the last character of `l` is typed, starting at `atMs`. */
-const typedEnd = (typed: number, atMs: number): number =>
-  atMs + TYPING.leadMs + typed * TYPING.charMs
-
-/**
- * Each line's time under `terminal-v2`: its own, or once the line before it
- * is typed and `TYPING.afterMs` has passed, whichever is later.
- */
-export function typedTimes(
-  lines: ReadonlyArray<Pick<LineDrawing, "atMs" | "typed">>
-): ReadonlyArray<number> {
-  const times: Array<number> = []
-  let free = 0
-  for (const l of lines) {
-    const at = Math.max(l.atMs, free)
-    times.push(at)
-    free = l.typed > 0 ? typedEnd(l.typed, at) + TYPING.afterMs : at
-  }
-  return times
 }
 
 /** `spans` with only the first `shown` characters of its keyword and text. */
@@ -339,16 +343,10 @@ function typedSpans(
 }
 
 /** The window `t` ms into its scene: the lines that have appeared so far. */
-export function terminalAt(
-  d: TerminalDrawing,
-  t: number,
-  design: TerminalDesign = "terminal-v1"
-): TerminalFrame {
+export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
   const { lines, ...still } = d
-  const typing = design === "terminal-v2"
-  const times = typing ? typedTimes(lines) : lines.map((l) => l.atMs)
   const rows = lines.flatMap((l, line) => {
-    const atMs = times[line] ?? l.atMs
+    const atMs = l.atMs
     if (t < atMs) return []
     const { opacity, risePx } = appearing(t, atMs)
     const y = l.y + risePx
@@ -364,7 +362,7 @@ export function terminalAt(
             l.opens ? openness(t - atMs) : 0
           )
     const x = l.x + (badge === null ? 0 : openReach(badge))
-    if (!typing || l.typed === 0)
+    if (l.typed === 0)
       return [{ line, x, y, spans: l.spans, opacity, badge, cursor: null }]
     const shown = Math.max(
       0,
