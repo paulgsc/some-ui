@@ -3726,7 +3726,7 @@
           "claim": "An essay that fails to render, waits too long, is refused, or a worker that keeps failing, reads as such to the owner rather than as a quiet week.",
           "requirement": "Slack is told when a week's essay render fails (RustEssayRenderFailed, naming renders/rust-essay-worker/<week>.failed.log on home's database drive), when a held essay has waited unrendered (RustEssayRenderOverdue), when an essay is refused (RustEssayRefused, naming <week>.refused.log), when the rust_essays worker keeps failing (RustEssaysFailing), and when a week's owed essay is past its Monday and has never reached the worker (RustEssayOverdue, InterviewEssayOverdue); the Renders page shows a failed entry, and keeps an owed essay under Coming once its Monday has passed, said late, with what it waits on where home knows (a refused essay, a take home couldn't hear or is still hearing, a week not final, nothing written).",
           "verdict": "unproven",
-          "conclusion": "Structural: the four alerts on a given essay and their promtool tests are on home's rules, and the Renders page names an essay's failed entry as Studio names the essay (RR17), and says an owed essay late with what it waits on; the two alerts on an owed essay that never reached the worker are in review (server#1155), so the widened family is unproven until they are on home's rules; no essay has yet failed on home, which only home can show.",
+          "conclusion": "Structural: the four alerts on a given essay and their promtool tests are on home's rules, and the Renders page names an essay's failed entry as Studio names the essay (RR17), and says an owed essay late with what it waits on; the two alerts on an owed essay that never reached the worker and their promtool tests are on home's rules too (server#1155); no essay has yet failed on home, which only home can show.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
@@ -3746,8 +3746,8 @@
             },
             {
               "class": "structural",
-              "says": "RustEssayOverdue and InterviewEssayOverdue fire on the board's own Coming read once an owed essay's Monday has passed and it was never given to the worker, each with a promtool test; CallWeekOverdue says the same of the call's week. In review, not yet on home's rules.",
-              "ref": "server#1155"
+              "says": "RustEssayOverdue and InterviewEssayOverdue fire on the board's own Coming read once an owed essay's Monday has passed and it was never given to the worker, each tested by promtool in CI (home.test.yml); CallWeekOverdue says the same of the call's week.",
+              "ref": "server:infra/prometheus/rules/home.yml"
             },
             {
               "class": "structural",
