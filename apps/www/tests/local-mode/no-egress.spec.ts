@@ -21,6 +21,7 @@
 
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { drawSnacks } from "@/landing/draw"
 import type { ResolvedEpisode } from "@/landing/show"
 import { SHOW, showFor } from "@/landing/show"
 import { expect, test } from "@playwright/test"
@@ -45,6 +46,25 @@ function shownEpisodes(): ReadonlyArray<ResolvedEpisode> {
   if (!show.ok) throw new Error(show.problems.join("; "))
   return show.episodes
 }
+
+/**
+ * The scenes a visit seeded `seed` shows, episode after episode: each
+ * episode's own, or the snacks its pool draws (#3473, `drawSnacks`).
+ */
+function drawnScenes(
+  seed: number
+): ReadonlyArray<ResolvedEpisode["scenes"][number]> {
+  return shownEpisodes().flatMap((e) =>
+    e.pool === null
+      ? e.scenes
+      : drawSnacks(e.id, e.pool.snacks.length, e.pool.draw, seed).flatMap(
+          (i) => e.pool?.snacks.at(i) ?? []
+        )
+  )
+}
+
+/** The page's `Math.random` pinned to 0.5, so its draw's seed is known. */
+const PINNED_SEED = (0.5 * 2 ** 32) >>> 0
 
 /** Every route a learner on the device can open without an account. */
 const LOCAL_ROUTES = [
@@ -325,8 +345,13 @@ test.describe("the Pages build", () => {
     })
     try {
       const page = await context.newPage()
+      // The draw's seed pinned, so the deck's order is the one drawnScenes
+      // gives: the page's draw is the pure one.
+      await page.addInitScript(() => {
+        Math.random = (): number => 0.5
+      })
       await page.goto(`${app().origin}${BASE}`)
-      const scenes = shownEpisodes().flatMap((e) => e.scenes)
+      const scenes = drawnScenes(PINNED_SEED)
       const deck = page.locator(".show[data-deck] .flat")
       await expect(deck).toBeVisible()
       const current = deck.locator('.scene-flat[data-face="current"]')
