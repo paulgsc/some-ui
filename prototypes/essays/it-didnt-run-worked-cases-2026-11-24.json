@@ -162,46 +162,26 @@
               {
                 "prompt": "$",
                 "keyword": "sqlite3",
-                "text": " -readonly -header -column \"$DB\" \"",
+                "text": " -readonly -header -column \"$DB\" \"SELECT ...\"",
                 "badge": "you",
                 "atMs": 700
               },
               {
-                "prompt": ">",
-                "keyword": "SELECT",
-                "text": " t.note_id, t.outcome, f.n, h.answer, h.handed_at",
-                "atMs": 3045
-              },
-              {
-                "prompt": ">",
-                "text": "FROM voice_transcript t LEFT JOIN mailbox_transcript f ...",
-                "atMs": 6020
-              },
-              {
-                "prompt": ">",
-                "text": "LEFT JOIN mailbox_handed h ... WHERE t.outcome='heard'\"",
-                "atMs": 9130
-              },
-              {
                 "text": "note_id   outcome  n  answer   handed_at",
-                "atMs": 12105
+                "atMs": 3940
               },
               {
                 "text": "12606ad0  heard    1  refused  2026-11-20T22:32Z",
-                "atMs": 13005
+                "atMs": 4840
               },
               {
                 "text": "12606ad0  heard    2  refused  2026-11-24T16:45Z",
-                "atMs": 13905
-              },
-              {
-                "text": "fe40835b  heard    1  refused  2026-11-19T18:19Z",
-                "atMs": 14805
+                "atMs": 5740
               },
               {
                 "comment": "# 30 rows: every one heard, every one refused",
                 "badge": "main",
-                "atMs": 15705
+                "atMs": 6640
               }
             ]
           }
@@ -209,7 +189,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "First question: was each take heard, filed, and taken? This joins the three tables, newest first, shown here trimmed to the columns that matter. DB is the database file the file host container mounts, found with docker inspect. Thirty rows came back, and every one says the same thing: heard, filed, refused. Some were filed twice, the second after the owner asked home to hear the take again, and the second was refused too. Decision: home's hearing is fine. The hold is between home and the mailbox, on the way out.",
+        "narration": "First question: was each take heard, filed, and taken? The query, trimmed here to its first word, joins the three tables, voice transcript, mailbox transcript and mailbox handed, on the note, and selects the note, the outcome, the filing number, the answer and when it was handed. DB is the database file the file host container mounts, found with docker inspect. Thirty rows came back, and every one says the same thing: heard, filed, refused. Some were filed twice, the second after the owner asked home to hear the take again, and the second was refused too. Decision: home's hearing is fine. The hold is between home and the mailbox, on the way out.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -246,21 +226,21 @@
                 "atMs": 700
               },
               {
-                "text": "16:41:38 INFO Jobs mailbox pass filed=1 handed=[\"refused\"] cause=\"local\"",
-                "atMs": 4170
+                "text": "16:41:38 INFO Jobs mailbox pass filed: 1 handed: [\"refused\"] cause: \"local\"",
+                "atMs": 4570
               },
               {
-                "text": "16:45:11 INFO Jobs mailbox pass filed=1 handed=[\"refused\"] cause=\"local\"",
-                "atMs": 5070
+                "text": "16:45:11 INFO Jobs mailbox pass filed: 1 handed: [\"refused\"] cause: \"local\"",
+                "atMs": 5470
               },
               {
-                "text": "16:48:28 INFO Jobs mailbox pass filed=0 handed=[] indexed=[added x5] cause=\"timer\"",
-                "atMs": 5970
+                "text": "16:48:28 INFO Jobs mailbox pass filed: 0 handed: [] indexed: [added x5] cause: \"timer\"",
+                "atMs": 6370
               },
               {
                 "comment": "# a refusal, logged at INFO: nothing warns",
                 "badge": "gap",
-                "atMs": 6870
+                "atMs": 7270
               }
             ]
           }
@@ -268,7 +248,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Second question: does home know it was refused? Its mailbox pass logs each pass that did anything. Trimmed to the fields that matter: each local pass filed one transcript, and the mailbox handed it back refused. The line is at INFO level, the same as a pass that went well, so nothing warns and no alert fires: that is a known gap, filed. Decision: home sends, the mailbox says no, and home carries on.",
+        "narration": "Second question: does home know it was refused? Its mailbox pass logs each pass that did anything. Trimmed to the fields that matter, each set out with a colon where home prints an equals sign: each local pass filed one transcript, and the mailbox handed it back refused. The line is at INFO level, the same as a pass that went well, so nothing warns and no alert fires: that is a known gap, filed. Decision: home sends, the mailbox says no, and home carries on.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -306,20 +286,20 @@
               },
               {
                 "text": "mailbox_bell_rings_total{folder=\"brief\"} 0",
-                "atMs": 4260
+                "atMs": 4660
               },
               {
                 "text": "mailbox_passes_total{cause=\"local\"} 0",
-                "atMs": 5160
+                "atMs": 5560
               },
               {
                 "text": "mailbox_passes_total{cause=\"timer\"} 1",
-                "atMs": 6060
+                "atMs": 6460
               },
               {
                 "comment": "# no counter of refusals",
                 "badge": "gap",
-                "atMs": 6960
+                "atMs": 7360
               }
             ]
           }
@@ -327,7 +307,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Third question: would a dashboard have shown it? Home's metrics count passes and the bell's rings by folder, and nothing counts a refusal. A counter of refused handings is the second known gap. Decision: the only place this shows is the table you just read.",
+        "narration": "Third question: would a dashboard have shown it? These counters started again when home restarted at 16:48, which is why the local passes read zero. Home's metrics count passes and the bell's rings by folder, and nothing counts a refusal. A counter of refused handings is the second known gap. Decision: the only place this shows is the table you just read.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -368,7 +348,7 @@
               {
                 "badge": "you",
                 "label": "The fix",
-                "note": "The mailbox takes it now; a refused file is put again once home re-hands it."
+                "note": "The mailbox takes it now; a refused file stays refused, and hear again files a fresh one."
               }
             ]
           }
@@ -439,7 +419,7 @@
       }
     },
     {
-      "id": "c3-symptom",
+      "id": "c2-symptom",
       "picture": {
         "kind": "card"
       },
@@ -484,7 +464,7 @@
       }
     },
     {
-      "id": "c3-log",
+      "id": "c2-log",
       "picture": {
         "kind": "card"
       },
@@ -500,41 +480,29 @@
               {
                 "prompt": "$",
                 "keyword": "docker exec",
-                "text": " render ls -la /renders/cards-essay-worker | grep merge-queue",
+                "text": " render tail -40 /renders/cards-essay-worker/merge-queue-2026-11-23.failed.log",
                 "badge": "you",
                 "atMs": 700
               },
               {
-                "text": "-rwxrwxrwx 1 root root  447 Nov 24 16:35 merge-queue-2026-11-23.failed.log",
-                "atMs": 4440
-              },
-              {
-                "prompt": "$",
-                "keyword": "docker exec",
-                "text": " render tail -40 /renders/cards-essay-worker/merge-queue-2026-11-23.failed.log",
-                "badge": "you",
-                "atMs": 5340
-              },
-              {
                 "text": "... waits for room on home (the lane: stop, busy)",
-                "atMs": 9845
+                "atMs": 5605
+              },
+              {
+                "text": "...",
+                "atMs": 6505
               },
               {
                 "text": "... waits for room on home (the lane: stop, settling)",
-                "atMs": 10745
+                "atMs": 7405
               },
               {
                 "text": "it shows 5 pages, and --pages names no folder home handed them in",
-                "atMs": 11645
+                "atMs": 8305
               },
               {
                 "text": "the recorder exited 1",
-                "atMs": 12545
-              },
-              {
-                "comment": "# the lane let it in; the recorder said no",
-                "badge": "main",
-                "atMs": 13445
+                "atMs": 9205
               }
             ]
           }
@@ -542,7 +510,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "The worker keeps a failed log beside each essay it couldn't make. Its tail, shortened: it waited for room on home, first busy, then settling, so the lane did its job and then let the render in. Then the recorder stopped: the essay shows five pages, and the pages flag names no folder home handed them in. Decision: this isn't the lane and it isn't load. The recorder was missing the pages the essay shows.",
+        "narration": "The worker keeps a failed log beside each essay it couldn't make, in its own folder. Its tail, shortened: it waited for room on home: busy, missing, busy again, then settling, so the lane did its job and then let the render in. Then the recorder stopped: the essay shows five pages, and the pages flag names no folder home handed them in. Decision: this isn't the lane and it isn't load. The recorder was missing the pages the essay shows.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
@@ -553,7 +521,7 @@
       }
     },
     {
-      "id": "c3-folder",
+      "id": "c2-folder",
       "picture": {
         "kind": "card"
       },
@@ -569,22 +537,22 @@
               {
                 "prompt": "$",
                 "keyword": "docker exec",
-                "text": " render ls -la /cards-essays",
+                "text": " render ls -la /cards-essays /renders/cards-essay-worker ...",
                 "badge": "you",
                 "atMs": 700
               },
               {
                 "text": "-rwxrwxrwx 1 root root 21212 Nov 23 07:47 merge-queue-2026-11-23.json",
-                "atMs": 2955
+                "atMs": 4795
               },
               {
                 "text": "-rwxrwxrwx 1 root root 21657 Nov 22 23:43 rust-rounds-how-it-works-2026-11-20.json",
-                "atMs": 3855
+                "atMs": 5695
               },
               {
                 "comment": "# no merge-queue-2026-11-23.pages/ beside it",
                 "badge": "gap",
-                "atMs": 4755
+                "atMs": 6595
               }
             ]
           }
@@ -592,7 +560,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Second question: did home hand the essay its pages? The worker reads what home put in the cards essays folder. Shortened to two lines of the listing: the merge queue essay is there, written on the twenty-third, and no folder named for its pages sits beside it. Decision: the essay names five pages, and home never handed them.",
+        "narration": "Second question: did home hand the essay its pages? The worker reads what home put in the cards essays folder. This is the owner's listing of that folder from the same sitting, shortened to two lines: the merge queue essay is there, written on the twenty-third, and no folder named for its pages sits beside it. Decision: the essay names five pages, and home never handed them.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -603,7 +571,7 @@
       }
     },
     {
-      "id": "c3-who",
+      "id": "c2-who",
       "picture": {
         "kind": "card"
       },
@@ -631,7 +599,7 @@
                 "badge": "gap",
                 "task": "Home's tidy",
                 "command": "folders.is_empty()",
-                "note": "An essay with no folder is never looked at again."
+                "note": "An essay with no folder is never taken back for missing media."
               }
             ]
           }
@@ -639,7 +607,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Third question: who makes that folder, the worker or home? The worker only passes along a folder that exists. Home's export writes each folder first and the essay after, and it gives only an essay it hasn't given yet. So code that knows about pages never leaves this essay without its folder. Home's tidy skips any essay that has no folder at all, and nothing checks that the folders match what the essay names. Decision: the defect is in home's handing, not in the essay.",
+        "narration": "Third question: who makes that folder, the worker or home? The worker only passes along a folder that exists. Home's export writes each folder first and the essay after, and it gives only an essay it hasn't given yet. So code that knows about pages never leaves this essay without its folder. Home's tidy never takes back an essay that has no folder at all, and nothing checks that the folders match what the essay names. Decision: the defect is in home's handing, not in the essay.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -655,7 +623,7 @@
       }
     },
     {
-      "id": "c3-when",
+      "id": "c2-when",
       "picture": {
         "kind": "card"
       },
@@ -665,12 +633,12 @@
           "kind": "flow",
           "params": {
             "kicker": "FLOW · HOW IT GOT THERE",
-            "title": "The essay arrived around the release that taught home pages",
+            "title": "The essay arrived about two hours after home learned pages",
             "steps": [
               {
                 "badge": "main",
                 "label": "Pages handed",
-                "note": "server#1144 merged; release #1149 an hour before the essay."
+                "note": "server#1144 merged, released in #1149; release #1148 came before it."
               },
               {
                 "badge": "main",
@@ -680,7 +648,7 @@
               {
                 "badge": "gap",
                 "label": "Given bare",
-                "note": "Only code from before pages writes an essay with no pages folder."
+                "note": "Most likely written by code from before pages: only that writes it bare."
               },
               {
                 "badge": "gap",
@@ -693,7 +661,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "How did it get there? Home learned to hand pages in one server change, released about an hour and a half before the essay arrived. To code from before that change, a page names nothing, so the essay looks complete and is written alone. Home was most likely still on the release before. Its deploy log would settle that, and this essay doesn't show it. Either way, once written alone, it stays alone.",
+        "narration": "How did it get there? Home learned to hand pages in one server change, released about two hours before the essay landed on home. To code from before that change, a page names nothing, so the essay looks complete and is written alone. Home was most likely still on a release from before it. Its deploy log would settle that, and this essay doesn't show it. Either way, once written alone, it stays alone.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -704,7 +672,7 @@
       }
     },
     {
-      "id": "c3-decision",
+      "id": "c2-decision",
       "picture": {
         "kind": "card"
       },
@@ -724,7 +692,7 @@
               {
                 "badge": "main",
                 "label": "Not the essay",
-                "note": "Its five pages are well formed."
+                "note": "It names five pages; home never handed them."
               },
               {
                 "badge": "gap",
@@ -732,9 +700,9 @@
                 "note": "An essay missing a folder it names is never given again: issue 3512."
               },
               {
-                "badge": "you",
-                "label": "Today",
-                "note": "Removing the essay's file on home makes the next pass give it whole: the owner's call."
+                "badge": "gap",
+                "label": "Too late",
+                "note": "Its pages lived a day on GitHub; by the time it waited, they were gone."
               }
             ]
           }
@@ -742,7 +710,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "So the decision: not the lane, not the essay, but home's handing. It is filed as a defect, issue thirty-five twelve. The fix is for home's tidy to take back any essay missing a folder it names, so the next pass gives it whole. Until then there is a way round: home keeps the essay in its database, so removing its file makes the next pass give it again, pages and all. That is the owner's call to make.",
+        "narration": "So the decision: not the lane, not the essay, but home's handing. It is filed as a defect, issue thirty-five twelve. The fix is for home's tidy to take back any essay missing a folder it names, so the next pass gives it whole. The owner tried the way round: home keeps the essay in its database, so removing its file made the next pass take it up again. It waited for its pages, but those live a day on GitHub, and they were taken a day and a half before. Being stranded cost the pictures too. A page can't be taken again as it was, so this essay needs a new capture.",
         "sources": [
           {
             "repo": "paulgsc/server",
