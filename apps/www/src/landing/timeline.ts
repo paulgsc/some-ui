@@ -52,6 +52,21 @@ export type SceneTracks = {
   readonly labels: readonly [Track, Track]
 }
 
+/**
+ * One plate of the dashboard band (C1443), a place of an episode whose
+ * scenes are dashboard rows: shown from when its scene's faces come into
+ * view until the next scene's do, the last held until the episode comes
+ * round again. On the page's first round, before any of the episode's
+ * scenes has played, the first plate shows instead (`intro`, once, for
+ * `introS` seconds of the show's clock: until the first place's plate has
+ * faded in).
+ */
+export type PlateTracks = {
+  readonly loop: Track
+  readonly intro: Track | null
+  readonly introS: number
+}
+
 type EpisodeTracks = {
   /** Seconds into the cycle the copy block begins its turn to the episode. */
   readonly start: number
@@ -65,6 +80,8 @@ type EpisodeTracks = {
   readonly pair: Track
   readonly cubes: readonly [Track, Track]
   readonly scenes: ReadonlyArray<SceneTracks>
+  /** Its places as the dashboard band's plates, in order. */
+  readonly plates: ReadonlyArray<PlateTracks>
 }
 
 export type Timeline = {
@@ -455,7 +472,12 @@ export function showTimeline(
         labels: [label(0), label(1)],
       }
     })
-    return { start: e.start, skeleton, pair, cubes, scenes }
+    const plates = platesOf(
+      scenes.map((scene) => scene.on[0]),
+      cycleS,
+      name
+    )
+    return { start: e.start, skeleton, pair, cubes, scenes, plates }
   })
   return {
     cycleS,
@@ -463,6 +485,60 @@ export function showTimeline(
     copy,
     episodes: episodeTracks,
   }
+}
+
+/** How long one plate of the dashboard band takes to give way to the next. */
+const PLATE_FADE_S = 0.6
+
+/**
+ * The dashboard band's plates for places whose faces come into view at
+ * `starts` (seconds into the cycle): each shown from its start to the
+ * next's, the last held round the cycle to the first's, with the first
+ * shown instead on the page's first round (`PlateTracks`).
+ */
+function platesOf(
+  starts: ReadonlyArray<number>,
+  cycleS: number,
+  name: () => string
+): ReadonlyArray<PlateTracks> {
+  const first = starts.at(0) ?? 0
+  const fadeIn = (at: number): ReadonlyArray<Point> => [
+    { at, css: HIDDEN, ease: "ease-out" },
+    { at: at + PLATE_FADE_S, css: SHOWN },
+  ]
+  const fadeOut = (at: number): ReadonlyArray<Point> => [
+    { at, css: SHOWN, ease: "ease-in" },
+    { at: at + PLATE_FADE_S, css: HIDDEN },
+  ]
+  const held = (css: string): Track => {
+    const introName = name()
+    return {
+      name: introName,
+      keyframes: `@keyframes ${introName} { from { ${css} } to { ${css} } }`,
+    }
+  }
+  return starts.map((at, i) => {
+    const loopName = name()
+    const next = starts.at(i + 1)
+    const only = starts.length === 1
+    const points: ReadonlyArray<Point> = only
+      ? [{ at: 0, css: SHOWN }]
+      : next === undefined
+        ? [{ at: 0, css: SHOWN }, ...fadeOut(first), ...fadeIn(at)]
+        : [{ at: 0, css: HIDDEN }, ...fadeIn(at), ...fadeOut(next)]
+    return {
+      loop: { name: loopName, keyframes: keyframes(loopName, cycleS, points) },
+      intro: only
+        ? null
+        : i === 0
+          ? held(SHOWN)
+          : next === undefined
+            ? held(HIDDEN)
+            : null,
+      // Until plate 0 has faded in and the last out, so the hand-off is seamless.
+      introS: first + PLATE_FADE_S,
+    }
+  })
 }
 
 /** Every track of a timeline, in order. */

@@ -82,9 +82,28 @@ describe("drawPools", () => {
             `.episode[data-episode="${id}"] .scene-flat`
           ),
         ]
+        const plates = [
+          ...document.querySelectorAll<HTMLElement>(
+            `.dash-band[data-episode="${id}"] .plate`
+          ),
+        ]
         drawn.forEach((index, place) => {
           const snack = pool.snacks.at(index)
           if (snack === undefined) throw new Error("no snack")
+          // A dashboard row's plate on the band (C1443) is the snack's own row.
+          if (snack.row !== null) {
+            const plate = plates.at(place)
+            expect(plate?.dataset["asset"]).toBe(snack.row.key)
+            expect(
+              isOwn(
+                plate?.querySelector("img")?.getAttribute("src") ?? null,
+                snack.row.key
+              )
+            ).toBe(true)
+            expect(plate?.querySelector(".plate-label")?.textContent).toBe(
+              snack.row.label
+            )
+          }
           expect(
             copy[place]?.querySelector(".scene-title span")?.textContent
           ).toBe(snack.title)

@@ -10,6 +10,12 @@
 
   It fits any frame (data-fit-frame) and keeps the frame's foot, `foot` of
   its height, clear for the captions a stage leaves room for.
+
+  Given a `walk` (#3476, `@some-ui/video-render`'s `walkPicture`), it plays
+  it on the screen held whole: each step's picture comes in over the one
+  before at its time, the walk's own timeline stretched or pressed to the
+  scene's length, and a ring opens where each tap lands. Every picture is
+  copied in as assets/<picture>; a tap's x and y are CSS px of the picture.
 -->
 <html
   lang="en"
@@ -19,6 +25,7 @@
     {"id":"height","type":"number","label":"Its height in CSS px","default":915},
     {"id":"scale","type":"number","label":"Its device pixels per CSS px","default":2},
     {"id":"stops","type":"string","label":"Each region to zoom to, in turn: a JSON list of {x, y, width, height} in CSS px","default":"[]"},
+    {"id":"walk","type":"string","label":"A walk to play, or none: JSON {frames: [{picture, atMs}], taps: [{atMs, x, y}], lengthMs}","default":""},
     {"id":"margin","type":"number","label":"CSS px kept around a region","default":24},
     {"id":"foot","type":"number","label":"Share of the frame height kept clear at its foot","default":0},
     {"id":"theme","type":"enum","label":"Theme","default":"mochi-night",
@@ -71,6 +78,11 @@
       }
       .ring {
         position: absolute;
+        border: solid var(--accent);
+      }
+      .tap {
+        position: absolute;
+        border-radius: 50%;
         border: solid var(--accent);
       }
     </style>
@@ -193,6 +205,58 @@
         keys.push([L, whole])
       }
       track(camera, keys)
+
+      // A walk, played on the screen held whole: each step's picture over
+      // the one before from its time, the walk's timeline at `pace` scene
+      // seconds to a walk second, and a ring opening on each tap. Fitted to
+      // the scene, but never faster than twice the walk's own speed (C1427):
+      // a part longer than that ends with the scene, so a scene names the
+      // steps its words have time for.
+      if (vars.walk !== "") {
+        const walk = JSON.parse(vars.walk)
+        const pace =
+          walk.lengthMs > 0 ? Math.max(L / (walk.lengthMs / 1000), 0.5) : 1
+        // A ring's open and fade shrink with a fast pace, so it closes on
+        // the screen it was tapped on.
+        const ring = Math.min(pace, 1)
+        const at = (ms) => (ms / 1000) * pace
+        walk.frames.forEach((frame, i) => {
+          if (i === 0) {
+            $("shot").src = `assets/${frame.picture}`
+            return
+          }
+          const img = make("img", "", camera)
+          img.alt = ""
+          img.src = `assets/${frame.picture}`
+          img.style.borderRadius = `${16 * MOST}px`
+          const start = at(frame.atMs)
+          const fade = Math.min(
+            0.25,
+            Math.max(start - at(walk.frames[i - 1].atMs), 0) / 4
+          )
+          track(img, [
+            [start - fade, { opacity: 0 }, "linear"],
+            [start, { opacity: 1 }],
+          ])
+        })
+        walk.taps.forEach((tap) => {
+          const size = 44 * vars.scale
+          const dot = make("div", "tap", camera)
+          Object.assign(dot.style, {
+            left: `${(tap.x - size / 2) * MOST}px`,
+            top: `${(tap.y - size / 2) * MOST}px`,
+            width: `${size * MOST}px`,
+            height: `${size * MOST}px`,
+            borderWidth: `${3 * vars.scale * MOST}px`,
+          })
+          const t = at(tap.atMs)
+          track(dot, [
+            [t - 0.12 * ring, { opacity: 0, scale: 0.6 }, "out"],
+            [t, { opacity: 0.95, scale: 1 }, "linear"],
+            [t + 0.35 * ring, { opacity: 0, scale: 1.3 }],
+          ])
+        })
+      }
     </script>
   </body>
 </html>

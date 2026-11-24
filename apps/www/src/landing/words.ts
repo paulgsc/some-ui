@@ -53,6 +53,8 @@ export type LandingWords = {
   /** The theme picker's name, and its first choice: the device's own theme (C1184). */
   readonly theme: string
   readonly themeDevice: string
+  /** What the dashboard band's captions say of every row (C1443): its numbers are made up. */
+  readonly rowSample: string
   readonly gaps: ReadonlyArray<GapWords>
 }
 
@@ -83,6 +85,7 @@ export const LANDING_WORDS: LandingWords = {
   footerKeeps: "This page keeps nothing about you.",
   theme: "Theme",
   themeDevice: "As your device is set",
+  rowSample: "sample data",
   gaps: [
     {
       id: "page-filter",
@@ -94,10 +97,10 @@ export const LANDING_WORDS: LandingWords = {
     {
       id: "cores",
       title: "My home server has four CPU cores",
-      line: "When work slows down, I'm measuring whether it's my code or the machine.",
+      line: "When work slows down, I'm measuring whether it's my code or the machine. This is my server's own CPU panel, from the dashboards I keep as code, drawn in CI on a made-up week in which a nightly render job takes every core and work queues for them.",
       visual: "stills/cores.png",
       visualNote:
-        "Drawing of my home server's CPU panel: busy and waiting, of 4 cores",
+        "Drawing of my server's CPU panel on sample data: busy and waiting, of 4 cores",
     },
   ],
 }

@@ -13,7 +13,14 @@ import { z } from "zod"
 import { badgeProblems } from "./badges"
 import { ClaimSourcesSchema } from "./claims"
 import { LOOKS, VOICES } from "./plans"
-import { COMMIT, isPublicAddress, PAGE_FILE, RUN_ID, SNIP_ID } from "./snip-id"
+import {
+  COMMIT,
+  isPublicAddress,
+  PAGE_FILE,
+  RUN_ID,
+  SNIP_ID,
+  WALK_APP,
+} from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
@@ -113,6 +120,24 @@ const PictureSchema = z.discriminatedUnion("kind", [
         run: z.string().regex(RUN_ID, "a capture run's id, in digits"),
         /** The parts to zoom to, in order, as the capture named them. */
         at: z.array(z.string().min(1).max(200)).max(10).default([]),
+      }),
+      /**
+       * A walk of the app (`./walk`, #3476): the screens a scripted walk
+       * left on the emulator, played in turn with a ring on each tap. Named
+       * by the Snips Capture run that walked it (`walks-bundle-<run>`), its
+       * app, and the steps it plays, from 1, both ends kept: the whole walk
+       * when absent.
+       */
+      z.object({
+        from: z.literal("walks"),
+        run: z.string().regex(RUN_ID, "a capture run's id, in digits"),
+        app: z.string().regex(WALK_APP, "a walk's app, a slug"),
+        steps: z
+          .tuple([z.number().int().min(1), z.number().int().min(1)])
+          .refine(([first, last]) => first <= last, {
+            message: "its first step comes before its last",
+          })
+          .optional(),
       }),
       z.object({
         from: z.literal("clips"),
