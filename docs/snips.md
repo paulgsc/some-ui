@@ -282,8 +282,12 @@ page is live and a capture is never made again the same.
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`); the capture lays the
   snips' sample over them (`apps/mobile/snips/sample-routes.json`, #3476), a
-  Monday at `FROZEN_AT`: Renders expecting both Monday essays, Takes and
-  Needs your attention with last week's takes, and Rust Rounds' week that
+  Monday at `FROZEN_AT`: Renders expecting the Rust Rounds essay today and
+  the call on Friday, with an older cards essay held for a take; Takes and
+  Needs your attention with last week's takes; and Rust Rounds' week that
   ended and week that opened. Its test reads each answer as the phone does
-  (`apps/www/src/lib/snips/__tests__/stub-sample.test.ts`). Every other
-  screen is its empty state; a screen an essay needs gets its answer here.
+  (`apps/www/src/lib/snips/__tests__/stub-sample.test.ts`), through the one
+  stand-in home the walks' test reads too. A screen the sample doesn't
+  answer for shows what `{}` or an empty list gives it (an empty state, or
+  a read it couldn't make sense of), as week 44's own record does; a screen
+  an essay needs gets its answer here.

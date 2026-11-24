@@ -1,5 +1,6 @@
 {
-  "$comment": "What Snips Capture's stand-in home answers beside its base routes (apps/mobile/compat/stub-routes.json), laid over them by capture-apk.sh, so the APK's pictures show a Monday rather than empty screens (#3476). Sample data only, all made up, at FROZEN_AT (Monday 2026-11-02 09:30 UTC, 01:30 Pacific): week 44 (Quillmoss, @some-ui/rust-rounds' sample week, moved to 2026-w44) closed last night and its essay is owed today; week 45 (Tallowbrook, the /2 sample week, moved to 2026-w45) opened at midnight, TB-101's run recorded. Of week 44's three takes home heard one, couldn't make out one (Needs your attention) and hasn't heard the newest yet (Takes). Renders expects both Monday essays today and the call on Friday, finished last week's call, and holds an older cards essay for a take home couldn't hear. apps/www/src/lib/snips/__tests__/stub-sample.test.ts reads every answer through the phone's own readers and holds each week to the sample it moves.",
+  "$comment": "What Snips Capture's stand-in home answers beside its base routes (apps/mobile/compat/stub-routes.json), laid over them by capture-apk.sh, so the APK's pictures show a Monday rather than empty screens (#3476). Sample data only, all made up, at FROZEN_AT (Monday 2026-11-02 09:30 UTC, 01:30 Pacific): week 44 (Quillmoss, @some-ui/rust-rounds' sample week, moved to 2026-w44) closed last night and its essay is owed today; week 45 (Tallowbrook, the /2 sample week, moved to 2026-w45) opened at midnight, TB-101's run recorded, no work spans yet. Of week 44's three takes home heard one, couldn't make out one (on Takes and on Needs your attention alike) and hasn't heard the newest yet. Renders expects the Rust Rounds essay today and the call on Friday, and holds an older cards essay for a spoken card's take home couldn't hear. apps/www/src/lib/snips/__tests__/stub-sample.test.ts reads every answer through the phone's own readers and holds each week, and its hash, to the sample it moves.",
+  "schema": "some-ui.stub-sample/snips/1",
   "routes": {
     "GET /api/v1/rust-weeks": {
       "status": 200,
@@ -639,20 +640,10 @@
             "items": ["sample-take-studio-1"]
           }
         ],
-        "done": [
-          {
-            "feed": "call",
-            "key": "2026-10-23",
-            "at": 1793440800
-          }
-        ],
+        "done": [],
         "coming": [
           {
             "feed": "rust-essay",
-            "on": "2026-11-02"
-          },
-          {
-            "feed": "interview-essay",
             "on": "2026-11-02"
           },
           {
@@ -672,7 +663,7 @@
             "of": "rust-round",
             "ref": "2026-w44:QM-312",
             "recordedAt": "2026-10-31T17:12:00.000Z",
-            "heard": null,
+            "heard": "the buff is clear and the push oh line borrow",
             "verdict": {
               "kind": "garbled",
               "reasons": ["low_confidence"],
@@ -689,7 +680,7 @@
           {
             "id": "sample-take-studio-1",
             "of": "studio",
-            "ref": "",
+            "ref": "spoken:how-a-round-opens.0",
             "recordedAt": "2026-10-29T16:40:00.000Z",
             "heard": null,
             "verdict": {
@@ -737,8 +728,18 @@
             "storedAt": "2026-10-31T17:13:00.000Z",
             "size": 388000,
             "setAsideAt": null,
-            "heard": null,
-            "hearAgain": null
+            "heard": {
+              "text": "the buff is clear and the push oh line borrow",
+              "language": "en",
+              "model": "whisper",
+              "heardAt": "2026-10-31T17:15:00.000Z"
+            },
+            "hearAgain": {
+              "open": true,
+              "hearing": false,
+              "askedAt": null,
+              "nextAt": null
+            }
           },
           {
             "id": "sample-take-rust-1",
@@ -758,6 +759,14 @@
             "hearAgain": null
           }
         ]
+      }
+    },
+    "GET /api/v1/rust-work-spans": {
+      "status": 200,
+      "body": {
+        "week": "2026-w45",
+        "spans": [],
+        "open": null
       }
     }
   }
