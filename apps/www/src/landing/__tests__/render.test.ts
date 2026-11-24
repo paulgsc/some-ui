@@ -415,7 +415,7 @@ describe("renderLanding", () => {
     )
   })
 
-  it("moves only on a wide screen with motion allowed", () => {
+  it("moves only where motion is allowed: the stage on a wide screen, the deck under a finger, the sheen and the mochi", () => {
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
@@ -426,23 +426,24 @@ describe("renderLanding", () => {
     // The block ends where the next top-level rule starts.
     const end = css.indexOf("\n      }\n", start)
     const outside = css.slice(0, start) + css.slice(end)
-    // Outside it, two things move, each in a block of its own: the phone's
-    // deck, which turns only under the reader's finger (C1422), and a
-    // preview's sheen, only where motion is allowed. Nothing else is set
-    // moving or turned: transforms live only in keyframes.
+    // Outside it, the rest move each in a block of its own: the phone's
+    // deck, which turns only under the reader's finger (C1422), and, where
+    // motion is allowed at any width, a preview's sheen and the mochi's
+    // idle loops and hug (C1186, C1423). Nothing else is set moving or
+    // turned: transforms live only in keyframes.
     const blockAt = (query: string): string => {
       const from = outside.indexOf(`@media ${query} {`)
       expect(from, query).toBeGreaterThan(-1)
       return outside.slice(from, outside.indexOf("\n      }\n", from))
     }
     const deck = blockAt(DECK_QUERY)
-    const sheen = blockAt("(prefers-reduced-motion: no-preference)")
+    const motion = blockAt("(prefers-reduced-motion: no-preference)")
     expect(deck).toMatch(/\.show\[data-deck\] [^{]*\{[^}]*transform:/)
-    expect(sheen).toMatch(/\.preview::after \{\s*animation: pass [^;]* 2;/)
+    expect(motion).toMatch(/\.preview::after \{\s*animation: pass [^;]* 2;/)
     const keyframes = /@keyframes [a-z-]+ \{(?:[^{}]*\{[^{}]*\})*\s*\}/g
     const rules = outside
       .replace(deck, "")
-      .replace(sheen, "")
+      .replace(motion, "")
       .replace(keyframes, "")
     expect(outside.match(keyframes)?.length).toBeGreaterThan(0)
     expect(rules).not.toMatch(/\banimation(-name)?:/)

@@ -82,8 +82,8 @@
          a second tap just starts it over (nothing stacks); it runs no
          script and keeps nothing. For a reader who prefers less motion: a
          heart, still, that fades. Where motion is allowed (below), more,
-         at every width. On a touch screen the browser shows the press
-         only once the finger lifts, so there the hug plays on lift. */
+         at every width. On a touch screen a quick tap shows the press
+         only as the finger lifts, so there the hug plays on lift. */
       .hug {
         position: relative;
         display: block;
@@ -99,7 +99,7 @@
            doesn't flash over it. */
         -webkit-tap-highlight-color: transparent;
       }
-      /* Inside the button: the photo's round mask clips anything outside. */
+      /* Inside the button, so the round frame never hides it. */
       .hug:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: -3px;
@@ -404,9 +404,13 @@
           transform-origin: 0% 100%;
           animation-delay: -0.35s;
         }
-        .photo:hover .hug-body svg,
-        .photo:hover [data-part] {
-          animation-play-state: paused;
+        /* Held still under a pointer that hovers; a tap on a phone
+           leaves :hover stuck, which would freeze it. */
+        @media (hover: hover) {
+          .photo:hover .hug-body svg,
+          .photo:hover [data-part] {
+            animation-play-state: paused;
+          }
         }
         /* The hug (C1187, C1423): pressed, the mochi squeezes
            down a little, its antennas curl in and its eyes narrow to a
@@ -456,7 +460,8 @@
           scale: 0.7;
         }
         /* The heart rises past the frame's edge, as the mochi's frame no
-           longer clips it; the drawing is inset, so nothing else shows. */
+           longer clips it; the drawing sits inside the frame, so nothing
+           else shows. */
         .photo:has(.hug) {
           overflow: visible;
         }
