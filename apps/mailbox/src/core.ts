@@ -19,6 +19,8 @@
  *   `migrations/`).
  * - MB6: a ring carries only a folder name (`ringMessage`, the one thing the
  *   bell sends; `bell.ts`).
+ * - MB7 (a promise, held by `__tests__/core.test.ts`' "what home puts"):
+ *   every body home's mailbox pass puts, of each shape it files, is taken.
  */
 
 import type { Folder, Role, Store } from "./store"
@@ -50,6 +52,7 @@ const TRANSCRIPT_KEYS: ReadonlySet<string> = new Set([
   "model",
   "heardAt",
   "words",
+  "verdict",
 ])
 /** The keys of one heard word in a transcript's `words`; any other is refused. */
 const WORD_KEYS: ReadonlySet<string> = new Set([
@@ -59,6 +62,108 @@ const WORD_KEYS: ReadonlySet<string> = new Set([
   "p",
   "language",
 ])
+/**
+ * What home made of a transcript (HEARD1, paulgsc/server#908), as
+ * `voice_repo::verdict::Verdict` serialises it; any other key is refused.
+ */
+const VERDICT_KEYS: ReadonlySet<string> = new Set([
+  "kind",
+  "reasons",
+  "rule",
+  "signals",
+])
+const VERDICT_KINDS: ReadonlySet<unknown> = new Set([
+  "heard",
+  "garbled",
+  "nothing_said",
+  "failed",
+])
+/** What a take home files a silence for is said for: the week's routine must not wait on it (HEARD1). */
+const SILENT_OF: ReadonlySet<unknown> = new Set(["rust-round", "interview"])
+/** The kinds a transcript filed with no text may carry: home heard nothing said, or never heard it. */
+const SILENT_KINDS: ReadonlySet<unknown> = new Set(["nothing_said", "failed"])
+/** `voice_repo::verdict::Signals`' numbers, each `null` where home stored none (serde writes a non-finite `f64` so). */
+const SIGNAL_NUMBERS: ReadonlyArray<string> = [
+  "avgLogprob",
+  "compressionRatio",
+  "noSpeechProb",
+  "unsureShare",
+  "languageP",
+  "wordsPerSecond",
+  "peakDbfs",
+  "rmsDbfs",
+]
+const SIGNAL_KEYS: ReadonlySet<string> = new Set([
+  ...SIGNAL_NUMBERS,
+  "language",
+  "expectedLanguage",
+  "speechMs",
+])
+/** A verdict's reason (`low_confidence`, `too_long`) or rule (`heard-1`). */
+const VERDICT_WORD = /^[a-z0-9_-]{1,40}$/
+const REASONS_MAX = 16
+const VERDICT_SHAPE =
+  "verdict must be what home made of it: kind, reasons, rule and signals, or null"
+
+/**
+ * README, "What a put must satisfy": a transcript's or a pickup's `verdict`,
+ * `null` for one kept before verdicts were.
+ */
+function verdictRefusal(verdict: unknown): string | null {
+  if (verdict === null) return null
+  if (!isRecord(verdict)) return VERDICT_SHAPE
+  const keys = Object.keys(verdict)
+  if (
+    keys.length !== VERDICT_KEYS.size ||
+    keys.some((key) => !VERDICT_KEYS.has(key))
+  )
+    return VERDICT_SHAPE
+  const { kind, reasons, rule, signals } = verdict
+  if (!VERDICT_KINDS.has(kind)) return VERDICT_SHAPE
+  if (
+    !Array.isArray(reasons) ||
+    reasons.length > REASONS_MAX ||
+    !reasons.every((r) => typeof r === "string" && VERDICT_WORD.test(r))
+  )
+    return VERDICT_SHAPE
+  if (typeof rule !== "string" || !VERDICT_WORD.test(rule)) return VERDICT_SHAPE
+  if (signals === null) return null
+  if (!isRecord(signals)) return VERDICT_SHAPE
+  const named = Object.keys(signals)
+  if (
+    named.length !== SIGNAL_KEYS.size ||
+    named.some((key) => !SIGNAL_KEYS.has(key))
+  )
+    return VERDICT_SHAPE
+  if (
+    !SIGNAL_NUMBERS.every(
+      (key) =>
+        signals[key] === null ||
+        (typeof signals[key] === "number" && Number.isFinite(signals[key]))
+    )
+  )
+    return VERDICT_SHAPE
+  const { language, expectedLanguage, speechMs } = signals
+  // Home stores no detected language as "" (`unwrap_or_default`).
+  if (
+    typeof language !== "string" ||
+    (language !== "" && !LANGUAGE.test(language))
+  )
+    return VERDICT_SHAPE
+  if (
+    expectedLanguage !== null &&
+    (typeof expectedLanguage !== "string" || !LANGUAGE.test(expectedLanguage))
+  )
+    return VERDICT_SHAPE
+  if (
+    typeof speechMs !== "number" ||
+    !Number.isSafeInteger(speechMs) ||
+    speechMs < 0
+  )
+    return VERDICT_SHAPE
+  return null
+}
+
 /** More words than a note can hold: ten minutes at twenty a second. */
 const WORDS_MAX = 12_000
 const NO_AUDIO = "a transcript carries no audio: home keeps the audio"
@@ -187,11 +292,31 @@ function transcriptRefusal(
     return "ref must name what the note belongs to"
   }
   if (!isInstant(body.at)) return "at must be when the note was recorded"
-  if (typeof body.text !== "string" || body.text.trim() === "") {
-    return "text must be what home heard"
+  if (body.verdict !== undefined) {
+    const verdict = verdictRefusal(body.verdict)
+    if (verdict !== null) return verdict
   }
-  if (typeof body.language !== "string" || !LANGUAGE.test(body.language)) {
-    return "language must be the language heard, as en or ko"
+  // A take home found silent, or never heard, is filed with no text, no
+  // language and no words beside the verdict that says which (HEARD1).
+  const silent =
+    body.text === "" &&
+    SILENT_OF.has(body.of) &&
+    isRecord(body.verdict) &&
+    SILENT_KINDS.has(body.verdict.kind)
+  if (silent) {
+    if (body.language !== null) {
+      return "language must be null for a take home heard nothing in"
+    }
+    if (Array.isArray(body.words) && body.words.length > 0) {
+      return "words must be empty for a take home heard nothing in"
+    }
+  } else {
+    if (typeof body.text !== "string" || body.text.trim() === "") {
+      return "text must be what home heard"
+    }
+    if (typeof body.language !== "string" || !LANGUAGE.test(body.language)) {
+      return "language must be the language heard, as en or ko"
+    }
   }
   if (
     typeof body.model !== "string" ||
@@ -343,6 +468,7 @@ const PICKUP_KEYS: ReadonlySet<string> = new Set([
   "note",
   "ref",
   "heard",
+  "verdict",
   "labels",
   "readyAt",
   "seq",
@@ -431,6 +557,10 @@ function pickupRefusal(
   }
   if (typeof body.heard !== "string" || body.heard.trim() === "") {
     return "heard must be what home heard in the take"
+  }
+  if (body.verdict !== undefined) {
+    const verdict = verdictRefusal(body.verdict)
+    if (verdict !== null) return verdict
   }
   if (!isLabels(body.labels)) {
     return "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end"
