@@ -25,6 +25,7 @@ import { z } from "zod"
 
 import { WEEK } from "./dashboard-telemetry"
 import type { Step, Walk } from "./run"
+import type { GrafanaStageSpec } from "./stage-grafana"
 import { ROW_PARAM } from "./stage-grafana"
 
 /** What the Site Assets job writes for the walks: the sample week, and where its Grafana answers. */
@@ -187,7 +188,10 @@ export function panelPath(panel: Panel, sample: Sample): string {
  * reads it), naming the row so the stage shoots only that row (`ROW_PARAM`,
  * `./stage-grafana`).
  */
-export function rowPath(grouping: Grouping, sample: Sample): string {
+export function rowPath(
+  grouping: Pick<Grouping, "dashboard" | "row">,
+  sample: Sample
+): string {
   const to = Date.parse(sample.to)
   const from = to - sample.days * 86_400_000
   const query = new URLSearchParams({
@@ -202,12 +206,13 @@ export function rowPath(grouping: Grouping, sample: Sample): string {
   return `/d/${grouping.dashboard}/?${query.toString()}&kiosk`
 }
 
-/** A walk of pages, one screen each, at one size. */
+/** A walk of pages, one screen each, at one size, with what its stage draws over them. */
 function walkOf(
   app: string,
   pages: ReadonlyArray<{ readonly label: string; readonly path: string }>,
   sample: Sample,
-  viewport: { readonly width: number; readonly height: number }
+  viewport: { readonly width: number; readonly height: number },
+  over: Pick<GrafanaStageSpec, "band" | "noData"> = {}
 ): Walk {
   const [first] = pages
   if (first === undefined) throw new Error(`${app} names no page`)
@@ -224,6 +229,7 @@ function walkOf(
       origin: sample.origin,
       page: first.path,
       viewport,
+      ...over,
     },
     steps,
   }
@@ -272,4 +278,80 @@ export const homeCores = {
   sample: SampleSchema,
   walk: (sample: Sample): Walk =>
     walkOf("home-cores", panelPages([CORES_PANEL], sample), sample, VIEWPORT),
+}
+
+/**
+ * What a screen an essay shows says over itself (#3476): an essay shows a
+ * walk's screen on its own, with none of the landing's words around it, so
+ * a made-up Monday must never read as home's.
+ */
+export const SAMPLE_BAND = "Sample data: a made-up week, not home's"
+
+/**
+ * The rows of CALL an essay shows (the "it didn't run" essay, #3476): each
+ * week made into a video, then the Rust Rounds and mock interview essays,
+ * by their titles in paulgsc/server's `call.jsonnet`.
+ */
+const CALL_ROWS: ReadonlyArray<Pick<Grouping, "dashboard" | "row" | "label">> =
+  [
+    {
+      dashboard: CALL,
+      row: "Each week made into a video",
+      label: "Each week made into a video",
+    },
+    {
+      dashboard: CALL,
+      row: "Rust Rounds essays, the fourth job",
+      label: "Rust Rounds essays",
+    },
+    {
+      dashboard: CALL,
+      row: "Mock interview essays, the seventh job",
+      label: "Mock interview essays",
+    },
+  ]
+
+/** The weekly call's dashboard, a row a screen, for an essay. */
+export const homeCall = {
+  sample: SampleSchema,
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-call",
+      CALL_ROWS.map((row) => ({
+        label: row.label,
+        path: rowPath(row, sample),
+      })),
+      sample,
+      ROW_VIEWPORT,
+      // The Rust Rounds row's longest wait, with nothing waiting.
+      { band: SAMPLE_BAND, noData: 1 }
+    ),
+}
+
+const PIPELINES = "pipelines"
+
+/**
+ * PIPELINES' graphs, by their ids in paulgsc/server's `pipelines.jsonnet`
+ * (each pipeline of `lib/pipelines.json` in order, from 1). With no alert
+ * in the sample, every step of ours is green.
+ */
+const PIPELINE_PANELS: ReadonlyArray<Panel> = [
+  { dashboard: PIPELINES, id: 1, label: "The weekly call, step by step" },
+  { dashboard: PIPELINES, id: 2, label: "The engagement report, step by step" },
+]
+
+/** A pipeline's graph, wide enough for its steps' names. */
+const GRAPH_VIEWPORT = { width: 1440, height: 810 } as const
+
+/** The pipelines' graphs, a graph a screen, for an essay. */
+export const homePipelines = {
+  sample: SampleSchema,
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-pipelines",
+      panelPages(PIPELINE_PANELS, sample),
+      sample,
+      GRAPH_VIEWPORT,
+      { band: SAMPLE_BAND }
+    ),
 }

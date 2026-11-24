@@ -46,6 +46,19 @@ export type GrafanaStageSpec = {
   /** The page the walk opens, a path and query under the origin. */
   readonly page: string
   readonly viewport: { readonly width: number; readonly height: number }
+  /**
+   * Words drawn in a band at the top right of every screen, over the
+   * picture, so a screen shown on its own (in an essay) says what it is:
+   * the walks an essay shows name their sample data here (#3476). Absent,
+   * nothing is drawn over Grafana's own page.
+   */
+  readonly band?: string
+  /**
+   * How many panels on one screen may draw "no data": a stat whose query
+   * is empty by design (a longest wait with nothing waiting). A screen
+   * with more fails, as one with any does when this is absent.
+   */
+  readonly noData?: number
 }
 
 /** Grafana answers, or the walk stops before a page is opened. */
@@ -155,6 +168,44 @@ async function rowBox(page: Page, title: string): Promise<Box | undefined> {
   if (bottoms.length === 0 || width === undefined) return undefined
   const y = Math.max(0, Math.floor(own.y - 8))
   return { x: 0, y, width, height: Math.ceil(Math.max(...bottoms) + 8) - y }
+}
+
+/**
+ * The band (`GrafanaStageSpec.band`): its words in a dark pill at the top
+ * right of the screen taken, the row's box or the whole screen, drawn
+ * again on every screen since each is a new document.
+ */
+async function drawBand(
+  page: Page,
+  words: string,
+  shot: Box | undefined
+): Promise<void> {
+  const size = page.viewportSize()
+  const right = shot === undefined ? (size?.width ?? 0) : shot.x + shot.width
+  const top = shot === undefined ? 0 : shot.y
+  const style = {
+    position: "fixed",
+    top: `${String(top + 8)}px`,
+    left: `${String(right - 8)}px`,
+    transform: "translateX(-100%)",
+    zIndex: "2147483647",
+    padding: "4px 10px",
+    borderRadius: "999px",
+    background: "rgba(17, 24, 33, 0.92)",
+    color: "#e6edf3",
+    font: "600 14px Inter, sans-serif",
+    letterSpacing: "0.02em",
+    border: "1px solid rgba(230, 237, 243, 0.35)",
+    pointerEvents: "none",
+  }
+  // A string, run in the page: Node's types have no document.
+  await page.evaluate(
+    `(() => { const band = document.createElement("div");` +
+      ` band.textContent = ${JSON.stringify(words)};` +
+      ` band.setAttribute("data-walk-band", "");` +
+      ` Object.assign(band.style, ${JSON.stringify(style)});` +
+      ` document.body.append(band); })()`
+  )
 }
 
 export async function openGrafanaStage(
@@ -332,13 +383,19 @@ export async function openGrafanaStage(
       // ("No data" by default, "no data" where a panel sets its own); on a
       // row, only its own panels count.
       const empty = await page.getByText(NO_DATA).all()
+      let shown = 0
       for (const text of empty) {
         const box = await text.boundingBox()
         const inShot =
           shot === undefined ||
           (box !== null && box.y >= shot.y && box.y < shot.y + shot.height)
-        if (inShot) throw new Error(`${page.url()} drew no data`)
+        if (inShot) shown += 1
       }
+      if (shown > (spec.noData ?? 0))
+        throw new Error(
+          `${page.url()} drew no data in ${String(shown)} ${shown === 1 ? "panel" : "panels"}, past the walk's ${String(spec.noData ?? 0)}`
+        )
+      if (spec.band !== undefined) await drawBand(page, spec.band, shot)
     }
 
     return {
