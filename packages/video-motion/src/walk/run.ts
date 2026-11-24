@@ -41,6 +41,11 @@ type Action =
   | { readonly kind: "dwell"; readonly ms: number }
   /** Go to another page of the stage's own origin, a path and query (a dashboard's next panel). */
   | { readonly kind: "visit"; readonly path: string }
+  /**
+   * Bring a part of the page below the fold into view, a Playwright selector
+   * (a list's last part on a phone), as a person's swipe would; no tap is shown.
+   */
+  | { readonly kind: "scroll"; readonly target: string }
 
 /** One step: its action, then the screen it leaves, held `holdMs` on the walk's timeline. */
 export type Step = {
@@ -138,6 +143,9 @@ export function stepProblems(
     if (step.action.kind === "dwell" && step.action.ms <= 0) {
       problems.push(`${step.label}: it dwells no time`)
     }
+    if (step.action.kind === "scroll" && step.action.target.trim() === "") {
+      problems.push(`${step.label}: it scrolls to nothing`)
+    }
     if (step.action.kind === "visit" && !onStage(step.action.path)) {
       problems.push(`${step.label}: it visits a path of the stage, from /`)
     }
@@ -201,6 +209,16 @@ async function act(
     }
     case "dwell": {
       await page.waitForTimeout(action.ms)
+      return null
+    }
+    case "scroll": {
+      // Only as far as it takes: a part already in view stays where it is.
+      // The snip is still the stage's whole screen, so its shape is the
+      // walk's (`walkPictureProblem`, WALK10) whether or not it scrolled.
+      await page
+        .locator(action.target)
+        .first()
+        .scrollIntoViewIfNeeded({ timeout: UNTIL_MS })
       return null
     }
     case "visit": {

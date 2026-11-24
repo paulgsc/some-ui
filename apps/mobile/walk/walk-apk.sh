@@ -99,4 +99,7 @@ failed=0
 walk jobs "$repo/apps/www/tests/walk/jobs-week.json" || failed=1
 # Rust Rounds walks the Monday the snips show (the snips' sample, #3476).
 walk rust-rounds "$repo/apps/mobile/snips/sample-routes.json" || failed=1
+# Studio's Renders, the same Monday: an essay waiting for an oven, one in
+# line, down to Coming below the fold, then Run it again (#3476).
+walk renders "$repo/apps/mobile/snips/sample-routes.json" || failed=1
 exit "$failed"

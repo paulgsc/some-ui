@@ -576,6 +576,18 @@ export const joinedTake = (takes: ReadonlyArray<StillTake>): StillTake =>
   laidTake(takes, startsAfter(takes, CHAPTER_GAP_MS))
 
 /**
+ * The take `scene` plays, as a file name without `.wav`, named here once for
+ * both ends (CT1, #3519). A scene of several lines plays their join,
+ * `<file>`, which the recorder lays there. A scene of one line plays that
+ * line's own take, as the speaker recorded it: a chapter that goes on says
+ * its narration alone, `<file>-narration` (C1027); the intro's and close's
+ * one line is `<file>` itself. A spoken card's scene plays the take
+ * recorded with its still, `<file>`, which its one line, if any, is named.
+ */
+export const sceneTakeFile = (scene: CardsScene): string =>
+  scene.lines.length === 1 ? (scene.lines[0]?.file ?? scene.file) : scene.file
+
+/**
  * The spoken essay as the cut list the renderer draws: a scene per card
  * (`cardsScenes`), held for its take, `takes[i]` (`heldFor`), and
  * captioned from the take's words.
@@ -589,7 +601,10 @@ export function voicedCardsCutList(
     ...cut,
     shots: scenes.map((scene, i) => {
       const { spoken: _spoken, ...shot } = scene.shot
-      const held = heldFor(scene, takes[i] ?? null)
+      const held = heldFor(
+        { ...scene, file: sceneTakeFile(scene) },
+        takes[i] ?? null
+      )
       if (scene.spoken === undefined) return { ...shot, ...held }
       // A spoken card's scene is its stage's still, held still as a voiced
       // feed's are (CV1); the owner's answer cites the take it plays.

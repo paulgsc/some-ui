@@ -1,5 +1,5 @@
 {
-  "$comment": "What Snips Capture's stand-in home answers beside its base routes (apps/mobile/compat/stub-routes.json), laid over them by capture-apk.sh, so the APK's pictures show a Monday rather than empty screens (#3476). Rust Rounds' walk reads it too (packages/video-motion/src/walk/rust-rounds.ts): its newest week's first ticket, academy and first fork. Sample data only, all made up, at FROZEN_AT (Monday 2026-11-02 09:30 UTC, 01:30 Pacific): week 44 (Quillmoss, @some-ui/rust-rounds' sample week, moved to 2026-w44) closed last night and its essay is owed today; week 45 (Tallowbrook, the /2 sample week, moved to 2026-w45) opened at midnight, TB-101's run recorded, no work spans yet. Of week 44's three takes home heard one, couldn't make out one (on Takes and on Needs your attention alike) and hasn't heard the newest yet. Renders expects the Rust Rounds essay today, waiting for home to hear the newest take (the one it couldn't make out was filed for the routine long before), and the call on Friday, and holds an older cards essay for a Studio take home couldn't hear. apps/www/src/lib/snips/__tests__/stub-sample.test.ts reads every answer through the phone's own readers and holds each week, and its hash, to the sample it moves.",
+  "$comment": "What Snips Capture's stand-in home answers beside its base routes (apps/mobile/compat/stub-routes.json), laid over them by capture-apk.sh, so the APK's pictures show a Monday rather than empty screens (#3476). Rust Rounds' walk reads it too (packages/video-motion/src/walk/rust-rounds.ts): its newest week's first ticket, academy and first fork. Sample data only, all made up, at FROZEN_AT (Monday 2026-11-02 09:30 UTC, 01:30 Pacific): week 44 (Quillmoss, @some-ui/rust-rounds' sample week, moved to 2026-w44) closed last night and its essay is owed today; week 45 (Tallowbrook, the /2 sample week, moved to 2026-w45) opened at midnight, TB-101's run recorded, no work spans yet. Of week 44's three takes home heard one, couldn't make out one (on Takes and on Needs your attention alike) and hasn't heard the newest yet. Renders expects the Rust Rounds essay today, waiting for home to hear the newest take (the one it couldn't make out was filed for the routine long before), and the call on Friday, and holds an older cards essay for a Studio take home couldn't hear. While home hears that take, the render lane has no room: Sunday's render-lane essay, handed over at 08:30, waits for an oven (Now), and Sunday's take-conveyor essay, handed over at 08:45, waits in line behind it, so Renders' Now and Waiting its turn show the conveyor's first two stations (the renders walk scrolls to them and to Coming, packages/video-motion/src/walk/renders.ts). apps/www/src/lib/snips/__tests__/stub-sample.test.ts reads every answer through the phone's own readers and holds each week, and its hash, to the sample it moves.",
   "schema": "some-ui.stub-sample/snips/1",
   "routes": {
     "GET /api/v1/rust-weeks": {
@@ -627,8 +627,25 @@
     "GET /api/v1/renders": {
       "status": 200,
       "body": {
-        "now": null,
-        "waiting": [],
+        "now": {
+          "feed": "cards-essay",
+          "key": "render-lane-2026-11-01",
+          "state": "waiting",
+          "since": 1793608200,
+          "stateSince": 1793608200,
+          "gaveWay": 0,
+          "heldBy": "memory",
+          "stuck": false,
+          "estimate": { "share": 0, "secondsLeft": null },
+          "progress": null
+        },
+        "waiting": [
+          {
+            "feed": "cards-essay",
+            "key": "take-conveyor-2026-11-01",
+            "at": 1793609100
+          }
+        ],
         "failed": [
           {
             "feed": "cards-essay",
