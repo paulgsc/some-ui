@@ -9,7 +9,7 @@
   "voice": "read",
   "burnIns": [],
   "stamp": {
-    "sources": ["paulgsc/some-ui@e7b3214", "paulgsc/server@d43c707"],
+    "sources": ["paulgsc/some-ui@41eaf2b", "paulgsc/server@d43c707"],
     "date": "2026-11-24"
   },
   "shots": [
@@ -556,7 +556,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "What failed, or was refused? Each job keeps a status folder in slash renders, named for the job with dash worker: rust-essay-worker, interview-essay-worker, and call-worker for the call. last-pass says when the worker last looked. A week's failed dot log is the whole output of its last failed attempt, which is tried again an hour later. A week's refused dot log is home's essay pass saying no before any rendering: the essay names takes the week's final record doesn't, or the other way round. Each says why in full. A failed one is also on Studio's Couldn't finish; a refused Rust Rounds essay is only here, in an alert, and on Grafana.",
+        "narration": "What failed, or was refused? Each job keeps a status folder in slash renders, named for the job with dash worker: rust-essay-worker, interview-essay-worker, and call-worker for the call. last-pass says when the worker last looked. A week's failed dot log is the whole output of its last failed attempt, which is tried again an hour later. A week's refused dot log is home's essay pass saying no before any rendering: the essay names takes the week's final record doesn't, or the other way round. Each says why in full. A failed one also shows under Couldn't finish; a refused Rust Rounds essay only here, in an alert, and on Grafana.",
         "sources": [
           {
             "repo": "paulgsc/server",
