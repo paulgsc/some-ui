@@ -288,6 +288,6 @@ page is live and a capture is never made again the same.
   ended and week that opened. Its test reads each answer as the phone does
   (`apps/www/src/lib/snips/__tests__/stub-sample.test.ts`), through the one
   stand-in home the walks' test reads too. A screen the sample doesn't
-  answer for shows what `{}` or an empty list gives it (an empty state, or
-  a read it couldn't make sense of), as week 44's own record does; a screen
-  an essay needs gets its answer here.
+  answer for shows what `{}` or an empty list gives it, an empty state or
+  a read it couldn't make sense of; a screen an essay needs gets its answer
+  here.

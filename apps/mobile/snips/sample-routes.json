@@ -1,5 +1,5 @@
 {
-  "$comment": "What Snips Capture's stand-in home answers beside its base routes (apps/mobile/compat/stub-routes.json), laid over them by capture-apk.sh, so the APK's pictures show a Monday rather than empty screens (#3476). Sample data only, all made up, at FROZEN_AT (Monday 2026-11-02 09:30 UTC, 01:30 Pacific): week 44 (Quillmoss, @some-ui/rust-rounds' sample week, moved to 2026-w44) closed last night and its essay is owed today; week 45 (Tallowbrook, the /2 sample week, moved to 2026-w45) opened at midnight, TB-101's run recorded, no work spans yet. Of week 44's three takes home heard one, couldn't make out one (on Takes and on Needs your attention alike) and hasn't heard the newest yet. Renders expects the Rust Rounds essay today and the call on Friday, and holds an older cards essay for a spoken card's take home couldn't hear. apps/www/src/lib/snips/__tests__/stub-sample.test.ts reads every answer through the phone's own readers and holds each week, and its hash, to the sample it moves.",
+  "$comment": "What Snips Capture's stand-in home answers beside its base routes (apps/mobile/compat/stub-routes.json), laid over them by capture-apk.sh, so the APK's pictures show a Monday rather than empty screens (#3476). Sample data only, all made up, at FROZEN_AT (Monday 2026-11-02 09:30 UTC, 01:30 Pacific): week 44 (Quillmoss, @some-ui/rust-rounds' sample week, moved to 2026-w44) closed last night and its essay is owed today; week 45 (Tallowbrook, the /2 sample week, moved to 2026-w45) opened at midnight, TB-101's run recorded, no work spans yet. Of week 44's three takes home heard one, couldn't make out one (on Takes and on Needs your attention alike) and hasn't heard the newest yet. Renders expects the Rust Rounds essay today and the call on Friday, and holds an older cards essay for a Studio take home couldn't hear. apps/www/src/lib/snips/__tests__/stub-sample.test.ts reads every answer through the phone's own readers and holds each week, and its hash, to the sample it moves.",
   "schema": "some-ui.stub-sample/snips/1",
   "routes": {
     "GET /api/v1/rust-weeks": {
@@ -680,7 +680,7 @@
           {
             "id": "sample-take-studio-1",
             "of": "studio",
-            "ref": "spoken:how-a-round-opens.0",
+            "ref": "take:sample-take-studio-1",
             "recordedAt": "2026-10-29T16:40:00.000Z",
             "heard": null,
             "verdict": {
@@ -702,7 +702,7 @@
     "GET /api/v1/voice-notes/takes": {
       "status": 200,
       "body": {
-        "total": 3,
+        "total": 4,
         "matched": null,
         "by": "newest",
         "next": null,
@@ -757,6 +757,23 @@
               "heardAt": "2026-10-30T07:09:00.000Z"
             },
             "hearAgain": null
+          },
+          {
+            "id": "sample-take-studio-1",
+            "kind": "studio",
+            "status": "kept",
+            "ref": "take:sample-take-studio-1",
+            "recordedAt": "2026-10-29T16:40:00.000Z",
+            "storedAt": "2026-10-29T16:41:00.000Z",
+            "size": 254000,
+            "setAsideAt": null,
+            "heard": null,
+            "hearAgain": {
+              "open": true,
+              "hearing": false,
+              "askedAt": null,
+              "nextAt": null
+            }
           }
         ]
       }

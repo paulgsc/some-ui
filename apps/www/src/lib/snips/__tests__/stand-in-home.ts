@@ -60,7 +60,7 @@ export function standInHome(routes: Routes): HomeCall {
     const answer: HomeAnswer = {
       status: route.status ?? 200,
       body: JSON.stringify(
-        route.echo === undefined
+        route.echo === undefined || route.echo === ""
           ? (route.body ?? null)
           : {
               [route.echo]: typeof body === "string" ? JSON.parse(body) : null,

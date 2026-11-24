@@ -67,7 +67,7 @@ describe("the snips' sample (#3476)", () => {
       read.page.takes.map((take) => [take.of, take.ref, take.verdict.kind])
     ).toEqual([
       ["rust-round", "2026-w44:QM-312", "garbled"],
-      ["studio", "spoken:how-a-round-opens.0", "failed"],
+      ["studio", "take:sample-take-studio-1", "failed"],
     ])
     const board = readBoard(await ask("/renders"))
     if (board.kind !== "read") throw new Error(`unread: ${board.kind}`)
@@ -82,21 +82,32 @@ describe("the snips' sample (#3476)", () => {
       ["rust-round", "2026-w44:QM-313"],
       ["rust-round", "2026-w44:QM-312"],
       ["rust-round", "2026-w44:QM-311"],
+      ["studio", "take:sample-take-studio-1"],
     ])
     expect(takes.map((take) => take.heard === null)).toEqual([
       true,
       false,
       false,
+      true,
     ])
+    expect(read.page.total).toBe(takes.length)
     for (const take of takes)
       expect(Date.parse(take.storedAt)).toBeLessThan(Date.parse(FROZEN_AT))
     // The one home couldn't make out reads alike on both lists.
     const attention = readAttention(await ask("/voice-notes/attention"))
     if (attention.kind !== "read") throw new Error(attention.kind)
-    const there = attention.page.takes.find((t) => t.of === "rust-round")
-    const here = takes.find((take) => take.id === there?.id)
-    expect(here?.heard?.text).toBe(there?.heard)
-    expect(here?.hearAgain).toEqual(there?.hearAgain)
+    expect(attention.page.takes).toHaveLength(2)
+    for (const there of attention.page.takes) {
+      const here = takes.find((take) => take.id === there.id)
+      expect(here, there.id).toBeDefined()
+      expect(here?.heard?.text ?? null).toBe(there.heard)
+      expect(here?.hearAgain).toEqual(there.hearAgain)
+      expect(there.hearAgain).toEqual({
+        open: true,
+        hearing: false,
+        askAgainAt: null,
+      })
+    }
   })
 
   it("moves the sample weeks to the week that ended and the week that opened, and nothing else", async () => {
