@@ -9,7 +9,7 @@ import { TERMINAL_TYPE, type TerminalFrame } from "@burn-ins/lib/terminal"
 /**
  * The terminal card: its heading and window, its title bar, and the lines
  * that have appeared, each a row of coloured runs where the frame model set
- * it, with its badge.
+ * it, with its badge and, while `terminal-v2` types it, its cursor.
  */
 export const TerminalLayer = ({
   frame,
@@ -41,6 +41,19 @@ export const TerminalLayer = ({
       {frame.rows.map((r) => (
         <div key={r.line} style={{ display: "contents" }}>
           {r.badge === null ? null : <Badge mark={r.badge} units={units} />}
+          {r.cursor === null ? null : (
+            <div
+              className="bi-panel"
+              style={{
+                left: cq(r.cursor.x),
+                top: cq(r.cursor.y),
+                width: cq(r.cursor.width),
+                height: cq(r.cursor.height),
+                background: INK.text,
+                opacity: r.opacity,
+              }}
+            />
+          )}
           <div
             className="bi-text bi-mono"
             style={{

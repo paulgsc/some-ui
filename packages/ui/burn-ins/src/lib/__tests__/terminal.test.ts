@@ -3,6 +3,7 @@ import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { ITEM, valueProblem } from "@burn-ins/lib/cards"
 import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
 import type { TerminalFrame } from "@burn-ins/lib/terminal"
+import { TYPING } from "@burn-ins/lib/terminal"
 import { describe, expect, it } from "vitest"
 
 /** A card's params with the stamp the renderer gives every card. */
@@ -13,15 +14,17 @@ const stamped = (params: object): object => ({
 
 const terminal = (
   params: object,
-  frame: FrameSize = LANDSCAPE
+  frame: FrameSize = LANDSCAPE,
+  design = "terminal-v1"
 ): ReturnType<typeof prepare> =>
-  prepare(
-    { kind: "terminal", design: "terminal-v1", params: stamped(params) },
-    frame
-  )
+  prepare({ kind: "terminal", design, params: stamped(params) }, frame)
 
-const at = (params: object, t: number): TerminalFrame => {
-  const p = terminal(params)
+const at = (
+  params: object,
+  t: number,
+  design = "terminal-v1"
+): TerminalFrame => {
+  const p = terminal(params, LANDSCAPE, design)
   if (!p.ok) throw new Error(p.problems.join("; "))
   const f = frameAt(p.value, t)
   if (f.kind !== "terminal") throw new Error(f.kind)
@@ -188,5 +191,79 @@ describe("the terminal card", () => {
     expect(crowded.ok ? [] : crowded.problems).toEqual([
       "the terminal burn-in (terminal-v1): 8 lines don't fit the window",
     ])
+  })
+
+  describe("terminal-v2, which types its commands (#3476)", () => {
+    /** The diagnosis essay's first look: a command, what it prints, then the next. */
+    const LOGS = {
+      kicker: "TERMINAL · ON HOME",
+      title: "What the render worker said",
+      bar: "home",
+      lines: [
+        { prompt: "$", keyword: "docker logs", text: " render", badge: "main" },
+        { text: "render: waits for room on home" },
+        { prompt: "$", keyword: "ls", text: " /essays", comment: "  # given?" },
+      ],
+    }
+    const v2 = (t: number): TerminalFrame => at(LOGS, t, "terminal-v2")
+    const said = (f: TerminalFrame): ReadonlyArray<string> =>
+      f.rows.map((r) => r.spans.map((s) => s.text).join(""))
+    const lead = ITEM.leadMs + TYPING.leadMs
+
+    it("shows the prompt first, then types the command a character at a time behind a cursor", () => {
+      expect(said(v2(ITEM.leadMs))).toEqual(["$ "])
+      expect(said(v2(lead))).toEqual(["$ d"])
+      expect(said(v2(lead + 5 * TYPING.charMs))).toEqual(["$ docker"])
+      expect(v2(lead + 5 * TYPING.charMs).rows[0]?.cursor).not.toBeNull()
+      const typed = lead + 18 * TYPING.charMs
+      expect(said(v2(typed))).toEqual(["$ docker logs render"])
+      expect(v2(typed).rows[0]?.cursor).toBeNull()
+    })
+
+    it("holds what a command prints until it is typed, and types a comment's command before its comment", () => {
+      const typed = lead + 18 * TYPING.charMs
+      expect(said(v2(typed + TYPING.afterMs - 1))).toHaveLength(1)
+      expect(said(v2(typed + TYPING.afterMs))).toEqual([
+        "$ docker logs render",
+        "render: waits for room on home",
+      ])
+      const end = said(v2(60_000))
+      expect(end).toEqual([
+        "$ docker logs render",
+        "render: waits for room on home",
+        "$ ls /essays  # given?",
+      ])
+      expect(v2(60_000).rows.every((r) => r.cursor === null)).toBe(true)
+    })
+
+    it("is the same frame for the same card at the same moment", () => {
+      for (const t of [0, 900, 1234, 2500, 4000, 60_000])
+        expect(JSON.stringify(v2(t))).toBe(JSON.stringify(v2(t)))
+    })
+
+    it("draws and refuses what v1 does, and leaves v1 untyped", () => {
+      expect(at(LOGS, 60_000, "terminal-v1").rows.map((r) => r.cursor)).toEqual(
+        [null, null, null]
+      )
+      expect(said(at(LOGS, ITEM.leadMs + 1, "terminal-v1"))).toEqual([
+        "$ docker logs render",
+      ])
+      const v1End = at(LOGS, 60_000, "terminal-v1")
+      const v2End = v2(60_000)
+      expect(v2End.rows.map((r) => [r.x, r.y])).toEqual(
+        v1End.rows.map((r) => [r.x, r.y])
+      )
+      const p = terminal(
+        {
+          title: "Too wide",
+          lines: [{ prompt: "$", keyword: "x".repeat(200) }],
+        },
+        LANDSCAPE,
+        "terminal-v2"
+      )
+      expect(p.ok ? [] : p.problems).toEqual([
+        "the terminal burn-in (terminal-v2): line 1 doesn't fit the window",
+      ])
+    })
   })
 })

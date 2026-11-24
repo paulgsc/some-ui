@@ -11,6 +11,16 @@
  * spells itself out, since the line's text moves aside for it), one with a
  * character the monospace lacks (`./mono`), and one that gives a value
  * (`./cards`' values rule).
+ *
+ * Design `terminal-v2` (#3476) draws the same window from the same params
+ * and refuses the same lines, and types its commands: a line with a prompt
+ * shows the prompt as v1 shows a line, then its keyword and text appear a
+ * character every `TYPING.charMs` behind a steady block cursor, and its
+ * comment once the last character is typed. A line after it waits until it
+ * is typed (`typedTimes`), so what a command prints never shows before the
+ * command. A line with no prompt (output, a comment) appears as in v1. Every
+ * frame is a function of the drawing and `t` alone: the same card at the same
+ * moment is the same frame.
  */
 
 import { z } from "zod"
@@ -48,7 +58,9 @@ import {
 import { monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 
-export const TERMINAL_DESIGNS = ["terminal-v1"] as const
+export const TERMINAL_DESIGNS = ["terminal-v1", "terminal-v2"] as const
+
+export type TerminalDesign = (typeof TERMINAL_DESIGNS)[number]
 
 const LineSchema = z
   .strictObject({
@@ -89,13 +101,19 @@ const BADGE_COLUMN = BADGE_PX + 18
 const DOT_PX = 14
 const DOT_STEP = 24
 
-/** A run of a line's text in one colour. */
-type Span = { readonly text: string; readonly colour: string }
+/** A run of a line's text in one colour, and which of the line's parts it is. */
+type Span = {
+  readonly text: string
+  readonly colour: string
+  readonly part: "prompt" | "keyword" | "text" | "comment"
+}
 
 type LineDrawing = {
   readonly x: number
   readonly y: number
   readonly spans: ReadonlyArray<Span>
+  /** What `terminal-v2` types, the keyword's and text's characters; 0 for a line with no prompt. */
+  readonly typed: number
   readonly badge: BadgeState | undefined
   readonly atMs: number
   readonly opens: boolean
@@ -123,11 +141,20 @@ type TerminalRow = {
   readonly spans: ReadonlyArray<Span>
   readonly opacity: number
   readonly badge: BadgeMark | null
+  /** The block cursor while `terminal-v2` types the line; null otherwise. */
+  readonly cursor: Box | null
 }
 
 export type TerminalFrame = Omit<TerminalDrawing, "lines"> & {
   readonly rows: ReadonlyArray<TerminalRow>
 }
+
+/**
+ * How `terminal-v2` types a command: the prompt appears as a v1 line does,
+ * typing starts `leadMs` after it, a character every `charMs` (about 22 a
+ * second, a brisk typist), and the next line waits `afterMs` past the last.
+ */
+export const TYPING = { leadMs: 400, charMs: 45, afterMs: 350 } as const
 
 /** The type the window's lines and title bar are set in. */
 export const TERMINAL_TYPE = {
@@ -138,10 +165,14 @@ export const TERMINAL_TYPE = {
 
 const spansOf = (l: Line): ReadonlyArray<Span> =>
   [
-    { text: l.prompt === "" ? "" : `${l.prompt} `, colour: INK.muted },
-    { text: l.keyword, colour: CARD_INK.key },
-    { text: l.text, colour: INK.text },
-    { text: l.comment, colour: INK.muted },
+    {
+      text: l.prompt === "" ? "" : `${l.prompt} `,
+      colour: INK.muted,
+      part: "prompt" as const,
+    },
+    { text: l.keyword, colour: CARD_INK.key, part: "keyword" as const },
+    { text: l.text, colour: INK.text, part: "text" as const },
+    { text: l.comment, colour: INK.muted, part: "comment" as const },
   ].filter((s) => s.text !== "")
 
 /**
@@ -260,6 +291,7 @@ export function drawTerminal(
         x: textX,
         y: top + i * pitch,
         spans: spansOf(l),
+        typed: l.prompt === "" ? 0 : [...l.keyword, ...l.text].length,
         badge: l.badge,
         atMs: times[i] ?? 0,
         opens: opens[i] ?? false,
@@ -268,12 +300,57 @@ export function drawTerminal(
   }
 }
 
+/** When the last character of `l` is typed, starting at `atMs`. */
+const typedEnd = (typed: number, atMs: number): number =>
+  atMs + TYPING.leadMs + typed * TYPING.charMs
+
+/**
+ * Each line's time under `terminal-v2`: its own, or once the line before it
+ * is typed and `TYPING.afterMs` has passed, whichever is later.
+ */
+export function typedTimes(
+  lines: ReadonlyArray<Pick<LineDrawing, "atMs" | "typed">>
+): ReadonlyArray<number> {
+  const times: Array<number> = []
+  let free = 0
+  for (const l of lines) {
+    const at = Math.max(l.atMs, free)
+    times.push(at)
+    free = l.typed > 0 ? typedEnd(l.typed, at) + TYPING.afterMs : at
+  }
+  return times
+}
+
+/** `spans` with only the first `shown` characters of its keyword and text. */
+function typedSpans(
+  l: LineDrawing,
+  shown: number,
+  done: boolean
+): ReadonlyArray<Span> {
+  let left = shown
+  return l.spans.flatMap((s) => {
+    if (s.part === "prompt") return [s]
+    if (s.part === "comment") return done ? [s] : []
+    const chars = [...s.text]
+    const take = Math.min(chars.length, left)
+    left -= take
+    return take === 0 ? [] : [{ ...s, text: chars.slice(0, take).join("") }]
+  })
+}
+
 /** The window `t` ms into its scene: the lines that have appeared so far. */
-export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
+export function terminalAt(
+  d: TerminalDrawing,
+  t: number,
+  design: TerminalDesign = "terminal-v1"
+): TerminalFrame {
   const { lines, ...still } = d
+  const typing = design === "terminal-v2"
+  const times = typing ? typedTimes(lines) : lines.map((l) => l.atMs)
   const rows = lines.flatMap((l, line) => {
-    if (t < l.atMs) return []
-    const { opacity, risePx } = appearing(t, l.atMs)
+    const atMs = times[line] ?? l.atMs
+    if (t < atMs) return []
+    const { opacity, risePx } = appearing(t, atMs)
     const y = l.y + risePx
     const badge =
       l.badge === undefined
@@ -284,16 +361,37 @@ export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
             y + (SIZE_PX * LINE_HEIGHT - BADGE_PX) / 2,
             BADGE_PX,
             opacity,
-            l.opens ? openness(t - l.atMs) : 0
+            l.opens ? openness(t - atMs) : 0
           )
+    const x = l.x + (badge === null ? 0 : openReach(badge))
+    if (!typing || l.typed === 0)
+      return [{ line, x, y, spans: l.spans, opacity, badge, cursor: null }]
+    const shown = Math.max(
+      0,
+      Math.min(
+        l.typed,
+        Math.floor((t - atMs - TYPING.leadMs) / TYPING.charMs) + 1
+      )
+    )
+    const done = t >= typedEnd(l.typed, atMs)
+    const spans = typedSpans(l, shown, done)
+    const width = monoWidth(spans.map((s) => s.text).join(""), SIZE_PX)
     return [
       {
         line,
-        x: l.x + (badge === null ? 0 : openReach(badge)),
+        x,
         y,
-        spans: l.spans,
+        spans,
         opacity,
         badge,
+        cursor: done
+          ? null
+          : {
+              x: x + width,
+              y: y + (SIZE_PX * LINE_HEIGHT - SIZE_PX * 1.15) / 2,
+              width: SIZE_PX * 0.6,
+              height: SIZE_PX * 1.15,
+            },
       },
     ]
   })

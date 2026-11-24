@@ -608,7 +608,7 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
       return {
         kind: p.kind,
         design: p.design,
-        frame: terminalAt(p.drawing, t),
+        frame: terminalAt(p.drawing, t, p.design),
       }
     }
     case "cheat-sheet": {

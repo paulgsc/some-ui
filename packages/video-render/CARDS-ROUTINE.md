@@ -53,7 +53,12 @@ spoken essay pins version 4 of the cheat-sheet series. Version 3
 plays spoken cards, and version 4 also moves each voice on at each chapter, so
 the narrator of one card is not the narrator of the next (C840). Version 5 is
 version 4 with a chart card, `bars`: pin it only for an essay that shows one,
-since home draws it only once its render image is rebuilt. Versions 2
+since home draws it only once its render image is rebuilt. Version 6 is
+version 5 with its terminal card typed (`terminal-v2`): a line with a prompt
+shows the prompt, then types its command a character at a time behind a
+cursor, and the lines after it wait until it is typed. Pin it for an essay
+that types commands on screen; home draws it once its render image is
+rebuilt, as for version 5. Versions 2
 and 3 keep one narrator for every card, and version 1 essays are silent, from
 before this routine; each still plays as it did, and is never rewritten.
 Each scene says something, in a `spoken` field:
@@ -135,7 +140,7 @@ Since you, months later, are the listener:
    each repository it explains read-only, with enough history to hold that
    commit, and note each one's short commit. Keep the clones for step 7.
 3. **Write the cut list** in the cheat-sheet series, version 4 (5 with a
-   chart), as
+   chart, 6 with typed commands), as
    `packages/video-render/src/sample/videos/*/cut-list.json` are. Read both,
    cards and words, before writing.
    - A scene shows a card picture (`{"kind": "card"}`) with its card as a
