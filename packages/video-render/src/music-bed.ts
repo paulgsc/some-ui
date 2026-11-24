@@ -2,9 +2,10 @@
  * The music bed we make ourselves (#2673): a quiet loop under the voice,
  * synthesised here from nothing but arithmetic, so it holds no sample, no
  * model's output and no one else's recording. The file it writes is never
- * committed: the owner lays it in `${STORAGE}/brand/` on home, where a
- * series that names it pins `MUSIC_BED.sha256` (`CheckedFileSchema`) and
- * the renderer checks it before it plays it (`render.ts`).
+ * committed: where a video is rendered, home writes it from code into the
+ * video's folder (`placeOurBed`, #3476) for a series that pins
+ * `MUSIC_BED.sha256` (`CheckedFileSchema`), and the renderer checks it
+ * before it plays it (`render.ts`).
  *
  * It is drawn by `synth.ts`, so it comes out as the same bytes on every
  * machine: every pitch is a ratio of whole numbers (just intonation), never
