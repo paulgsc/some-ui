@@ -16,17 +16,19 @@ import { Link } from "@tanstack/react-router"
 import { hasAudience } from "@/lib/build-profile"
 import type {
   Board,
+  Coming,
   RenderFailed,
   RendersOutcome,
   Row,
   Subject,
 } from "@/lib/renders"
 import {
+  COMING_ATTENTION,
+  comingLines,
   CONVEYOR_WORDS,
   doneLine,
   failedAside,
   failedLine,
-  feedName,
   kindName,
   liveLine,
   nowAside,
@@ -217,6 +219,27 @@ const RowTile = ({
 }
 
 /**
+ * One owed video under Coming (#3478): when it is expected, or that it is
+ * late, what it waits on where home says, and the way to Needs your
+ * attention where a take home couldn't hear holds it (a page of the
+ * phone's, A3).
+ */
+const ComingRow = ({ coming }: { coming: Coming }): JSX.Element => {
+  const { line, waits, toAttention } = comingLines(coming)
+  return (
+    <li className="flex flex-col text-sm">
+      <span>{line}</span>
+      {waits !== null && <span className="text-muted-foreground">{waits}</span>}
+      {toAttention && hasAudience("apk") && (
+        <Link to="/journal/takes/attention" className={LINK}>
+          {COMING_ATTENTION}
+        </Link>
+      )}
+    </li>
+  )
+}
+
+/**
  * Under a row that couldn't finish, the way to its Run it again page, and
  * what waits on the owner there (RETRY). A preview (asked for again on its
  * template's page) and a row home makes again only by itself (a clip's walk)
@@ -360,9 +383,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
         ) : (
           <ul className="flex flex-col gap-1">
             {board.coming.map((coming) => (
-              <li key={coming.feed} className="text-sm">
-                {feedName(coming.feed)}. {WORDS.expected(coming.on)}
-              </li>
+              <ComingRow key={coming.feed} coming={coming} />
             ))}
           </ul>
         )}

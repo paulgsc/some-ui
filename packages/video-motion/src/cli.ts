@@ -34,7 +34,13 @@ import { HYPERFRAMES_VERSION } from "./pin"
 import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
 import { openMetrics, WEEK } from "./walk/dashboard-telemetry"
-import { homeCores, homeServer, homeServerRows } from "./walk/home-dashboards"
+import {
+  homeCall,
+  homeCores,
+  homePipelines,
+  homeServer,
+  homeServerRows,
+} from "./walk/home-dashboards"
 import { jobs } from "./walk/jobs"
 import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
@@ -75,7 +81,8 @@ const entry =
 
 /**
  * The apps a walk can show. The server's dashboards walk on a throwaway
- * Grafana over sample telemetry (`home-server`, `home-cores`). Suspender Ledger walks in the sandbox; Jobs and
+ * Grafana over sample telemetry (`home-server`, `home-cores`; `home-call`
+ * and `home-pipelines` for an essay, #3476). Suspender Ledger walks in the sandbox; Jobs and
  * Rust Rounds on the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
@@ -85,6 +92,8 @@ const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["home-server", entry(homeServer)],
   ["home-server-rows", entry(homeServerRows)],
   ["home-cores", entry(homeCores)],
+  ["home-call", entry(homeCall)],
+  ["home-pipelines", entry(homePipelines)],
 ])
 
 /** The series of a vertical whose scenes are compositions, the default. */

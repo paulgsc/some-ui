@@ -24,7 +24,7 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import { readBoard } from "@/lib/renders/model"
-import { failedLine } from "@/lib/renders/words"
+import { comingLines, failedLine } from "@/lib/renders/words"
 import { FROZEN_AT } from "@/lib/snips"
 import { readTakes } from "@/lib/take-library/model"
 import { readAttention } from "@/lib/take-reconcile/model"
@@ -40,7 +40,7 @@ const ask = (path: string): Promise<HomeAnswer> => home("GET", path)
 const TODAY = FROZEN_AT.slice(0, 10)
 
 describe("the snips' sample (#3476)", () => {
-  it("gives Renders a board the phone reads: the Rust Rounds essay expected today, the call on Friday", async () => {
+  it("gives Renders a board the phone reads: the Rust Rounds essay expected today and waiting for home to hear a take, the call on Friday", async () => {
     const read = readBoard(await ask("/renders"))
     if (read.kind !== "read") throw new Error(`unread: ${read.kind}`)
     const { board } = read
@@ -48,9 +48,20 @@ describe("the snips' sample (#3476)", () => {
     expect(board.waiting).toEqual([])
     expect(board.done).toEqual([])
     expect(board.coming).toEqual([
-      { feed: "rust-essay", on: TODAY },
-      { feed: "call", on: "2026-11-06" },
+      {
+        feed: "rust-essay",
+        on: TODAY,
+        key: "2026-w44",
+        overdue: false,
+        waitsOn: "take-hearing",
+      },
+      { feed: "call", on: "2026-11-06", overdue: false },
     ])
+    // Coming says what the essay waits on, on its own day.
+    expect(board.coming.map(comingLines)[0]).toMatchObject({
+      waits: expect.stringMatching(/home to hear a take/),
+      toAttention: false,
+    })
     for (const row of board.failed)
       expect(row.at * 1000).toBeLessThan(Date.parse(FROZEN_AT))
     // Couldn't finish says why, in the owner's terms.

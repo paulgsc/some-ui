@@ -92,6 +92,15 @@ describe(
         "container_cpu_usage_seconds_total",
         "node_cpu_seconds_total",
         "node_pressure_cpu_waiting_seconds_total",
+        // CALL's rows an essay walks (#3476).
+        "call_weeks_held",
+        "call_render_weeks_waiting",
+        "call_render_worker_last_pass_timestamp_seconds",
+        "rust_essays_waiting_for_deadline",
+        "rust_essay_render_given",
+        "rust_essay_render_worker_last_pass_timestamp_seconds",
+        "interview_essays_waiting_for_deadline",
+        "interview_essay_render_given",
       ]) {
         expect(names).toContain(name)
       }
@@ -115,6 +124,29 @@ describe(
             k.startsWith("node_cpu_seconds_total") && k.includes('mode="idle"')
         )
       ).toHaveLength(4)
+    })
+
+    it("ends on a Monday with this week's essays waiting for their deadline and nothing failed (#3476)", () => {
+      const last = (name: string): number | undefined =>
+        once.all.get(name)?.value
+      expect(new Date(WEEK.to).getUTCDay()).toBe(1)
+      for (const job of ["rust_essays", "interview_essays"]) {
+        expect(last(`${job}_waiting_for_deadline`)).toBe(1)
+        expect(last(`${job}_refused`)).toBe(0)
+        expect(last(`${job}_pass_failing`)).toBe(0)
+      }
+      for (const job of ["rust_essay", "interview_essay", "call"]) {
+        const render = job === "call" ? "call_render_weeks" : `${job}_render`
+        expect(last(`${render}_failed`)).toBe(0)
+        expect(last(`${render}_waiting`)).toBe(0)
+        // Its worker passed in the window's last minute.
+        expect(
+          Date.parse(WEEK.to) / 1000 -
+            (last(
+              `${job === "call" ? "call_render" : `${job}_render`}_worker_last_pass_timestamp_seconds`
+            ) ?? 0)
+        ).toBeLessThanOrEqual(60)
+      }
     })
 
     it("gives every histogram cumulative buckets: no bucket holds more than the next larger one", () => {

@@ -1,10 +1,15 @@
 import { readFileSync } from "node:fs"
+import { DASHBOARD_WALKS } from "@some-ui/video-render"
+import * as dashboards from "@video-motion/walk/home-dashboards"
 import {
+  homeCall,
   homeCores,
+  homePipelines,
   homeServer,
   homeServerRows,
   panelPath,
   rowPath,
+  SAMPLE_BAND,
   SERVER_GROUPINGS,
 } from "@video-motion/walk/home-dashboards"
 import { jobs } from "@video-motion/walk/jobs"
@@ -582,6 +587,56 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
     expect(cores.stage.kind === "grafana" ? cores.stage.page : "").toMatch(
       /^\/d-solo\/who-dunnit-forensic\/\?.*panelId=32/
     )
+  })
+
+  it("walks the call's rows and the pipelines' graphs for an essay, each screen saying it is sample data (#3476)", () => {
+    const sample = homeServer.sample.parse(HOME_SAMPLE)
+    const call = homeCall.walk(sample)
+    const pipelines = homePipelines.walk(sample)
+    for (const walk of [call, pipelines]) {
+      expect(stepProblems(walk.steps)).toEqual([])
+      expect(walk.stage).toMatchObject({ kind: "grafana", band: SAMPLE_BAND })
+    }
+    expect(
+      call.steps.map((step, i) =>
+        i === 0 && call.stage.kind === "grafana"
+          ? new URL(call.stage.page, "http://g").searchParams.get(ROW_PARAM)
+          : step.action.kind === "visit"
+            ? new URL(step.action.path, "http://g").searchParams.get(ROW_PARAM)
+            : null
+      )
+    ).toEqual([
+      "Each week made into a video",
+      "Rust Rounds essays, the fourth job",
+      "Mock interview essays, the seventh job",
+    ])
+    // Only the Rust Rounds row's longest wait is empty, with nothing waiting.
+    expect(call.stage).toMatchObject({
+      noData: { "Rust Rounds essays, the fourth job": 1 },
+    })
+    expect(pipelines.stage).not.toHaveProperty("noData")
+    expect(
+      pipelines.stage.kind === "grafana" ? pipelines.stage.page : ""
+    ).toMatch(/^\/d-solo\/pipelines\/\?.*panelId=1/)
+    expect(SAMPLE_BAND).toMatch(/sample/i)
+  })
+
+  it("hold SHOW1's dashboard walks to the ones banded as sample data (C1481)", () => {
+    const sample = homeServer.sample.parse(HOME_SAMPLE)
+    const walked = Object.values(dashboards).flatMap((entry) =>
+      typeof entry === "object" && "walk" in entry ? [entry.walk(sample)] : []
+    )
+    for (const walk of walked) expect(walk.stage.kind).toBe("grafana")
+    // Those an essay can show carry the sample band, as Snips Capture walks them.
+    expect(
+      new Set(
+        walked
+          .filter(
+            (w) => w.stage.kind === "grafana" && w.stage.band === SAMPLE_BAND
+          )
+          .map((w) => w.app)
+      )
+    ).toEqual(DASHBOARD_WALKS)
   })
 
   it("a visit stays on the stage: a path from /, never another origin", () => {
