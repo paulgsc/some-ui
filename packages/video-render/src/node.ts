@@ -325,9 +325,8 @@ export async function placeBrandFiles(
     readonly to: string
   }> = []
   const bed = series.music?.bed
-  const ours = await placeOurBed(series, root)
-  if (!ours.ok) return ours
-  if (bed && !ours.value)
+  const ours = bed?.sha256 === MUSIC_BED.sha256
+  if (bed && !ours)
     wanted.push({
       what: "the music bed",
       from: basename(bed.file),
@@ -340,9 +339,8 @@ export async function placeBrandFiles(
       to: kit.file,
     })
   }
-  if (wanted.length === 0)
-    return { ok: true, value: { bed: bed !== undefined, sounds: 0 } }
-  if (brand === undefined) {
+  // Refused before our bed is drawn, which takes seconds.
+  if (wanted.length > 0 && brand === undefined) {
     return {
       ok: false,
       problems: [
@@ -350,6 +348,10 @@ export async function placeBrandFiles(
       ],
     }
   }
+  const placed = await placeOurBed(series, root)
+  if (!placed.ok) return placed
+  if (wanted.length === 0 || brand === undefined)
+    return { ok: true, value: { bed: bed !== undefined, sounds: 0 } }
   const problems: Array<string> = []
   for (const w of wanted) {
     const from = join(brand, w.from)

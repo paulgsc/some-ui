@@ -82,23 +82,31 @@ describe("placing a series' brand files in a video's folder (HYPER4)", () => {
     })
   })
 
-  it("writes our own bed from code, with no brand folder and nothing laid on home (#3476)", async () => {
-    const root = join(base, "video")
-    const placed = await placeBrandFiles(
-      series({
-        music: {
-          bed: { file: "brand/bed.wav", sha256: MUSIC_BED.sha256 },
-          gainDb: -14,
-        },
-        sounds: {},
-      }),
-      undefined,
-      root
-    )
-    expect(placed).toEqual({ ok: true, value: { bed: true, sounds: 0 } })
-    const written = await readFile(join(root, "brand/bed.wav"))
-    expect(createHash("sha256").update(written).digest("hex")).toBe(
-      MUSIC_BED.sha256
-    )
-  })
+  // It draws the whole bed, which takes several seconds on a CI runner
+  // (6.7 s on #3481's): past vitest's 5 s default.
+  it(
+    "writes our own bed from code, with no brand folder and nothing laid on home (#3476)",
+    {
+      timeout: 30_000,
+    },
+    async () => {
+      const root = join(base, "video")
+      const placed = await placeBrandFiles(
+        series({
+          music: {
+            bed: { file: "brand/bed.wav", sha256: MUSIC_BED.sha256 },
+            gainDb: -14,
+          },
+          sounds: {},
+        }),
+        undefined,
+        root
+      )
+      expect(placed).toEqual({ ok: true, value: { bed: true, sounds: 0 } })
+      const written = await readFile(join(root, "brand/bed.wav"))
+      expect(createHash("sha256").update(written).digest("hex")).toBe(
+        MUSIC_BED.sha256
+      )
+    }
+  )
 })
