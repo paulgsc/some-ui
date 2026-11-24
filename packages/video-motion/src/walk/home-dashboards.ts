@@ -358,3 +358,48 @@ export const homePipelines = {
       { band: SAMPLE_BAND }
     ),
 }
+
+/**
+ * The rows an essay reads to ask whether a slow stage is our code or home's
+ * box (the CORES essay): the shared stages and who waits on them; WHO
+ * DUNNIT's CPU row, the host's busy cores against the work waiting for one,
+ * each container against its own cap and how often that cap held it back;
+ * and file_host's metal, each service against its limits. By their titles
+ * in paulgsc/server's `lib/stage-panels.libsonnet`, `processor.jsonnet` and
+ * `dashboard.jsonnet`.
+ */
+const PRESSURE_ROWS: ReadonlyArray<
+  Pick<Grouping, "dashboard" | "row" | "label">
+> = [
+  {
+    dashboard: FILE_HOST,
+    row: "Shared stages: what other work waits on",
+    label: "What other work waits on",
+  },
+  {
+    dashboard: WHO_DUNNIT,
+    row: "CPU — who is using it, and who is waiting",
+    label: "Who is using the CPU, and who waits",
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Metal — what the services cost the host",
+    label: "What the services cost the host",
+  },
+]
+
+/** Whether a slow stage is our code or the box: its rows, a row a screen, for an essay. */
+export const homePressure = {
+  sample: SampleSchema,
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-pressure",
+      PRESSURE_ROWS.map((row) => ({
+        label: row.label,
+        path: rowPath(row, sample),
+      })),
+      sample,
+      ROW_VIEWPORT,
+      { band: SAMPLE_BAND }
+    ),
+}

@@ -38,6 +38,7 @@ import {
   homeCall,
   homeCores,
   homePipelines,
+  homePressure,
   homeServer,
   homeServerRows,
 } from "./walk/home-dashboards"
@@ -81,8 +82,8 @@ const entry =
 
 /**
  * The apps a walk can show. The server's dashboards walk on a throwaway
- * Grafana over sample telemetry (`home-server`, `home-cores`; `home-call`
- * and `home-pipelines` for an essay, #3476). Suspender Ledger walks in the sandbox; Jobs and
+ * Grafana over sample telemetry (`home-server`, `home-cores`; `home-call`,
+ * `home-pipelines` and `home-pressure` for an essay, #3476). Suspender Ledger walks in the sandbox; Jobs and
  * Rust Rounds on the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
@@ -94,6 +95,7 @@ const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["home-cores", entry(homeCores)],
   ["home-call", entry(homeCall)],
   ["home-pipelines", entry(homePipelines)],
+  ["home-pressure", entry(homePressure)],
 ])
 
 /** The series of a vertical whose scenes are compositions, the default. */
