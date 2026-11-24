@@ -27,7 +27,6 @@ import type { SceneTracks, Timeline } from "./timeline.ts"
 import {
   COPY_FACES,
   copyFaceOf,
-  EPISODE_TURN_S,
   num,
   showTimeline,
   tracksOf,
@@ -112,7 +111,7 @@ export const WIDE_MOTION = `(width >= ${String(SHOW_BREAK_PX)}px) and (prefers-r
 function showCss(timeline: Timeline): string {
   const tracks = tracksOf(timeline)
   return `${tracks.map((t) => t.keyframes).join("\n      ")}
-      .show { --show: ${num(timeline.cycleS)}s; --show-start: -${num(EPISODE_TURN_S)}s; }
+      .show { --show: ${num(timeline.cycleS)}s; --show-start: -${num(timeline.openS)}s; }
       @media ${WIDE_MOTION} { ${tracks.map((t) => `.${t.name} { animation-name: ${t.name}; }`).join(" ")} }`
 }
 

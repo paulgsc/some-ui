@@ -7,6 +7,7 @@ import type { ResolvedEpisode, ResolvedFace } from "@/landing/show"
 import {
   copyFaceOf,
   copyScaleAt,
+  copyTurnS,
   EPISODE_TURN_S,
   faceOn,
   HOLD_S,
@@ -50,14 +51,22 @@ describe("showTimeline", () => {
     Number(((s / timeline.cycleS) * 100).toFixed(3))
   // A scene: its title, then 3 s of copy, the turn, the hold.
   const scene = TITLE_S + 114 / STREAM_CPS + TURN_S + HOLD_S
-  const episode = EPISODE_TURN_S + 2 * scene
+  // Three episodes on the copy cube's four faces: the first turn, which
+  // begins the cycle again from the last through the blank face, is two
+  // quarters long, the others one (C1424).
+  const turnOf = (k: number): number => copyTurnS(k, 3)
+  const startOf = (k: number): number =>
+    Array.from({ length: k }, (_, j) => turnOf(j) + 2 * scene).reduce(
+      (a, b) => a + b,
+      0
+    )
 
   it("has each scene's faces up from their turn in until they turn away, the last lingering into the next round (C1422)", () => {
     const scenes = timeline.episodes.flatMap((e) => e.scenes)
     // Every moment of the cycle has exactly two scenes up at most, and
     // the first scene's faces are up once its pair turns in.
     const first = scenes[0]
-    expect(first.on[0]).toBeCloseTo(EPISODE_TURN_S + TITLE_S + 114 / STREAM_CPS)
+    expect(first.on[0]).toBeCloseTo(turnOf(0) + TITLE_S + 114 / STREAM_CPS)
     // A scene is up until the next has turned in over it.
     for (const [k, e] of timeline.episodes.entries()) {
       const [a, b] = e.scenes
@@ -67,25 +76,26 @@ describe("showTimeline", () => {
         k === timeline.episodes.length - 1
           ? timeline.cycleS
           : (timeline.episodes[k + 1]?.start ?? 0)
-      expect(b.on[1]).toBeCloseTo(end + EPISODE_TURN_S / 2)
+      expect(b.on[1]).toBeCloseTo(end + turnOf((k + 1) % 3) / 2)
     }
     const last = scenes.at(-1)
     const on = `${String(last?.on[0])} ${String(last?.on[1])}`
     // The last episode's last faces are up at the cycle's start too.
     expect(faceOn(on, 0.1, timeline.cycleS)).toBe(true)
-    expect(faceOn(on, EPISODE_TURN_S, timeline.cycleS)).toBe(false)
+    expect(faceOn(on, turnOf(0), timeline.cycleS)).toBe(false)
     expect(faceOn(on, timeline.cycleS - 0.1, timeline.cycleS)).toBe(true)
     // A window the page didn't write is never up.
     expect(faceOn("", 1, timeline.cycleS)).toBe(false)
   })
 
   it("plays every episode in turn, in one cycle", () => {
-    expect(timeline.cycleS).toBeCloseTo(3 * episode, 6)
+    expect(timeline.cycleS).toBeCloseTo(startOf(3), 6)
+    expect(timeline.openS).toBe(2 * EPISODE_TURN_S)
   })
 
   it("turns a scene's cubes only once its copy has landed, then types each label", () => {
     const first = timeline.episodes[0]
-    const second = EPISODE_TURN_S + scene
+    const second = turnOf(0) + scene
     const landed = second + TITLE_S + 114 / STREAM_CPS
     const [lineOne, lineTwo] = first.scenes[1].lines
     // Whole outside its scene; wiped from the scene's start; streamed from
@@ -121,11 +131,11 @@ describe("showTimeline", () => {
       const shown = frames(e.pair.keyframes).filter((f) =>
         f.css.startsWith("opacity: 1")
       )
-      const start = k * episode
+      const start = startOf(k)
       for (const f of shown) {
         if (k === 2 && f.at === 0) continue // the last episode fades as the cycle begins again
         expect(f.at).toBeGreaterThanOrEqual(pct(start))
-        expect(f.at).toBeLessThanOrEqual(pct(start + episode))
+        expect(f.at).toBeLessThanOrEqual(pct(startOf(k + 1)))
       }
     })
   })
@@ -135,7 +145,7 @@ describe("showTimeline", () => {
     // Three episodes on faces 0, 1 and 2: the show begins again from past
     // the last, through the blank fourth face (-180 and 180 are one angle).
     expect(copy[0].css).toContain("rotateY(180deg)")
-    expect(copy.find((f) => f.at === pct(EPISODE_TURN_S))?.css).toContain(
+    expect(copy.find((f) => f.at === pct(turnOf(0)))?.css).toContain(
       "rotateY(0deg)"
     )
     expect(copy.map((f) => f.css).join(" ")).toContain("rotateY(-90deg)")
@@ -156,9 +166,30 @@ describe("showTimeline", () => {
     // Every frame of the turn carries its scale; at rest it is whole.
     const copy = frames(timeline.copy.keyframes)
     expect(copy.every((f) => /scale\([\d.]+\)/.test(f.css))).toBe(true)
-    expect(copy.find((f) => f.at === pct(EPISODE_TURN_S))?.css).toContain(
+    expect(copy.find((f) => f.at === pct(turnOf(0)))?.css).toContain(
       "scale(1) rotateY(0deg)"
     )
+  })
+
+  it("turns the copy cube at one speed: a quarter's time a quarter, the wrap through the blank face included", () => {
+    expect([0, 1, 2].map((k) => copyTurnS(k, 3))).toEqual([
+      2 * EPISODE_TURN_S,
+      EPISODE_TURN_S,
+      EPISODE_TURN_S,
+    ])
+    // Two episodes face each other: every turn is two quarters.
+    expect([0, 1].map((k) => copyTurnS(k, 2))).toEqual([
+      2 * EPISODE_TURN_S,
+      2 * EPISODE_TURN_S,
+    ])
+    expect([0, 1, 2, 3].map((k) => copyTurnS(k, 4))).toEqual(
+      Array.from({ length: 4 }, () => EPISODE_TURN_S)
+    )
+    // In the keyframes, the wrap's half way is 90 degrees in, and comes at
+    // a quarter's time.
+    const copy = frames(timeline.copy.keyframes)
+    const half = copy.find((f) => f.at === pct(EPISODE_TURN_S))
+    expect(half?.css).toContain("rotateY(90deg)")
   })
 
   it("puts two episodes on facing faces of the copy cube, and more one after another", () => {
@@ -183,13 +214,13 @@ describe("showTimeline", () => {
     // hidden back takes it away.
     for (const [k, e] of timeline.episodes.entries()) {
       const block = frames(e.scenes[1].block.keyframes)
-      const shownAt = pct(EPISODE_TURN_S + scene + k * episode)
+      const shownAt = pct(startOf(k) + turnOf(k) + scene)
       const shown = block.find((f) => f.at === shownAt)
       expect(shown?.css, `episode ${String(k)}`).toContain("opacity: 1")
       if (k < 2) {
         // Hidden only as the next episode's first scene shows.
         const hidden = block.at(-2)
-        expect(hidden?.at).toBe(pct((k + 1) * episode + EPISODE_TURN_S))
+        expect(hidden?.at).toBe(pct(startOf(k + 1) + turnOf(k + 1)))
         expect(hidden?.css).toContain("opacity: 0")
       } else {
         // The last: shown to the cycle's end, and on through the turn
@@ -197,7 +228,7 @@ describe("showTimeline", () => {
         expect(block.at(-1)).toMatchObject({ at: 100 })
         expect(block.at(-1)?.css).toContain("opacity: 1")
         expect(block[0].css).toContain("opacity: 1")
-        expect(block[1]).toMatchObject({ at: pct(EPISODE_TURN_S) })
+        expect(block[1]).toMatchObject({ at: pct(turnOf(0)) })
         expect(block[1].css).toContain("opacity: 0")
       }
     }
@@ -205,14 +236,14 @@ describe("showTimeline", () => {
 
   it("stands each episode's skeletons from when the last pair has gone until its own turns in over them", () => {
     for (const [k, e] of timeline.episodes.entries()) {
-      const start = k * episode
-      const enters = start + EPISODE_TURN_S + TITLE_S + 114 / STREAM_CPS
+      const start = startOf(k)
+      const enters = start + turnOf(k) + TITLE_S + 114 / STREAM_CPS
       const skeleton = frames(e.skeleton.keyframes)
       const at = (s: number): string =>
         skeleton.find((f) => f.at === pct(s))?.css ?? ""
       // Hidden until the last episode's pair has gone, halfway through
       // the copy block's turn, then in by the turn's end.
-      const lastGone = start + EPISODE_TURN_S / 2
+      const lastGone = start + turnOf(k) / 2
       for (const f of skeleton.filter((f) => f.at < pct(lastGone)))
         expect(f.css, `episode ${String(k)}`).toContain("opacity: 0")
       expect(at(lastGone)).toContain("opacity: 0")
@@ -222,7 +253,7 @@ describe("showTimeline", () => {
           (f) => f.at === pct(lastGone)
         )?.css
       ).toContain("opacity: 0")
-      expect(at(start + EPISODE_TURN_S)).toContain("opacity: 1")
+      expect(at(start + turnOf(k))).toContain("opacity: 1")
       expect(at(enters)).toContain("opacity: 1")
       expect(at(enters + TURN_S)).toContain("opacity: 0")
       // The pair comes into view over them in that same second.
@@ -244,14 +275,14 @@ describe("showTimeline", () => {
     expect(pair[0]).toMatchObject({ at: 0 })
     expect(pair[0].css).toContain("opacity: 1")
     expect(pair[1].css).toContain("opacity: 0")
-    expect(pair[1].at).toBe(pct(EPISODE_TURN_S / 2))
+    expect(pair[1].at).toBe(pct(turnOf(0) / 2))
     // Its cubes go back to their first face once out of view.
     for (const cube of last.cubes) {
       const back = frames(cube.keyframes).find(
         (f) => f.at > 0 && f.css.includes("rotateX(0deg)")
       )
-      expect(back?.at).toBeGreaterThan(pct(EPISODE_TURN_S / 2))
-      expect(back?.at).toBeLessThan(pct(EPISODE_TURN_S))
+      expect(back?.at).toBeGreaterThan(pct(turnOf(0) / 2))
+      expect(back?.at).toBeLessThan(pct(turnOf(0)))
     }
   })
 })

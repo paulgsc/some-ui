@@ -23,7 +23,12 @@ export const TITLE_S = 0.6
 export const TURN_S = 1.2
 /** Seconds a scene holds once its faces are shown. */
 export const HOLD_S = 4
-/** Seconds the copy block takes to turn to the next episode. */
+/**
+ * Seconds the copy block takes to turn a quarter, to the next episode: a
+ * turn of two quarters (three episodes wrapping through the blank face, or
+ * two that face each other) takes twice as long, so every turn runs at one
+ * speed.
+ */
 export const EPISODE_TURN_S = 1.4
 /** Seconds a band's label takes to type in once its face has arrived. */
 const LABEL_S = 0.9
@@ -65,6 +70,8 @@ type EpisodeTracks = {
 export type Timeline = {
   /** The whole show, in seconds: every track's one cycle. */
   readonly cycleS: number
+  /** The copy block's first turn, which the show opens just past. */
+  readonly openS: number
   /** The copy block's turn about Y, an episode a face. */
   readonly copy: Track
   readonly episodes: ReadonlyArray<EpisodeTracks>
@@ -168,6 +175,13 @@ const faceDeg = (face: number): number => (-360 * face) / COPY_FACES
 /** An ease in and out, as CSS's `ease-in-out` draws it near enough. */
 const easeInOut = (t: number): number => t * t * (3 - 2 * t)
 
+/** Seconds the copy block takes to turn to episode `k` of `n`: a quarter's time a quarter. */
+export function copyTurnS(k: number, n: number): number {
+  const from =
+    k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n)
+  return EPISODE_TURN_S * (copyFaceOf(k, n) - from)
+}
+
 /** Samples of a turn per quarter turn: its scale is drawn from them. */
 const COPY_SAMPLES = 8
 
@@ -179,7 +193,8 @@ const COPY_SAMPLES = 8
 function copyTurn(
   from: number,
   to: number,
-  start: number
+  start: number,
+  seconds: number
 ): ReadonlyArray<Point> {
   const a = faceDeg(from)
   const b = faceDeg(to)
@@ -187,7 +202,7 @@ function copyTurn(
   return Array.from({ length: steps + 1 }, (_, i) => {
     const t = i / steps
     return {
-      at: start + t * EPISODE_TURN_S,
+      at: start + t * seconds,
       css: copyAt(a + (b - a) * easeInOut(t)),
       ...(i < steps ? { ease: "linear" } : {}),
     }
@@ -216,13 +231,17 @@ export function showTimeline(
   }
   type EpisodeTimes = {
     readonly start: number
+    /** The copy block's turn to the episode, in seconds. */
+    readonly turn: number
     readonly scenes: ReadonlyArray<SceneTimes>
     readonly end: number
   }
+  const n = episodes.length
   let at = 0
-  const times: Array<EpisodeTimes> = episodes.map((episode) => {
+  const times: Array<EpisodeTimes> = episodes.map((episode, k) => {
     const start = at
-    at += EPISODE_TURN_S
+    const turn = copyTurnS(k, n)
+    at += turn
     const scenes = episode.scenes.map((scene): SceneTimes => {
       const sceneStart = at
       let cursor = sceneStart + TITLE_S
@@ -235,10 +254,9 @@ export function showTimeline(
       at = arrive + HOLD_S
       return { start: sceneStart, lines, arrive, end: at }
     })
-    return { start, scenes, end: at }
+    return { start, turn, scenes, end: at }
   })
   const cycleS = at
-  const n = episodes.length
 
   const copyName = name()
   const copy: Track = {
@@ -252,7 +270,8 @@ export function showTimeline(
         copyTurn(
           k === 0 ? copyFaceOf(n - 1, n) - COPY_FACES : copyFaceOf(k - 1, n),
           copyFaceOf(k, n),
-          e.start
+          e.start,
+          e.turn
         )
       )
     ),
@@ -265,7 +284,10 @@ export function showTimeline(
     // episode's copy turns in: the last episode's, as the cycle begins again.
     const enters = first === undefined ? e.start : first.arrive - TURN_S
     const isLast = k === n - 1
-    const gone = EPISODE_TURN_S / 2
+    // The next episode's turn takes this pair away, half way through; the
+    // first episode's, as the cycle begins again, the last pair.
+    const leave = times[(k + 1) % n]?.turn ?? EPISODE_TURN_S
+    const gone = leave / 2
     const leaving: ReadonlyArray<Point> = isLast
       ? [
           { at: 0, css: SHOWN, ease: "ease-in" },
@@ -295,8 +317,8 @@ export function showTimeline(
       name: skeletonName,
       keyframes: keyframes(skeletonName, cycleS, [
         { at: 0, css: HIDDEN },
-        { at: e.start + gone, css: HIDDEN, ease: "ease-out" },
-        { at: e.start + EPISODE_TURN_S, css: SHOWN },
+        { at: e.start + e.turn / 2, css: HIDDEN, ease: "ease-out" },
+        { at: e.start + e.turn, css: SHOWN },
         { at: enters, css: SHOWN, ease: "ease-in" },
         { at: enters + TURN_S, css: HIDDEN },
       ]),
@@ -338,7 +360,7 @@ export function showTimeline(
       // cycle again.
       const isLastScene = i === e.scenes.length - 1
       const wraps = isLast && isLastScene
-      const following = e.scenes.at(i + 1)?.start ?? e.end + EPISODE_TURN_S
+      const following = e.scenes.at(i + 1)?.start ?? e.end + leave
       const blockName = name()
       const titleName = name()
       const scene = episodes.at(k)?.scenes.at(i)
@@ -373,7 +395,7 @@ export function showTimeline(
             ...(wraps
               ? [
                   { at: 0, css: SHOWN },
-                  { at: EPISODE_TURN_S, css: HIDDEN },
+                  { at: leave, css: HIDDEN },
                 ]
               : [{ at: 0, css: HIDDEN }]),
             { at: s.start, css: SHOWN },
@@ -410,7 +432,12 @@ export function showTimeline(
     })
     return { start: e.start, skeleton, pair, cubes, scenes }
   })
-  return { cycleS, copy, episodes: episodeTracks }
+  return {
+    cycleS,
+    openS: times[0]?.turn ?? EPISODE_TURN_S,
+    copy,
+    episodes: episodeTracks,
+  }
 }
 
 /** Every track of a timeline, in order. */
