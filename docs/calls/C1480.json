@@ -1,0 +1,24 @@
+{
+  "id": "C1480",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/bookends.ts",
+    "packages/video-render/src/series.ts",
+    "packages/video-render/src/node.ts",
+    "packages/video-render/src/resolve.ts",
+    "packages/video-render/src/cards-essay.ts",
+    "packages/video-render/src/sample/series/cheat-sheet/v6.json",
+    "packages/video-render/CARDS-ROUTINE.md"
+  ],
+  "chose": "Every video's bookends are one family, {intro, outro, bed}, held per series as policy in code (bookends.ts), all on unless the series names what it leaves out and why; never per video. The intro and outro show the brand's own open and close, the composition brand-v1 the templates already draw (the app's mark, moving in or out), in the series' theme, 3 s each, with nothing written or chosen per video (C1025, C1026), as C1028 holds the thumbnail to one deterministic template. The bed is our synthesised one (music-bed.ts), written by code wherever a video is rendered, so home needs nothing laid in brand/ and the owner does nothing. A series naming a bed plays it under every look, the plain one included. The cards essays' series gains version 6 with all three; cards-check refuses the newest day's essays in an older version or turning the bed off. Opted out, with their reasons: the Build Journal short (Soundbites pins its version 1, with no composition), long-episode (a test fixture), and video-motion's vertical, whose promos and walkthroughs open and close on their own compositions and play muted behind the landing's words. Every series must be in the policy, so a new one carries all three unless it is opted out.",
+  "options": [
+    "one family per series as policy in code, defaults on, checked at the newest versions and at publish (chosen)",
+    "apply the defaults at render time to every version: re-renders an already pinned video differently, breaking the series' never-edited versions",
+    "a field on each video's cut list: a per-video opt-out, which the owner ruled out",
+    "a new intro design for videos without a template: a second brand open beside brand-v1"
+  ],
+  "gray": "What the intro and outro show, how long, and where the default lives are the owner's to see on every video; #3476 says only that they carry the brand and default on, and no check or earlier call settles the shape.",
+  "undo": "Record a call that moves this one: add an opt-out to BOOKEND_OPT_OUTS for a series, or a new series version whose intro or outro names another composition.",
+  "refs": ["#3476", "#2980"]
+}
