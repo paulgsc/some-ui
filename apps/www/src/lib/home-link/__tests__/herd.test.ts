@@ -24,7 +24,8 @@
  *   than a slow phone's runs; the page reopened before home's bucket
  *   refilled (`pace.test.ts`); the wall clock frozen, set back or jumped
  *   forward, within a page (`link-clock.test.ts`) and between page loads
- *   (`pace.test.ts`).
+ *   (`pace.test.ts`); the page's own clock stopped while the wall clock
+ *   moves on (a phone asleep, `link-clock.test.ts`).
  * - _Proof:_ this file, over the real link, lanes, watches, pull and pace
  *   against home's GCRA limiter on a fake clock; `pace.test.ts` for the
  *   burst, the `429`'s spend and the pace kept across page loads, on any
@@ -36,9 +37,9 @@
  * - _Tolerance:_ the pace learns home's limit only from its `429`, so the
  *   first burst against a home whose limit is under `BURST` is refused in
  *   part, once a day at most; a store that refuses the pace's record starts
- *   it whole on the next page load; a wall clock that jumped forward
- *   between page loads refills the pace as if that time had passed, at most
- *   `BURST`, which home's `429` then paces; requests outside this phone's
+ *   it whole on the next page load; a wall clock that jumped forward, in a
+ *   page or between page loads, refills the pace as if that time had
+ *   passed, at most `BURST`, which home's `429` then paces; requests outside this phone's
  *   app (its Chrome on home's pages) share home's bucket and are not paced
  *   here.
  */

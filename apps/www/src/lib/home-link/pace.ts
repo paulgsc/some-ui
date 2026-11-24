@@ -19,14 +19,17 @@
  * closing and opening the app does not hand it a whole burst again: home's
  * bucket did not refill because the app restarted.
  *
- * Its waits are measured on a clock that only moves forward (`since`, the
- * page's own), never the wall clock (#3491): a wall clock frozen (Snips
- * Capture's page, at FROZEN_AT) refilled nothing, so the drain waited on its
- * turn for good and every read waiting behind the link with it; one set
- * back emptied the bucket until it caught up. The wall clock only dates what
- * is kept across loads, where a page's own clock starts again: a record
- * kept "later" than now reads as kept now, and a clock that jumped forward
- * between loads refills at most `BURST`, which home's `429` then paces.
+ * Its waits are measured on two clocks, and the longer counts (#3491): the
+ * page's own (`since`), which only moves forward, and the wall clock. On the
+ * wall clock alone, one frozen (Snips Capture's page, at FROZEN_AT) refilled
+ * nothing, so the drain waited on its turn for good and every read waiting
+ * behind the link with it, and one set back emptied the bucket until it
+ * caught up; on the page's own alone, a phone asleep would refill nothing,
+ * since that clock stops while home's bucket refills. The wall clock alone
+ * dates what is kept across loads, where a page's own clock starts again: a
+ * record kept "later" than now reads as kept now. A wall clock that jumped
+ * forward, in a page or between loads, refills at most `BURST`, which
+ * home's `429` then paces.
  *
  * The person's turns (`urgent`) go ahead of the drain's. So the drain waits
  * while the person's requests keep coming faster than one each 2 s (a long
@@ -125,8 +128,18 @@ export function createPace(
     kept === null
       ? BURST
       : Math.min(most(every()), kept.turns + (clock.now() - kept.at) / every())
-  /** When `turns` was last counted, on `since`. */
+  /** When `turns` was last counted, on `since` and on the wall clock. */
   let at = since()
+  let atWall = clock.now()
+  /** How long since `turns` was last counted: the longer of the two clocks. */
+  const recount = (): number => {
+    const own = since()
+    const wall = clock.now()
+    const waited = Math.max(0, own - at, wall - atWall)
+    at = own
+    atWall = wall
+    return waited
+  }
   const keep = (): void => {
     const dated = { turns, at: clock.now() }
     memory?.write(learned === null ? dated : { ...dated, learned })
@@ -136,10 +149,8 @@ export function createPace(
   let waking = false
 
   const serve = (): void => {
-    const now = since()
     const ms = every()
-    turns = Math.min(most(ms), turns + Math.max(0, now - at) / ms)
-    at = now
+    turns = Math.min(most(ms), turns + recount() / ms)
     while (turns >= 1) {
       const next = urgent.shift() ?? queued.shift()
       if (next === undefined) return
@@ -163,7 +174,7 @@ export function createPace(
       }),
     spend: (waitMs): void => {
       turns = 0
-      at = since()
+      recount()
       // A wait shorter than `MS_PER_REQUEST` is home's bucket emptied by
       // a burst (this phone's, or another on its address), not a refill
       // slower than the pace: nothing to learn.

@@ -1,8 +1,9 @@
 /**
  * HERD1 over the clocks a page can have (#3491): the real link, whose
  * every request takes the pace's turn, on a wall clock that stands still
- * (Snips Capture's page, at FROZEN_AT), is set back or jumps forward, while
- * the page's own clock (`since`) moves on. `pace.test.ts` holds the pace
+ * (Snips Capture's page, at FROZEN_AT) or is set back while the page's own
+ * clock (`since`) moves on, and on a wall clock that moves on while the
+ * page's own stands still (a phone asleep, or the wall clock jumped). `pace.test.ts` holds the pace
  * itself across page loads.
  */
 import type { FakeClock } from "@/test-support/fake-clock"
@@ -57,6 +58,7 @@ describe("the link's requests pace on the page's own clock, whatever its wall cl
     ["stands still", (): (() => number) => () => 1_793_611_800_000],
     [
       "is set back an hour once the burst is spent",
+      // Back an hour from the first pace on, once the burst has gone.
       (clock: FakeClock): (() => number) =>
         () =>
           clock.now() >= 1 ? clock.now() - 3_600_000 : clock.now(),
@@ -77,24 +79,20 @@ describe("the link's requests pace on the page's own clock, whatever its wall cl
     })
   }
 
-  it("hands no second burst when the wall clock jumps forward within the page", async () => {
+  it("refills by the wall clock while the page's own stood still (a phone asleep), at most the burst", async () => {
     const clock = fakeClock()
-    let jumped = 0
-    const home = await linkOn(clock, () => clock.now() + jumped)
-    const first = asks(home.link, BURST)
-    await settle()
+    // The page's own clock stops while the phone sleeps; the wall clock goes
+    // on, and so does home's bucket. A wall clock jumped forward looks alike.
+    let slept = 0
+    const home = await linkOn(clock, () => clock.now() + slept)
+    await asks(home.link, BURST)
     expect(home.reached()).toBe(BURST)
-    await first
-    jumped = 24 * 3_600_000
-    const after = asks(home.link, 3)
+    slept = 3_600_000
+    void asks(home.link, BURST + 1)
     await settle()
-    expect(home.reached()).toBe(BURST)
+    expect(home.reached()).toBe(2 * BURST)
     clock.pass(MS_PER_REQUEST)
     await settle()
-    expect(home.reached()).toBe(BURST + 1)
-    clock.pass(2 * MS_PER_REQUEST)
-    await settle()
-    await after
-    expect(home.reached()).toBe(BURST + 3)
+    expect(home.reached()).toBe(2 * BURST + 1)
   })
 })
