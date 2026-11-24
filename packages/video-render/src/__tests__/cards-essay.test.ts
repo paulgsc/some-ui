@@ -111,7 +111,7 @@ describe("a cards essay", () => {
       "plays cues",
       "background is an image",
       "captions",
-      "only a walkthrough plays",
+      "an essay plays a walk as a screen scene",
     ])
       expect(problems).toContain(reason)
   })

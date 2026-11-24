@@ -33,7 +33,10 @@ if (!from || !out || !commit || !run) {
 const apps = existsSync(from)
   ? readdirSync(from).filter((app) => existsSync(join(from, app, "walk.json")))
   : []
-if (apps.length === 0) console.log("no walk was made; no walks bundle")
+if (apps.length === 0)
+  console.log(
+    "::notice::No walk was made in this run, so there is no walks bundle."
+  )
 else await bundle(apps)
 
 async function bundle(apps: ReadonlyArray<string>): Promise<void> {

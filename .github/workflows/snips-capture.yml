@@ -135,8 +135,9 @@ jobs:
           retention-days: 1
       # Retention: the walks (WALK1, apps/mobile/walk), each app's snips and
       # walk.json for `motion promo` and the walkthrough, and a failed walk's
-      # failed.png. Read by a person right after the run; a later look, or a
-      # render a day on, is a dispatch away, the walk being on sample data.
+      # failed.png. Read by this run's bundle and apk-clip jobs, and by a
+      # person right after the run; a later look, or a render a day on, is a
+      # dispatch away, the walk being on sample data.
       - name: Upload the walks
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -187,9 +188,23 @@ jobs:
             echo "| --- | --- | --- |"
             jq -r '.unreached[] | "| \(.surface) | `\(.route)` | \(.why) |"' snips-bundle/manifest.json
           } >> "$GITHUB_STEP_SUMMARY"
+      # Retention: one day, the repo's default. Home picks the bundle up after
+      # the run (SNIPS2), so the newest one is kept for that day (keep 1 in
+      # packages/eslint/src/retention.ts) rather than swept at once. A bundle
+      # home missed is a re-run away: the workflow is deterministic, so the
+      # same commit gives the same snips and ids.
+      - name: Upload the bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snips-bundle-${{ github.sha }}
+          path: snips-bundle
+          if-no-files-found: error
+          retention-days: 1
       # The APK's walks, as a bundle home fetches for an essay that plays one
       # (#3476, docs/snips.md "How walks reach home"): none when no walk was
-      # made, so the download takes a pattern, which finds none quietly.
+      # made, so the download takes a pattern, which finds none quietly. After
+      # the snips' bundle is uploaded, so a walk that fails its check never
+      # keeps the snips from home.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: walks-${{ github.run_id }}
@@ -217,18 +232,6 @@ jobs:
           name: walks-bundle-${{ github.run_id }}
           path: walks-bundle
           if-no-files-found: ignore
-          retention-days: 1
-      # Retention: one day, the repo's default. Home picks the bundle up after
-      # the run (SNIPS2), so the newest one is kept for that day (keep 1 in
-      # packages/eslint/src/retention.ts) rather than swept at once. A bundle
-      # home missed is a re-run away: the workflow is deterministic, so the
-      # same commit gives the same snips and ids.
-      - name: Upload the bundle
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: snips-bundle-${{ github.sha }}
-          path: snips-bundle
-          if-no-files-found: error
           retention-days: 1
 
   apk-clip:

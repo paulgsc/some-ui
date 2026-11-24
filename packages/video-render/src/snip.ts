@@ -317,13 +317,14 @@ export type Handed = {
 
 /**
  * The cut list with each screen scene drawn from what home handed, the
- * snips' pictures under `snips/`, the clip frames under `clips/` and the
- * pages under `pages/` in the video's folder, by the screen-zoom composition in `look` (`./zoom`): a scene with no parts named holds the whole screen above the
+ * snips' pictures under `snips/`, the clip frames under `clips/`, the
+ * pages under `pages/` and the walks' steps under `walks/` in the video's folder, by the screen-zoom composition in `look` (`./zoom`): a scene with no parts named holds the whole screen above the
  * frame's foot, where the captions draw (`wholePicture`); a snip given parts
  * zooms to them in turn, as does a page. Refused, with each reason, when a
  * scene names a screen home did not hand, a snip from another commit than
- * home's bundle, a page whose record is of another address or moment, or a
- * part its snip or page doesn't name.
+ * home's bundle, a page whose record is of another address or moment, a
+ * part its snip or page doesn't name, or steps its walk doesn't have. A walk
+ * scene plays its steps in turn (`walkPicture`).
  */
 export function resolveScreens(
   cut: CutList,

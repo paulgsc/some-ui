@@ -1,6 +1,6 @@
 /**
  * SN1: snips-capture.yml's bundle job names, in a build step's `run:` before
- * the step that runs its script, every workspace package the script and the
+ * the step that runs its script, every workspace package each script (`snips-bundle.ts`, `walks-bundle.ts`) and the
  * `@/lib` modules it imports import. The test reads the workflow's text; it
  * does not run a build. A fresh checkout has no `dist/`, and
  * tsx resolves `@some-ui/*` through it: the first dispatch on main (run
@@ -43,33 +43,34 @@ function bundleJob(workflow: string): string {
   return next < 0 ? rest : rest.slice(0, next + 1)
 }
 
-describe("the bundle job builds what its script imports (SN1)", () => {
-  it("names every workspace package in its build step, before the script", () => {
-    const script = readFileSync(join(WWW, "scripts/snips-bundle.ts"), "utf8")
-    const imports = new Set([
-      ...workspaceImports(script),
-      ...libModules(script).flatMap((file) =>
-        workspaceImports(readFileSync(file, "utf8"))
-      ),
-    ])
-    expect(imports.size).toBeGreaterThan(0)
-    // Comments dropped, whole-line or trailing: a package named only in one
-    // builds nothing.
-    const job = bundleJob(
-      readFileSync(join(REPO, ".github/workflows/snips-capture.yml"), "utf8")
-    )
-      .split("\n")
-      .map((line) => line.replace(/(^|\s)#.*$/, ""))
-      .join("\n")
-    const runs = job.indexOf("tsx scripts/snips-bundle.ts")
-    expect(runs).toBeGreaterThan(0)
-    for (const name of imports) {
-      // The whole name: `@some-ui/core` is not built by `@some-ui/core-utils`.
-      const built = job.search(new RegExp(`--filter=${name}(?=\\s|$)`, "m"))
-      expect(built, `${name} is built in the bundle job`).toBeGreaterThan(0)
-      expect(built, `${name} is built before the script runs`).toBeLessThan(
-        runs
+describe("the bundle job builds what its scripts import (SN1)", () => {
+  it.each(["snips-bundle.ts", "walks-bundle.ts"])(
+    "names every workspace package %s imports in its build step, before the script",
+    (name) => {
+      const script = readFileSync(join(WWW, "scripts", name), "utf8")
+      const imports = new Set([
+        ...workspaceImports(script),
+        ...libModules(script).flatMap((file) =>
+          workspaceImports(readFileSync(file, "utf8"))
+        ),
+      ])
+      expect(imports.size).toBeGreaterThan(0)
+      // Comments dropped, whole-line or trailing: a package named only in one
+      // builds nothing.
+      const job = bundleJob(
+        readFileSync(join(REPO, ".github/workflows/snips-capture.yml"), "utf8")
       )
+        .split("\n")
+        .map((line) => line.replace(/(^|\s)#.*$/, ""))
+        .join("\n")
+      const runs = job.indexOf(`tsx scripts/${name}`)
+      expect(runs).toBeGreaterThan(0)
+      for (const pkg of imports) {
+        // The whole name: `@some-ui/core` is not built by `@some-ui/core-utils`.
+        const built = job.search(new RegExp(`--filter=${pkg}(?=\\s|$)`, "m"))
+        expect(built, `${pkg} is built in the bundle job`).toBeGreaterThan(0)
+        expect(built, `${pkg} is built before ${name} runs`).toBeLessThan(runs)
+      }
     }
-  })
+  )
 })

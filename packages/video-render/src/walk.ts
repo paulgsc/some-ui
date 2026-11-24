@@ -18,11 +18,11 @@
 
 import { z } from "zod"
 
+import { WALK_SCHEMA } from "./clip"
 import type { Parsed } from "./cut-list"
 import { problemsOf } from "./cut-list"
 import { COMMIT as COMMIT_HEX, RUN_ID, WALK_APP } from "./snip-id"
 
-export const WALK_FILE_SCHEMA = "some-ui.walk/1"
 export const WALKS_SCHEMA = "some-ui.walks/1"
 export const WALKS_GIVEN_SCHEMA = "some-ui.walks-given/1"
 
@@ -31,7 +31,7 @@ const STEP_FILE = /^snips\/\d{2,3}\.png$/
 
 /** What a walk leaves beside its snips, as `walk.json` (`some-ui.walk/1`). */
 export const WalkFileSchema = z.strictObject({
-  schema: z.literal(WALK_FILE_SCHEMA),
+  schema: z.literal(WALK_SCHEMA),
   app: z.string().min(1),
   version: z.string().min(1),
   viewport: z.strictObject({

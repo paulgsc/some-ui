@@ -114,6 +114,8 @@ describe("a run's walks (#3476)", () => {
       taps: [{ label: "The academy", atMs: 2800, x: 206, y: 640 }],
       lengthMs: 5800,
     })
+    // The last part runs to the walk's end.
+    expect(walkSlice(WALK, 2, 3).lengthMs).toBe(2600)
   })
 })
 
@@ -191,9 +193,18 @@ describe("a walk scene in a cards essay (#3476)", () => {
     ])
   })
 
-  it("refuses steps out of order in the cut list itself", async () => {
+  it("refuses steps out of order, a run that isn't one and an app that isn't a slug, in the cut list itself", async () => {
     await expect(
       playing({ from: "walks", run: RUN, app: "rust-rounds", steps: [3, 2] })
     ).rejects.toThrow(/its first step comes before its last/)
+    await expect(
+      playing({ from: "walks", run: "run-1", app: "rust-rounds" })
+    ).rejects.toThrow()
+    await expect(
+      playing({ from: "walks", run: RUN, app: "Rust Rounds" })
+    ).rejects.toThrow()
+    await expect(
+      playing({ from: "walks", run: RUN, app: "rust-rounds", steps: [0, 2] })
+    ).rejects.toThrow()
   })
 })

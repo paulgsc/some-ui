@@ -208,10 +208,17 @@
 
       // A walk, played on the screen held whole: each step's picture over
       // the one before from its time, the walk's timeline at `pace` scene
-      // seconds to a walk second, and a ring opening on each tap.
+      // seconds to a walk second, and a ring opening on each tap. Fitted to
+      // the scene, but never faster than twice the walk's own speed (C1427):
+      // a part longer than that ends with the scene, so a scene names the
+      // steps its words have time for.
       if (vars.walk !== "") {
         const walk = JSON.parse(vars.walk)
-        const pace = walk.lengthMs > 0 ? L / (walk.lengthMs / 1000) : 1
+        const pace =
+          walk.lengthMs > 0 ? Math.max(L / (walk.lengthMs / 1000), 0.5) : 1
+        // A ring's open and fade shrink with a fast pace, so it closes on
+        // the screen it was tapped on.
+        const ring = Math.min(pace, 1)
         const at = (ms) => (ms / 1000) * pace
         walk.frames.forEach((frame, i) => {
           if (i === 0) {
@@ -244,9 +251,9 @@
           })
           const t = at(tap.atMs)
           track(dot, [
-            [t - 0.12, { opacity: 0, scale: 0.6 }, "out"],
+            [t - 0.12 * ring, { opacity: 0, scale: 0.6 }, "out"],
             [t, { opacity: 0.95, scale: 1 }, "linear"],
-            [t + 0.35, { opacity: 0, scale: 1.3 }],
+            [t + 0.35 * ring, { opacity: 0, scale: 1.3 }],
           ])
         })
       }

@@ -115,7 +115,8 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     ttlDays: 1,
   },
   // The APK's walks (WALK1, apps/mobile/walk), after the snips in the same
-  // job: read by a person right after the run; nothing kept.
+  // job: read by this run's bundle and apk-clip jobs and by a person right
+  // after the run; nothing kept across runs.
   {
     kind: "artifact",
     name: "walks-${{ github.run_id }}",

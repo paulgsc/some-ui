@@ -4,7 +4,6 @@ import {
   FRICTION_SCHEMA,
   frictionOf,
   parseCutList,
-  walkSlice,
 } from "@some-ui/video-render"
 import type { StillTake } from "@some-ui/video-render"
 import type { WalkFile } from "@video-motion/walk/run"
@@ -104,19 +103,6 @@ describe("the walkthrough (WALK4)", () => {
       "chapter 2 starts after the one before",
       "chapter 3 starts past the walk's last screen",
     ])
-  })
-
-  it("cuts a stop's screens and taps onto its own timeline", () => {
-    const slice = walkSlice(walkOf(5), 2, 4)
-    expect(slice.snips.map((s) => [s.file, s.atMs])).toEqual([
-      ["snips/03.png", 0],
-      ["snips/04.png", 2000],
-    ])
-    // A tap stays with the screen it lands on: the one into screen 3 is the
-    // last stop's, and this stop's last tap leads into the next one.
-    expect(slice.taps.map((t) => t.atMs)).toEqual([1600, 3600])
-    expect(slice.lengthMs).toBe(4000)
-    expect(walkSlice(walkOf(5), 4, 5).lengthMs).toBe(2000)
   })
 
   it("is the promo's scenes with a card before each stop", () => {

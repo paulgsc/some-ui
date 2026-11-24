@@ -479,11 +479,17 @@ async function handedScreens(
             problems.push(`${path} is not the picture its record names`)
           else {
             // Taps land in the walk's viewport: a picture of another shape
-            // would put them off its controls.
+            // would put them off its controls, and one that isn't a PNG
+            // draws nothing.
             const size = pngSize(bytes)
-            const wide = size === null ? 0 : size.width / walk.viewport.width
-            const tall = size === null ? 0 : size.height / walk.viewport.height
-            if (Math.abs(wide - tall) > 0.02)
+            if (size === null) problems.push(`${path} isn't a PNG`)
+            else if (
+              Math.abs(
+                size.width / walk.viewport.width -
+                  size.height / walk.viewport.height
+              ) >
+              0.02 * (size.width / walk.viewport.width)
+            )
               problems.push(`${path} isn't the shape its walk's screen is`)
           }
         }

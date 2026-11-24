@@ -194,7 +194,7 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
       .filter((s) => s.spoken?.role === "walk")
       .map(
         (s) =>
-          `${s.id}: it narrates a walk's stop, which only a walkthrough plays`
+          `${s.id}: it narrates a walkthrough's stop: an essay plays a walk as a screen scene (from: "walks")`
       ),
     ...shots
       .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
