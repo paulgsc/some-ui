@@ -1,0 +1,20 @@
+{
+  "id": "C1481",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "packages/video-motion/src/walk/home-dashboards.ts",
+    "packages/video-motion/src/walk/dashboard-telemetry.ts",
+    "packages/video-motion/src/walk/stage-grafana.ts",
+    "packages/video-motion/scripts/dashboards-on-sample.sh"
+  ],
+  "chose": "A dashboard an essay shows is a walk of the Grafana stage on the sample week: a member of the walks family an essay already plays (#3486, `from: \"walks\"`), never a `from: \"dashboards\"` screen source of its own, which would have been a second copy of the walk's capture, record and delivery. The essay walks are `home-call` (the CALL dashboard's rows for each week made into a video, the Rust Rounds essays and the mock interview essays) and `home-pipelines` (the PIPELINES graphs, all green with no alert in the sample). The sample week gains the gauges those rows read, telling one story: the call rendered on Sunday, last week's essays on Monday, and this Monday's essays still waiting for their deadline with nothing refused, failed or failing. Every screen of those two walks carries a band, \"Sample data: a made-up week, not home's\", so a pictured overdue Monday never reads as home's state; the landing's walks are drawn as before.",
+  "options": [
+    "a dashboard is a walk of the Grafana stage, a member of the walks family (chosen)",
+    "a `from: \"dashboards\"` screen source with its own record, capture workflow and bundle",
+    "photograph dashboards through the public pages capture"
+  ],
+  "gray": "What an essay's dashboards show, the made-up Monday they tell, and the words over them are on every essay that shows one; the issue named a dashboards source, and no check settles whether it is its own member or a walk.",
+  "undo": "Record a call that moves this one; drop `home-call` and `home-pipelines` from home-dashboards.ts and the essay's gauges from dashboard-telemetry.ts.",
+  "refs": ["#3476", "#2980"]
+}

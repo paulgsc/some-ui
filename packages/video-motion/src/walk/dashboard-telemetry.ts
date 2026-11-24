@@ -92,6 +92,24 @@ const ESPN_DOWN = ["2026-11-10T09:00:00Z", "2026-11-10T09:50:00Z"] as const
 /** The mailbox Worker misses a few answers late on the last evening. */
 const MAILBOX_SLOW = ["2026-11-15T22:00:00Z", "2026-11-15T22:20:00Z"] as const
 
+/**
+ * The weeks home makes into videos (CALL's rows; the "it didn't run" essay,
+ * #3476): the weekly call is given and rendered on Sunday evening, last
+ * week's Rust Rounds and mock interview essays on Monday morning, and this
+ * week's of each is held from midweek and still waiting for its deadline as
+ * the window ends, on a Monday, with nothing refused, failed or failing.
+ * Each is one job's turn, `[given, rendered]`, and the moment this week's
+ * essay was held.
+ */
+const CALL_RENDER = ["2026-11-15T17:05:00Z", "2026-11-15T17:45:00Z"] as const
+const RUST_RENDER = ["2026-11-09T06:00:00Z", "2026-11-09T06:40:00Z"] as const
+const RUST_HELD = "2026-11-10T12:00:00Z"
+const INTERVIEW_RENDER = [
+  "2026-11-09T07:00:00Z",
+  "2026-11-09T07:30:00Z",
+] as const
+const INTERVIEW_HELD = "2026-11-11T09:00:00Z"
+
 /** The hour of the UTC day `t` falls in, with its fraction. */
 const hourOf = (t: number): number => (((t % DAY_S) + DAY_S) % DAY_S) / HOUR_S
 
@@ -812,8 +830,77 @@ function allSeries(): ReadonlyArray<Series> {
       )
     ),
     counter("node_pressure_cpu_waiting_seconds_total", {}, waiting),
+    ...weekJobs(),
   ]
   return series
+}
+
+/**
+ * The gauges CALL's rows read for the jobs that make weeks into videos
+ * (paulgsc/server `metrics/call_weeks.rs`, `metrics/rust_essays.rs`): each
+ * job's worker passes every minute and home's keeper every five, so every
+ * "since" stat is fresh, and only the essays waiting for their deadline say
+ * this Monday's are not made yet.
+ */
+function weekJobs(): ReadonlyArray<Series> {
+  const minute = (t: number): number => t - (((t % 60) + 60) % 60)
+  const fiveMinutes = (t: number): number => t - (((t % 300) + 300) % 300)
+  const zero = (): number => 0
+  /** One job's turn: given once, waiting for its video until rendered. */
+  type Turn = Readonly<
+    Record<"given" | "waiting" | "taken", (t: number) => number>
+  >
+  const turn = ([given, rendered]: readonly [string, string]): Turn => ({
+    given: (t: number): number => (t >= at(given) ? 1 : 0),
+    waiting: (t: number): number => (within(t, [given, rendered]) ? 1 : 0),
+    taken: (t: number): number =>
+      within(t, [given, rendered]) ? at(given) : 0,
+  })
+  const call = turn(CALL_RENDER)
+  const rust = turn(RUST_RENDER)
+  const interview = turn(INTERVIEW_RENDER)
+  const held =
+    (from: string) =>
+    (t: number): number =>
+      t >= at(from) ? 1 : 0
+  return [
+    gauge("call_weeks_held", {}, (t) => 1 + call.given(t)),
+    gauge("call_weeks_last_attempt_timestamp_seconds", {}, fiveMinutes),
+    gauge("call_weeks_pass_failing", {}, zero),
+    gauge("call_render_weeks_waiting", {}, call.waiting),
+    gauge("call_render_weeks_failed", {}, zero),
+    gauge("call_render_weeks_let_go", {}, zero),
+    gauge("call_render_oldest_waiting_taken_timestamp_seconds", {}, call.taken),
+    gauge("call_render_worker_last_pass_timestamp_seconds", {}, minute),
+    gauge("rust_essays_waiting_for_deadline", {}, held(RUST_HELD)),
+    gauge("rust_essays_refused", {}, zero),
+    gauge("rust_essays_pass_failing", {}, zero),
+    gauge("rust_essay_render_given", {}, rust.given),
+    gauge("rust_essay_render_waiting", {}, rust.waiting),
+    gauge("rust_essay_render_failed", {}, zero),
+    gauge(
+      "rust_essay_render_oldest_waiting_taken_timestamp_seconds",
+      {},
+      rust.taken
+    ),
+    gauge("rust_essay_render_worker_last_pass_timestamp_seconds", {}, minute),
+    gauge("interview_essays_waiting_for_deadline", {}, held(INTERVIEW_HELD)),
+    gauge("interview_essays_refused", {}, zero),
+    gauge("interview_essays_pass_failing", {}, zero),
+    gauge("interview_essay_render_given", {}, interview.given),
+    gauge("interview_essay_render_waiting", {}, interview.waiting),
+    gauge("interview_essay_render_failed", {}, zero),
+    gauge(
+      "interview_essay_render_oldest_waiting_taken_timestamp_seconds",
+      {},
+      interview.taken
+    ),
+    gauge(
+      "interview_essay_render_worker_last_pass_timestamp_seconds",
+      {},
+      minute
+    ),
+  ]
 }
 
 /** Every instant the telemetry holds, in order. */

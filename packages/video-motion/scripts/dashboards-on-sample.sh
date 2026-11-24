@@ -4,20 +4,26 @@
 # image its release pins, as server CI's "Build the dashboards as home does"
 # step runs it; served by a throwaway Grafana over a throwaway Prometheus that
 # holds one week of sample telemetry (src/walk/dashboard-telemetry.ts); walked
-# (`home-server`, `home-cores`). Grafana and Prometheus are the images the same
+# (`home-server`, `home-cores`, and `home-call` and `home-pipelines` for an
+# essay, #3476). Grafana and Prometheus are the images the same
 # release pins. Nothing reaches home, and no key is used: Grafana lets an
 # anonymous Viewer read, and is reachable only from this machine.
 #
-#   scripts/dashboards-on-sample.sh <server checkout> <out folder>
+#   scripts/dashboards-on-sample.sh <server checkout> <out folder> [<walk> …]
 #
-# Writes <out>/walk-home-server and <out>/walk-home-cores (each a walk's
+# Walks the landing's three (`home-server`, `home-server-rows`,
+# `home-cores`) unless walks are named. Writes <out>/walk-<app> for each (a walk's
 # snips and walk.json). Needs docker, jq and the walk's Chromium. Run from
 # this package's folder (the workflow and `pnpm exec` both do).
 set -euo pipefail
 
-if [ $# -ne 2 ]; then
-  echo "usage: scripts/dashboards-on-sample.sh <server checkout> <out folder>" >&2
+if [ $# -lt 2 ]; then
+  echo "usage: scripts/dashboards-on-sample.sh <server checkout> <out folder> [<walk> …]" >&2
   exit 2
+fi
+apps=("${@:3}")
+if [ ${#apps[@]} -eq 0 ]; then
+  apps=(home-server home-server-rows home-cores)
 fi
 server=$(cd "$1" && pwd)
 mkdir -p "$2"
@@ -104,7 +110,10 @@ jq --arg origin "$origin" '.origin = $origin' "$work/sample/sample.json" > "$wor
 ready() {
   docker exec "$net-prometheus" wget -T 5 -qO- http://localhost:9090/-/ready > /dev/null 2>&1 &&
     curl -fsS --max-time 5 "$origin/api/dashboards/uid/file-host-dashboard" > /dev/null 2>&1 &&
-    curl -fsS --max-time 5 "$origin/api/dashboards/uid/who-dunnit-forensic" > /dev/null 2>&1
+    curl -fsS --max-time 5 "$origin/api/dashboards/uid/who-dunnit-forensic" > /dev/null 2>&1 &&
+    curl -fsS --max-time 5 "$origin/api/dashboards/uid/call" > /dev/null 2>&1 &&
+    { [[ " ${apps[*]} " != *" home-pipelines "* ]] ||
+      curl -fsS --max-time 5 "$origin/api/dashboards/uid/pipelines" > /dev/null 2>&1; }
 }
 for _ in $(seq 1 90); do
   ready && break
@@ -117,7 +126,7 @@ if ! ready; then
 fi
 
 # 5. The walks.
-for app in home-server home-server-rows home-cores; do
+for app in "${apps[@]}"; do
   rm -rf "$out/walk-$app"
   pnpm -s motion walk "$app" --sample "$work/sample/walk.json" --out "$out/walk-$app"
 done
