@@ -217,6 +217,20 @@ describe("the essays being published (#3476)", () => {
     )
   })
 
+  it("pin v7, typed commands, keeping v6's bookends", async () => {
+    const files = await folder()
+    files.set(`${NIXOS}.json`, await at(7))
+    files.set(`${RUST}.json`, await at(7))
+    expect(cardsPublishProblems(files, seriesOf)).toEqual([])
+    const v7 = held("cheat-sheet", 7)
+    const v6 = held("cheat-sheet", 6)
+    expect(v7?.designs.terminal).toBe("terminal-v2")
+    expect(v7 && { ...v7, version: 6, designs: v6?.designs }).toEqual(v6)
+    expect({ ...v7?.designs, terminal: v6?.designs.terminal }).toEqual(
+      v6?.designs
+    )
+  })
+
   it("never turn the bed off for themselves", async () => {
     const files = await folder()
     files.set(`${NIXOS}.json`, { ...(await at(6)), music: "off" })
