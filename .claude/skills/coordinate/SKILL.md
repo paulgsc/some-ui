@@ -175,6 +175,21 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
 - On the timer, read each worker's `external_metadata.context_usage`. Above about 70%, have
   the worker wind down and hand its work to a fresh session. Hand over yourself at about 80%
   (#2885).
+- **One coordinator per run** (the owner, Nov 24: "yes, file the hook change and add the skill
+  rule"; #3514). A coordinator does a run, or a day, and no more. The next run gets a fresh
+  session, which reads in from the `[ORCH]` record, the epics and the ledger, and the old one
+  hands over (below, "Winding down") and archives. The reason is cost: every turn re-reads the
+  whole context, so a session carried from run to run pays for its past on every message. On
+  Nov 24 the coordinator that had run since Nov 21 sat at 272k tokens, with about $573 of
+  cached re-reads behind it.
+- Keep each turn's reads small. Fetch only the fields you need (`gh api … --jq`) rather than an
+  MCP listing that returns whole bodies and commit messages, and hand bulky reads (a long
+  transcript, a large diff, a log) to a subagent that returns only the answer.
+- A background helper that edits files works in its own worktree (`Agent` with
+  `isolation: "worktree"`, or a clone in the scratchpad), never in your checkout. The cloud
+  platform's Stop hook fires on every turn while your checkout has uncommitted changes, and it
+  can't tell a helper's unfinished work from forgotten work: on Nov 24 it fired about ten
+  times, each a full re-read (#3514).
 - A message reaches a session mid-turn only when its turn ends, sometimes batched with
   others. Restate whatever it supersedes (#2814, Nov 10).
 - Never pipe a command whose exit code matters (#2814, Nov 10; server `CLAUDE.md`).
@@ -264,6 +279,11 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
 ## Choir
 
 - Build and verify locally, in parallel. A pushed branch with no PR runs no CI (#2823).
+- Push with `git push -u origin <branch>`, so the branch has its remote-tracking ref. Without
+  one, the platform's Stop hook compares against `origin/HEAD`, reports the branch's commits
+  as unpushed with "no remote branch", and fires again on every turn. For a branch pushed
+  another way (another clone, the GitHub API), run
+  `git fetch origin <branch>:refs/remotes/origin/<branch>` before the turn ends (#3514).
 - Before a some-ui PR, run the whole `www` vitest suite, not only the folders you touched
   (#2814, Nov 9).
 - When your branch is ready, send the coordinator `ready <name> <repo> <branch>`, and open the
