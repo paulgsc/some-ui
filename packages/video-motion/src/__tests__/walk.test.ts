@@ -134,30 +134,43 @@ const dumpWith = (bounds: string): string =>
  * look and each wait moves on: Snips Capture run 45321427650's Jobs walk
  * read its one dump while the app stalled as accessibility came on (#3489).
  */
-function looking(looks: ReadonlyArray<PlaceRead>): {
+function looking(looks: ReadonlyArray<PlaceRead | "hangs">): {
   read: () => Promise<PlaceRead>
   wait: Parameters<typeof placeWhenLaidOut>[3]
   taken: () => number
+  now: () => number
 } {
   let t = 0
   let i = 0
+  /** A look that never ends: a `uiautomator dump` the device never answers. */
+  const hung = new Promise<PlaceRead>(() => undefined)
   return {
     read: (): Promise<PlaceRead> => {
       const look = looks[Math.min(i, looks.length - 1)]!
       i += 1
+      if (look === "hangs") return hung
       t += 1_000
       return Promise.resolve(look)
     },
     wait: {
       ms: 15_000,
       everyMs: 500,
+      lookMs: 5_000,
       now: () => t,
       sleep: (ms): Promise<void> => {
         t += ms
         return Promise.resolve()
       },
+      limit: <T>(p: Promise<T>, ms: number): Promise<T> => {
+        if (p !== hung) return p
+        t += ms
+        return Promise.reject(
+          new Error(`it took longer than ${String(ms / 1000)} s`)
+        )
+      },
     },
     taken: () => i,
+    now: () => t,
   }
 }
 
@@ -247,6 +260,24 @@ describe("the APK stage reads the WebView once it is laid out (WALK9, #3489)", (
     // Each look 1 s and each wait 0.5 s: the 11th starts at 15 s, the last
     // one that may, and none starts after.
     expect(stage.taken()).toBe(11)
+    expect(stage.now()).toBeLessThanOrEqual(15_000 + 5_000)
+  })
+
+  it("cuts a look that never ends at its own bound, and still gives up within the wait and one look", async () => {
+    const zero = dumpWith("[0,0][0,0]")
+    // A look that hangs between two that agree: it saw nothing, so the two
+    // around it are not two in a row.
+    const between = looking([LAID, "hangs", LAID, LAID])
+    await read(between)
+    expect(between.taken()).toBe(4)
+    const stuck = looking([{ ...LAID, dump: zero }, "hangs"])
+    const failed = await read(stuck).catch((e: unknown) => e)
+    expect(failed).toMatchObject({
+      message:
+        "the WebView was never laid out: the look failed: it took longer than 5 s",
+      dump: zero,
+    })
+    expect(stuck.now()).toBeLessThanOrEqual(15_000 + 5_000)
   })
 
   it("says whether the box was still moving or laid out only on the last look", async () => {

@@ -160,14 +160,30 @@ const sameBox = (a: Box, b: Box): boolean =>
   a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
 
 /** How long the stage waits for the WebView to be laid out, and how often it looks (WALK9). */
-const LAID_OUT = { ms: 15_000, everyMs: 500 } as const
+const LAID_OUT = { ms: 15_000, everyMs: 500, lookMs: 5_000 } as const
+
+/** `p`, or a refusal once `ms` have passed without it (a look that never ends). */
+function within<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`it took longer than ${String(ms / 1000)} s`))
+      }, ms)
+    }),
+  ]).finally(() => {
+    clearTimeout(timer)
+  })
+}
 
 /**
  * WALK9: the WebView's place, read once the app's WebView is laid out on
  * screen (`laidOut`) and two looks in a row give it the same box, so a top
  * still moving with the system bars' or the keyboard's insets is not read;
- * never starting a look after `wait.ms`, so it gives up within `wait.ms`
- * and one look. A dump
+ * never starting a look after `wait.ms`, and holding each look to
+ * `wait.lookMs` (a `uiautomator dump` or a page that never answers), so it
+ * gives up within `wait.ms` and one look's `wait.lookMs`. A dump
  * taken as the app starts, as its keyboard's insets settle or as
  * `uiautomator` turns accessibility on can find the WebView's node not yet
  * laid out (#3489); the stage looks again rather than read that one. A look
@@ -183,6 +199,10 @@ export async function placeWhenLaidOut(
     readonly everyMs: number
     readonly now: () => number
     readonly sleep: (ms: number) => Promise<void>
+    /** How long one look may take. */
+    readonly lookMs: number
+    /** `p`, or a refusal once `ms` have passed without it. */
+    readonly limit: <T>(p: Promise<T>, ms: number) => Promise<T>
   }
 ): Promise<ReturnType<typeof screenPlace>> {
   const until = wait.now() + wait.ms
@@ -192,7 +212,7 @@ export async function placeWhenLaidOut(
   for (;;) {
     let why: string
     try {
-      const look = await read()
+      const look = await wait.limit(read(), wait.lookMs)
       if (look.dump !== "") dump = look.dump
       const box = laidOut(look, pkg)
       if (typeof box === "string") {
@@ -289,6 +309,7 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
         ...LAID_OUT,
         now: () => Date.now(),
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        limit: within,
       }
     )
     return {
