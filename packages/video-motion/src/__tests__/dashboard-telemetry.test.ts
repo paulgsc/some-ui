@@ -92,6 +92,11 @@ describe(
         "container_cpu_usage_seconds_total",
         "node_cpu_seconds_total",
         "node_pressure_cpu_waiting_seconds_total",
+        // WHO DUNNIT's CPU row, for the essay on code or box.
+        "namedprocess_namegroup_cpu_seconds_total",
+        "container_cpu_cfs_periods_total",
+        "container_cpu_cfs_throttled_periods_total",
+        "node_load1",
         // CALL's rows an essay walks (#3476).
         "call_weeks_held",
         "call_render_weeks_waiting",

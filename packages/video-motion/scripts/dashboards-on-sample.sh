@@ -4,8 +4,8 @@
 # image its release pins, as server CI's "Build the dashboards as home does"
 # step runs it; served by a throwaway Grafana over a throwaway Prometheus that
 # holds one week of sample telemetry (src/walk/dashboard-telemetry.ts); walked
-# (`home-server`, `home-cores`, and `home-call` and `home-pipelines` for an
-# essay, #3476). Grafana and Prometheus are the images the same
+# (`home-server`, `home-cores`, and `home-call`, `home-pipelines` and
+# `home-pressure` for an essay, #3476). Grafana and Prometheus are the images the same
 # release pins. Nothing reaches home, and no key is used: Grafana lets an
 # anonymous Viewer read, and is reachable only from this machine.
 #

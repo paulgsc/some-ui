@@ -184,7 +184,7 @@ describe("a chapter that speaks of our dashboards (C1481)", () => {
     expect(unshownProblems(chapter(walk("home-call")))).toEqual([])
     for (const other of [walk("rust-rounds"), screen])
       expect(unshownProblems(chapter(other))).toEqual([
-        "D1: it speaks of our dashboard and its chapter shows none: show it as a walk of the dashboards (home-call, home-pipelines), not a card (SHOW1)",
+        "D1: it speaks of our dashboard and its chapter shows none: show it as a walk of the dashboards (home-call, home-pipelines, home-pressure), not a card (SHOW1)",
       ])
   })
 

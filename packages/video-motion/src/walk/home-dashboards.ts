@@ -1,13 +1,14 @@
 /**
  * The server's dashboards for the public site (the owner on #3401,
- * 2026-11-23, which moves C1071 and C1073): two walks on a throwaway Grafana
+ * 2026-11-23, which moves C1071 and C1073): walks on a throwaway Grafana
  * (`./stage-grafana`) that a Site Assets job starts on GitHub, serving the
  * dashboards compiled from paulgsc/server's jsonnet over a throwaway
  * Prometheus that holds one week of sample telemetry
- * (`./dashboard-telemetry`). Each panel is opened alone (`/d-solo/`) at one
- * size, in the dark theme, over that week. The server episode's faces are the
- * first walk's walkthrough (`home-server`), the cores gap's still the second
- * walk's one screen (`home-cores`). Home is never reached, and no number in
+ * (`./dashboard-telemetry`). Each panel or row is drawn at one size, in the
+ * dark theme, over that week. The server episode's faces are the walkthrough
+ * of `home-server` (and its rows, `home-server-rows`), the cores gap's still
+ * `home-cores`'s one screen; the walks an essay shows (`home-call`,
+ * `home-pipelines`, `home-pressure`) carry the sample band. Home is never reached, and no number in
  * them is home's.
  *
  * Which panels: the owner's (#3401: "the server through its Grafana
@@ -355,6 +356,51 @@ export const homePipelines = {
       panelPages(PIPELINE_PANELS, sample),
       sample,
       GRAPH_VIEWPORT,
+      { band: SAMPLE_BAND }
+    ),
+}
+
+/** A grouping of the server episode, by its row's title: one copy of each row's names. */
+function groupingOf(row: string): Grouping {
+  const found = SERVER_GROUPINGS.find((g) => g.row === row)
+  if (found === undefined)
+    throw new Error(`no grouping shoots the row "${row}"`)
+  return found
+}
+
+/**
+ * The rows an essay reads to ask whether a slow stage is our code or home's
+ * box (the CORES essay): the shared stages and who waits on them; WHO
+ * DUNNIT's CPU row, the host's busy cores against the work waiting for one,
+ * each container against its own cap and how often that cap held it back;
+ * and file_host's metal, each service against its limits. By their titles
+ * in paulgsc/server's `lib/stage-panels.libsonnet`, `processor.jsonnet` and
+ * `dashboard.jsonnet`.
+ */
+const PRESSURE_ROWS: ReadonlyArray<
+  Pick<Grouping, "dashboard" | "row" | "label">
+> = [
+  groupingOf("Shared stages: what other work waits on"),
+  {
+    dashboard: WHO_DUNNIT,
+    row: "CPU — who is using it, and who is waiting",
+    label: "Who is using the CPU, and who waits",
+  },
+  groupingOf("Metal — what the services cost the host"),
+]
+
+/** Whether a slow stage is our code or the box: its rows, a row a screen, for an essay. */
+export const homePressure = {
+  sample: SampleSchema,
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-pressure",
+      PRESSURE_ROWS.map((row) => ({
+        label: row.label,
+        path: rowPath(row, sample),
+      })),
+      sample,
+      ROW_VIEWPORT,
       { band: SAMPLE_BAND }
     ),
 }
