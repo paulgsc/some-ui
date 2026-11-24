@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { MUSIC_BED } from "@video-render/music-bed"
 import { placeBrandFiles } from "@video-render/node"
 import { series } from "@video-render/testing"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -47,9 +49,14 @@ describe("placing a series' brand files in a video's folder (HYPER4)", () => {
     expect(placed).toEqual({ ok: true, value: { bed: false, sounds: 0 } })
   })
 
-  it("refuses without a brand folder, naming what the series needs", async () => {
+  it("refuses without a brand folder, naming what the series needs, never our own bed", async () => {
     const placed = await placeBrandFiles(
-      series({ music: undefined }),
+      series({
+        music: {
+          bed: { file: "brand/bed.wav", sha256: MUSIC_BED.sha256 },
+          gainDb: -14,
+        },
+      }),
       undefined,
       join(base, "video")
     )
@@ -74,4 +81,32 @@ describe("placing a series' brand files in a video's folder (HYPER4)", () => {
       ],
     })
   })
+
+  // It draws the whole bed, which takes several seconds on a CI runner
+  // (6.7 s on #3481's): past vitest's 5 s default.
+  it(
+    "writes our own bed from code, with no brand folder and nothing laid on home (#3476)",
+    {
+      timeout: 30_000,
+    },
+    async () => {
+      const root = join(base, "video")
+      const placed = await placeBrandFiles(
+        series({
+          music: {
+            bed: { file: "brand/bed.wav", sha256: MUSIC_BED.sha256 },
+            gainDb: -14,
+          },
+          sounds: {},
+        }),
+        undefined,
+        root
+      )
+      expect(placed).toEqual({ ok: true, value: { bed: true, sounds: 0 } })
+      const written = await readFile(join(root, "brand/bed.wav"))
+      expect(createHash("sha256").update(written).digest("hex")).toBe(
+        MUSIC_BED.sha256
+      )
+    }
+  )
 })

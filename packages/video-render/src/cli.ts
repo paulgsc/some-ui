@@ -36,7 +36,9 @@
  * checks paulgsc/testing's `cards/` folder before it is published
  * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
  * cards essay in a version of its series this checkout holds, and no essay
- * file it forgets. What only drawing finds is `record:cards`' to refuse.
+ * file it forgets; and the newest day's essays' bookends and SHOW1, from
+ * `PUBLISH_SINCE` (`cardsPublishProblems`, #3476). What only drawing finds is
+ * `record:cards`' to refuse.
  * With a clone of each repository the essays cite, it also holds every
  * line's sources to its stamp's commit (#3036, `claims.ts`), and notes a
  * scene whose narration names none; the newest essay's sources must all be
@@ -109,6 +111,7 @@ import {
   CARDS_SERIES,
   cardsFolderProblems,
   cardsFolderSources,
+  cardsPublishProblems,
   parseCardsEssay,
 } from "./cards-essay"
 import type { ReadFile } from "./claims"
@@ -307,6 +310,10 @@ async function main(): Promise<void> {
     unknownRepos(clones, cited, "no essay here cites it")
     const problems = [
       ...cardsFolderProblems(
+        files,
+        (id, version) => held.get(`${id}@${version}`) ?? null
+      ),
+      ...cardsPublishProblems(
         files,
         (id, version) => held.get(`${id}@${version}`) ?? null
       ),
