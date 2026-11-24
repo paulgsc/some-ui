@@ -2,10 +2,10 @@ import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
   CARDS_VOICES,
-  cardsBookendProblems,
   cardsChapterMarks,
   cardsFolderProblems,
   cardsLines,
+  cardsPublishProblems,
   cardsScenes,
   CHAPTER_GAP_MS,
   CLOSE_MARK,
@@ -197,9 +197,9 @@ describe("the essays being published (#3476)", () => {
     const files = await folder()
     files.set(`${NIXOS}.json`, await at(6))
     files.set(`${RUST}.json`, await at(6))
-    expect(cardsBookendProblems(files, seriesOf)).toEqual([])
+    expect(cardsPublishProblems(files, seriesOf)).toEqual([])
     files.set(`${RUST}.json`, await at(4))
-    expect(cardsBookendProblems(files, seriesOf)).toEqual(
+    expect(cardsPublishProblems(files, seriesOf)).toEqual(
       ["an intro", "an outro", "a music bed"].map(
         (what) =>
           `${RUST}.json: cheat-sheet v4: it lacks ${what}${what === "a music bed" ? "" : " carrying the brand"}, which every video in cheat-sheet carries (bookends.ts); pin the newest version that does`
@@ -211,9 +211,33 @@ describe("the essays being published (#3476)", () => {
     const files = await folder()
     files.set(`${NIXOS}.json`, { ...(await at(6)), music: "off" })
     files.set(`${RUST}.json`, await at(6))
-    expect(cardsBookendProblems(files, seriesOf)).toEqual([
+    expect(cardsPublishProblems(files, seriesOf)).toEqual([
       `${NIXOS}.json: it turns the music bed off, and every video in cheat-sheet plays it: leave "music" out`,
     ])
+  })
+
+  it("show a screen of ours in each chapter that speaks of one (SHOW1)", async () => {
+    const files = await folder()
+    const cut = await at(6)
+    const shots = cut.shots.map((s) =>
+      s.spoken?.role === "scene" && s.spoken.chapter !== undefined
+        ? {
+            ...s,
+            spoken: {
+              ...s.spoken,
+              narration: `${s.spoken.narration} It arrives on the phone.`,
+            },
+          }
+        : s
+    )
+    files.set(`${NIXOS}.json`, { ...cut, shots })
+    files.set(`${RUST}.json`, await at(6))
+    const problems = cardsPublishProblems(files, seriesOf)
+    expect(problems.length).toBeGreaterThan(0)
+    for (const p of problems)
+      expect(p).toMatch(
+        new RegExp(`^${NIXOS}\\.json: .*speaks of our app.*\\(SHOW1\\)$`)
+      )
   })
 
   it("are the newest day's: an older essay keeps the version it pinned", async () => {
@@ -229,7 +253,7 @@ describe("the essays being published (#3476)", () => {
       ...old,
       stamp: old.stamp && { ...old.stamp, date: "2026-11-01" },
     })
-    expect(cardsBookendProblems(files, seriesOf)).toEqual([])
+    expect(cardsPublishProblems(files, seriesOf)).toEqual([])
   })
 })
 

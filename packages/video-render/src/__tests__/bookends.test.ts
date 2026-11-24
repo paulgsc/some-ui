@@ -41,7 +41,14 @@ async function seriesAt(id: string, version?: number): Promise<Series> {
 
 describe("every video's bookends", () => {
   it("are policy for every series there is, and only those", async () => {
-    expect([...SERIES_IDS].sort()).toEqual((await readdir(SAMPLE)).sort())
+    const motion = join(import.meta.dirname, "../../../video-motion/series")
+    const folders = [
+      ...(await readdir(SAMPLE)),
+      ...(await readdir(motion, { withFileTypes: true }))
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name),
+    ]
+    expect([...SERIES_IDS].sort()).toEqual(folders.sort())
   })
 
   it("are all on unless a series names what it leaves out, and why", () => {

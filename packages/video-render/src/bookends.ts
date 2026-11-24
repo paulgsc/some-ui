@@ -35,7 +35,8 @@ export const BOOKENDS = ["intro", "outro", "bed"] as const
 export type Bookend = (typeof BOOKENDS)[number]
 
 /**
- * Every series a video is drawn in, by its folder under `sample/series/`.
+ * Every series a video is drawn in, by its folder under `sample/series/`,
+ * or `@some-ui/video-motion`'s `series/` (`vertical`).
  * A new series is added here, and carries every bookend unless
  * `BOOKEND_OPT_OUTS` names it.
  */
@@ -45,6 +46,7 @@ export const SERIES_IDS = [
   "conference-call",
   "long-episode",
   "playoff-delta-week",
+  "vertical",
 ] as const
 
 export type SeriesId = (typeof SERIES_IDS)[number]
@@ -66,6 +68,10 @@ export const BOOKEND_OPT_OUTS: Readonly<Partial<Record<SeriesId, OptOut>>> = {
   "build-journal-short": {
     off: BOOKENDS,
     why: "The Build Journal's shorts are the owner's own, cut on the phone in Soundbites, which pins this series' version 1 and draws no composition; they move when Soundbites does",
+  },
+  vertical: {
+    off: BOOKENDS,
+    why: "Promos and walkthroughs open and close on their own compositions (promo-hook and promo-close, `bookendedCutList`), and play muted behind the landing's words, so a bed would never be heard",
   },
   "long-episode": {
     off: BOOKENDS,

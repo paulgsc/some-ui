@@ -103,7 +103,14 @@ function lookCard(look: Look): PlanWords {
         how: cues.length ? cues.join(", ") : "None",
       },
       { what: "Captions", how: CAPTION_WORDS[r.captions] },
-      { what: "Music", how: MUSIC_WORDS[r.music] },
+      {
+        what: "Music",
+        // A series that plays a bed plays it under this look too (#3476).
+        how:
+          r.music === "off"
+            ? "Off, unless the series plays a bed"
+            : MUSIC_WORDS[r.music],
+      },
     ],
   }
 }

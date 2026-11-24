@@ -34,6 +34,7 @@ import { ESSAY_VOICES } from "./essay"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
 import { withSeries } from "./series"
+import { unshownProblems } from "./shown"
 import type { HeardSpokenCard, HeardTurn, SpokenScene } from "./spoken-card"
 import { spokenCardProblems, spokenScenes } from "./spoken-card"
 import {
@@ -655,13 +656,15 @@ export function cardsFolderProblems(
 }
 
 /**
- * What the essays being published, the newest day's, lack of what every
- * video in their series carries (#3476, `bookends.ts`): a bookend their
- * series' version doesn't hold, or a bed one turns off for itself, since
- * only a series opts out, never a video. An older essay keeps the version
- * it pinned, and one the folder check refuses is that check's to report.
+ * What the essays being published, the newest day's, owe that an older one
+ * didn't (#3476): what every video in their series carries
+ * (`bookends.ts`), so a bookend their series' version lacks or a bed one
+ * turns off for itself, since only a series opts out, never a video; and a
+ * screen of ours in each chapter that speaks of one (`shown.ts`, SHOW1). An
+ * older essay keeps what it was published with, and one the folder check
+ * refuses is that check's to report.
  */
-export function cardsBookendProblems(
+export function cardsPublishProblems(
   files: ReadonlyMap<string, unknown>,
   seriesOf: (id: string, version: number) => Series | null
 ): Array<string> {
@@ -688,6 +691,7 @@ export function cardsBookendProblems(
               `it turns the music bed off, and every video in ${bed} plays it: leave "music" out`,
             ]
           : []),
+        ...unshownProblems(essay.value),
       ].map((p) => `${key}.json: ${p}`)
     })
 }

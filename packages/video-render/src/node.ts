@@ -278,6 +278,28 @@ async function readVersioned<T extends { readonly version: number }>(
 export const BRAND_SOUNDS = "sounds"
 
 /**
+ * Our synthesised bed (`MUSIC_BED`), written into `root` where `series`
+ * pins it by its sum; whether it did. Needs no brand folder.
+ */
+export async function placeOurBed(
+  series: Series,
+  root: string
+): Promise<Parsed<boolean>> {
+  const bed = series.music?.bed
+  if (bed?.sha256 !== MUSIC_BED.sha256) return { ok: true, value: false }
+  try {
+    await mkdir(dirname(join(root, bed.file)), { recursive: true })
+    await writeFile(join(root, bed.file), musicBedWav())
+  } catch {
+    return {
+      ok: false,
+      problems: [`the music bed: ${join(root, bed.file)} can't be written`],
+    }
+  }
+  return { ok: true, value: true }
+}
+
+/**
  * The brand files a series version names, placed in a video's `root`. A
  * bed we synthesise (`MUSIC_BED`, pinned by its sum) is written here from
  * code, so home makes it itself and the owner lays nothing (#3476). Any
@@ -300,18 +322,9 @@ export async function placeBrandFiles(
     readonly to: string
   }> = []
   const bed = series.music?.bed
-  const ours = bed?.sha256 === MUSIC_BED.sha256
-  if (bed && ours) {
-    try {
-      await mkdir(dirname(join(root, bed.file)), { recursive: true })
-      await writeFile(join(root, bed.file), musicBedWav())
-    } catch {
-      return {
-        ok: false,
-        problems: [`the music bed: ${join(root, bed.file)} can't be written`],
-      }
-    }
-  } else if (bed)
+  const ours = await placeOurBed(series, root)
+  if (!ours.ok) return ours
+  if (bed && !ours.value)
     wanted.push({
       what: "the music bed",
       from: basename(bed.file),
@@ -389,7 +402,8 @@ export async function renderFolder(
       readonly hit?: (what: string) => void
       /**
        * Home's brand folder: the series' brand files are copied into `root`
-       * from it first (`placeBrandFiles`). Without it, they must be there.
+       * from it first (`placeBrandFiles`). Without it, they must be there,
+       * but for our own bed, which is written either way (`placeOurBed`).
        */
       readonly brand?: string
     }
@@ -416,10 +430,13 @@ export async function renderFolder(
     brand,
     ...rest
   } = options
-  if (brand !== undefined) {
-    const placed = await placeBrandFiles(series.value, brand, root)
-    if (!placed.ok) return placed
-  }
+  // Without home's brand folder its files must already be in `root`; our
+  // own bed is written either way (#3476).
+  const placed =
+    brand === undefined
+      ? await placeOurBed(series.value, root)
+      : await placeBrandFiles(series.value, brand, root)
+  if (!placed.ok) return placed
   const own: Ports = {
     ...nodePorts(root),
     ...(recordBurnIn ? { recordBurnIn } : {}),

@@ -141,6 +141,20 @@ Since you, months later, are the listener:
 3. **Write the cut list** in the cheat-sheet series, version 6, as
    `packages/video-render/src/sample/videos/*/cut-list.json` are. Read both,
    cards and words, before writing.
+   - **Show what we own** (#3476, SHOW1). When a chapter speaks of a screen
+     of ours (the APK, the web app, Studio), show it in that chapter, as a
+     `screen` (a snip, zoomed to its parts with `at`, or a clip frame), not
+     a card that describes it. Almost everything we own is in the
+     repositories, so a picture of it can be made: ask for the snips you
+     need (`docs/snips.md`). Public pages are only for subjects off our
+     surfaces. `render cards-check` refuses a chapter of the newest day's
+     essays whose scene places something on our app ("on the phone", "in
+     the web app", "in Studio", "the phone shows") or cites a file that
+     draws one (a `.tsx` under `apps/www/src` or `packages/ui/*/src`) and
+     shows no snip or clip frame (`src/shown.ts`). It reads those phrases,
+     not meaning: a line that describes our app in other words is still
+     yours to show, and one that uses a phrase for something else is
+     rephrased.
    - A scene shows a card picture (`{"kind": "card"}`) with its card as a
      burn-in: a `terminal`, `cheat-sheet`, `legend`, `rule`, `flow` or
      `bars`, and a `spoken` field as above. A `bars` card is a chart of
@@ -152,7 +166,7 @@ Since you, months later, are the listener:
      `scene`, like a card's; a spoken card (`role: "spoken"`) is drawn by
      its own stage and shows no screen.
    - Or it shows a public page, photographed logged out, when the subject
-     lives outside the app (a pull request's checks, a run's log page, a
+     lives off our surfaces (a pull request's checks, a run's log page, a
      page of docs): `{"kind": "screen", "of": {"from": "pages", …}}`. Take
      the pages by dispatching `Public Pages Capture` in paulgsc/some-ui with
      the list `record:pages` reads (`docs/snips.md`, "How public pages reach
