@@ -1037,7 +1037,7 @@
       ],
       "spoken": {
         "role": "close",
-        "said": "Keep this card. Start from the fork: never picked up, picked up and waiting, or refused. On the phone, look at Renders, then Takes. On home, run these five top to bottom, then the journal. On Grafana, read the CALL dashboard's essay rows. When Renders says nothing was written, the routine never wrote it: read its run's summary.",
+        "said": "Keep this card. Start from the fork: never picked up, picked up and waiting, or refused. On the phone, look at Renders, then Takes. On home, run these five top to bottom, then the journal. On Grafana, read the CALL dashboard's essay rows. When Renders says nothing was written, the routine never wrote it: read its run's summary. The day this was made, Renders said both essays waited on a take. Start there.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -1053,6 +1053,11 @@
             "repo": "paulgsc/some-ui",
             "path": "apps/www/src/lib/renders/words.ts",
             "quote": "Nothing was written for it"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "It waits for home to hear a take."
           }
         ]
       }
