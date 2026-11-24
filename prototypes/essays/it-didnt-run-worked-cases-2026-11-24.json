@@ -349,7 +349,7 @@
               {
                 "badge": "you",
                 "label": "The fix",
-                "note": "The mailbox takes it now; a refused file stays refused, and hear again files a fresh one."
+                "note": "The mailbox takes it now, and home hands a refused file again until it does (server#1192)."
               }
             ]
           }
@@ -357,7 +357,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "So the decision chain is: heard, but not taken by the routine; the mailbox refuses; the refusal is a shape mismatch, a verdict home began putting on every transcript that the mailbox didn't know; then the fix. The mailbox now takes a verdict. A file it refused stays refused on home, and home never puts it again: that is open. Until it is fixed, hear again on each take files a fresh transcript, which the mailbox now takes.",
+        "narration": "So the decision chain is: heard, but not taken by the routine; the mailbox refuses; the refusal is a shape mismatch, a verdict home began putting on every transcript that the mailbox didn't know; then the fix. The mailbox now takes a verdict. When this was checked, a file it refused stayed refused, and home never put it again. The same day, server pull request eleven ninety-two changed that: home hands a refused file again until the mailbox takes it.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
