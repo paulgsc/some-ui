@@ -280,5 +280,10 @@ page is live and a capture is never made again the same.
    #3395.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
-  stub answers few routes (`compat/stub-routes.json`), so many screens are
-  their empty state. Richer sample fixtures for the stub are a follow-up.
+  stub answers few routes (`compat/stub-routes.json`); the capture lays the
+  snips' sample over them (`apps/mobile/snips/sample-routes.json`, #3476), a
+  Monday at `FROZEN_AT`: Renders expecting both Monday essays, Takes and
+  Needs your attention with last week's takes, and Rust Rounds' week that
+  ended and week that opened. Its test reads each answer as the phone does
+  (`apps/www/src/lib/snips/__tests__/stub-sample.test.ts`). Every other
+  screen is its empty state; a screen an essay needs gets its answer here.
