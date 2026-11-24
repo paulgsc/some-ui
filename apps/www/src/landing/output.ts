@@ -29,7 +29,8 @@ export type RenderedSite = {
  * The HTML templates the Pages build carries, by kind, relative to apps/www.
  * Each is an entry of that build; none is written under its own name.
  *
- * - `landing`: the front page, with its own inline styles and no script.
+ * - `landing`: the front page, with its own inline styles; its one script
+ *   only enhances the show (`enhance.ts`, C1422).
  * - `page`: a page of text with the site's one stylesheet and no script (the
  *   résumé, a missing page).
  * - `authorship`: the videos' authorship record, which draws the record its

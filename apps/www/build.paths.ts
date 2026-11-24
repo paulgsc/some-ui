@@ -267,10 +267,19 @@ export const ALLOWLISTED_PROFILES: ReadonlyArray<Deployable> = ["pages"]
  * named one by one, so a module that reaches it later fails until someone
  * adds it here. Its pages are static (src/landing, render-public-site.ts);
  * what runs is the authorship record's one script and the web door it
- * reaches the record through.
+ * reaches the record through, and the landing's one script, which only
+ * enhances its show (C1422): the phone's deck, the media's reveal and the
+ * clips' pausing, with the words they say and the show's clock they read,
+ * and each pool's draw (`draw.ts`, `pool-dom.ts`, #3473).
  */
 const PAGES_MODULES: ReadonlyArray<string> = [
   "apps/www/src/landing/authorship.tsx",
+  "apps/www/src/landing/deck.ts",
+  "apps/www/src/landing/draw.ts",
+  "apps/www/src/landing/enhance.ts",
+  "apps/www/src/landing/pool-dom.ts",
+  "apps/www/src/landing/timeline.ts",
+  "apps/www/src/landing/words.ts",
   "apps/www/src/lib/build-profile/index.ts",
   "apps/www/src/lib/web-surface/burn-ins/authorship.tsx",
   "apps/www/src/lib/web-surface/index.ts",
@@ -483,7 +492,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       profile: "pages",
       within: "apps/www/src/**",
       allow: PAGES_MODULES,
-      why: "off the public site's path: it is a CV (C1055, #3401), static pages and the authorship record's one script, with no app",
+      why: "off the public site's path: it is a CV (C1055, #3401), static pages, the authorship record's one script and the landing's enhancement (C1422), with no app",
     },
     {
       profile: MOBILE_PROFILE,
@@ -513,6 +522,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/web-surface/burn-ins/authorship.tsx",
       ],
       why: "the record every published video's end card links to (C1055, #3401): without these its page draws nothing",
+    },
+    {
+      profile: "pages",
+      modules: ["apps/www/src/landing/enhance.ts"],
+      why: "the landing's show on a phone turns by a swipe and its media reveal over their previews through this (C1422): without it the page still reads whole, as a flat list, but the deck the owner asked for is gone",
     },
     {
       profile: MOBILE_PROFILE,
