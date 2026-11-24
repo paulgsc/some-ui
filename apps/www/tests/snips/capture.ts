@@ -273,13 +273,16 @@ export async function pageRegions(
  * (`BUSY`, at most `READING_MS`) and fonts to load, then a beat for late
  * paints. False when the screen was still reading.
  */
-async function settle(page: Page): Promise<boolean> {
+export async function settle(
+  page: Page,
+  readingMs: number = READING_MS
+): Promise<boolean> {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {
     // A screen that keeps a request open still gets its picture.
   })
   const read = await page
     .waitForFunction((busy) => document.querySelector(busy) === null, BUSY, {
-      timeout: READING_MS,
+      timeout: readingMs,
     })
     .then(() => true)
     .catch(() => false)
