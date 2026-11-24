@@ -22,6 +22,7 @@
 
 import { z } from "zod"
 
+import { bookendProblems, bookendsOf, isSeriesId } from "./bookends"
 import { CALL_VOICES } from "./call"
 import type { ChapterMark } from "./chapters"
 import { withoutStop } from "./chapters"
@@ -651,6 +652,44 @@ export function cardsFolderProblems(
       .filter((name) => name !== "index.json" && !listed.has(name))
       .map((name) => `${name}: the index doesn't list it`),
   ]
+}
+
+/**
+ * What the essays being published, the newest day's, lack of what every
+ * video in their series carries (#3476, `bookends.ts`): a bookend their
+ * series' version doesn't hold, or a bed one turns off for itself, since
+ * only a series opts out, never a video. An older essay keeps the version
+ * it pinned, and one the folder check refuses is that check's to report.
+ */
+export function cardsBookendProblems(
+  files: ReadonlyMap<string, unknown>,
+  seriesOf: (id: string, version: number) => Series | null
+): Array<string> {
+  const index = parseCardsIndex(files.get("index.json"))
+  const essays = index.ok ? index.value.essays : []
+  const newest = dayOf(essays[0]?.key)
+  return essays
+    .filter(({ key }) => dayOf(key) === newest)
+    .flatMap(({ key }) => {
+      const essay = parseCardsEssay(key, files.get(`${key}.json`))
+      if (!essay.ok) return []
+      const series = seriesOf(essay.value.series.id, essay.value.series.version)
+      if (series === null) return []
+      const bed =
+        isSeriesId(series.id) && bookendsOf(series.id).has("bed")
+          ? series.id
+          : null
+      return [
+        ...bookendProblems(series).map(
+          (p) => `${p}; pin the newest version that does`
+        ),
+        ...(essay.value.music === "off" && bed !== null
+          ? [
+              `it turns the music bed off, and every video in ${bed} plays it: leave "music" out`,
+            ]
+          : []),
+      ].map((p) => `${key}.json: ${p}`)
+    })
 }
 
 /**

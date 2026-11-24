@@ -2,6 +2,7 @@ import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
   CARDS_VOICES,
+  cardsBookendProblems,
   cardsChapterMarks,
   cardsFolderProblems,
   cardsLines,
@@ -171,6 +172,64 @@ describe("the cards folder", () => {
         "newest first, each once"
       )
     }
+  })
+})
+
+/** Every version of cheat-sheet this checkout holds, by version. */
+const HELD = new Map<number, Series>()
+for (let v = 1; v <= 6; v++) {
+  const read = await readSeries(
+    join(import.meta.dirname, "../sample/series/cheat-sheet"),
+    v
+  )
+  if (read.ok) HELD.set(v, read.value)
+}
+
+describe("the essays being published (#3476)", () => {
+  const seriesOf = (id: string, version: number): Series | null =>
+    id === "cheat-sheet" ? (HELD.get(version) ?? null) : null
+  const at = async (version: number): Promise<CutList> => {
+    const cut = await showcase("nixos-upgrade")
+    return { ...cut, series: { ...cut.series, version } }
+  }
+
+  it("pin a version of their series with its intro, outro and bed", async () => {
+    const files = await folder()
+    files.set(`${NIXOS}.json`, await at(6))
+    files.set(`${RUST}.json`, await at(6))
+    expect(cardsBookendProblems(files, seriesOf)).toEqual([])
+    files.set(`${RUST}.json`, await at(4))
+    expect(cardsBookendProblems(files, seriesOf)).toEqual(
+      ["an intro", "an outro", "a music bed"].map(
+        (what) =>
+          `${RUST}.json: cheat-sheet v4: it lacks ${what}${what === "a music bed" ? "" : " carrying the brand"}, which every video in cheat-sheet carries (bookends.ts); pin the newest version that does`
+      )
+    )
+  })
+
+  it("never turn the bed off for themselves", async () => {
+    const files = await folder()
+    files.set(`${NIXOS}.json`, { ...(await at(6)), music: "off" })
+    files.set(`${RUST}.json`, await at(6))
+    expect(cardsBookendProblems(files, seriesOf)).toEqual([
+      `${NIXOS}.json: it turns the music bed off, and every video in cheat-sheet plays it: leave "music" out`,
+    ])
+  })
+
+  it("are the newest day's: an older essay keeps the version it pinned", async () => {
+    const files = await folder()
+    const older = "rust-scratchpad-2026-11-01"
+    const old = await at(4)
+    files.set("index.json", {
+      schema: CARDS_INDEX_SCHEMA,
+      essays: [{ key: NIXOS }, { key: older }],
+    })
+    files.set(`${NIXOS}.json`, await at(6))
+    files.set(`${older}.json`, {
+      ...old,
+      stamp: old.stamp && { ...old.stamp, date: "2026-11-01" },
+    })
+    expect(cardsBookendProblems(files, seriesOf)).toEqual([])
   })
 })
 

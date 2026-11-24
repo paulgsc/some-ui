@@ -15,7 +15,10 @@
  * in `src/sample/series/`.
  *
  * A version may carry an intro and an outro: scenes the renderer adds to
- * every video that pins it (`withSeries`). They sit just inside the
+ * every video that pins it (`withSeries`), each a card, a still, or the
+ * brand's own open and close (`brand`: the composition the templates' shape
+ * names, `brand-v1`, in the series' theme). Whether a series' videos carry
+ * them, and its bed, is policy (`bookends.ts`). They sit just inside the
  * authorship mark's bare cards when the video carries the mark, so the mark
  * still opens and closes the video, and its record counts them as scenes:
  * an agent's idea and wording, drawn by code (`authorship.ts` reads that
@@ -24,6 +27,8 @@
  * a note is never pinned to one (`render.ts`).
  */
 
+import { assertNever } from "@some-ui/core-utils"
+import type { SessionThemeId } from "@some-ui/styles/theme/registry"
 import { z } from "zod"
 
 import {
@@ -33,7 +38,7 @@ import {
   isAuthorship,
   problemsOf,
 } from "./cut-list"
-import type { CutList, Parsed, Shot } from "./cut-list"
+import type { Composition, CutList, Parsed, Picture, Shot } from "./cut-list"
 import { CastIdSchema, ThemeIdSchema } from "./format"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, ms, SOUNDS, TRANSITIONS } from "./vocabulary"
@@ -56,6 +61,15 @@ const SeriesSceneSchema = z.object({
   picture: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("card") }),
     z.object({ kind: z.literal("still"), image: CheckedFileSchema }),
+    /**
+     * The brand's open (an intro) or close (an outro), drawn by `motion`,
+     * one of `@some-ui/video-motion`'s compositions by its folder's name, as
+     * a template's `shape.brand.motion` names it (`brandComposition`).
+     */
+    z.object({
+      kind: z.literal("brand"),
+      motion: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+    }),
   ]),
   durationMs: ms.min(100),
   transitionIn: z.enum(TRANSITIONS).optional(),
@@ -159,12 +173,48 @@ export function versionOfFile(name: string): number | null {
 export const SERIES_INTRO = "series-intro"
 export const SERIES_OUTRO = "series-outro"
 
-const sceneOf = (id: string, scene: SeriesScene): Shot => ({
+/**
+ * The brand's open or close as composition `ref` draws it (HYPER5, #2728):
+ * the mark in `theme`, or the composition's own theme with none. A
+ * template's brand scenes (`brandPicture`) and a series' (`withSeries`) are
+ * both drawn by it.
+ */
+export const brandComposition = (
+  ref: string,
+  part: "open" | "close",
+  theme: SessionThemeId | undefined
+): Composition => ({
+  kind: "composition",
+  ref,
+  variables: { part, ...(theme === undefined ? {} : { theme }) },
+  files: [],
+})
+
+function pictureOf(id: string, scene: SeriesScene, series: Series): Picture {
+  const p = scene.picture
+  switch (p.kind) {
+    case "card": {
+      return { kind: "card" }
+    }
+    case "still": {
+      return { kind: "still", source: p.image.file }
+    }
+    case "brand": {
+      return brandComposition(
+        p.motion,
+        id === SERIES_INTRO ? "open" : "close",
+        series.theme
+      )
+    }
+    default: {
+      return assertNever(p)
+    }
+  }
+}
+
+const sceneOf = (id: string, scene: SeriesScene, series: Series): Shot => ({
   id,
-  picture:
-    scene.picture.kind === "card"
-      ? { kind: "card" }
-      : { kind: "still", source: scene.picture.image.file },
+  picture: pictureOf(id, scene, series),
   durationMs: scene.durationMs,
   voiceInMs: 0,
   overrides: scene.transitionIn ? { transitionIn: scene.transitionIn } : {},
@@ -192,8 +242,12 @@ export function withSeries(cut: CutList, series: Series): Parsed<CutList> {
       ),
     }
   }
-  const intro = series.intro ? [sceneOf(SERIES_INTRO, series.intro)] : []
-  const outro = series.outro ? [sceneOf(SERIES_OUTRO, series.outro)] : []
+  const intro = series.intro
+    ? [sceneOf(SERIES_INTRO, series.intro, series)]
+    : []
+  const outro = series.outro
+    ? [sceneOf(SERIES_OUTRO, series.outro, series)]
+    : []
   // `parseCutList` holds a video with the mark to a bare card at each end.
   const inside = cut.burnIns.some(isAuthorship) ? 1 : 0
   const shots = cut.shots

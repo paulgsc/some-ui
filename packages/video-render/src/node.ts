@@ -23,6 +23,7 @@ import type { Parsed } from "./cut-list"
 import { parseFormat } from "./format"
 import type { Format } from "./format"
 import type { Mailbox } from "./mailbox"
+import { MUSIC_BED, musicBedWav } from "./music-bed"
 import type { SourceFacts } from "./plan"
 import { DEFAULT_POLICY } from "./policy"
 import { fail, Refused } from "./refused"
@@ -277,13 +278,16 @@ async function readVersioned<T extends { readonly version: number }>(
 export const BRAND_SOUNDS = "sounds"
 
 /**
- * The brand files a series version names, copied into a video's `root` from
- * `brand`, home's folder of the owner's files (`${STORAGE}/brand`, mounted
- * read-only at `/brand`; never a repository's): the music bed from `brand`
- * itself, each sound of the kit from `brand/sounds`. Each is found by its
- * file name and lands where the series names it. Nothing is checked here:
- * the renderer checks each file against the series' sum, so a changed file
- * is refused, not used.
+ * The brand files a series version names, placed in a video's `root`. A
+ * bed we synthesise (`MUSIC_BED`, pinned by its sum) is written here from
+ * code, so home makes it itself and the owner lays nothing (#3476). Any
+ * other file is copied from `brand`, home's folder of the owner's files
+ * (`${STORAGE}/brand`, mounted read-only at `/brand`; never a
+ * repository's): a bed of the owner's own from `brand` itself, each sound
+ * of the kit from `brand/sounds`. Each is found by its file name and lands
+ * where the series names it. Nothing copied is checked here: the renderer
+ * checks each file against the series' sum, so a changed file is refused,
+ * not used.
  */
 export async function placeBrandFiles(
   series: Series,
@@ -296,7 +300,18 @@ export async function placeBrandFiles(
     readonly to: string
   }> = []
   const bed = series.music?.bed
-  if (bed)
+  const ours = bed?.sha256 === MUSIC_BED.sha256
+  if (bed && ours) {
+    try {
+      await mkdir(dirname(join(root, bed.file)), { recursive: true })
+      await writeFile(join(root, bed.file), musicBedWav())
+    } catch {
+      return {
+        ok: false,
+        problems: [`the music bed: ${join(root, bed.file)} can't be written`],
+      }
+    }
+  } else if (bed)
     wanted.push({
       what: "the music bed",
       from: basename(bed.file),
@@ -309,7 +324,8 @@ export async function placeBrandFiles(
       to: kit.file,
     })
   }
-  if (wanted.length === 0) return { ok: true, value: { bed: false, sounds: 0 } }
+  if (wanted.length === 0)
+    return { ok: true, value: { bed: bed !== undefined, sounds: 0 } }
   if (brand === undefined) {
     return {
       ok: false,
