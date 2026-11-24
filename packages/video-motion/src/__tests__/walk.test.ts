@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs"
+import { DASHBOARD_WALKS } from "@some-ui/video-render"
+import * as dashboards from "@video-motion/walk/home-dashboards"
 import {
   homeCall,
   homeCores,
@@ -259,6 +261,15 @@ describe("the server's dashboards, on sample telemetry (#3401)", () => {
       pipelines.stage.kind === "grafana" ? pipelines.stage.page : ""
     ).toMatch(/^\/d-solo\/pipelines\/\?.*panelId=1/)
     expect(SAMPLE_BAND).toMatch(/sample/i)
+  })
+
+  it("are each a walk SHOW1 counts as showing our dashboards, and no other is (C1481)", () => {
+    const sample = homeServer.sample.parse(HOME_SAMPLE)
+    const walked = Object.values(dashboards).flatMap((entry) =>
+      typeof entry === "object" && "walk" in entry ? [entry.walk(sample)] : []
+    )
+    for (const walk of walked) expect(walk.stage.kind).toBe("grafana")
+    expect(new Set(walked.map((walk) => walk.app))).toEqual(DASHBOARD_WALKS)
   })
 
   it("a visit stays on the stage: a path from /, never another origin", () => {

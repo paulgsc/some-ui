@@ -301,7 +301,11 @@ as a screen in motion, so the owner sees the app used, not only its
 pictures. The trip is the pages' one, keyed by the run.
 
 1. **The capture.** Snips Capture's APK job walks each app with a walk
-   (`apps/mobile/walk/walk-apk.sh`), and its bundle job writes
+   (`apps/mobile/walk/walk-apk.sh`), and its dashboards job walks the
+   server's dashboards an essay shows, `home-call` and `home-pipelines`,
+   on a throwaway Grafana over the sample week, each screen banded as
+   sample data (`packages/video-motion/scripts/dashboards-on-sample.sh`,
+   C1481). Its bundle job writes
    `walks-bundle-<run>` (`apps/www/scripts/walks-bundle.ts`):
 
    ```

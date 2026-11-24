@@ -155,6 +155,14 @@ Since you, months later, are the listener:
      not meaning: a line that describes our app in other words is still
      yours to show, and one that uses a phrase for something else is
      rephrased.
+     Our dashboards are shown the same way (C1481): a chapter that says
+     "Grafana" or "dashboard", or cites `paulgsc/server`'s
+     `infra/grafana/dashboards/`, shows a walk of them, `home-call` (the
+     weekly call's rows: each week made into a video, the Rust Rounds and
+     mock interview essays) or `home-pipelines` (the pipelines' graphs),
+     from the same Snips Capture run as the essay's other walks. They are
+     drawn from the server's jsonnet on a made-up week, and each screen says
+     so; say it in the narration too, never as home's numbers.
    - A scene shows a card picture (`{"kind": "card"}`) with its card as a
      burn-in: a `terminal`, `cheat-sheet`, `legend`, `rule`, `flow` or
      `bars`, and a `spoken` field as above. A `bars` card is a chart of
