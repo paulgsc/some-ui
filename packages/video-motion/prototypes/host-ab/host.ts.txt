@@ -1,0 +1,78 @@
+// packages/ui/burn-ins/src/lib/host.ts (proposed; nothing landed)
+// The host: one cast character over a scene's picture, a burn-in kind.
+// Every case is a member of a closed union; a new pose is a new case here.
+
+import type { Character } from "@some-ui/styles/brand/cast"
+
+export const HOST_DESIGNS = ["tin-owlet-v1"] as const
+
+/** What a beat looks at or points to: a part of the picture, or a spot in the frame. */
+export type Target =
+  | { readonly region: string } // a snip's data-region, as screen-zoom names them
+  | { readonly x: number; readonly y: number } // frame px
+
+export type Pose =
+  | { readonly kind: "idle" }
+  | { readonly kind: "look"; readonly at: Target }
+  | { readonly kind: "point"; readonly at: Target } // the near wing aims
+  | { readonly kind: "present" } // both wings open: "here it is"
+  | { readonly kind: "facepalm" } // wings to the head
+  | { readonly kind: "think" } // a wing to the beak, eyes up
+
+export const EXPRESSIONS = [
+  "neutral",
+  "pleased",
+  "upset",
+  "desperate",
+  "thinking",
+  "surprised",
+] as const
+export type Expression = (typeof EXPRESSIONS)[number]
+
+export type Placement =
+  | {
+      readonly kind: "corner"
+      readonly corner: "bottom-right" | "bottom-left"
+      readonly frame: "circle" | "square"
+    }
+  | { readonly kind: "closeup" } // the host fills the frame; the picture dims
+  | { readonly kind: "off" }
+
+/** From `atMs` into the scene until the next beat; blends in over a fixed 380 ms. */
+export type Beat = {
+  readonly atMs: number
+  readonly pose: Pose
+  readonly expression: Expression
+  /** Beak and key follow the take's word timings when the shot has them. */
+  readonly speaking: boolean
+}
+
+export type HostParams = {
+  readonly character: Extract<Character, "tin-owlet" | "tin-sparrow">
+  /** Idle life (blinks, glances) is a pure function of (t, seed). */
+  readonly seed: number
+  readonly places: ReadonlyArray<{ readonly atMs: number; readonly placement: Placement }>
+  readonly beats: ReadonlyArray<Beat>
+}
+
+// The design's tables are typed by the unions, so a missing case fails tsc:
+//   const FACES: Record<Expression, Face> = { neutral: {...}, ... }
+//   const WINGS: Record<Pose["kind"], Wings> = { idle: {...}, ... }
+// and hostAt(params, t): HostFrame is pure, as captions' frameAt is.
+
+// How a scene calls it, in some-ui.cut-list/2 (no schema change: burnIns already exists):
+// {
+//   "id": "apk",
+//   "picture": { "kind": "screen", "of": { "from": "snips", "id": "…", "commit": "…" } },
+//   "burnIns": [{
+//     "kind": "host", "design": "tin-owlet-v1",
+//     "params": {
+//       "character": "tin-owlet", "seed": 7,
+//       "places": [{ "atMs": 0, "placement": { "kind": "corner", "corner": "bottom-right", "frame": "circle" } }],
+//       "beats": [
+//         { "atMs": 0,    "pose": { "kind": "look",  "at": { "region": "title" } }, "expression": "neutral",  "speaking": true },
+//         { "atMs": 3200, "pose": { "kind": "point", "at": { "region": "error" } }, "expression": "thinking", "speaking": true }
+//       ]
+//     }
+//   }]
+// }

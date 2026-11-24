@@ -1,0 +1,10 @@
+{"A_NOTE":"26 s, 1920×1080 at 30 fps, rendered by <code>motion video --prove</code>: twice from nothing, the same bytes both times (sha256 996f91f7…6517). 2.98 MB.",
+ "B_NOTE":"The same cut list with <code>medium: sprite</code>: the same beats and placements, with the character read from the sheet's cells. 2.13 MB. Watch the hard cuts between beats and the 8 fps steps.",
+ "A_ASSET":"19 KB: the drawing (9.5 KB of SVG) and the rig (9.8 KB of script)",
+ "B_ASSET":"19.6 MB: a 10240 × 9216 PNG of 1,440 cells (<a href=\"sheet.png\">the sheet</a>)",
+ "B_BAKE":"48 s to bake here, plus the rig A already is",
+ "A_TIME":"≈ 8.2–8.8 min (489 s and 531 s)",
+ "B_TIME":"≈ 8.3 min (500 s): no faster, since HyperFrames' frame capture is the cost, not the character",
+ "A_PROVE":"rendered twice from nothing by <code>motion video --prove</code>, sha256 996f91f716748d5e… both times",
+ "SHEET_SHA":"694bd60b…6fac",
+ "SHA":"eb743925e5e5"}

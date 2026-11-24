@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tin Bird as host</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a workshop notebook for a wind-up toy; plain first person, findings first.
+   IDEA: the toy maker's sheet: the character pinned up, every pose drawn beside it.
+   PICTURE: the owlet itself, live and large, hosting the page.
+   COLOUR and TYPE: the essays' own ground (mochi night), tin, teal lens, honey accent; Barlow Condensed as the videos set it.
+   LAYOUT: hero with the owlet; then the videos, the sheet, the A/B, the schema. */
+:root{color-scheme:light dark;--bg:light-dark(#f6efe6,#1d1611);--card:light-dark(#fffaf3,#2a211a);--ink:light-dark(#22180f,#f4efe6);--soft:light-dark(#6d5d4f,#c9b8a6);--line:light-dark(#e3d6c6,#3a2e24);--honey:light-dark(#b8680f,#f5b75b);--teal:light-dark(#0f8f80,#4ff0d8);--stage:#1d1611}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"Barlow Condensed",sans-serif;font-weight:800;line-height:1.05;text-wrap:balance;margin:0 0 .4em}
+h1{font-size:clamp(36px,5vw,52px)}h2{font-size:clamp(28px,3.4vw,38px)}h3{font-size:22px;font-weight:600}
+p{max-width:70ch;margin:.4em 0 .9em}
+a{color:var(--honey)}
+.band{padding:clamp(28px,4vw,60px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+.nav{display:flex;gap:18px;flex-wrap:wrap;font-family:"Barlow Condensed";font-weight:600;font-size:19px;padding:12px max(5vw,16px);border-bottom:1px solid var(--line)}
+.nav a{text-decoration:none}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(20px,4vw,56px);align-items:center}
+.hero .stage{background:radial-gradient(ellipse at 40% 30%,#3b3027,#17110d 70%);border-radius:22px;aspect-ratio:1/1;position:relative;overflow:hidden}
+.stage svg{width:100%;height:100%;display:block}
+.stage .lab{position:absolute;left:16px;bottom:12px;font-family:"Barlow Condensed";font-weight:600;font-size:20px;color:#f5b75b}
+.verdict{border-left:4px solid var(--honey);padding:6px 0 6px 16px;margin:14px 0}
+.verdict b{font-family:"Barlow Condensed";font-size:24px;display:block}
+.small{font-size:14px;color:var(--soft)}
+.vids{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.vid{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+video,.vid img{width:100%;border-radius:10px;display:block;background:#000}
+.grid{display:grid;grid-template-columns:110px repeat(6,minmax(0,1fr));gap:6px;align-items:center}
+.grid .h{font-family:"Barlow Condensed";font-weight:600;font-size:16px;color:var(--soft);text-align:center}
+.grid .rh{text-align:right;padding-right:6px}
+.cell{background:var(--stage);border-radius:10px;aspect-ratio:1/1;overflow:hidden}
+.cell svg{width:100%;height:100%;display:block}
+.places{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.place{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.place svg{width:100%;aspect-ratio:16/9;display:block;border-radius:8px}
+.place span{display:block;font-family:"Barlow Condensed";font-weight:600;font-size:17px;margin-top:6px}
+table{border-collapse:collapse;width:100%;font-size:15.5px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"Barlow Condensed";font-weight:600;font-size:18px}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+pre{background:#17110d;color:#f4efe6;border-radius:12px;padding:16px;overflow-x:auto;font-size:13.5px;line-height:1.5}
+.copy{float:right;font:600 15px "Barlow Condensed";background:var(--honey);color:#1d1611;border:0;border-radius:8px;padding:8px 14px;min-height:40px;cursor:pointer}
+.copy:focus-visible,a:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+ul{padding-left:1.2em}li{margin:.3em 0;max-width:72ch}
+.scroll{overflow-x:auto}
+svg text{font-family:"Barlow Condensed",sans-serif}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.vids{grid-template-columns:1fr}.places{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.grid{grid-template-columns:64px repeat(6,minmax(0,1fr));gap:3px}.grid .h{font-size:12px}table{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.live-note::after{content:" (motion is held still: your system asks for reduced motion)"}}
+</style>
+</head>
+<body>
+<nav class="nav scroll"><a href="#films">The sample essay</a><a href="#sheet">Template sheet</a><a href="#ab">A against B</a><a href="#schema">The schema</a><a href="#next">Next week</a></nav>
+
+<header class="band"><div class="wrap hero">
+  <div>
+    <h1>Tin Bird, as the essays' host</h1>
+    <p>An ideation sketch, made on 24 Nov 2026, with no code landed. <b>"Teen Bird" is Tin Bird (cast.ts <code>tin-owlet</code>)</b>: the transcription heard "tin" as "teen". It is the bird already on main (<code>packages/some-styles/src/brand/cast.ts</code>, the tutor and the thumbnails' bird). Here it gets lifelike loops and a fixed set of postures and expressions a scene can call by name, rendered through the pipeline main already has (<code>@some-ui/video-motion</code>'s HyperFrames compositions, then <code>motion video</code>).</p>
+    <div class="verdict"><b>Recommendation: A, the SVG rig, landing as a burn-in kind.</b>Poses, expressions and placements combine as parameters instead of as a grid of pictures. It stays sharp at close-up size, and the same inputs gave the same bytes. B, the sprite sheet, is just as deterministic, but its size grows with every pose, expression and direction multiplied together, and it blurs in a close-up.</div>
+    <p class="small live-note">The bird on this page moves live in your browser, by the same rig code the renders use. The videos below are the renders.</p>
+  </div>
+  <div class="stage" id="hero"><span class="lab" id="heroLab"></span></div>
+</div></header>
+
+<section class="band" id="films"><div class="wrap">
+  <h2>The sample essay, twice: A and B</h2>
+  <p>Four scenes from one cut list (<code>some-ui.cut-list/2</code>), each a composition scene: a close-up hello, a Rust Rounds card on the phone (the snips' sample screen) with the owlet pointing at the compiler error, a sample "jobs queued" card where it gets upset and then desperate in a corner-to-close-up move, and a goodbye. The captions are burned in. There's no voice: home's speaker can't be reached from here, and the beats already carry <code>speaking</code>, so the beak and the key's wind show where a voice would sit.</p>
+  <div class="vids">
+    <div class="vid"><h3>A · SVG rig</h3><video controls preload="metadata" playsinline src="essay-a.mp4"></video><p class="small">__A_NOTE__</p></div>
+    <div class="vid"><h3>B · sprite sheet</h3><video controls preload="metadata" playsinline src="essay-b.mp4"></video><p class="small">__B_NOTE__</p></div>
+  </div>
+  <h3 style="margin-top:24px">Close-up, same frame: A on the left, B on the right</h3>
+  <div class="vid"><img src="closeup-ab.png" alt="The owlet's face in close-up: crisp edges from the SVG rig on the left, softer and blurred edges from the sprite cell on the right"></div>
+</div></section>
+
+<section class="band" id="sheet"><div class="wrap">
+  <h2>Template sheet: every pose by every expression, moving</h2>
+  <p>Rows are postures and columns are expressions; any pair combines. In the look and point rows the owlet follows the small target as it circles. Idle life runs underneath everything: a blink on a seeded schedule (now and then a double), glances, a breath and a slow sway. The wind-up key turns, faster while it speaks, and the body gives a small shake as it talks: both are what you asked for in C823 ("can the tin bird's wind-up key spin while it's speaking… shake a little"), drawn here as members of the same rig. All of it is a pure function of time and a seed.</p>
+  <div class="grid" id="grid"></div>
+  <h3 style="margin-top:28px">Placements</h3>
+  <div class="places" id="places"></div>
+</div></section>
+
+<section class="band" id="ab"><div class="wrap">
+  <h2>A against B</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>What</th><th>A · SVG rig</th><th>B · sprite sheet</th></tr></thead>
+    <tbody>
+      <tr><td>How it's made</td><td>The cast's own owlet nodes, regrouped into 17 named parts (lids, irises, beak, wings, tufts, key) that the rig moves every frame</td><td>That same rig, baked once into 256 px cells: 12 pose variants × 6 expressions × 20 frames (a 16-frame idle loop at 8 fps with a blink, plus 4 talk frames)</td></tr>
+      <tr><td>Asset size</td><td class="n">__A_ASSET__</td><td class="n">__B_ASSET__</td></tr>
+      <tr><td>Making the asset</td><td>None: the drawing is code</td><td class="n">__B_BAKE__</td></tr>
+      <tr><td>Rendering the 26 s essay here</td><td class="n">__A_TIME__</td><td class="n">__B_TIME__</td></tr>
+      <tr><td>Deterministic</td><td>Yes: __A_PROVE__</td><td>Yes: the sheet came out the same hash on two bakes (__SHEET_SHA__). The render reads the cell from the time alone</td></tr>
+      <tr><td>Look</td><td>Smooth blends between beats (0.38 s), a continuous aim at any point on screen, and every motion at the video's 30 fps</td><td>Hard cuts between beats, aim snapped to one of 4 directions, and 8 fps steps that read as hand-drawn animation. Soft at close-up size, since a 256 px cell is drawn at about 1,000 px</td></tr>
+      <tr><td>Adding an expression</td><td>One row of numbers (lid, tilt, pupil, tufts, effect)</td><td>One more expression is 12 × 20 = 240 more cells (+3.3 MB). One more aim direction is 6 × 20 × 2 = 240 more. A sharp close-up needs 4× the pixels in every cell</td></tr>
+      <tr><td>Placements (corner, circle or square, close-up)</td><td colspan="2">The same in both: the frame and its move are drawn by the composition around the character</td></tr>
+    </tbody>
+  </table></div>
+  <p>Where B would win: a painterly character that code can't draw (watercolour, hand-inked frames). The owlet is already vector data in the cast, so the sprite only copies it at lower fidelity. A sprite sheet stays a sound way to export the host for somewhere that can't run the rig (a GIF, a sticker), made from A on demand.</p>
+</div></section>
+
+<section class="band" id="schema"><div class="wrap">
+  <h2>The family it joins: a burn-in kind, beside captions and cards</h2>
+  <p>I looked inward first. A burn-in (<code>packages/ui/burn-ins/src/lib/burn-in.ts</code>) is already a closed union of kinds, each with a frozen design, params checked once, and a pure <code>frameAt(t)</code>. The recorder seeks every frame and lays an alpha layer over <em>any</em> picture: a capture, a snip, a card or a composition. That is the host: a layer that lives over the scene, timed in milliseconds and pure in time. So I'd add a <code>host</code> kind with a design <code>tin-owlet-v1</code>, not a new field on the shot. Its beats are a closed union the compiler checks: pose × expression, with a placement over the scene.</p>
+  <button class="copy" id="copyTs" type="button">Copy</button>
+<pre id="ts">__TS__</pre>
+  <p><b>Your choice: the corner.</b> The burn-ins' regions never overlap (<code>src/lib/geometry.ts</code>), and none of them is a corner, so a corner host either <b>carves its own region</b> out of the body's bottom corner (cards then lay out around it, a little narrower in every scene), or the host is <b>declared an exception</b> that may draw over the body while the cards stay as they are (simpler, though the host can then cover a card's last line). A close-up host is a full-frame layer either way, so other burn-ins step aside while it holds.</p>
+</div></section>
+
+<section class="band" id="next"><div class="wrap">
+  <h2>Next week, and what's open</h2>
+  <ul>
+    <li><b>The wings are new.</b> The cast's still owlet has no wings, and pointing needed them, so the sketch adds two riveted tin wings and also gives the key a bow that turns. That's a change to the brand's drawing: <code>cast.ts</code> would carry the wings as parts the still pose tucks away.</li>
+    <li><b>Which bird hosts.</b> I used Tin Bird (<code>tin-owlet</code>): it is the tutor, the essays are pedagogical, and the thumbnails already draw it as the synthetic voice. <code>tin-sparrow</code>, the cast's other tin bird (the asker), could co-host on the same rig. The barn owl you set aside in C823 is not drawn on anywhere here.</li>
+    <li><b>Voice.</b> With home's speaker, the beak would open per word from the take's word timings (C821 step 2), where it now opens on a fixed syllable rhythm.</li>
+    <li><b>Render time.</b> HyperFrames draws about 0.6 s a frame here. As a burn-in, the host would be recorded once as an alpha layer, as captions are.</li>
+  </ul>
+  <p class="small">Made from paulgsc/some-ui main at __SHA__. Sample screens only (the snips' Rust Rounds sample and a drawn "jobs queued" card), with none of home's own data. Nothing here landed on main.</p>
+</div></section>
+
+<script>
+{
+const RIG_SVG = __RIG_SVG_JSON__;
+__RIG_JS__
+const R = window.hostRig;
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NS = "http://www.w3.org/2000/svg";
+let n = 0;
+const make = (host) => {
+  const id = "i" + (n++);
+  host.insertAdjacentHTML("beforeend", RIG_SVG.replace(/id="h-/g, `id="${id}-h-`).replace(/#h-/g, `#${id}-h-`));
+  const svg = host.lastElementChild;
+  return { svg, parts: R.parts(svg) };
+};
+const actors = [];
+// hero: a looping script
+const heroBeats = [
+  {at:0,pose:"idle",expression:"neutral"},
+  {at:2,pose:"look",expression:"neutral",target:{x:-10,y:70}},
+  {at:3.4,pose:"point",expression:"pleased",target:{x:-10,y:70},speaking:true},
+  {at:5.6,pose:"present",expression:"pleased",speaking:true},
+  {at:7.6,pose:"idle",expression:"upset",speaking:true},
+  {at:9.6,pose:"facepalm",expression:"desperate"},
+  {at:11.8,pose:"think",expression:"thinking"},
+  {at:13.8,pose:"idle",expression:"surprised"},
+  {at:15.4,pose:"idle",expression:"neutral"}];
+const hero = make(document.getElementById("hero"));
+const heroTl = R.prepare(heroBeats, 11, 600);
+const heroLab = document.getElementById("heroLab");
+actors.push((t) => {
+  const lt = t % 17;
+  R.apply(hero.parts, R.stateAt(heroTl, lt, {x:0,y:0,scale:1}));
+  const b = heroBeats.findLast((x) => x.at <= lt);
+  heroLab.textContent = `${b.pose} · ${b.expression}${b.speaking ? " · speaking" : ""}`;
+});
+// grid
+const grid = document.getElementById("grid");
+grid.insertAdjacentHTML("beforeend", `<div></div>` + R.EXPRESSIONS.map((e) => `<div class="h">${e}</div>`).join(""));
+const rows = ["idle", "look", "point", "present", "facepalm", "think", "speaking"];
+rows.forEach((pose, ri) => {
+  grid.insertAdjacentHTML("beforeend", `<div class="h rh">${pose}</div>`);
+  R.EXPRESSIONS.forEach((e, ci) => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    grid.appendChild(cell);
+    const a = make(cell);
+    let dot = null;
+    if (pose === "look" || pose === "point") {
+      dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("r", "4"); dot.setAttribute("fill", "#f5b75b");
+      a.svg.appendChild(dot);
+    }
+    const p = pose === "speaking" ? "idle" : pose;
+    const seed = 100 + ri * 7 + ci;
+    actors.push((t) => {
+      const ang = t * 0.9 + ci;
+      const target = { x: 48 + Math.cos(ang) * 62, y: 44 + Math.sin(ang) * 52 };
+      if (dot) { dot.setAttribute("cx", target.x); dot.setAttribute("cy", target.y); }
+      const tl = a.tl ??= R.prepare([{ at: -1, pose: p, expression: e, target, speaking: pose === "speaking" }], seed, 600);
+      tl.beats[0].target = target;
+      R.apply(a.parts, R.stateAt(tl, t, { x: 0, y: 0, scale: 1 }));
+    });
+  });
+});
+// placements
+const PL = [
+  ["Corner, bottom right, circle", { x: 1920 - 64 - 360, y: 1080 - 64 - 360, s: 360, r: 180 }],
+  ["Corner, bottom left, square", { x: 64, y: 1080 - 64 - 360, s: 360, r: 48 }],
+  ["Close-up", { x: 0, y: 0, s: 1920, r: 0, close: 1 }],
+  ["Corner to close-up and back", null]];
+const places = document.getElementById("places");
+PL.forEach(([name, box], i) => {
+  const d = document.createElement("div");
+  d.className = "place";
+  d.innerHTML = `<svg viewBox="0 0 1920 1080"><rect width="1920" height="1080" fill="#1d1611"/><g class="pic"><rect x="560" y="120" width="800" height="520" rx="34" fill="#2a211a"/><rect x="620" y="190" width="420" height="44" rx="10" fill="#4a3b2f"/><rect x="620" y="270" width="660" height="26" rx="8" fill="#3a2e24"/><rect x="620" y="320" width="600" height="26" rx="8" fill="#3a2e24"/><rect x="620" y="410" width="680" height="170" rx="18" fill="#3d2420"/></g><clipPath id="pc${i}"><rect class="clip"/></clipPath><rect class="bg" fill="#2b2119"/><g clip-path="url(#pc${i})"><g class="put"></g></g><rect class="ring" fill="none" stroke="#f5b75b" stroke-width="6"/></svg><span></span>`;
+  d.querySelector("span").textContent = name;
+  places.appendChild(d);
+  const svg = d.querySelector("svg");
+  const put = svg.querySelector(".put");
+  put.innerHTML = RIG_SVG.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "").replace(/id="h-/g, `id="p${i}-h-`).replace(/#h-/g, `#p${i}-h-`);
+  const parts = R.parts(put);
+  const tl = R.prepare([{ at: -1, pose: "point", expression: i === 2 ? "pleased" : "neutral", target: { x: 960, y: 380 } }], 50 + i, 600);
+  const corner = { x: 1920 - 64 - 360, y: 1080 - 64 - 360, s: 360, r: 180, close: 0 };
+  const full = { x: 0, y: 0, s: 1920, r: 0, close: 1 };
+  const sm = (p) => { p = Math.max(0, Math.min(1, p)); return p * p * (3 - 2 * p) };
+  actors.push((t) => {
+    let b = box;
+    if (!b) { const ph = t % 6; const e = sm((ph - 1) / 0.8) - sm((ph - 4) / 0.8); b = {}; for (const k in corner) b[k] = corner[k] + (full[k] - corner[k]) * e; }
+    const h = Math.min(b.s, 1080);
+    const close = b.close ?? 0;
+    for (const c of [".clip", ".bg", ".ring"]) { const el = svg.querySelector(c); el.setAttribute("x", b.x); el.setAttribute("y", b.y); el.setAttribute("width", b.s); el.setAttribute("height", h); el.setAttribute("rx", b.r); }
+    svg.querySelector(".ring").setAttribute("opacity", 1 - close);
+    svg.querySelector(".pic").setAttribute("opacity", 1 - 0.85 * close);
+    const scale = (h / 140) * (b.s > 1080 ? 1.3 : 1.25) * (1 - close) + (1080 / 140) * 1.3 * close;
+    const gx = b.x + b.s / 2 - 48 * scale, gy = b.y + h / 2 - (50 + 2 * close) * scale;
+    put.setAttribute("transform", `translate(${gx} ${gy}) scale(${scale})`);
+    tl.beats[0].pose = close > 0.5 ? "present" : "point";
+    R.apply(parts, R.stateAt(tl, t, { x: gx, y: gy, scale }));
+  });
+});
+const t0 = performance.now();
+const frame = () => { const t = still ? 1.2 : (performance.now() - t0) / 1000; for (const a of actors) a(t); if (!still) requestAnimationFrame(frame); };
+frame();
+document.getElementById("copyTs").addEventListener("click", async (ev) => {
+  try { await navigator.clipboard.writeText(document.getElementById("ts").textContent); ev.target.textContent = "Copied"; }
+  catch { ev.target.textContent = "Select the text to copy"; }
+});
+}
+</script>
+</body>
+</html>

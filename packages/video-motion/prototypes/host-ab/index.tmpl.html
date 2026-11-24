@@ -1,0 +1,187 @@
+<!doctype html>
+<!-- HOST-AB prototype: the tin owlet as a host over a scene's picture.
+     Not on main. Everything is drawn from the seeked time alone. -->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"medium","type":"enum","label":"A: svg rig, B: sprite sheet","default":"svg",
+     "options":[{"value":"svg","label":"SVG"},{"value":"sprite","label":"Sprite"}]},
+    {"id":"beats","type":"string","label":"JSON [{at, pose, expression, target?:{x,y}, speaking?, say?}]","default":"[{\"at\":0,\"pose\":\"idle\",\"expression\":\"neutral\"}]"},
+    {"id":"places","type":"string","label":"JSON [{at, place: corner-br|corner-bl|closeup|center, frame: circle|square}]","default":"[{\"at\":0,\"place\":\"corner-br\",\"frame\":\"circle\"}]"},
+    {"id":"screen","type":"string","label":"A phone screen under assets/, or empty","default":""},
+    {"id":"panel","type":"string","label":"JSON {kicker, title, rows:[[name, state]], note} or empty","default":""},
+    {"id":"chapter","type":"string","label":"Top-left chapter text","default":""},
+    {"id":"seed","type":"number","label":"Idle-life seed","default":7},
+    {"id":"ground","type":"color","label":"Ground","default":"#1d1611"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @font-face { font-family: "Display"; src: url("fonts/barlow-condensed-800.woff2") format("woff2"); font-weight: 800; }
+      @font-face { font-family: "Display"; src: url("fonts/barlow-condensed-600.woff2") format("woff2"); font-weight: 600; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background: radial-gradient(ellipse at 30% 20%, #2b2119 0%, var(--ground) 60%); color: #f4efe6; font-family: "Display"; }
+      #pic { position: absolute; inset: 0; }
+      #screen { position: absolute; left: 420px; top: 70px; height: 800px; border-radius: 28px;
+        box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 10px #0e0b08, 0 0 0 12px #3a2e24; }
+      #panel { position: absolute; left: 520px; top: 130px; width: 1040px; padding: 48px 56px; border-radius: 28px;
+        background: #2a211a; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+      #panel .kicker { font-weight: 600; font-size: 34px; color: #c9b8a6; letter-spacing: .04em; text-transform: uppercase; }
+      #panel .title { font-weight: 800; font-size: 72px; margin: 6px 0 28px; }
+      #panel .row { display: flex; align-items: center; gap: 22px; font-weight: 600; font-size: 44px; padding: 14px 0; border-top: 2px solid #3a2e24; }
+      #panel .dot { width: 26px; height: 26px; border-radius: 50%; border: 5px solid #e3a33b; border-right-color: transparent; }
+      #panel .state { margin-left: auto; color: #e3a33b; }
+      #panel .note { margin-top: 26px; font-size: 38px; color: #c9b8a6; font-weight: 600; }
+      #chapter { position: absolute; left: 72px; top: 44px; font-weight: 600; font-size: 34px; letter-spacing: .08em; text-transform: uppercase; color: #f5b75b; }
+      #cap { position: absolute; left: 360px; right: 360px; bottom: 54px; text-align: center; font-weight: 800; font-size: 58px; line-height: 1.1;
+        text-shadow: 0 3px 0 #0e0b08, 0 0 24px rgba(0,0,0,.7); }
+      #tag { position: absolute; right: 72px; top: 44px; font-weight: 600; font-size: 28px; color: #8d7c6c; letter-spacing: .06em; }
+      svg#stage { position: absolute; left: 0; top: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="6" data-width="1920" data-height="1080" data-fps="30" data-no-timeline>
+      <div id="pic"></div>
+      <div id="chapter"></div>
+      <div id="tag"></div>
+      <svg id="stage" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <defs>
+          <clipPath id="frameClip"><rect id="frameClipRect" /></clipPath>
+          <radialGradient id="frameGround" cx="0.45" cy="0.35" r="0.75">
+            <stop offset="0" stop-color="#3b3027" /><stop offset="1" stop-color="#17110d" />
+          </radialGradient>
+        </defs>
+        <rect id="frameBg" fill="url(#frameGround)" />
+        <g clip-path="url(#frameClip)">
+          <g id="place">__RIG__</g>
+          <svg id="spriteBox" overflow="hidden" style="display:none"><image id="sheet" href="assets/sheet.png" /></svg>
+        </g>
+        <rect id="frameRing" fill="none" stroke="#f5b75b" stroke-width="5" />
+      </svg>
+      <div id="cap"></div>
+    </div>
+    <script src="lib/motion.js"></script>
+    <script src="rig.js"></script>
+    <script>
+      {
+        const { length, vars, $ } = window.motion
+        const R = window.hostRig
+        const beats = JSON.parse(vars.beats)
+        const places = JSON.parse(vars.places).sort((a, b) => a.at - b.at)
+        const tl = R.prepare(beats, Number(vars.seed), length + 1)
+        const sprite = vars.medium === "sprite"
+        $("tag").textContent = sprite ? "B · SPRITE SHEET" : "A · SVG RIG"
+        $("chapter").textContent = vars.chapter
+        if (vars.screen) {
+          const img = document.createElement("img")
+          img.id = "screen"
+          img.src = "assets/" + vars.screen
+          $("pic").appendChild(img)
+        }
+        if (vars.panel) {
+          const p = JSON.parse(vars.panel)
+          const el = document.createElement("div")
+          el.id = "panel"
+          el.innerHTML = `<div class="kicker"></div><div class="title"></div>${p.rows.map(() => `<div class="row"><span class="dot"></span><span class="n"></span><span class="state"></span></div>`).join("")}<div class="note"></div>`
+          el.querySelector(".kicker").textContent = p.kicker
+          el.querySelector(".title").textContent = p.title
+          el.querySelectorAll(".row").forEach((r, i) => {
+            r.querySelector(".n").textContent = p.rows[i][0]
+            r.querySelector(".state").textContent = p.rows[i][1]
+          })
+          el.querySelector(".note").textContent = p.note
+          $("pic").appendChild(el)
+        }
+
+        // Where the host sits: a box, its corner radius, and the drawing's zoom.
+        const BOX = {
+          "corner-br": (f) => ({ x: 1920 - 64 - 360, y: 1080 - 64 - 360, s: 360, r: f === "circle" ? 180 : 48, zoom: 1.25, cy: 50, ring: 1, bg: 1, dim: 0 }),
+          "corner-bl": (f) => ({ x: 64, y: 1080 - 64 - 360, s: 360, r: f === "circle" ? 180 : 48, zoom: 1.25, cy: 50, ring: 1, bg: 1, dim: 0 }),
+          center: () => ({ x: 1920 - 760, y: 60, s: 700, r: 0, zoom: 1.1, cy: 50, ring: 0, bg: 0, dim: 0 }),
+          closeup: () => ({ x: 0, y: 0, s: 1920, r: 0, zoom: 1.0, cy: 52, ring: 0, bg: 1, dim: 1 }),
+        }
+        const boxOf = (p) => BOX[p.place](p.frame)
+        const lerp = (a, b, e) => a + (b - a) * e
+        const smooth = (p) => { p = Math.max(0, Math.min(1, p)); return p * p * (3 - 2 * p) }
+        const placeAt = (t) => {
+          let i = places.findLastIndex((p) => p.at <= t)
+          if (i < 0) i = 0
+          const cur = boxOf(places[i])
+          if (i === 0) return cur
+          const prev = boxOf(places[i - 1])
+          const e = smooth((t - places[i].at) / 0.7)
+          const o = {}
+          for (const k of Object.keys(cur)) o[k] = lerp(prev[k], cur[k], e)
+          return o
+        }
+        // The drawing's unit → frame px. The closeup is 1920 wide but frames the face at 1080 tall.
+        const geoOf = (b) => {
+          const tall = Math.min(b.s, 1080)
+          const scale = (tall / 140) * b.zoom * (b.s > 1080 ? 1.3 : 1)
+          return { x: b.x + b.s / 2 - 48 * scale, y: b.y + Math.min(b.s, 1080) / 2 - b.cy * scale, scale, box: b }
+        }
+
+        const svg = $("stage")
+        const parts = R.parts($("place"))
+        const ATTR = (el, o) => { for (const k in o) el.setAttribute(k, String(o[k])) }
+
+        // B: quantize the state into a cell of the sheet.
+        const SPRITE = { cell: 256, cols: 40, view: 140, fps: 8 }
+        const VARIANTS = ["idle", "present", "facepalm", "think", "look-W", "look-NW", "look-NE", "look-E", "point-W", "point-NW", "point-NE", "point-E"]
+        const AIMS = { W: 180, NW: -135, NE: -45, E: 0 }
+        const cellOf = (beat, t, geo) => {
+          let v = beat.pose
+          if (v === "look" || v === "point") {
+            const ex = geo.x + 48 * geo.scale, ey = geo.y + 41 * geo.scale
+            const deg = (Math.atan2(beat.target.y - ey, beat.target.x - ex) * 180) / Math.PI
+            const dist = (a) => Math.abs(((a - deg + 540) % 360) - 180)
+            const best = Object.entries(AIMS).reduce((m, e) => (dist(e[1]) < dist(m[1]) ? e : m))
+            v = `${v}-${best[0]}`
+          }
+          const vi = VARIANTS.indexOf(v)
+          const ei = R.EXPRESSIONS.indexOf(beat.expression ?? "neutral")
+          const f = Math.floor(t * SPRITE.fps + 1e-6)
+          const frame = beat.speaking ? 16 + (f % 4) : f % 16
+          return (vi * R.EXPRESSIONS.length + ei) * 20 + frame
+        }
+
+        const draw = (t) => {
+          const b = placeAt(t)
+          const geo = geoOf(b)
+          ATTR($("frameClipRect"), { x: b.x, y: b.y, width: b.s, height: Math.min(b.s, 1080), rx: b.r })
+          ATTR($("frameBg"), { x: b.x, y: b.y, width: b.s, height: Math.min(b.s, 1080), rx: b.r, opacity: b.bg })
+          ATTR($("frameRing"), { x: b.x, y: b.y, width: b.s, height: Math.min(b.s, 1080), rx: b.r, opacity: b.ring })
+          $("pic").style.opacity = String(1 - 0.88 * b.dim)
+          $("pic").style.transform = `scale(${1 - 0.06 * b.dim})`
+          let bi = beats.findLastIndex((x) => x.at <= t)
+          if (bi < 0) bi = 0
+          $("cap").textContent = beats[bi].say ?? ""
+          if (!sprite) {
+            $("place").setAttribute("transform", `translate(${geo.x} ${geo.y}) scale(${geo.scale}) translate(0 0)`)
+            R.apply(parts, R.stateAt(tl, t, geo))
+          } else {
+            $("place").style.display = "none"
+            const box = $("spriteBox")
+            box.style.display = ""
+            const c = cellOf(beats[bi], t, geo)
+            const cx = (c % SPRITE.cols) * SPRITE.cell, cy = Math.floor(c / SPRITE.cols) * SPRITE.cell
+            // the cell covers the drawing's viewBox (-22,-30) .. (118,110)
+            const size = SPRITE.view * geo.scale
+            ATTR(box, { x: geo.x - 22 * geo.scale, y: geo.y - 30 * geo.scale, width: size, height: size, viewBox: `${cx} ${cy} ${SPRITE.cell} ${SPRITE.cell}` })
+          }
+        }
+        if (sprite) {
+          const img = new Image()
+          img.src = "assets/sheet.png"
+          img.onload = () => ATTR($("sheet"), { width: img.naturalWidth, height: img.naturalHeight })
+          ATTR($("sheet"), { width: SPRITE.cols * SPRITE.cell, height: 36 * SPRITE.cell })
+        }
+        draw(0)
+        window.addEventListener("hf-seek", (e) => draw(e.detail.time))
+      }
+    </script>
+  </body>
+</html>
