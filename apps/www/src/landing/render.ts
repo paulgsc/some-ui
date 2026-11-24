@@ -152,7 +152,7 @@ const plateBody = (
   return `${
     asset === undefined
       ? `<div class="plate-card"><span>${e(row.label)}</span></div>`
-      : `<img class="plate-media" src="${mediaSrc(row.key)}" alt="" decoding="async" width="${String(asset.width)}" height="${String(asset.height)}" />`
+      : `<img class="plate-media" src="${mediaSrc(row.key)}" alt="" loading="lazy" decoding="async" width="${String(asset.width)}" height="${String(asset.height)}" />`
   }
               <figcaption class="plate-caption"><span class="plate-label">${e(row.label)}</span> · ${e(sample)}</figcaption>`
 }

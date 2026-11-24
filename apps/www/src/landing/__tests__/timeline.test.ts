@@ -308,6 +308,46 @@ describe("the dashboard band's plates (C1443)", () => {
         expect(middle.intro).toBeNull()
     }
   })
+
+  it("shows exactly one plate between hand-offs, each its own place's, and crosses over at each place's turn", () => {
+    const pctOf = (s: number): number => (s / timeline.cycleS) * 100
+    // A plate's opacity at `at` (a percentage) outside its fades: the
+    // value of the last keyframe at or before it.
+    const opacityAt = (keyframes: string, at: number): number => {
+      const before = frames(keyframes).filter((f) => f.at <= at)
+      const css = before.at(-1)?.css ?? ""
+      return Number(/opacity: ([\d.]+);/.exec(css)?.[1] ?? Number.NaN)
+    }
+    for (const e of timeline.episodes) {
+      const starts = e.scenes.map((s) => s.on[0])
+      // Mid-way between each place's turn and the next's, round the cycle
+      // (the last place's runs on to the first's, through the wrap).
+      const spans = starts.map((at, i) => {
+        const next = starts[i + 1] ?? (starts[0] ?? 0) + timeline.cycleS
+        expect(next - at, "a place shorter than its fade").toBeGreaterThan(
+          2 * 0.6
+        )
+        return (at + next) / 2
+      })
+      for (const [i, mid] of spans.entries()) {
+        const t = mid % timeline.cycleS
+        const shown = e.plates.map((p) => opacityAt(p.loop.keyframes, pctOf(t)))
+        expect(
+          shown,
+          `episode at ${String(e.start)}, place ${String(i)}`
+        ).toEqual(e.plates.map((_, j) => (j === i ? 1 : 0)))
+      }
+      // Each plate fades in at its own place's turn and, but for the last,
+      // out at the next's: one hand-off per turn, both at once.
+      for (const [i, plate] of e.plates.entries()) {
+        if (e.plates.length === 1) break
+        const ats = frames(plate.loop.keyframes).map((f) => f.at)
+        expect(ats).toContain(Number(pctOf(starts[i] ?? 0).toFixed(3)))
+        const out = i === e.plates.length - 1 ? starts.at(0) : starts.at(i + 1)
+        expect(ats).toContain(Number(pctOf(out ?? 0).toFixed(3)))
+      }
+    }
+  })
 })
 
 describe("showTimeline over any shape", () => {
@@ -337,7 +377,10 @@ describe("showTimeline over any shape", () => {
       [4, 1, 4],
       [2, 2, 2, 2],
     ]) {
-      for (const track of tracksOf(showTimeline(episodesOf(counts)))) {
+      const shaped = showTimeline(episodesOf(counts))
+      // The band's plates (C1443) are written apart from `tracksOf`'s.
+      const plates = shaped.episodes.flatMap((e) => e.plates.map((p) => p.loop))
+      for (const track of [...tracksOf(shaped), ...plates]) {
         const at = frames(track.keyframes).map((f) => f.at)
         for (let i = 1; i < at.length; i++)
           expect(

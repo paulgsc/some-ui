@@ -392,6 +392,24 @@ describe("renderLanding", () => {
       expect(card).not.toMatch(/<a\b|<button|controls/)
   })
 
+  it("lets a plate's row still load only once the band is shown, so a phone never fetches one (C1443)", () => {
+    const rows = EPISODES.flatMap((ep) =>
+      ep.scenes.flatMap((sc) => (sc.row === null ? [] : [sc.row.key]))
+    )
+    expect(rows.length).toBeGreaterThan(0)
+    const built = renderLanding(
+      resume,
+      landingMochi(),
+      LANDING_WORDS,
+      new Map(rows.map((key) => [key, { width: 1440, height: 700 }])),
+      EPISODES
+    )
+    const imgs = [...built.matchAll(/<img class="plate-media"[^>]*>/g)]
+    // The drawn plates and the pool's template (#3473) both carry them.
+    expect(imgs.length).toBeGreaterThanOrEqual(rows.length)
+    for (const [img] of imgs) expect(img).toContain(' loading="lazy"')
+  })
+
   it("shows each dashboard row of a banded episode on the band under the stage, named, as sample data (C1443)", () => {
     const banded = EPISODES.filter((ep) =>
       ep.scenes.some((sc) => sc.row !== null)
