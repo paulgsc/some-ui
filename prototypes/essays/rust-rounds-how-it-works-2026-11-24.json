@@ -3,13 +3,13 @@
   "title": "Rust Rounds: how it works",
   "series": {
     "id": "cheat-sheet",
-    "version": 5
+    "version": 7
   },
   "look": "plain",
   "voice": "read",
   "burnIns": [],
   "stamp": {
-    "sources": ["paulgsc/some-ui@31639fb", "paulgsc/server@d43c707"],
+    "sources": ["paulgsc/some-ui@04a59ff", "paulgsc/server@640b436"],
     "date": "2026-11-24"
   },
   "shots": [
@@ -117,7 +117,7 @@
         "kind": "screen",
         "of": {
           "from": "walks",
-          "run": "45321427650",
+          "run": "45368180054",
           "app": "rust-rounds",
           "steps": [1, 1]
         }
@@ -153,7 +153,7 @@
         "kind": "screen",
         "of": {
           "from": "walks",
-          "run": "45321427650",
+          "run": "45368180054",
           "app": "rust-rounds",
           "steps": [2, 2]
         }
@@ -189,7 +189,7 @@
         "kind": "screen",
         "of": {
           "from": "walks",
-          "run": "45321427650",
+          "run": "45368180054",
           "app": "rust-rounds",
           "steps": [3, 6]
         }
@@ -219,7 +219,7 @@
         "kind": "screen",
         "of": {
           "from": "walks",
-          "run": "45321427650",
+          "run": "45368180054",
           "app": "rust-rounds",
           "steps": [7, 11]
         }
@@ -250,7 +250,7 @@
         "kind": "screen",
         "of": {
           "from": "walks",
-          "run": "45321427650",
+          "run": "45368180054",
           "app": "rust-rounds",
           "steps": [12, 12]
         }
@@ -280,8 +280,8 @@
         "kind": "screen",
         "of": {
           "from": "snips",
-          "id": "apk:/journal/renders:android:0.1.77:000000000000",
-          "commit": "cccccccccccccccccccccccccccccccccccccccc"
+          "id": "apk:/journal/renders:android:0.1.77:d8304524131a",
+          "commit": "04a59ffcc5c6c30910c9b8010546572c4efb9922"
         }
       },
       "durationMs": 30000,
@@ -304,7 +304,7 @@
           {
             "repo": "paulgsc/some-ui",
             "path": "apps/www/src/lib/renders/words.ts",
-            "quote": "Expected ${dayOf(on)}."
+            "quote": "Expected ${dayOf(coming.on)}."
           }
         ]
       }

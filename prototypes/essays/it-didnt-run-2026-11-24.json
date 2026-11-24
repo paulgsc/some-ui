@@ -3,13 +3,13 @@
   "title": "It should have run, and it didn't: finding where",
   "series": {
     "id": "cheat-sheet",
-    "version": 6
+    "version": 7
   },
   "look": "plain",
   "voice": "read",
   "burnIns": [],
   "stamp": {
-    "sources": ["paulgsc/some-ui@41eaf2b", "paulgsc/server@d43c707"],
+    "sources": ["paulgsc/some-ui@04a59ff", "paulgsc/server@640b436"],
     "date": "2026-11-24"
   },
   "shots": [
@@ -52,7 +52,7 @@
       ],
       "spoken": {
         "role": "intro",
-        "said": "It's Monday. The Rust Rounds essay and the mock interview essay should have come overnight, and the weekly call's video by now. Nothing failed: Grafana is quiet, the pipelines are green, and Renders has nothing under Couldn't finish. All you know is one bit: it should have run, and it didn't. The causes are many, so this essay doesn't list them. It teaches a workflow: where to look on the phone, the few commands on home that answer most questions, and the panels in Grafana. By the end, you'll be able to say of each video whether it was never picked up, was picked up and is waiting, or was refused, and where it stopped. It is as of November twenty-fourth, twenty twenty-six, checked against two repositories: some-ui, which holds the app and the routines, and server, which holds home. Later commits may have moved things.",
+        "said": "It's Monday. The Rust Rounds essay and the mock interview essay should have come overnight, and the weekly call's video by now. Nothing failed: the pipelines are green, and Renders has nothing under Couldn't finish. All you know is one bit: it should have run, and it didn't. The causes are many, so this essay doesn't list them. It teaches a workflow: where to look on the phone, the few commands on home that answer most questions, and the panels in Grafana. By the end, you'll be able to say of each video whether it was never picked up, was picked up and is waiting, or was refused, and where it stopped. It is as of November twenty-fourth, twenty twenty-six, checked against two repositories: some-ui, which holds the app and the routines, and server, which holds home. Later commits may have moved things.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
@@ -186,7 +186,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Whatever the cause, the first question splits it three ways. Never picked up: nothing on home knows the video exists. Either the routine didn't run, or it ran and held the week back, which it does when home hasn't made the week final, or hasn't heard one of its takes yet. A take home heard and couldn't make out does not hold the week: the essay goes on, with that ticket left as if unanswered. Picked up and waiting: home has it, and waits for a take to arrive, for room, or for another job. Refused: home or the render said no, and wrote down why. The rest of this essay is where to look, in order: the phone, then home's command line, then Grafana.",
+        "narration": "Whatever the cause, the first question splits it three ways. Never picked up: nothing on home knows the video exists. Either the routine didn't run, or it ran and held the week back, which it does when home hasn't made the week final, or hasn't heard one of its takes yet. A take home heard and couldn't make out does not hold the week: the essay goes on, with that ticket left as if unanswered. Picked up and waiting: home has it, and waits for a take to arrive, for room, or for another job. Refused: home or the render said no, and wrote down why. The rest of this essay is where to look, in order: the phone, then home's command line, then the dashboards.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
@@ -212,8 +212,8 @@
         "kind": "screen",
         "of": {
           "from": "snips",
-          "id": "apk:/journal/renders:android:0.1.77:000000000000",
-          "commit": "0000000000000000000000000000000000000000"
+          "id": "apk:/journal/renders:android:0.1.77:d8304524131a",
+          "commit": "04a59ffcc5c6c30910c9b8010546572c4efb9922"
         }
       },
       "durationMs": 40000,
@@ -221,7 +221,7 @@
       "spoken": {
         "role": "scene",
         "chapter": "Chapter two. On the phone: where to look first.",
-        "narration": "Start in Studio, on Renders: what home is making, what waits, what couldn't finish, what finished, and what's coming. On a Monday, Coming says the Rust Rounds essay is expected today. That comes from the calendar: it says nothing about whether the essay exists, or what holds it. And once Monday has passed, the row simply goes away. That is a known gap, so an empty Renders on Tuesday doesn't mean nothing is owed. Couldn't finish is the refused branch, for whatever home had already been given: each row says why in plain words, and leads to a page to run it again. In this sample, an older cards essay waits there for a take home couldn't make out.",
+        "narration": "Start in Studio, on Renders: what home is making, what waits, what couldn't finish, what finished, and what's coming. Coming answers the fork first. Each feed's row says when its next video is expected, and once that day has passed it stays, late: was expected Monday, not here yet. Under it, home says what the essay waits on: a take it hasn't heard, a week not made final, an essay it refused, or nothing written by the routine at all. Couldn't finish is the refused branch, for whatever home had already been given: each row says why in plain words, and leads to a page to run it again. In this sample, an older cards essay waits there for a take home couldn't make out.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
@@ -231,12 +231,17 @@
           {
             "repo": "paulgsc/some-ui",
             "path": "apps/www/src/lib/renders/words.ts",
-            "quote": "Expected ${dayOf(on)}."
+            "quote": "Was expected ${dayOf(coming.on)}. Not here yet."
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "Nothing was written for it: the Monday routine didn't write the essay."
           },
           {
             "repo": "paulgsc/server",
             "path": "apps/servers/file_host/src/feeds/renders.rs",
-            "quote": "*monday >= today"
+            "quote": "never moved on to the next or dropped"
           },
           {
             "repo": "paulgsc/some-ui",
@@ -252,15 +257,15 @@
         "kind": "screen",
         "of": {
           "from": "snips",
-          "id": "apk:@studio/takes:android:0.1.77:000000000000",
-          "commit": "0000000000000000000000000000000000000000"
+          "id": "apk:/journal/takes/all:android:0.1.77:ea1f7c1537ce",
+          "commit": "04a59ffcc5c6c30910c9b8010546572c4efb9922"
         }
       },
       "durationMs": 40000,
       "burnIns": [],
       "spoken": {
         "role": "scene",
-        "narration": "Next, Takes. Every take home keeps is here, newest first, with what home heard in it. The one to look for says home hasn't heard it yet. That take is what holds a Rust Rounds or interview week back: the Monday routine won't write an essay while one of the week's takes is still waiting to be heard. In this sample, week forty-four's last take, recorded late on Sunday, still says so. A minute or two is normal. Hours mean home's hearing is stuck, which Grafana shows in chapter four.",
+        "narration": "Next, Takes. Every take home keeps is here, newest first, with what home heard in it. The one to look for says home hasn't heard it yet. That take is what holds a Rust Rounds or interview week back: the Monday routine won't write an essay while one of the week's takes is still waiting to be heard. In this sample, week forty-four's last take, recorded late on Sunday, still says so. A minute or two is normal. Hours mean home's hearing is stuck, which chapter four's TRANSCRIBE dashboard shows.",
         "sources": [
           {
             "repo": "paulgsc/some-ui",
@@ -281,8 +286,8 @@
         "kind": "screen",
         "of": {
           "from": "snips",
-          "id": "apk:/journal/takes/attention:android:0.1.77:000000000000",
-          "commit": "0000000000000000000000000000000000000000"
+          "id": "apk:/journal/takes/attention:android:0.1.77:9d026e856af2",
+          "commit": "04a59ffcc5c6c30910c9b8010546572c4efb9922"
         }
       },
       "durationMs": 40000,
@@ -315,8 +320,8 @@
         "kind": "screen",
         "of": {
           "from": "snips",
-          "id": "apk:/settings/status:android:0.1.77:000000000000",
-          "commit": "0000000000000000000000000000000000000000"
+          "id": "apk:/settings/status:android:0.1.77:679437e348ee",
+          "commit": "04a59ffcc5c6c30910c9b8010546572c4efb9922"
         }
       },
       "durationMs": 40000,
@@ -556,7 +561,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "What failed, or was refused? Each job keeps a status folder in slash renders, named for the job with dash worker: rust-essay-worker, interview-essay-worker, and call-worker for the call. last-pass says when the worker last looked. A week's failed dot log is the whole output of its last failed attempt, which is tried again an hour later. A week's refused dot log is home's essay pass saying no before any rendering: the essay names takes the week's final record doesn't, or the other way round. Each says why in full. A failed one also shows under Couldn't finish; a refused Rust Rounds essay only here, in an alert, and on Grafana.",
+        "narration": "What failed, or was refused? Each job keeps a status folder in slash renders, named for the job with dash worker: rust-essay-worker, interview-essay-worker, and call-worker for the call. last-pass says when the worker last looked. A week's failed dot log is the whole output of its last failed attempt, which is tried again an hour later. A week's refused dot log is home's essay pass saying no before any rendering: the essay names takes the week's final record doesn't, or the other way round. Each says why in full. A failed one also shows under Couldn't finish; a refused Rust Rounds essay only here, in an alert, and on the CALL dashboard.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -720,7 +725,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Two more questions settle the never-picked-up branch. Is the week final? rust week final holds what stood at each deadline, one row a week, and interview week final does the same for the interview. No row for last week means home never made it final, so the routine held it. Is a take still unheard? voice note holds every take. This query lists the newest Rust Rounds and interview takes with no transcript in which home heard words or silence. Hours old is your cause, and Grafana's hearing row says why.",
+        "narration": "Two more questions settle the never-picked-up branch. Is the week final? rust week final holds what stood at each deadline, one row a week, and interview week final does the same for the interview. No row for last week means home never made it final, so the routine held it. Is a take still unheard? voice note holds every take. This query lists the newest Rust Rounds and interview takes with no transcript in which home heard words or silence. Hours old is your cause, and the TRANSCRIBE dashboard says why.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -817,48 +822,20 @@
     {
       "id": "call-dash",
       "picture": {
-        "kind": "card"
+        "kind": "screen",
+        "of": {
+          "from": "walks",
+          "run": "45368180054",
+          "app": "home-call",
+          "steps": [2, 3]
+        }
       },
       "durationMs": 50000,
-      "burnIns": [
-        {
-          "kind": "cheat-sheet",
-          "params": {
-            "kicker": "GRAFANA · CALL",
-            "title": "The essays' rows, read against the fork",
-            "rows": [
-              {
-                "badge": "main",
-                "task": "Rust Rounds essays",
-                "command": "the fourth job",
-                "note": "Waiting for the deadline, refused, given, waiting for a video, failed."
-              },
-              {
-                "badge": "main",
-                "task": "Mock interview essays",
-                "command": "the seventh job",
-                "note": "The same five counts."
-              },
-              {
-                "badge": "main",
-                "task": "Every count zero",
-                "command": "never picked up",
-                "note": "No essay reached home; Grafana can't see that branch."
-              },
-              {
-                "badge": "main",
-                "task": "LANE",
-                "command": "when the render may run",
-                "note": "What the lane decided, and free memory against a render's need."
-              }
-            ]
-          }
-        }
-      ],
+      "burnIns": [],
       "spoken": {
         "role": "scene",
         "chapter": "Chapter four. Grafana: what happened over time.",
-        "narration": "On Grafana, open the CALL dashboard. Below the call's own rows are the Rust Rounds essays, the fourth job, and the mock interview essays, the seventh. Each counts essays waiting for the deadline, refused, given, waiting for a video, and failed. Waiting for the deadline above zero after Sunday means home holds the essay but not its week's final, or a take hasn't reached home. Given and waiting for a video mean picked up. Refused or failed above zero has an alert. If every count is zero, the essay never arrived: the never-picked-up branch, which Grafana can't see. Higher up, the lane row shows what home decided overnight, and free memory against a render's need.",
+        "narration": "On Grafana, open the CALL dashboard. These pictures are its rows over a made-up week: sample data, as the band at the top says, never home's own numbers. Below the call's own rows are the Rust Rounds essays, the fourth job, and the mock interview essays, the seventh. Each counts essays waiting for the deadline, refused, given, waiting for a video, and failed. Waiting for the deadline above zero after Sunday means home holds the essay but not its week's final, or a take hasn't reached home. Given and waiting for a video mean picked up. Refused or failed above zero has an alert. If every count is zero, the essay never arrived: the never-picked-up branch, which Grafana can't see.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -874,16 +851,6 @@
             "repo": "paulgsc/server",
             "path": "infra/grafana/dashboards/lib/call-panels.libsonnet",
             "quote": "Essays waiting for the deadline, refused, given, waiting for a video and failed"
-          },
-          {
-            "repo": "paulgsc/server",
-            "path": "infra/grafana/dashboards/call.jsonnet",
-            "quote": "LANE: when the render may run"
-          },
-          {
-            "repo": "paulgsc/server",
-            "path": "infra/grafana/dashboards/lib/call-panels.libsonnet",
-            "quote": "Free memory against what a render needs"
           }
         ]
       }
@@ -978,10 +945,10 @@
                 "command": "StageDegraded"
               },
               {
-                "badge": "gap",
-                "task": "An essay never written",
-                "command": "no alert yet",
-                "note": "Nothing on home expects it."
+                "badge": "main",
+                "task": "Past its Monday, not here",
+                "command": "RustEssayOverdue",
+                "note": "Renders says what it waits on."
               }
             ]
           }
@@ -989,7 +956,7 @@
       ],
       "spoken": {
         "role": "scene",
-        "narration": "Alerts reach you on Slack, each saying what to check. Four matter here, on the card. One branch has no alert yet, marked as a known gap: an essay the Monday routine never wrote. Nothing on home expects it, so nothing says it's late. Until that changes, the mailbox query in chapter three is how you know.",
+        "narration": "Alerts reach you on Slack, each saying what to check. Five matter here, on the card. The last, RustEssayOverdue, and its twin for the interview, fires once an essay is past its Monday and hasn't come to home, whatever holds it, a routine that wrote nothing included. It points back to Renders, which says what the essay waits on.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -1013,8 +980,13 @@
           },
           {
             "repo": "paulgsc/server",
-            "path": "apps/servers/file_host/src/routine_watch.rs",
-            "quote": "is not jobs or reflections"
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "alert: RustEssayOverdue"
+          },
+          {
+            "repo": "paulgsc/server",
+            "path": "infra/prometheus/rules/home.yml",
+            "quote": "alert: InterviewEssayOverdue"
           }
         ]
       }
@@ -1065,7 +1037,7 @@
       ],
       "spoken": {
         "role": "close",
-        "said": "Keep this card. Start from the fork: never picked up, picked up and waiting, or refused. On the phone, look at Renders, then Takes. On home, run these five top to bottom, then the journal. On Grafana, read the CALL dashboard's essay rows and its lane. When none of them names the week, the routine never wrote it: read its run's summary.",
+        "said": "Keep this card. Start from the fork: never picked up, picked up and waiting, or refused. On the phone, look at Renders, then Takes. On home, run these five top to bottom, then the journal. On Grafana, read the CALL dashboard's essay rows. When Renders says nothing was written, the routine never wrote it: read its run's summary.",
         "sources": [
           {
             "repo": "paulgsc/server",
@@ -1076,6 +1048,11 @@
             "repo": "paulgsc/some-ui",
             "path": "packages/ui/rust-rounds/ROUTINE.md",
             "quote": "each week `waiting`"
+          },
+          {
+            "repo": "paulgsc/some-ui",
+            "path": "apps/www/src/lib/renders/words.ts",
+            "quote": "Nothing was written for it"
           }
         ]
       }
