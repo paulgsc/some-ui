@@ -110,6 +110,7 @@ describe("readBoard", () => {
         ...BOARD,
         coming: [
           { feed: "call", on: "2026-11-13" },
+          { feed: "playoff-delta", on: "2026-11-14", overdue: "yes" },
           {
             feed: "interview-essay",
             on: "2026-11-23",
@@ -122,6 +123,7 @@ describe("readBoard", () => {
     )
     expect(read.kind === "read" && read.board.coming).toEqual([
       { feed: "call", on: "2026-11-13", overdue: false },
+      { feed: "playoff-delta", on: "2026-11-14", overdue: false },
       { feed: "interview-essay", on: "2026-11-23", overdue: true },
     ])
   })

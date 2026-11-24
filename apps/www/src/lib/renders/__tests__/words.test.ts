@@ -823,10 +823,10 @@ describe("Coming, for an owed video home hasn't made (#3478)", () => {
       feed: "interview-essay",
       on: "2026-11-23",
       overdue: false,
-      waitsOn: "not-written",
+      waitsOn: "take-hearing",
     })
     expect(onTheDay.line).toMatch(/Expected Monday/)
-    expect(onTheDay.waits).toMatch(/Monday routine didn't write/)
+    expect(onTheDay.waits).toMatch(/home to hear a take/)
   })
 
   it("leads to Needs your attention only for a take home couldn't hear", () => {

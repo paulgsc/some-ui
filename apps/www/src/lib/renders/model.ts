@@ -139,7 +139,7 @@ const WaitsOnSchema = z.enum([
 const ComingSchema = z.object({
   feed: z.string().min(1),
   on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  overdue: z.boolean().optional().default(false),
+  overdue: z.boolean().optional().catch(undefined).default(false),
   /** An essay's week, `YYYY-wNN`; absent for the call and Playoff Delta. */
   key: z.string().min(1).optional().catch(undefined),
   waitsOn: WaitsOnSchema.optional().catch(undefined),

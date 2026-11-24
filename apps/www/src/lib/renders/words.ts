@@ -495,7 +495,7 @@ export function liveLine(board: Board): string {
  */
 const WAITS_WORDS = {
   "essay-refused":
-    "Home refused the essay before making it. The note home kept of the refusal says why.",
+    "Home refused the essay before making it, and sent you an alert saying where the reason is.",
   "essay-waiting":
     "The essay came, and waits for a take it plays to reach home.",
   "not-final": "It waits for home to make the week's record final.",
@@ -504,7 +504,7 @@ const WAITS_WORDS = {
   "not-written":
     "Nothing was written for it: the Monday routine didn't write the essay.",
   "week-missing":
-    "The week hasn't reached home: the weekly routine wrote none.",
+    "The week hasn't reached home: the weekly routine wrote none, or home hasn't read it yet.",
 } as const satisfies Record<WaitsOn, string>
 
 /** The way from a row that waits on an unheard take to where it is heard. */
