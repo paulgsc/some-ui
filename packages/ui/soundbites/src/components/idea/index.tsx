@@ -8,7 +8,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, Notice, Reading } from "@some-ui/shared"
 import type { TurnPhase } from "@some-ui/voice-capture"
 import { TURN_WORDS, turnNoticeSaid } from "@some-ui/voice-capture"
 import type { IdeaIntent, IdeaState } from "@soundbites/lib/idea/machine"
@@ -263,7 +263,7 @@ export const IdeaCapture = ({
 
   switch (screen.kind) {
     case "loading": {
-      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+      return <Reading>{WORDS.reading}</Reading>
     }
     case "unreadable": {
       return (

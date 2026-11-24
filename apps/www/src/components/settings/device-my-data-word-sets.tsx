@@ -12,7 +12,7 @@
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, Notice, Reading } from "@some-ui/shared"
 import type { WordSetRow } from "@some-ui/topik"
 
 import type { WordSetsPage, WordSetsSaid } from "@/lib/my-data"
@@ -139,9 +139,7 @@ export const DeviceMyDataWordSets = (): JSX.Element => {
     <>
       <MyDataHeading title={WORDS.title} />
       <p className="text-muted-foreground text-sm">{WORDS.lead}</p>
-      {state.kind === "reading" ? (
-        <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
-      ) : null}
+      {state.kind === "reading" ? <Reading>{WORDS.reading}</Reading> : null}
       {state.kind === "unread" ? (
         <p className="text-muted-foreground text-sm">{WORDS.unread}</p>
       ) : null}

@@ -8,7 +8,7 @@
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { Button, Input, Label, Notice } from "@some-ui/shared"
+import { Button, Input, Label, Notice, Reading } from "@some-ui/shared"
 
 import type { Phone, PhonesState } from "@/lib/auth/phones/model"
 import { phonesOf } from "@/lib/auth/phones/model"
@@ -177,9 +177,7 @@ export const AccountPhones = ({
 
   return (
     <div className="space-y-3">
-      {list.kind === "reading" ? (
-        <p className="text-muted-foreground text-sm">{PHONES.reading}</p>
-      ) : null}
+      {list.kind === "reading" ? <Reading>{PHONES.reading}</Reading> : null}
       {list.kind === "unread" ? (
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm">

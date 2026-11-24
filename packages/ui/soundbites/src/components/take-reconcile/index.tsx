@@ -13,7 +13,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Chip, CHIP_BAR, Dot, Notice } from "@some-ui/shared"
+import { Button, Chip, CHIP_BAR, Dot, Notice, Reading } from "@some-ui/shared"
 import {
   HearAgainButton,
   HearAgainLines,
@@ -265,9 +265,7 @@ const Unread = ({
   const { read } = state
   switch (read.kind) {
     case "reading": {
-      return (
-        <p className="text-muted-foreground text-sm">{LIBRARY_WORDS.reading}</p>
-      )
+      return <Reading>{LIBRARY_WORDS.reading}</Reading>
     }
     case "read": {
       return null
