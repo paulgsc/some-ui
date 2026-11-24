@@ -2,6 +2,7 @@
   "id": "C1440",
   "made": "2026-11-23",
   "by": "claude",
+  "agreed": "2026-11-24",
   "paths": [
     "apps/www/src/landing/show.ts",
     "apps/www/src/landing/render.ts",

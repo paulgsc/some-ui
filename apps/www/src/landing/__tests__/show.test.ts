@@ -152,12 +152,12 @@ describe("resolveShow", () => {
     expect(got.ok && got.episodes[0]?.scenes[0]?.draft).toBe(true)
   })
 
-  it("resolves the landing's own show, its drafts the scenes and snacks with no walkthrough chapter", () => {
+  it("resolves the landing's own show: its drafts the extensions' scenes, the Android pool agreed", () => {
     for (const e of SHOW.episodes) {
       const scenes = "pool" in e.scenes ? e.scenes.pool : e.scenes
       for (const s of scenes)
         expect("chapter" in s.copy ? false : s.copy.draft).toBe(
-          !("chapter" in s.copy)
+          e.id === "extensions"
         )
     }
   })
@@ -183,14 +183,12 @@ describe("the landing's own show", () => {
       "android",
       "server",
     ])
-    // The extensions' three scenes, and every snack of the Android pool
-    // written for the landing rather than taken from its walkthrough.
-    const android = SHOW.episodes.find((e) => e.id === "android")?.scenes
-    const own =
-      android !== undefined && "pool" in android
-        ? android.pool.filter((s) => !("chapter" in s.copy)).length
-        : 0
-    expect(pages.drafts).toBe(3 + own)
+    // The extensions' three scenes; the Android pool's snacks the owner
+    // agreed (C1440), so Pages draws from all of them.
+    expect(pages.drafts).toBe(3)
+    const android = pages.episodes.find((e) => e.id === "android")
+    expect(android?.pool?.snacks).toHaveLength(22)
+    expect(android?.pool?.draw).toBe(4)
   })
 })
 

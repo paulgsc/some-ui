@@ -276,7 +276,7 @@ export const SHOW: Show = {
                 "I don't claim an exercise teaches me anything. I claim that coming back does.",
                 "When I skip practising something, the app's own friction is one reason I can name, so I work on that.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/practice", label: "Practice Home" },
@@ -291,7 +291,7 @@ export const SHOW: Show = {
                 "I barely write code by hand now. Rust Rounds keeps my eye for Rust sharp.",
                 "Each week brings an invented company, a user story with its deadline, and two to four tickets.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/rust-rounds", label: "Rust Rounds" },
@@ -306,7 +306,7 @@ export const SHOW: Show = {
                 "Studio makes video essays. I bring the skeleton of an intuition, and an agent scaffolds the rest.",
                 "I'm the audience, not the author or the voice.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/journal/intuitions", label: "Intuitions" },
@@ -321,7 +321,7 @@ export const SHOW: Show = {
                 "My interview muscle is weak, and I don't train it. So the phone sets me a practice week.",
                 "The job and the company are invented: no real employer is named.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { cut: "stop-3", label: "The interview week" },
@@ -336,7 +336,7 @@ export const SHOW: Show = {
                 "My Korean stopped for days. One reason: a lesson was nine presses away.",
                 "Now a lesson is a press or two from Practice Home, with three waiting unopened.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/practice", label: "Practice Home" },
@@ -350,7 +350,7 @@ export const SHOW: Show = {
               narration: [
                 "Read a good answer, read it aloud, say it from cues, then say it my way.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [{ snip: 8 }, { snip: 9 }],
             from: ["#2931", "apps/www/src/lib/interview-week/words.ts"],
@@ -362,7 +362,7 @@ export const SHOW: Show = {
                 "“Tell me about yourself” and “tell me about a time…” are the ones I find hardest, so the week practises them.",
                 "Questions about my decisions come from my own pull requests: why I chose one thing over another.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               {
@@ -380,7 +380,7 @@ export const SHOW: Show = {
                 "I say each answer out loud, and the take is kept and played back before it goes.",
                 "The week ends in a video essay on how I came across.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [{ snip: 11 }, { snip: 13 }],
             from: ["#2931", "apps/www/src/lib/interview-week/words.ts"],
@@ -392,7 +392,7 @@ export const SHOW: Show = {
                 "I talk each ticket through aloud, look my takes over, and send them together.",
                 "The deadline is Sunday 23:59, and not answering is an answer.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/rust-rounds", label: "Rust Rounds" },
@@ -407,7 +407,7 @@ export const SHOW: Show = {
                 "Code that compiles is the interesting case, because rustc says nothing.",
                 "My answer comes back as a video essay: my take, a best fit, and the gap between them.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/rust-rounds", label: "Rust Rounds" },
@@ -421,7 +421,7 @@ export const SHOW: Show = {
               narration: [
                 "A chat tutor got four answers from me in two months, then silence. Rust Rounds is the redo.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/rust-rounds", label: "Rust Rounds" },
@@ -435,7 +435,7 @@ export const SHOW: Show = {
               narration: [
                 "I pick a lesson by its size, from a bite to a dessert, never by minutes.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/practice", label: "Practice Home" },
@@ -450,7 +450,7 @@ export const SHOW: Show = {
                 "Without AI, the video I want exists only if someone happens to make it.",
                 "Now it's made from my own intuition, scene by scene.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/journal/intuitions", label: "Intuitions" },
@@ -465,7 +465,7 @@ export const SHOW: Show = {
                 "A take catches a thought the moment I have it. Working on it comes later.",
                 "Said while the context is fresh, it's feedback for the work ahead.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/journal/takes", label: "Takes" },
@@ -480,7 +480,7 @@ export const SHOW: Show = {
                 "From the phone I can ask for an essay on any epic or feature.",
                 "So I don't have to hold how home deploys in my head.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/journal/templates", label: "Templates" },
@@ -495,7 +495,7 @@ export const SHOW: Show = {
                 "A limit that could refuse my data should show in Settings, so nothing fails quietly.",
                 "Word sets stopped at 50, and nothing said so until the 51st was refused.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/settings/phone", label: "Settings: Phone" },
@@ -510,7 +510,7 @@ export const SHOW: Show = {
                 "My data shows what I keep and where.",
                 "Deleting a record for good goes one way, with a confirm and a receipt that stays.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/settings/data", label: "My data" },
@@ -525,7 +525,7 @@ export const SHOW: Show = {
                 "Each app notes what it offered me, what I took, what I passed over, and when I came back.",
                 "Not showing up counts too.",
               ],
-              draft: true,
+              draft: false,
             },
             faces: [
               { screen: "/practice", label: "Practice Home" },
