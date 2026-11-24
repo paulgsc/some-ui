@@ -19,6 +19,15 @@
  * closing and opening the app does not hand it a whole burst again: home's
  * bucket did not refill because the app restarted.
  *
+ * Its waits are measured on a clock that only moves forward (`since`, the
+ * page's own), never the wall clock (#3491): a wall clock frozen (Snips
+ * Capture's page, at FROZEN_AT) refilled nothing, so the drain waited on its
+ * turn for good and every read waiting behind the link with it; one set
+ * back emptied the bucket until it caught up. The wall clock only dates what
+ * is kept across loads, where a page's own clock starts again: a record
+ * kept "later" than now reads as kept now, and a clock that jumped forward
+ * between loads refills at most `BURST`, which home's `429` then paces.
+ *
  * The person's turns (`urgent`) go ahead of the drain's. So the drain waits
  * while the person's requests keep coming faster than one each 2 s (a long
  * Sync, a video read part by part), for as long as that work lasts; a
@@ -92,12 +101,11 @@ const paceOf = (ms: number): number =>
   Math.min(SLOWEST_MS, Math.max(MS_PER_REQUEST, ms))
 
 export function createPace(
-  clock: Pick<HomeLinkPorts, "now" | "after">,
+  clock: Pick<HomeLinkPorts, "now" | "since" | "after">,
   memory: PaceMemory | null = null
 ): Pace {
+  const since = clock.since ?? clock.now
   const kept = trusted(memory?.read() ?? null, clock.now())
-  let turns = kept?.turns ?? BURST
-  let at = kept?.at ?? clock.now()
   let learned = kept?.learned ?? null
   /** The wait between requests now: 2 s, or what home taught and still lasts. */
   const every = (): number => {
@@ -112,16 +120,25 @@ export function createPace(
    */
   const most = (ms: number): number =>
     Math.max(1, Math.floor((BURST * MS_PER_REQUEST) / ms))
-  const keep = (): void =>
-    memory?.write(learned === null ? { turns, at } : { turns, at, learned })
+  /** The turns this page starts with: the kept ones, refilled for the wall time since. */
+  let turns =
+    kept === null
+      ? BURST
+      : Math.min(most(every()), kept.turns + (clock.now() - kept.at) / every())
+  /** When `turns` was last counted, on `since`. */
+  let at = since()
+  const keep = (): void => {
+    const dated = { turns, at: clock.now() }
+    memory?.write(learned === null ? dated : { ...dated, learned })
+  }
   const urgent: Array<(went: boolean) => void> = []
   const queued: Array<(went: boolean) => void> = []
   let waking = false
 
   const serve = (): void => {
-    const now = clock.now()
+    const now = since()
     const ms = every()
-    turns = Math.min(most(ms), turns + (now - at) / ms)
+    turns = Math.min(most(ms), turns + Math.max(0, now - at) / ms)
     at = now
     while (turns >= 1) {
       const next = urgent.shift() ?? queued.shift()
@@ -146,14 +163,14 @@ export function createPace(
       }),
     spend: (waitMs): void => {
       turns = 0
-      at = clock.now()
+      at = since()
       // A wait shorter than `MS_PER_REQUEST` is home's bucket emptied by
       // a burst (this phone's, or another on its address), not a refill
       // slower than the pace: nothing to learn.
       if (waitMs !== null && waitMs >= MS_PER_REQUEST) {
         const now = every()
         const ms = paceOf(now + Math.min(waitMs, now))
-        learned = ms > MS_PER_REQUEST ? { ms, at } : null
+        learned = ms > MS_PER_REQUEST ? { ms, at: clock.now() } : null
       }
       keep()
     },

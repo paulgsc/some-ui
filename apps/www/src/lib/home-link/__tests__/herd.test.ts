@@ -11,7 +11,10 @@
  *   it; against a limiter the pace fits, none is refused; a moment that
  *   changed nothing on the phone and lands while a lane's run is under way
  *   joins that run rather than asking another; and once left alone, no lane
- *   is still running and the link is idle, so the next pull starts afresh.
+ *   is still running and the link is idle, so the next pull starts afresh;
+ *   and whatever the page's wall clock does (stand still, go back, jump
+ *   forward), the pace grants a turn each pace on the page's own clock, so
+ *   no wait for a turn lasts for good (#3491).
  * - _Family:_ every ordering of three of pull, app back in front, network
  *   back, watch remounted, edit and five seconds passing (two against
  *   home's smallest two-digit limiter); each answer at once or 3 s after its
@@ -19,18 +22,25 @@
  *   delay the test sets, never the machine's); home's limiter at
  *   `RATE_LIMIT` 10, 60, and one the pace fits; moves 500 ms apart, quicker
  *   than a slow phone's runs; the page reopened before home's bucket
- *   refilled (`pace.test.ts`).
+ *   refilled (`pace.test.ts`); the wall clock frozen, set back or jumped
+ *   forward, within a page (`link-clock.test.ts`) and between page loads
+ *   (`pace.test.ts`).
  * - _Proof:_ this file, over the real link, lanes, watches, pull and pace
  *   against home's GCRA limiter on a fake clock; `pace.test.ts` for the
- *   burst, the `429`'s spend and the pace kept across page loads;
+ *   burst, the `429`'s spend and the pace kept across page loads, on any
+ *   wall clock; `link-clock.test.ts` for the real link's requests while its
+ *   wall clock stands still, goes back or jumps;
  *   `kept.test.ts` for a pull joining a run; `away.test.ts` for a pull
  *   keeping AW1's tries; `pull-refresh/__tests__/refreshers.test.ts` for
  *   one refresher asked once a pull however many screens hold it.
  * - _Tolerance:_ the pace learns home's limit only from its `429`, so the
  *   first burst against a home whose limit is under `BURST` is refused in
  *   part, once a day at most; a store that refuses the pace's record starts
- *   it whole on the next page load; requests outside this phone's app (its
- *   Chrome on home's pages) share home's bucket and are not paced here.
+ *   it whole on the next page load; a wall clock that jumped forward
+ *   between page loads refills the pace as if that time had passed, at most
+ *   `BURST`, which home's `429` then paces; requests outside this phone's
+ *   app (its Chrome on home's pages) share home's bucket and are not paced
+ *   here.
  */
 import type { FakeClock } from "@/test-support/fake-clock"
 import { fakeClock } from "@/test-support/fake-clock"

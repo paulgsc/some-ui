@@ -152,6 +152,66 @@ describe("the pace", () => {
     expect(later).toBe(BURST)
   })
 
+  it("across page loads, a wall clock frozen or set back neither stalls the new page nor gives it a burst; one jumped forward gives at most the burst (HERD1, #3491)", async () => {
+    /** A page loaded at wall time `wall`, its own clock starting at 0. */
+    const pageAt = (
+      wall: () => number,
+      kept: PaceMemory
+    ): {
+      pace: ReturnType<typeof createPace>
+      own: ReturnType<typeof fakeClock>
+    } => {
+      const own = fakeClock()
+      return {
+        pace: createPace({ now: wall, since: own.now, after: own.after }, kept),
+        own,
+      }
+    }
+    const spent = async (kept: PaceMemory, wall: number): Promise<void> => {
+      const { pace } = pageAt(() => wall, kept)
+      await Promise.all(Array.from({ length: BURST }, () => pace.turn(false)))
+    }
+    const AT = 1_793_611_800_000
+    for (const [what, later] of [
+      ["frozen", AT],
+      ["set back an hour", AT - 3_600_000],
+    ] as const) {
+      const kept = memory()
+      await spent(kept, AT)
+      // Opened again on a wall clock `what`: the burst is still spent, and
+      // the page's own clock gives the next turn one pace on.
+      const { pace, own } = pageAt(() => later, kept)
+      let went = 0
+      const turns = Array.from({ length: 3 }, () =>
+        pace.turn(false).then(() => {
+          went += 1
+        })
+      )
+      await settle()
+      expect(went, what).toBe(0)
+      own.pass(MS_PER_REQUEST)
+      await settle()
+      expect(went, what).toBe(1)
+      own.pass(2 * MS_PER_REQUEST)
+      await Promise.all(turns)
+    }
+    // Jumped forward a day between loads: the wall says the bucket refilled,
+    // and the most it gives is the burst (HERD1's Tolerance).
+    const kept = memory()
+    await spent(kept, AT)
+    const { pace } = pageAt(() => AT + 86_400_000, kept)
+    let went = 0
+    void Promise.all(
+      Array.from({ length: BURST + 1 }, () =>
+        pace.turn(false).then(() => {
+          went += 1
+        })
+      )
+    )
+    await settle()
+    expect(went).toBe(BURST)
+  })
+
   it("trusts nothing odd kept: a clock set back, more turns than the burst, or no number", async () => {
     const clock = fakeClock(1_000)
     const odd = memory()
