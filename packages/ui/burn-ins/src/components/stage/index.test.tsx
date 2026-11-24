@@ -5,8 +5,10 @@ import { byChars } from "@burn-ins/lib/captions/__tests__/word"
 import { frameAt } from "@burn-ins/lib/captions/frame"
 import { THEMES } from "@burn-ins/lib/captions/theme"
 import { groupCaptions } from "@burn-ins/lib/captions/timing"
+import { ITEM } from "@burn-ins/lib/cards"
 import { geometryOf, LANDSCAPE, PORTRAIT } from "@burn-ins/lib/geometry"
 import { GAME_CARD_SAMPLES, SAMPLES } from "@burn-ins/lib/samples"
+import { TYPING } from "@burn-ins/lib/terminal"
 import { render } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -139,4 +141,37 @@ describe("the stage", () => {
       expect(unitsOf(frame).cq(frame.width)).toBe("100.0000cqw")
     }
   )
+
+  it("draws a typed terminal's cursor while its command types, and none once it is typed (terminal-v2)", () => {
+    const p = prepare(
+      {
+        kind: "terminal",
+        design: "terminal-v2",
+        params: {
+          title: "Typed",
+          stamp: { sources: ["paulgsc/server@d43c707"], date: "2026-11-24" },
+          lines: [{ prompt: "$", keyword: "docker logs", text: " render" }],
+        },
+      },
+      LANDSCAPE
+    )
+    if (!p.ok) throw new Error(p.problems.join("; "))
+    const drawn = (t: number): HTMLElement =>
+      render(
+        <BurnInStage
+          frames={[burnInAt(p.value, t)]}
+          geometry={geometryOf(LANDSCAPE)}
+          label="video"
+        />
+      ).container
+    const lines = (stage: HTMLElement): ReadonlyArray<string | null> =>
+      [...stage.querySelectorAll(".bi-mono")].map((m) => m.textContent)
+    // The first character a lead after the line's way in; six typed.
+    const typing = drawn(ITEM.leadMs + TYPING.leadMs + 5 * TYPING.charMs)
+    expect(lines(typing)).toContain("$ docker")
+    expect(typing.querySelector("[data-cursor]")).not.toBeNull()
+    const typed = drawn(10_000)
+    expect(lines(typed)).toContain("$ docker logs render")
+    expect(typed.querySelector("[data-cursor]")).toBeNull()
+  })
 })

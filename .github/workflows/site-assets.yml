@@ -7,11 +7,9 @@ name: Site Assets
 # keeps its drawn placeholder. Snips Capture uploads the Android faces the
 # same way. Nothing here is committed (C1029), and nothing here reads the
 # owner's records: Page Filter is shot on a page of ours, the promo walks
-# Suspender Ledger's sample. The `home` job fetches the pictures home takes of
-# its own dashboards (#3415, C1071, C1073), counts, rates and uptime only,
-# from the Jobs mailbox, which home puts them in: the cores gap's still, and
-# the server clip, which the landing no longer shows; the server episode's
-# panel stills (C1183) are to replace it from paulgsc/server.
+# Suspender Ledger's sample, and the `dashboards` job draws the server's own
+# dashboards on sample telemetry (the owner on #3401, 2026-11-23): never
+# home's numbers, and no key.
 on:
   push:
     branches: [main]
@@ -24,7 +22,9 @@ on:
       - ".github/workflows/site-assets.yml"
   workflow_dispatch:
   # Twice a month, so while these runs succeed the newest of each kind
-  # outlives no 30 days even when nothing it is made from changes. A month
+  # outlives no 30 days even when nothing it is made from changes, and the
+  # server's dashboards, read from paulgsc/server's main, are at most two
+  # weeks behind it (a dispatch catches up at once). A month
   # of failed runs, or GitHub pausing an idle repository's schedules, lets
   # it lapse: the landing then draws placeholders, and pages.yml's summary
   # lists what it found.
@@ -122,93 +122,76 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # Home's dashboards (#3415): home photographs file_host's dashboard and the
-  # CPU panel on its own Grafana each week and puts them in the mailbox's
-  # `site-assets` folder (C1071); this job reads the newest of each kind with
-  # the mailbox's read-only `pages` token. Until the owner sets the
-  # MAILBOX_URL variable and the MAILBOX_PAGES_TOKEN secret, it uploads
-  # nothing and says so, and both slots keep their drawings. No checkout:
-  # nothing of this repository runs here, and the token is the job's alone.
-  home:
-    name: Home's dashboard pictures
+  # The server's dashboards on sample telemetry (the owner on #3401,
+  # 2026-11-23, moving C1071): paulgsc/server's jsonnet compiled by the
+  # dashboard-builder image its release pins, as its CI does; a throwaway
+  # Prometheus loaded with one made-up week
+  # (packages/video-motion/src/walk/dashboard-telemetry.ts) and a throwaway
+  # Grafana over it, both the images that release pins, reachable only from
+  # this runner; then the `home-server` and `home-cores` walks
+  # (packages/video-motion/scripts/dashboards-on-sample.sh). The same server
+  # commit gives the same pictures. No key, no home and no mailbox: the
+  # server's checkout is public and read with this run's read-only token.
+  dashboards:
+    name: The server's dashboards, on sample data
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
+    # pages.yml reads only a run that succeeded, so a failure here (the
+    # server's main, an image pull, a Grafana that did not start) must not
+    # hide the other jobs' media: the run still succeeds, this job shows red
+    # in it, and the landing keeps the last stills it fetched.
+    continue-on-error: true
     steps:
-      - name: Fetch the newest of each kind
-        id: fetch
-        env:
-          MAILBOX_URL: ${{ vars.MAILBOX_URL }}
-          MAILBOX_PAGES_TOKEN: ${{ secrets.MAILBOX_PAGES_TOKEN }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: paulgsc/server
+          ref: main
+          path: server-checkout
+          persist-credentials: false
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      # Each server scene's grouping, a dashboard row shot whole for a wide
+      # screen (stills/server/rows/NN.png, a scene each, which show-faces
+      # copies from the rows walk, `--rows`); the server
+      # episode's stills, as the show names them
+      # (apps/www/scripts/show-faces.ts, from the walk's own screens: the
+      # episode names no cut, so no video is rendered; a cut added to it
+      # needs the walkthrough rendered here first, as Snips Capture does),
+      # and the cores gap's still, the second walk's one screen.
+      - name: Draw the dashboards on sample telemetry
         run: |
-          # An output is written only for a kind fetched and checked; unset,
-          # its upload is skipped.
-          if [ -z "$MAILBOX_URL" ] || [ -z "$MAILBOX_PAGES_TOKEN" ]; then
-            echo "::notice::The mailbox's pages token is not set, so home's pictures are not fetched; their slots keep their drawings."
-            exit 0
-          fi
-          url="${MAILBOX_URL%/}"
-          # The token goes to curl on its standard input, never its arguments.
-          auth() { printf 'header = "Authorization: Bearer %s"\n' "$MAILBOX_PAGES_TOKEN"; }
-          # Each kind fails on its own, and a mailbox that does not answer
-          # fails none of this run's other jobs: pages.yml reads only a run
-          # that succeeded, so a failure here would hide every kind's media.
-          if ! auth | curl -fsS --max-time 60 -K - -o "$RUNNER_TEMP/items.json" \
-            "$url/v1/site-assets/items?limit=50" ||
-            ! jq -e '.items | type == "array"' "$RUNNER_TEMP/items.json" > /dev/null; then
-            echo "::warning::The mailbox did not list home's pictures; their slots keep what the last run fetched."
-            exit 0
-          fi
-          # A picture is held to 768 KiB (the mailbox's PICTURE_MAX_BYTES).
-          for kind in server:clips:mp4 cores:stills:png; do
-            name="${kind%%:*}"; rest="${kind#*:}"; dir="${rest%%:*}"; ext="${rest#*:}"
-            # The greatest name of a kind is its newest (`<kind>-<stamp>.<ext>`).
-            item=$(jq -r --arg kind "$name" --arg ext "$ext" \
-              '[.items[] | objects | .name | strings | select(test("^" + $kind + "-[0-9]{8}T[0-9]{9}Z\\." + $ext + "$"))] | sort | last // empty' \
-              "$RUNNER_TEMP/items.json")
-            if [ -z "$item" ]; then
-              echo "- $name: none in the mailbox; its slot keeps its drawing" >> "$GITHUB_STEP_SUMMARY"
-              continue
-            fi
-            out="$RUNNER_TEMP/site-assets-$name/$dir/$name.$ext"
-            mkdir -p "$(dirname "$out")"
-            # The bytes are the type their name says and within the cap, or
-            # this kind is not uploaded.
-            if ! {
-              auth | curl -fsS --max-time 120 --max-filesize 786432 -K - -o "$out" \
-                "$url/v1/site-assets/items/$item" &&
-                case $ext in
-                  png) [ "$(head -c 8 "$out" | od -An -tx1 | tr -d ' \n')" = 89504e470d0a1a0a ] ;;
-                  mp4) [ "$(dd if="$out" bs=1 skip=4 count=4 status=none)" = ftyp ] ;;
-                esac &&
-                [ "$(stat -c %s "$out")" -le 786432 ]
-            }; then
-              echo "::warning::$name: $item did not fetch or check out; its slot keeps what the last run fetched."
-              rm -f "$out"
-              continue
-            fi
-            echo "$name=true" >> "$GITHUB_OUTPUT"
-            echo "- $name: $item" >> "$GITHUB_STEP_SUMMARY"
-          done
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/video-motion^...' --concurrency=100%
+          nix develop .#ci-playwright --command pnpm --filter @some-ui/video-motion exec \
+            bash scripts/dashboards-on-sample.sh "$GITHUB_WORKSPACE/server-checkout" "$RUNNER_TEMP/walks"
+          nix develop .#ci-playwright --command \
+            pnpm --filter www exec tsx scripts/show-faces.ts server \
+            "$RUNNER_TEMP/walks/walk-home-server" "$RUNNER_TEMP/site-assets" \
+            --rows "$RUNNER_TEMP/walks/walk-home-server-rows"
+          mkdir -p "$RUNNER_TEMP/site-assets/stills"
+          cp "$RUNNER_TEMP/walks/walk-home-cores/snips/01.png" "$RUNNER_TEMP/site-assets/stills/cores.png"
+          echo "Drawn from paulgsc/server at $(git -C server-checkout rev-parse HEAD), on sample telemetry." >> "$GITHUB_STEP_SUMMARY"
+      # The job is continue-on-error, so the run stays green when this fails:
+      # say it on the run, where the run's summary and its annotations show
+      # it, and the landing keeps the last stills until theirs expire.
+      - name: Say the dashboards were not drawn
+        if: failure()
+        run: |
+          echo "::error title=Server dashboards not drawn::The server's dashboards were not drawn in this run; the landing keeps the last stills fetched, until their artifact expires 30 days after it was made."
+          echo "- **The server's dashboards were not drawn in this run.** The landing keeps the last stills, until their artifact expires." >> "$GITHUB_STEP_SUMMARY"
       # Retention: pages.yml reads the newest of this family at the next
-      # deploy, which waits on an approval and can come weeks after this run.
-      # 30 days outlives that gap; its family keeps one
+      # deploy, which waits on an approval and can come weeks after this
+      # push. 30 days outlives that gap; its family keeps one
       # (packages/eslint/src/retention.ts). Once it is gone the landing draws
-      # the clip's title card until a run fetches it again.
-      - name: Upload the server clip
-        if: steps.fetch.outputs.server == 'true'
+      # the server episode's skeletons and the cores card's drawing until a
+      # push or a dispatch draws them again.
+      - name: Upload the server's stills
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site-assets-server-${{ github.sha }}
-          path: ${{ runner.temp }}/site-assets-server
-          if-no-files-found: error
-          retention-days: 30
-      # Retention: as the clip's, above. Once it is gone the landing draws the
-      # cores card's drawing until a run fetches it again.
-      - name: Upload the cores still
-        if: steps.fetch.outputs.cores == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: site-assets-cores-${{ github.sha }}
-          path: ${{ runner.temp }}/site-assets-cores
+          path: ${{ runner.temp }}/site-assets
           if-no-files-found: error
           retention-days: 30
