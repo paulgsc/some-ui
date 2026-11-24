@@ -1,42 +1,42 @@
 /**
- * Home's dashboards for the public site (C1073, #3415): two walks on home's
- * own Grafana (`./stage-grafana`), each panel opened alone (`/d-solo/`) at
- * one size, in the dark theme, over one window of time that the sample
- * names. Home's render worker walks them; the server card's clip is the
- * first walk's walkthrough (`home-server`), the cores card's still the
- * second walk's one screen (`home-cores`).
+ * The server's dashboards for the public site (the owner on #3401,
+ * 2026-11-23, which moves C1071 and C1073): two walks on a throwaway Grafana
+ * (`./stage-grafana`) that a Site Assets job starts on GitHub, serving the
+ * dashboards compiled from paulgsc/server's jsonnet over a throwaway
+ * Prometheus that holds one week of sample telemetry
+ * (`./dashboard-telemetry`). Each panel is opened alone (`/d-solo/`) at one
+ * size, in the dark theme, over that week. The server episode's faces are the
+ * first walk's walkthrough (`home-server`), the cores gap's still the second
+ * walk's one screen (`home-cores`). Home is never reached, and no number in
+ * them is home's.
  *
- * Which panels go public is the owner's (#3401: "the server through its
- * Grafana dashboards", "the 4 CPU cores"; #3415's yes). Each is an
- * aggregate: rates, shares, counts and uptime, never a client, an address
- * or a subject (paulgsc/server docs/identity.md). A panel is named here by
- * its dashboard's uid and its id in that dashboard's jsonnet
- * (paulgsc/server infra/grafana/dashboards), so a panel that moves is a
- * change here, in review.
+ * Which panels: the owner's (#3401: "the server through its Grafana
+ * dashboards", "the 4 CPU cores"). A panel is named here by its dashboard's
+ * uid and its id in that dashboard's jsonnet (paulgsc/server
+ * infra/grafana/dashboards), so a panel that moves is a change here, in
+ * review.
  *
- * Deterministic framing: the sample's window (`to`, a UTC midnight, and
- * `days` before it), the stage's size and theme, and UTC. The same window
- * over the same data gives the same pictures.
+ * Deterministic framing: the sample week (`WEEK`), the stage's size and
+ * theme, and UTC. The same dashboards over the same telemetry give the same
+ * pictures.
  */
 
 import { z } from "zod"
 
+import { WEEK } from "./dashboard-telemetry"
 import type { Step, Walk } from "./run"
+import { ROW_PARAM } from "./stage-grafana"
 
-/** What home writes for the render worker (`site_shots` in paulgsc/server). */
+/** What the Site Assets job writes for the walks: the sample week, and where its Grafana answers. */
 const SampleSchema = z.strictObject({
-  schema: z.literal("some-ui.walk-sample/home-dashboards/1"),
-  /** file_host's version, as it says it: the walk names what it shows. */
+  schema: z.literal("some-ui.walk-sample/home-dashboards/2"),
+  /** The server commit the dashboards were built from, as build metadata (`0.0.0+<sha>`). */
   version: z.string().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/),
-  /** Grafana, as the render worker reaches it. */
+  /** The throwaway Grafana, as the walk reaches it. */
   origin: z.url({ protocol: /^https?$/ }),
-  /** The window's end: a UTC midnight that has passed, so its data is all in. */
-  to: z.iso
-    .datetime()
-    .refine((at) => at.endsWith("T00:00:00Z"), "to must be a UTC midnight")
-    .refine((at) => Date.parse(at) <= Date.now(), "to must have passed"),
-  /** How many days the window holds, ending at `to`: a week, as the words say. */
-  days: z.literal(7),
+  /** The window's end and length: the week the telemetry holds, and no other. */
+  to: z.literal(WEEK.to),
+  days: z.literal(WEEK.days),
 })
 type Sample = z.infer<typeof SampleSchema>
 
@@ -48,16 +48,103 @@ type Panel = {
 }
 
 const FILE_HOST = "file-host-dashboard"
+const OUTBOUND = "outbound"
+const CALL = "call"
 const WHO_DUNNIT = "who-dunnit-forensic"
 
-/** file_host's dashboard, in the order the clip shows it (#3401's list). */
-const SERVER_PANELS: ReadonlyArray<Panel> = [
-  { dashboard: FILE_HOST, id: 943, label: "Availability" },
-  { dashboard: FILE_HOST, id: 945, label: "Up for" },
-  { dashboard: FILE_HOST, id: 946, label: "Services, up and down" },
-  { dashboard: FILE_HOST, id: 922, label: "Rate limited" },
-  { dashboard: FILE_HOST, id: 926, label: "Refusals by reason" },
-  { dashboard: FILE_HOST, id: 927, label: "The limiter's tokens" },
+/**
+ * One of the server episode's scenes: a grouping, a row of one of the
+ * dashboards, by its dashboard's uid and its title in that dashboard's
+ * jsonnet, shot whole for a wide screen; and the two panels of it a phone
+ * shows instead (the owner, 2026-11-24: "the holistic combination in colour
+ * gives you one decision, not one pane … keep the current single-panel
+ * snaps on mobile").
+ */
+type Grouping = {
+  readonly dashboard: string
+  readonly row: string
+  readonly label: string
+  readonly panels: readonly [Panel, Panel]
+}
+
+/**
+ * The server episode's groupings, a scene each: every grouping the owner
+ * named, its pool (the show draws four a visit; the first four are the
+ * draw a reader without a script sees).
+ */
+export const SERVER_GROUPINGS: ReadonlyArray<Grouping> = [
+  {
+    dashboard: FILE_HOST,
+    row: "file_host",
+    label: "Is it up and well",
+    panels: [
+      { dashboard: FILE_HOST, id: 943, label: "Availability" },
+      { dashboard: FILE_HOST, id: 945, label: "Up for" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Traffic, latency & errors",
+    label: "Traffic, latency and errors",
+    panels: [
+      { dashboard: FILE_HOST, id: 909, label: "Latency by route" },
+      { dashboard: FILE_HOST, id: 908, label: "Requests by outcome" },
+    ],
+  },
+  {
+    dashboard: OUTBOUND,
+    row: "What file_host asks the outside",
+    label: "What it asks the outside",
+    panels: [
+      { dashboard: OUTBOUND, id: 7, label: "Requests, by caller" },
+      { dashboard: OUTBOUND, id: 4, label: "Not OK, 24 hours" },
+    ],
+  },
+  {
+    dashboard: CALL,
+    row: "LANE: when the render may run",
+    label: "When the render may run",
+    panels: [
+      { dashboard: CALL, id: 35, label: "Free memory against a render" },
+      { dashboard: CALL, id: 36, label: "Memory pressure" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Shared stages: what other work waits on",
+    label: "What other work waits on",
+    panels: [
+      { dashboard: FILE_HOST, id: 971, label: "The transcriber" },
+      { dashboard: FILE_HOST, id: 973, label: "Who waits on it" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Metal — what the services cost the host",
+    label: "What the services cost the host",
+    panels: [
+      { dashboard: FILE_HOST, id: 947, label: "CPU, against each limit" },
+      { dashboard: FILE_HOST, id: 948, label: "Memory, against each limit" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Realtime — WebSocket",
+    label: "Who is connected",
+    panels: [
+      { dashboard: FILE_HOST, id: 918, label: "Connections against capacity" },
+      { dashboard: FILE_HOST, id: 920, label: "Messages, by kind" },
+    ],
+  },
+  {
+    dashboard: FILE_HOST,
+    row: "Rate limiting & refusals",
+    label: "Saying no, and why",
+    panels: [
+      { dashboard: FILE_HOST, id: 926, label: "Refusals by reason" },
+      { dashboard: FILE_HOST, id: 927, label: "The limiter's tokens" },
+    ],
+  },
 ]
 
 /** WHO DUNNIT's "CPU — busy vs waiting", of home's four cores. */
@@ -69,6 +156,12 @@ const CORES_PANEL: Panel = {
 
 /** Every panel at one size: the frame a walkthrough draws a screen in, and the card's still. */
 const VIEWPORT = { width: 1000, height: 640 } as const
+
+/**
+ * A row's screen: wide enough that a row of six stats keeps every title and
+ * number legible, tall enough to hold the tallest walked row whole.
+ */
+const ROW_VIEWPORT = { width: 1440, height: 1600 } as const
 
 /** How long each panel holds in the clip. */
 const HOLD_MS = 2400
@@ -88,19 +181,39 @@ export function panelPath(panel: Panel, sample: Sample): string {
   return `/d-solo/${panel.dashboard}/?${query.toString()}`
 }
 
+/**
+ * A grouping's row, on its whole dashboard over the sample's window, dark,
+ * in UTC, with no refresh, in kiosk (no menus; a bare `kiosk`, as Grafana
+ * reads it), naming the row so the stage shoots only that row (`ROW_PARAM`,
+ * `./stage-grafana`).
+ */
+export function rowPath(grouping: Grouping, sample: Sample): string {
+  const to = Date.parse(sample.to)
+  const from = to - sample.days * 86_400_000
+  const query = new URLSearchParams({
+    orgId: "1",
+    from: String(from),
+    to: String(to),
+    theme: "dark",
+    timezone: "utc",
+    refresh: "",
+    [ROW_PARAM]: grouping.row,
+  })
+  return `/d/${grouping.dashboard}/?${query.toString()}&kiosk`
+}
+
+/** A walk of pages, one screen each, at one size. */
 function walkOf(
   app: string,
-  panels: ReadonlyArray<Panel>,
-  sample: Sample
+  pages: ReadonlyArray<{ readonly label: string; readonly path: string }>,
+  sample: Sample,
+  viewport: { readonly width: number; readonly height: number }
 ): Walk {
-  const [first] = panels
-  if (first === undefined) throw new Error(`${app} names no panel`)
-  const steps: ReadonlyArray<Step> = panels.map((panel, i) => ({
-    label: panel.label,
-    action:
-      i === 0
-        ? { kind: "open" }
-        : { kind: "visit", path: panelPath(panel, sample) },
+  const [first] = pages
+  if (first === undefined) throw new Error(`${app} names no page`)
+  const steps: ReadonlyArray<Step> = pages.map((page, i) => ({
+    label: page.label,
+    action: i === 0 ? { kind: "open" } : { kind: "visit", path: page.path },
     holdMs: HOLD_MS,
   }))
   return {
@@ -109,19 +222,54 @@ function walkOf(
       kind: "grafana",
       version: sample.version,
       origin: sample.origin,
-      page: panelPath(first, sample),
-      viewport: VIEWPORT,
+      page: first.path,
+      viewport,
     },
     steps,
   }
 }
 
+const panelPages = (
+  panels: ReadonlyArray<Panel>,
+  sample: Sample
+): ReadonlyArray<{ readonly label: string; readonly path: string }> =>
+  panels.map((panel) => ({
+    label: panel.label,
+    path: panelPath(panel, sample),
+  }))
+
+/** The server episode on a phone: each grouping's two panels, in order. */
 export const homeServer = {
   sample: SampleSchema,
-  walk: (sample: Sample): Walk => walkOf("home-server", SERVER_PANELS, sample),
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-server",
+      panelPages(
+        SERVER_GROUPINGS.flatMap((g) => g.panels),
+        sample
+      ),
+      sample,
+      VIEWPORT
+    ),
+}
+
+/** The server episode on a wide screen: each grouping's whole row, in order. */
+export const homeServerRows = {
+  sample: SampleSchema,
+  walk: (sample: Sample): Walk =>
+    walkOf(
+      "home-server-rows",
+      SERVER_GROUPINGS.map((g) => ({
+        label: g.label,
+        path: rowPath(g, sample),
+      })),
+      sample,
+      ROW_VIEWPORT
+    ),
 }
 
 export const homeCores = {
   sample: SampleSchema,
-  walk: (sample: Sample): Walk => walkOf("home-cores", [CORES_PANEL], sample),
+  walk: (sample: Sample): Walk =>
+    walkOf("home-cores", panelPages([CORES_PANEL], sample), sample, VIEWPORT),
 }

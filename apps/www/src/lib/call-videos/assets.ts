@@ -62,6 +62,8 @@ const HELD_REASONS = [
   "snip-gone",
   "page-missing",
   "page-gone",
+  "walk-missing",
+  "walk-gone",
   "clip-missing",
   "recorder",
 ] as const

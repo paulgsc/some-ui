@@ -1,0 +1,22 @@
+{
+  "id": "C1441",
+  "made": "2026-11-24",
+  "by": "owner",
+  "paths": [
+    "packages/video-motion/src/walk/home-dashboards.ts",
+    "packages/video-motion/src/walk/stage-grafana.ts",
+    "packages/video-motion/src/walk/dashboard-telemetry.ts",
+    "packages/video-motion/walks/home-server.json",
+    "apps/www/src/landing/show.ts",
+    ".github/workflows/site-assets.yml"
+  ],
+  "chose": "The owner (2026-11-24, on #3472's stills, relayed by the coordinator, close paraphrase): \"Snipping one pane, say only Uptime, isn't good: it just reads '99%' and isn't how I use Grafana. On the file_host dashboard I look at a whole horizontal grouping at once: shared stages; traffic, latency and errors; the metal; real-time WebSocket; rate limiting and refusals. The holistic combination in colour gives you one decision, not one pane. Same on other dashboards, like outbound (requests, by grouping), and calls, one of the most interesting. So each scene is one grouping, and the snip is the whole grouping. A full grouping renders fine on desktop's large screen but is confounding on mobile, so keep the current single-panel snaps on mobile. Scene by scene, the grouping is the point.\" So each server scene is one grouping, a row of one of the server's dashboards (SERVER_GROUPINGS): the stage shoots the whole row on its dashboard for a wide screen, and the grouping's two panels stay the phone's faces. The made-up week is drawn so each row's colours cross where a real decision would turn.",
+  "options": [
+    "one panel per face, on every screen (C1431, moved)",
+    "a whole row per scene on a wide screen, single panels on a phone (chosen)"
+  ],
+  "gray": "Recorded as the owner's call; the owner gave no options. The two above are what C1431 drew and what the owner moved it to.",
+  "undo": "Record a call that moves this one, and walk single panels only (drop homeServerRows and the row shots).",
+  "refs": ["#3401", "#3472"],
+  "moves": "C1431"
+}

@@ -3,8 +3,9 @@
  * script (`enhance.ts`) before anything else there reads the show. The
  * snacks come from the pool's inert template (`render.ts`, `pool`); each
  * drawn snack takes a place of the first draw the page was built with, on
- * the stage (its copy and both cubes), in the list, and, at the first
- * place, in the skeletons. Every face it puts is the snack's own, whole:
+ * the stage (its copy and both cubes), in the list, on the dashboard band
+ * where its episode has one (C1443), and, at the first place, in the
+ * skeletons. Every face it puts is the snack's own, whole:
  * nothing of the built draw is left in a place it fills.
  */
 import { drawSnacks } from "./draw.ts"
@@ -60,6 +61,13 @@ export function drawPools(seed: number): void {
         `.episode[data-episode="${episode}"] .scene-flat`
       ),
     ]
+    // The dashboard band's plates (C1443), a place each, where the episode's
+    // scenes are dashboard rows.
+    const plates = [
+      ...document.querySelectorAll<HTMLElement>(
+        `.dash-band[data-episode="${episode}"] .plate`
+      ),
+    ]
     drawn.forEach((at, place) => {
       const snack = snacks.at(at)
       if (snack === undefined) return
@@ -99,6 +107,14 @@ export function drawPools(seed: number): void {
           const next = promised.at(j)
           if (next !== undefined) old.replaceWith(next.cloneNode(true))
         })
+      }
+      const row = snack.querySelector<HTMLElement>(".snack-row")
+      const plate = plates.at(place)
+      if (row !== null && plate !== undefined) {
+        plate.dataset["asset"] = row.dataset["asset"] ?? ""
+        plate.replaceChildren(
+          ...[...row.childNodes].map((n) => n.cloneNode(true))
+        )
       }
       faces.forEach((face, j) => {
         const onCube = cubes.at(j)?.at(place)

@@ -115,7 +115,8 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     ttlDays: 1,
   },
   // The APK's walks (WALK1, apps/mobile/walk), after the snips in the same
-  // job: read by a person right after the run; nothing kept.
+  // job: read by this run's bundle and apk-clip jobs and by a person right
+  // after the run; nothing kept across runs.
   {
     kind: "artifact",
     name: "walks-${{ github.run_id }}",
@@ -129,6 +130,16 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
   {
     kind: "artifact",
     name: "snips-bundle-${{ github.sha }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 1,
+  },
+  // The APK's walks as a bundle (#3476, docs/snips.md "How walks reach
+  // home"): what home fetches for the essay that names the run. Each run is
+  // its own lineage, as a pages bundle is, so each lives out its day.
+  {
+    kind: "artifact",
+    name: "walks-bundle-${{ github.run_id }}",
     workflows: ["Snips Capture"],
     keep: 1,
     ttlDays: 1,
@@ -161,18 +172,12 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 1,
     ttlDays: 30,
   },
-  // Home's dashboards (#3415, C1071): the newest picture of each kind that
-  // home put in the mailbox, fetched by Site Assets' `home` job.
+  // The server's dashboards on sample telemetry, drawn by Site Assets'
+  // `dashboards` job (the owner on #3401, 2026-11-23): the server episode's
+  // stills and the cores gap's still, in one artifact.
   {
     kind: "artifact",
     name: "site-assets-server-${{ github.sha }}",
-    workflows: ["Site Assets"],
-    keep: 1,
-    ttlDays: 30,
-  },
-  {
-    kind: "artifact",
-    name: "site-assets-cores-${{ github.sha }}",
     workflows: ["Site Assets"],
     keep: 1,
     ttlDays: 30,
