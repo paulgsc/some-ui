@@ -53,6 +53,8 @@ import { Route as DashboardApkAphIndexRouteImport } from './routes/_dashboard/_a
 import { Route as DashboardApkAphHistoryRouteImport } from './routes/_dashboard/_apk/aph/history'
 import { Route as DashboardApkAphSettingsRouteImport } from './routes/_dashboard/_apk/aph/settings'
 import { Route as DashboardApkAphTrendRouteImport } from './routes/_dashboard/_apk/aph/trend'
+import { Route as DashboardApkCastIndexRouteImport } from './routes/_dashboard/_apk/cast/index'
+import { Route as DashboardApkCastLookRouteImport } from './routes/_dashboard/_apk/cast/look'
 import { Route as DashboardApkJobsIndexRouteImport } from './routes/_dashboard/_apk/jobs/index'
 import { Route as DashboardApkJobsInterviewRouteImport } from './routes/_dashboard/_apk/jobs/interview'
 import { Route as DashboardApkJobsRecordRouteImport } from './routes/_dashboard/_apk/jobs/record'
@@ -329,6 +331,16 @@ const DashboardApkAphTrendRoute = DashboardApkAphTrendRouteImport.update({
   id: '/trend',
   path: '/trend',
   getParentRoute: () => DashboardApkAphRoute,
+} as any)
+const DashboardApkCastIndexRoute = DashboardApkCastIndexRouteImport.update({
+  id: '/cast/',
+  path: '/cast/',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardApkCastLookRoute = DashboardApkCastLookRouteImport.update({
+  id: '/cast/look',
+  path: '/cast/look',
+  getParentRoute: () => DashboardApkRoute,
 } as any)
 const DashboardApkJobsIndexRoute = DashboardApkJobsIndexRouteImport.update({
   id: '/',
@@ -684,6 +696,7 @@ export interface FileRoutesByFullPath {
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
+  '/cast/look': typeof DashboardApkCastLookRoute
   '/jobs/interview': typeof DashboardApkJobsInterviewRouteWithChildren
   '/jobs/record': typeof DashboardApkJobsRecordRoute
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
@@ -696,6 +709,7 @@ export interface FileRoutesByFullPath {
   '/settings/status': typeof DashboardApkSettingsStatusRoute
   '/asks/$view': typeof DashboardLanAsksViewRoute
   '/aph/': typeof DashboardApkAphIndexRoute
+  '/cast/': typeof DashboardApkCastIndexRoute
   '/jobs/': typeof DashboardApkJobsIndexRoute
   '/journal/': typeof DashboardApkJournalIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
@@ -776,6 +790,7 @@ export interface FileRoutesByTo {
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
+  '/cast/look': typeof DashboardApkCastLookRoute
   '/jobs/record': typeof DashboardApkJobsRecordRoute
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/journal/feedback': typeof DashboardApkJournalFeedbackRoute
@@ -787,6 +802,7 @@ export interface FileRoutesByTo {
   '/settings/status': typeof DashboardApkSettingsStatusRoute
   '/asks/$view': typeof DashboardLanAsksViewRoute
   '/aph': typeof DashboardApkAphIndexRoute
+  '/cast': typeof DashboardApkCastIndexRoute
   '/jobs': typeof DashboardApkJobsIndexRoute
   '/journal': typeof DashboardApkJournalIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
@@ -875,6 +891,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/aph/history': typeof DashboardApkAphHistoryRoute
   '/_dashboard/_apk/aph/settings': typeof DashboardApkAphSettingsRoute
   '/_dashboard/_apk/aph/trend': typeof DashboardApkAphTrendRoute
+  '/_dashboard/_apk/cast/look': typeof DashboardApkCastLookRoute
   '/_dashboard/_apk/jobs/interview': typeof DashboardApkJobsInterviewRouteWithChildren
   '/_dashboard/_apk/jobs/record': typeof DashboardApkJobsRecordRoute
   '/_dashboard/_apk/jobs/scout': typeof DashboardApkJobsScoutRoute
@@ -887,6 +904,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/settings/status': typeof DashboardApkSettingsStatusRoute
   '/_dashboard/_lan/asks/$view': typeof DashboardLanAsksViewRoute
   '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
+  '/_dashboard/_apk/cast/': typeof DashboardApkCastIndexRoute
   '/_dashboard/_apk/jobs/': typeof DashboardApkJobsIndexRoute
   '/_dashboard/_apk/journal/': typeof DashboardApkJournalIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
@@ -973,6 +991,7 @@ export interface FileRouteTypes {
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
+    | '/cast/look'
     | '/jobs/interview'
     | '/jobs/record'
     | '/jobs/scout'
@@ -985,6 +1004,7 @@ export interface FileRouteTypes {
     | '/settings/status'
     | '/asks/$view'
     | '/aph/'
+    | '/cast/'
     | '/jobs/'
     | '/journal/'
     | '/practice/'
@@ -1065,6 +1085,7 @@ export interface FileRouteTypes {
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
+    | '/cast/look'
     | '/jobs/record'
     | '/jobs/scout'
     | '/journal/feedback'
@@ -1076,6 +1097,7 @@ export interface FileRouteTypes {
     | '/settings/status'
     | '/asks/$view'
     | '/aph'
+    | '/cast'
     | '/jobs'
     | '/journal'
     | '/practice'
@@ -1163,6 +1185,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/aph/history'
     | '/_dashboard/_apk/aph/settings'
     | '/_dashboard/_apk/aph/trend'
+    | '/_dashboard/_apk/cast/look'
     | '/_dashboard/_apk/jobs/interview'
     | '/_dashboard/_apk/jobs/record'
     | '/_dashboard/_apk/jobs/scout'
@@ -1175,6 +1198,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/settings/status'
     | '/_dashboard/_lan/asks/$view'
     | '/_dashboard/_apk/aph/'
+    | '/_dashboard/_apk/cast/'
     | '/_dashboard/_apk/jobs/'
     | '/_dashboard/_apk/journal/'
     | '/_dashboard/_apk/practice/'
@@ -1545,6 +1569,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/aph/trend'
       preLoaderRoute: typeof DashboardApkAphTrendRouteImport
       parentRoute: typeof DashboardApkAphRoute
+    }
+    '/_dashboard/_apk/cast/': {
+      id: '/_dashboard/_apk/cast/'
+      path: '/cast'
+      fullPath: '/cast/'
+      preLoaderRoute: typeof DashboardApkCastIndexRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/cast/look': {
+      id: '/_dashboard/_apk/cast/look'
+      path: '/cast/look'
+      fullPath: '/cast/look'
+      preLoaderRoute: typeof DashboardApkCastLookRouteImport
+      parentRoute: typeof DashboardApkRoute
     }
     '/_dashboard/_apk/jobs/': {
       id: '/_dashboard/_apk/jobs/'
@@ -2076,9 +2114,11 @@ interface DashboardApkRouteChildren {
   DashboardApkJournalRoute: typeof DashboardApkJournalRouteWithChildren
   DashboardApkRustRoundsRoute: typeof DashboardApkRustRoundsRoute
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
+  DashboardApkCastLookRoute: typeof DashboardApkCastLookRoute
   DashboardApkSettingsHomeRoute: typeof DashboardApkSettingsHomeRoute
   DashboardApkSettingsPhoneRoute: typeof DashboardApkSettingsPhoneRoute
   DashboardApkSettingsStatusRoute: typeof DashboardApkSettingsStatusRoute
+  DashboardApkCastIndexRoute: typeof DashboardApkCastIndexRoute
   DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
   DashboardApkSettingsDataKindRoute: typeof DashboardApkSettingsDataKindRoute
   DashboardApkSettingsDataCallsRoute: typeof DashboardApkSettingsDataCallsRoute
@@ -2095,9 +2135,11 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkJournalRoute: DashboardApkJournalRouteWithChildren,
   DashboardApkRustRoundsRoute: DashboardApkRustRoundsRoute,
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
+  DashboardApkCastLookRoute: DashboardApkCastLookRoute,
   DashboardApkSettingsHomeRoute: DashboardApkSettingsHomeRoute,
   DashboardApkSettingsPhoneRoute: DashboardApkSettingsPhoneRoute,
   DashboardApkSettingsStatusRoute: DashboardApkSettingsStatusRoute,
+  DashboardApkCastIndexRoute: DashboardApkCastIndexRoute,
   DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
   DashboardApkSettingsDataKindRoute: DashboardApkSettingsDataKindRoute,
   DashboardApkSettingsDataCallsRoute: DashboardApkSettingsDataCallsRoute,
