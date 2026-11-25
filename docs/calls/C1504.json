@@ -1,0 +1,18 @@
+{
+  "id": "C1504",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:packages/video-render/src/cards-essay.ts"
+  ],
+  "chose": "In the 'Everything is slow' essay (made only in a session, 2026-11-24), the owner's spoken abstract plays as the narration of an ordinary card scene (chapter one), carried on screen by Mochi in the host layer. The owner's take was cut at word boundaries and word-timed by whisper in that session, then put in the recorder's step cache in place of the speaker's take of the same words, so the pipeline's own captions, music bed, chapter marks and description apply. It is not a spoken card. The cut list is kept with the video on the essay's private page, not in paulgsc/testing's cards/, because home renders every essay that index lists, and a home render of this cut list would have Kokoro say the owner's words.",
+  "options": [
+    "The owner's take as a card scene's narration, seeded into the step cache, with Mochi carrying it in the host layer",
+    "A spoken card (introduction), whose template draws Kokoro asking as Tin Bird beside the owner",
+    "Splice the take into the finished video outside record:cards, with captions drawn separately"
+  ],
+  "gray": "The owner asked for the video to be made entirely in a session, with the host layer (C1485) that the pipeline doesn't have yet. A spoken card would add a third figure on screen and a transcript claiming home heard a take it never did; the narration route keeps the pipeline's own captions and chapters but means the cut list alone can't reproduce the owner's voice.",
+  "undo": "Render the cut list with no seeded cache, and Kokoro says the abstract; or convert the 'abstract' scene to a spoken card once home holds the take.",
+  "refs": ["#3521"]
+}
