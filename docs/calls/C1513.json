@@ -1,0 +1,22 @@
+{
+  "id": "C1513",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/strikes.rs",
+    "server:migrations/20261125000100_add_strikes_to_devices.up.sql",
+    "server:apps/servers/file_host/src/nudge/actuate.rs",
+    "server:apps/servers/file_host/src/jobs_notice.rs"
+  ],
+  "chose": "One strike family for the study nudge's browsers and the Jobs notice's phones, built once in file_host::strikes. (1) Storage: columns strikes, set_aside_at, set_aside_why and last_probe_at on push_subscriptions and jobs_notice_device, not a shared table. (2) Per-sender closed strike sets, where a strike is only the device's own failure: web push strikes on a delivery timeout or no answer, never on 400 (our payload or VAPID JWT), 403 (our key), 413, 429, 5xx or a send never made; FCM strikes on 403 SENDER_ID_MISMATCH, and on a 400 only when another phone took the same notice in that pass, never on 401, the token endpoint, an unsigned JWT, 429, 5xx or no answer, so a lone phone's 400 never strikes. (3) A set-aside device is included at most once a day, only in a send that happens anyway: accepting brings it back (strikes = 0), failing leaves it aside with no new strike or count, and registering again also brings it back. Setting one aside is counted once (study-nudge/device_set_aside, jobs-notice/phone_set_aside). The number of strikes, 3, is the owner's from server#1180, not part of this call; that a delivery accepted later brings a device back is also the owner's.",
+  "options": [
+    "Columns on each device table, per-sender closed strike sets, and a once-a-day inclusion only within real sends",
+    "A shared device_strikes table keyed by endpoint or token, which holds an endpoint or a token a second time (docs/identity.md)",
+    "Forget a phone on FCM error codes as UNREGISTERED does: a payload bug of ours reads as INVALID_ARGUMENT and would forget every phone (ruled out on server#1222)",
+    "Re-registration as the only way back, so the owner's 'a delivery it accepts later brings it back' could never happen, since a set-aside device is never sent to",
+    "A scheduled probe, which is a clock (docs/home-compute.md)"
+  ],
+  "gray": "Whether a failure is the device's or home's can't always be told: a lone phone's FCM 400 may be its token or our notice, so it never strikes, and server#1222 stays open for a single-phone owner except on SENDER_ID_MISMATCH. And a record no phone is sent to (every phone set aside) is owed to none, so it is not counted lost each morning: setting each phone aside was the count.",
+  "undo": "Drop the four columns (the down migration), delete file_host::strikes and its call sites in nudge/actuate.rs and jobs_notice.rs, and fcm_kit's Mismatched variant; devices are then sent to every time again.",
+  "refs": ["server#1180", "server#1222", "server#1174"]
+}
