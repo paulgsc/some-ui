@@ -1,0 +1,18 @@
+{
+  "id": "C1521",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/host.ts"
+  ],
+  "chose": "The host's closed unions (characters, emotions and ceremonies keyed by character, shots, placements, the beat) and its seeded drawing live beside the cast they draw, in @some-ui/styles/brand/host, a module the phone and the web may both import. The burn-ins' host kind is the video's member of that family: it checks a cut list's beats against those unions with zod and draws the frame model's SVG over the safe area. #3522 as worded put the unions in burn-ins, but @some-ui/burn-ins is a web workspace whose contract may carry only plain values (A2), and the Cast wing (HOST8, the APK) and the signature (HOST16, Studio on the phone) both need the unions and the drawing itself to preview live loops.",
+  "options": [
+    "Unions and drawing beside the cast (@some-ui/styles/brand/host); burn-ins' host kind wraps them",
+    "Unions and drawing in burn-ins (#3522 as worded); the phone would need a copy, or burn-ins' audience widened",
+    "A new workspace for the cast's motion"
+  ],
+  "gray": "No check decides which workspace a family lives in, and where it lives sets what the APK can show; the issue named burn-ins, and the coordinator's brief invited the pushback. A new workspace was turned down as a module of its own for one family (C830).",
+  "undo": "Move packages/some-styles/src/brand/host.ts into packages/ui/burn-ins/src/lib/host.ts and import it there; the phone then reaches it only through burn-ins' contract or a copy.",
+  "refs": ["#3522", "#3521", "#3532", "#3558"]
+}

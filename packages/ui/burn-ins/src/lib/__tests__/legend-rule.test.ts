@@ -68,7 +68,7 @@ describe("the stamp", () => {
           0,
           frame
         )
-        if (!("stamp" in f.frame)) throw new Error(kind)
+        if (f.frame === null || !("stamp" in f.frame)) throw new Error(kind)
         const box = f.frame.stamp.box
         expect(box.x + box.width).toBe(body.x + body.width)
         expect(box.y + box.height).toBe(body.y + body.height)

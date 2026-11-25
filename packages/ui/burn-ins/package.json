@@ -25,10 +25,10 @@
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/game-scenarios": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "@some-ui/vite-config": "workspace:*"

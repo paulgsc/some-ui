@@ -12,7 +12,8 @@
  *
  * A design a published video used is never edited; a change is a new design.
  * Each kind draws only inside its regions (`./geometry`), so two burn-ins on
- * screen together never cover each other.
+ * screen together never cover each other; the one exception is the host
+ * (`./host`), a layer of its own over the card that claims no region (C1485).
  */
 
 import { assertNever } from "@some-ui/intent-kit"
@@ -89,6 +90,14 @@ import {
   type Region,
 } from "./geometry"
 import {
+  drawHost,
+  HOST_DESIGNS,
+  hostAt,
+  HostParamsSchema,
+  type HostDrawing,
+  type HostFrame,
+} from "./host"
+import {
   cardFrame,
   CardParamsSchema,
   headlineFrame,
@@ -145,6 +154,7 @@ export const KINDS = [
   "rule",
   "flow",
   "bars",
+  "host",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -165,6 +175,7 @@ export const DESIGNS = {
   rule: RULE_DESIGNS,
   flow: FLOW_DESIGNS,
   bars: BARS_DESIGNS,
+  host: HOST_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -188,6 +199,8 @@ export const REGIONS_OF = {
   rule: ["header", "body"],
   flow: ["header", "body"],
   bars: ["header", "body"],
+  // None: the host floats over the card, wherever it sits (C1485, `./host`).
+  host: [],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -277,6 +290,11 @@ export type Prepared =
       readonly design: (typeof BARS_DESIGNS)[number]
       readonly drawing: BarsDrawing
     }
+  | {
+      readonly kind: "host"
+      readonly design: (typeof HOST_DESIGNS)[number]
+      readonly drawing: HostDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -341,6 +359,11 @@ export type BurnInFrame =
       readonly kind: "bars"
       readonly design: (typeof BARS_DESIGNS)[number]
       readonly frame: BarsFrame
+    }
+  | {
+      readonly kind: "host"
+      readonly design: (typeof HOST_DESIGNS)[number]
+      readonly frame: HostFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -567,6 +590,15 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "host": {
+      const c = checked(name, HOST_DESIGNS, b, HostParamsSchema, drawHost, g)
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -630,6 +662,9 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
     case "bars": {
       return { kind: p.kind, design: p.design, frame: barsAt(p.drawing, t) }
     }
+    case "host": {
+      return { kind: p.kind, design: p.design, frame: hostAt(p.drawing, t) }
+    }
     default: {
       return assertNever(p)
     }
@@ -678,6 +713,10 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "bars": {
       return barsBoxes(f.frame)
+    }
+    case "host": {
+      // None: the host claims no region and covers what it covers (C1485).
+      return []
     }
     default: {
       return assertNever(f)

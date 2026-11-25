@@ -1,0 +1,20 @@
+{
+  "id": "C1520",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/burn-ins/src/lib/host.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/burn-in.ts",
+    "some-ui:packages/some-styles/src/brand/cast.ts"
+  ],
+  "chose": "Reach for HOST's living cast (#3521, #3522): rung 3, build, as a wrapper over what we already hold. Inward first: the cast's drawings are data in packages/some-styles/src/brand/cast.ts, the burn-ins' closed union of kinds (packages/ui/burn-ins/src/lib/burn-in.ts) already gives a layer over any picture a pure frameAt(t), a preview page and an alpha recorder, and motion video already renders a cut list and proves its bytes; so the host is one more kind there, and what is built is only the gap: its closed unions (emotion, ceremonious animation, shot, placement, beat, keyed by character) and a seeded rig that draws cast.ts's own nodes. Outward, each tool was ruled out for a stated reason rather than tried, since the owner already chose the SVG rig over a baked sprite sheet on measured real work (C1484: 19 KB against 19.6 MB, the same bytes twice): Rive (runtimes MIT, editor a hosted app with an account) keeps the motion in a .riv file made by hand in its editor, which is design work for the owner or an agent outside code (C1028) and drives its state machine by inputs named at run time, so no emotion is a member the compiler checks (CLAUDE.md, the smell C830 names); Lottie (lottie-web MIT, files made in After Effects or LottieFiles' editor) bakes each clip as keyframes, so a seeded idle, a blend from one beat to the next and an aim at a point the beat is given would each be code we write against its player anyway, at about 250 KB of player to draw what 10 KB of rig draws now; Spine (a paid editor whose licence the runtimes require) animates raster atlases, the sprite medium C1484 turned down for its weight and for blurring in a close-up. The part that is ours, in one sentence: two characters drawn from the cast's own data, whose every beat in a scene is a member of a closed union the signature (HOST16) names and the owner overrides by picking another member, the same beat at the same t giving the same SVG bytes.",
+  "options": [
+    "Use Rive: its editor for the motion, its state machine for emotions, its runtime in the renderer's page",
+    "Use Lottie: one baked clip per emotion and shot, played by lottie-web at a sought frame",
+    "Use Spine: skeletal animation over a raster atlas, its runtime in the renderer's page",
+    "Build only the gap: the host as a burn-in kind, its unions closed and typed, a seeded rig over cast.ts's drawings"
+  ],
+  "gray": "No check settles which animation medium the host is made in, and each tool would do part of the job; the choice sets how every future emotion is added (a member and a drawing in code, against a file made in an editor) and the owner sees it on every video. Ruling the tools out untried leans on C1484 and C1028 rather than on a trial of each on real work.",
+  "undo": "Keep the unions in packages/ui/burn-ins/src/lib/host.ts and replace hostAt's drawing with the chosen tool's player seeked to t; the members and the cut list's params stay as they are.",
+  "refs": ["#3521", "#3522"]
+}
