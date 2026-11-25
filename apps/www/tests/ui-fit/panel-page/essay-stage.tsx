@@ -8,7 +8,7 @@ import { EssaySceneFrame } from "@/lib/web-surface"
 import { accepted, atTheLimit, byPoints, sample, withForks } from "./essays"
 
 /**
- * Every best, beside and deep dive scene of the essay `?essay=` names
+ * Every question, best, beside and deep dive scene of the essay `?essay=` names
  * (`./essays`), each in the stage's frame as the recorder draws it, with
  * what the model says of it (`data-model`, its card's content height in px)
  * and whether the model accepts the essay (`data-essay-fit`).

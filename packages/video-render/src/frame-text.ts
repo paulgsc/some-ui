@@ -155,12 +155,12 @@ export function linesOf(runs: ReadonlyArray<Run>, width: number): number {
 export type Part = { readonly h: number; readonly em: number }
 
 /**
- * Parts stacked as `space-y-[0.6em]` stacks them: each but the last with a
- * margin below of 0.6em of its own font size.
+ * Parts stacked as `space-y-[<gap>em]` stacks them (0.6 unless given): each
+ * but the last with a margin below of `gap` em of its own font size.
  */
-export const stack = (parts: ReadonlyArray<Part>): number =>
+export const stack = (parts: ReadonlyArray<Part>, gap = 0.6): number =>
   parts.reduce(
     (sum, part, i) =>
-      sum + part.h + (i < parts.length - 1 ? 0.6 * px(part.em) : 0),
+      sum + part.h + (i < parts.length - 1 ? gap * px(part.em) : 0),
     0
   )

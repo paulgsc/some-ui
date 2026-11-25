@@ -68,6 +68,7 @@ import {
   essayFit,
   parseEssay,
   pointsFit,
+  questionFit,
 } from "@some-ui/video-render"
 
 /**
@@ -572,14 +573,20 @@ function buildWeek(
   }
   for (const { key, what, expect } of programsOf(read.week.tickets))
     checkRun(what, expect, runs[key], problems)
-  // Its essay restates each fork's question as written, so the week holds
-  // the room it takes there.
-  for (const ticket of read.week.tickets)
-    for (const unfit of pointsFit(
-      ticket.id,
-      ticket.forks.map((fork) => fork.question)
-    ))
+  // Its essay restates each fork's question, and its question scene the
+  // whole ticket, as written, so the week holds the room they take there.
+  for (const ticket of read.week.tickets) {
+    const points = ticket.forks.map((fork) => fork.question)
+    for (const unfit of [
+      ...pointsFit(ticket.id, points),
+      ...questionFit({
+        ...ticket,
+        figures: ticket.figures.map((figure) => figure.text),
+        points,
+      }),
+    ])
       problems.push(`week: ${unfit}`)
+  }
   const file = WeekV2Schema.parse(week)
   // The standing set reaches the week whole, or the week isn't put (C737).
   if (JSON.stringify(file.opening) !== JSON.stringify(STANDING_OPENING))

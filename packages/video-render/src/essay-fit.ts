@@ -1,27 +1,33 @@
 /**
  * What the Rust Rounds essay's captioned frame holds (EF1, #2231): the
- * scenes whose words the Monday routine writes (C574), laid out as the
+ * scenes whose words the Monday routine writes (C574), and the question
+ * scene, which shows the week's ticket as written (#3547), laid out as the
  * stage lays them out (`apps/www`'s `web-surface/call/essay-stage.tsx`), measured in CSS
  * px at the 1920×1080 frame the recorder draws, with an allowance that errs
  * toward too long. The routine's `finish` refuses an essay this says runs
  * past the frame, naming the scene and what to shorten, before it is put
  * rather than an hour into a recording on home.
  *
- * EF1 (promise): an essay `finish` accepts has no best, beside or deep dive
- * scene the stage's frame overflows, or cuts off at a code line's end.
+ * EF1 (promise): an essay `finish` accepts has no question, best, beside or
+ * deep dive scene the stage's frame overflows, or cuts off at a code line's
+ * end.
  *
  * Family: every text the routine writes on those scenes (best fits, notes,
  * SOLO's why, a dive's title and shows) at any length and wrap, with code
  * spans, including a span touching the punctuation after it; two or three
  * speak-to points, at any length, each judged from the ticket's take or
  * from its own (RR24, cited on its beside row); a dive's code at any number
- * of lines and columns, tabs included; and the host that records it, whose sans face the
+ * of lines and columns, tabs included; a question scene's title, spec,
+ * figures and points at any length and count, and its program at any number
+ * of lines and columns, `QUESTION_PROGRAM_LINES` and the week's 40 columns
+ * held whatever the rest; and the host that records it, whose sans face the
  * frame draws in (`./frame-text`'s `SANS`): a cloud session's Inter, and
  * home's render image's WenQuanYi Zen Hei.
  *
  * Proof: `apps/www/tests/ui-fit/essay-fit.spec.ts` draws the sample, an
  * essay with points answered by takes of their own (`by-points`), and
  * essays with each of those texts, and the code by lines, columns and tabs,
+ * and a ticket's question with a program of the most lines at its widest,
  * grown to the most this accepts, on the real stage, and fails where this
  * says a scene is shorter than drawn or an accepted scene overflows or clips
  * its code. CI runs it in the Playwright image home's render image is built
@@ -30,15 +36,16 @@
  *
  * Tolerance: CF1's. The other scenes are outside the Family: the answer
  * scene shows the owner's transcript, which no length bounds and the routine
- * can't shorten (#3187), and the open, question, weeks and next scenes
- * restate what earlier files hold. The fork scene (RR29) is outside it too
+ * can't shorten (#3187), and the open, weeks and next scenes restate what
+ * earlier files hold. The fork scene (RR29) is outside it too
  * until a model of it lands: `essay-fit.spec.ts` draws one fork and holds
  * that it fits. So is a ticket of 1, or 4 to 6, points (version 4), which
  * the spec doesn't draw yet. The recorder's `data-overflow` refusal
  * stays the guard there, so no video is cut off.
  *
  * `pointsFit` holds the part of the best and beside scenes the essay can't
- * shorten, the points themselves, when the routine writes the week.
+ * shorten, the points themselves, and `questionFit` the question scene,
+ * when the routine writes the week.
  */
 
 import type { Essay, EssayTicket } from "./essay"
@@ -144,9 +151,10 @@ const TAG: Part = { h: lineOf(0.7), em: 0.7 }
 function list(
   items: ReadonlyArray<ReadonlyArray<Run>>,
   em: number,
-  gap: number
+  gap: number,
+  within: number = CARD.width
 ): Part {
-  const width = CARD.width - px(1.2 * em)
+  const width = within - px(1.2 * em)
   const h = items.reduce(
     (sum, runs, i) => sum + lines(runs, width, em) + (i > 0 ? px(gap * em) : 0),
     0
@@ -157,9 +165,7 @@ function list(
 const CODE_EM = 0.62
 
 /** The widest code line the card shows whole, in columns of the mono face. */
-const CODE_COLUMNS = Math.floor(
-  (CARD.width - 2 * px(0.8 * CODE_EM) - 2) / widthOf("m", "mono", CODE_EM)
-)
+const CODE_COLUMNS = columnsIn(CARD.width, CODE_EM)
 
 /**
  * How many columns `line` takes in the stage's `whitespace-pre` code block:
@@ -175,12 +181,20 @@ function codeColumns(line: string): number {
   return columns
 }
 
-function code(text: string): Part {
-  const n = text.trimEnd().split("\n").length
+const codeLines = (text: string): ReadonlyArray<string> =>
+  text.trimEnd().split("\n")
+
+/** The stage's `Code` block of `text` at `em`: its lines, its padding and border. */
+function code(text: string, em = CODE_EM): Part {
   return {
-    h: n * px(CODE_EM) * SNUG + 2 * px(0.5 * CODE_EM) + 2,
-    em: CODE_EM,
+    h: codeLines(text).length * px(em) * SNUG + 2 * px(0.5 * em) + 2,
+    em,
   }
+}
+
+/** The widest code line a box `width` px wide shows whole at `em`, in columns. */
+function columnsIn(width: number, em: number): number {
+  return Math.floor((width - 2 * px(0.8 * em) - 2) / widthOf("m", "mono", em))
 }
 
 function best(ticket: EssayTicket): number {
@@ -293,11 +307,144 @@ function dive(ticket: EssayTicket, k: number): number {
   ])
 }
 
+/**
+ * The most lines a ticket's program holds (`@some-ui/rust-rounds`'s
+ * `PROGRAM_LINE_CAP`, which its tests hold to this): the question scene
+ * sets its code small enough for this many and no smaller.
+ */
+export const QUESTION_PROGRAM_LINES = 25
+
+/**
+ * The question scene's columns (`grid-cols-[3fr_2fr]`, a gap of 1em): the
+ * ticket's words, then its program.
+ */
+const QUESTION_WORDS_WIDTH = (CARD.width - px(1)) * 0.6
+const QUESTION_CODE_WIDTH = (CARD.width - px(1)) * 0.4
+
+/** What the question scene's columns have under its tag. */
+const QUESTION_HEIGHT = CARD.height - TAG.h - 0.6 * px(TAG.em)
+
+/**
+ * The size the question scene sets a program of `program`'s lines at, in
+ * em of the frame's: the dives' size while it fits, smaller for a longer
+ * program, down to the size that fits `QUESTION_PROGRAM_LINES`, in steps of
+ * a hundredth.
+ */
+export function questionCodeEm(program: string): number {
+  const n = Math.min(codeLines(program).length, QUESTION_PROGRAM_LINES)
+  const fits = (QUESTION_HEIGHT - 2) / (px(1) * (SNUG * n + 1))
+  return Math.min(CODE_EM, Math.floor(fits * 100) / 100)
+}
+
+/** A ticket as its question scene draws it: the week's words, as written. */
+export type QuestionTicket = {
+  readonly id: string
+  readonly title: string
+  readonly spec: string
+  readonly figures: ReadonlyArray<string>
+  /** Its speak-to points (a `/2` week's fork questions). */
+  readonly points: ReadonlyArray<string>
+  readonly program: string
+}
+
+/**
+ * The question scene of `ticket`: its height, and each thing of it that
+ * runs past the frame, as a clause after the scene's name.
+ */
+function question(ticket: QuestionTicket): {
+  readonly h: number
+  readonly problems: ReadonlyArray<string>
+} {
+  const width = QUESTION_WORDS_WIDTH
+  const field = (body: Part): Part => ({
+    h: TAG.h + px(0.2 * TAG.em) + body.h,
+    em: 1,
+  })
+  const words = stack(
+    [
+      {
+        h:
+          linesOf([{ text: ticket.title, face: "bold", em: 1.15 }], width) *
+          px(1.15) *
+          TIGHT,
+        em: 1.15,
+      },
+      { h: lines(inline(ticket.spec, 0.8), width, 0.8), em: 0.8 },
+      ...(ticket.figures.length === 0
+        ? []
+        : [
+            field({
+              h: ticket.figures.reduce(
+                (sum, figure) =>
+                  sum +
+                  lines(
+                    [{ text: figure, face: "prose", em: 0.75 }],
+                    width,
+                    0.75
+                  ),
+                0
+              ),
+              em: 0.75,
+            }),
+          ]),
+      field(
+        list(
+          ticket.points.map((to) => inline(to, 0.8)),
+          0.8,
+          0.2,
+          width
+        )
+      ),
+    ],
+    0.5
+  )
+  const em = questionCodeEm(ticket.program)
+  const program = codeLines(ticket.program)
+  const columns = columnsIn(QUESTION_CODE_WIDTH, em)
+  const wide = program.filter((line) => codeColumns(line) > columns).length
+  const problems = [
+    ...(words > QUESTION_HEIGHT
+      ? [
+          `runs about ${Math.ceil(words - QUESTION_HEIGHT)} px past the frame: shorten its title, spec, figures or speak-to points`,
+        ]
+      : []),
+    ...(program.length > QUESTION_PROGRAM_LINES
+      ? [
+          `holds a program of ${program.length} lines, more than the frame's ${QUESTION_PROGRAM_LINES}`,
+        ]
+      : []),
+    ...(wide > 0
+      ? [`has ${wide} program lines wider than the frame's ${columns} columns`]
+      : []),
+  ]
+  return {
+    h: stack([TAG, { h: Math.max(words, code(ticket.program, em).h), em: 1 }]),
+    problems,
+  }
+}
+
+/**
+ * What the question scene of `ticket` leaves of the frame, when the routine
+ * writes the week: every word of it is the week's, so whatever runs past
+ * the frame here, `essayFit` refuses later, when nothing can shorten it.
+ * Each such thing is a problem naming the ticket.
+ */
+export function questionFit(ticket: QuestionTicket): ReadonlyArray<string> {
+  return question(ticket).problems.map(
+    (problem) => `${ticket.id}: its question scene ${problem}`
+  )
+}
+
+const questionOf = (ticket: EssayTicket): QuestionTicket => ({
+  ...ticket,
+  points: ticket.points.map((point) => point.to),
+})
+
 /** A scene this models: its id, and its content's height in px. */
 export type EssayFitScene = { readonly id: string; readonly h: number }
 
 /**
- * The height of each best, beside and deep dive scene of `essay`, and what
+ * The height of each question, best, beside and deep dive scene of `essay`, and what
  * runs past the frame: each such scene, how far, and what to shorten.
  */
 export function essayFit(essay: Essay): {
@@ -307,6 +454,15 @@ export function essayFit(essay: Essay): {
   const scenes: Array<EssayFitScene> = []
   const problems: Array<string> = []
   for (const scene of essayScenes(essay)) {
+    if (scene.section === "question") {
+      const ticket = essay.tickets.find((t) => t.id === scene.ticket)
+      if (ticket === undefined) continue
+      const fit = question(questionOf(ticket))
+      scenes.push({ id: scene.id, h: fit.h })
+      for (const problem of fit.problems)
+        problems.push(`${ticket.id} question (${scene.id}) ${problem}`)
+      continue
+    }
     if (
       scene.section !== "best" &&
       scene.section !== "beside" &&

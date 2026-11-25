@@ -6,13 +6,19 @@ import {
 } from "@some-ui/video-render"
 import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
 
-import { grown as grownBy, prose as words, WORDS_WITH_CODE } from "./grown"
+import {
+  edited,
+  grown as grownBy,
+  prose as words,
+  WORDS_WITH_CODE,
+} from "./grown"
 
 /**
  * The essays `../essay-fit.spec.ts` draws (EF1): the template's sample, and
  * the sample with each text the routine writes on a best, beside or deep
- * dive scene grown word by word, and a dive's code line by line, to the most
- * the model accepts.
+ * dive scene grown word by word, a dive's code line by line, and each part
+ * of a ticket's question beside a program of the most lines at its widest
+ * (#3547), to the most the model accepts.
  */
 
 const prose = (n: number, from = 0): string => words(n, from, WORDS_WITH_CODE)
@@ -23,6 +29,10 @@ const codeLine = (columns: number, i: number): string =>
     0,
     columns
   )
+
+/** A program of `lines` lines, each `columns` wide. */
+const programOf = (lines: number, columns: number): string =>
+  Array.from({ length: lines }, (_, i) => codeLine(columns, i)).join("\n")
 
 export function sample(): Essay {
   const parsed = sampleEssay()
@@ -141,9 +151,24 @@ export function withForks(): Essay {
   return essay
 }
 
-/** Each text of the sample's best, beside and dive scenes, each grown to its limit. */
+/** Each text of the sample's question, best, beside and dive scenes, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<Essay> {
   const base = sample()
+  // Every ticket's program at the most lines a week holds, each 40 columns
+  // wide, the widest a week holds (`@some-ui/rust-rounds`'s lint).
+  const longest = edited(
+    base,
+    (e) => {
+      for (const ticket of e.tickets) ticket.program = programOf(25, 40)
+    },
+    (raw) => EssaySchema.parse(raw)
+  )
+  const tickets = (
+    e: Essay,
+    set: (t: Essay["tickets"][number]) => void
+  ): void => {
+    for (const ticket of e.tickets) set(ticket)
+  }
   const dives = (
     e: Essay,
     set: (d: Essay["tickets"][number]["dives"][number]) => void
@@ -201,6 +226,44 @@ export function atTheLimit(): ReadonlyArray<Essay> {
     grown(base, (e, n) => {
       dives(e, (dive) => {
         dive.code = [`${"\t".repeat(n)}let x = 1;`, codeLine(40, 1)].join("\n")
+      })
+    }),
+    // The question scene (#3547): its program by lines, then by columns at
+    // the most lines, then each of its words beside the longest program.
+    grown(base, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.program = programOf(n, 40)
+      })
+    }),
+    grown(base, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.program = [codeLine(40 + n, 0), programOf(24, 40)].join("\n")
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.title = prose(n, n)
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.spec = prose(n, n)
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.figures = Array.from({ length: 3 }, (_, i) => prose(n, n + i))
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.figures = Array.from({ length: n }, (_, i) => prose(6, i))
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        for (const [i, point] of ticket.points.entries())
+          point.to = prose(n, n + i)
       })
     }),
   ]

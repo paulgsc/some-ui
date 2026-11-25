@@ -1,6 +1,6 @@
 /**
  * EF1 (`@some-ui/video-render`'s `essay-fit.ts`): the model never says a
- * best, beside or deep dive scene is shorter than the stage's real frame
+ * question, best, beside or deep dive scene is shorter than the stage's real frame
  * draws it, and no such scene of an essay it accepts overflows or cuts off a
  * code line, for the essays of `./panel-page/essays.ts`. The page computes
  * the model, being built with the stage; this reads what it publishes.

@@ -690,18 +690,31 @@ describe("finish", () => {
     ticket.forks = Array.from({ length: 6 }, () => ({ ...fork, question }))
     expect(
       problemsOf(given).map((p) => p.replace(/about \d+ px/, "about N px"))
-    ).toEqual(
-      ["best", "beside"].map(
+    ).toEqual([
+      ...["best", "beside"].map(
         (scene) =>
           `week: TB-102: its 6 speak-to points alone run about N px past the essay's ${scene} scene: shorten them, or ask fewer`
-      )
-    )
+      ),
+      "week: TB-102: its question scene runs about N px past the frame: shorten its title, spec, figures or speak-to points",
+    ])
     // Four one-line questions leave the essay its room.
     ticket.forks = Array.from({ length: 4 }, () => ({
       ...fork,
       question: "Borrow, clone or take the address?",
     }))
     expect(problemsOf(given)).toEqual([])
+  })
+
+  it("refuses a ticket whose question scene runs past the essay's frame (#3547)", () => {
+    const given = values()
+    const ticket = given.week?.tickets[1]
+    if (ticket === undefined) throw new Error("shape")
+    ticket.spec = "The dock is full and a rider is waiting. ".repeat(40)
+    expect(
+      problemsOf(given).map((p) => p.replace(/about \d+ px/, "about N px"))
+    ).toEqual([
+      "week: TB-102: its question scene runs about N px past the frame: shorten its title, spec, figures or speak-to points",
+    ])
   })
 
   it("refuses next week on readWeek's /2 rules", () => {
