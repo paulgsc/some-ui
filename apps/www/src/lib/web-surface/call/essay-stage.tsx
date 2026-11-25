@@ -13,6 +13,7 @@ import {
   pickedOf,
   pointAnsweredBy,
   pointCite,
+  questionCodeEm,
   sampleEssay,
   silenceSaid,
   SOLO_LEVELS,
@@ -296,8 +297,11 @@ const ForkPanel = ({
   )
 }
 
-const Code = ({ code }: { code: string }): JSX.Element => (
-  <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
+const Code = ({ code, em }: { code: string; em?: number }): JSX.Element => (
+  <pre
+    className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre"
+    style={em === undefined ? undefined : { fontSize: `${String(em)}em` }}
+  >
     {code.trimEnd()}
   </pre>
 )
@@ -389,7 +393,7 @@ const Cell = ({ cell }: { cell: CellView }): JSX.Element => {
 }
 
 const QuestionPanel = ({ ticket }: { ticket: EssayTicket }): JSX.Element => (
-  <div className="grid grid-cols-[1fr_1fr] gap-[1em]">
+  <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-[1em]">
     <div className="space-y-[0.5em]">
       <p className="text-[1.15em] leading-tight font-bold">{ticket.title}</p>
       <p className="text-[0.8em]">
@@ -414,7 +418,7 @@ const QuestionPanel = ({ ticket }: { ticket: EssayTicket }): JSX.Element => (
         </ol>
       </Field>
     </div>
-    <Code code={ticket.program} />
+    <Code code={ticket.program} em={questionCodeEm(ticket.program)} />
   </div>
 )
 

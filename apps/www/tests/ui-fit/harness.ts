@@ -160,7 +160,7 @@ export const CODE_CARD_FIXTURE = "code-card"
 /** Every scene of a week of the weekly call (CF1), drawn by `./call-fit.spec.ts`. */
 export const CALL_STAGE_FIXTURE = "call-stage"
 
-/** The best, beside and deep dive scenes of a Rust Rounds essay (EF1), drawn by `./essay-fit.spec.ts`. */
+/** The question, best, beside and deep dive scenes of a Rust Rounds essay (EF1), drawn by `./essay-fit.spec.ts`. */
 export const ESSAY_STAGE_FIXTURE = "essay-stage"
 
 /** Practice Home's two buttons, idle and refused (`./intent-failure-fit.spec.ts`). */

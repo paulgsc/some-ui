@@ -1,0 +1,20 @@
+{
+  "id": "C1515",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/web-surface/call/essay-stage.tsx",
+    "packages/video-render/src/essay-fit.ts",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts"
+  ],
+  "chose": "The essay's question scene sets the ticket's program at the dives' size (0.62em) while it fits, and smaller in hundredths of an em for a longer program, down to the size that holds 25 lines (0.44em, about 13 px in the 1080p frame). The columns go from 1fr:1fr to 3fr:2fr, so the ticket's words get the width the 40-column code doesn't need. A title, spec, figures or points too long for the words' column is refused when the routine writes the week (questionFit, beside pointsFit), while it can still shorten them, and again in essayFit.",
+  "options": [
+    "Shrink the program's type with its line count, down to what 25 lines need, and widen the words' column (3fr:2fr)",
+    "Keep the code at 0.62em and give the question scene two frames, the ticket's words then its program",
+    "Keep the code at 0.62em and cut it off past about 17 lines, with a note that the rest is in the week",
+    "Lower week-check's 25-line cap to the 17 lines that fit at 0.62em"
+  ],
+  "gray": "The owner will see the type: a 25-line program is drawn at about 13 px in the 1080p frame, against the 18 px of a dive's code. Two frames would keep it larger but add a scene, which changes the essay's script and timing; cutting it off would hide the program the owner answered; a lower cap would refuse programs the phone already holds. No check or earlier call settles which of these the owner prefers.",
+  "undo": "In essay-stage.tsx, give QuestionPanel's Code no em and put its grid back to grid-cols-[1fr_1fr]. In essay-fit.ts, drop questionCodeEm and size the question scene's code at CODE_EM with QUESTION_WORDS_WIDTH and QUESTION_CODE_WIDTH both half the card less the gap. The model then refuses programs of more than about 17 lines, so lower QUESTION_PROGRAM_LINES and rust-rounds' PROGRAM_LINE_CAP to match, or pick another option.",
+  "refs": ["#3547"]
+}

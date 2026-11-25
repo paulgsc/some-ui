@@ -11,6 +11,7 @@ import {
 } from "@rust-rounds/lib/lint"
 import { INDEXING_01 } from "@rust-rounds/lib/worked-example"
 import { WORKED_LOG } from "@rust-rounds/lib/worked-example/fixture"
+import { QUESTION_PROGRAM_LINES, questionFit } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 const NO_LOG: RoundLog = { schema: LOG_SCHEMA, sessions: [] }
@@ -144,5 +145,24 @@ describe("describeFinding", () => {
   it("agrees with CARD-TUTOR.md on both caps", () => {
     expect(CARD_TUTOR).toContain(`at most ${LINE_WIDTH_CAP} columns`)
     expect(CARD_TUTOR).toContain(`at most ${PROGRAM_LINE_CAP} lines`)
+  })
+})
+
+describe("the essay's question scene (EF1)", () => {
+  it("holds the most lines a program may have, at the widest a line may be", () => {
+    expect(QUESTION_PROGRAM_LINES).toBe(PROGRAM_LINE_CAP)
+    const program = Array.from({ length: PROGRAM_LINE_CAP }, () =>
+      "m".repeat(LINE_WIDTH_CAP)
+    ).join("\n")
+    expect(
+      questionFit({
+        id: "HF-202",
+        title: "Park a bike at a full dock",
+        spec: "A rider docks at a full station.",
+        figures: ["F1: 40 docks"],
+        points: ["Who owns the dock?", "What does the rider hold?"],
+        program,
+      })
+    ).toEqual([])
   })
 })

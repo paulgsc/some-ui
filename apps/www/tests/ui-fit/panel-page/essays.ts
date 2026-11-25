@@ -1,3 +1,4 @@
+import { LINE_WIDTH_CAP, PROGRAM_LINE_CAP } from "@some-ui/rust-rounds"
 import {
   essayFit,
   EssaySchema,
@@ -6,23 +7,31 @@ import {
 } from "@some-ui/video-render"
 import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
 
-import { grown as grownBy, prose as words, WORDS_WITH_CODE } from "./grown"
+import {
+  edited,
+  grown as grownBy,
+  prose as words,
+  WORDS_WITH_CODE,
+} from "./grown"
 
 /**
  * The essays `../essay-fit.spec.ts` draws (EF1): the template's sample, and
  * the sample with each text the routine writes on a best, beside or deep
- * dive scene grown word by word, and a dive's code line by line, to the most
- * the model accepts.
+ * dive scene grown word by word, a dive's code line by line, and each part
+ * of a ticket's question beside a program of the most lines at its widest
+ * to the most the model accepts.
  */
 
 const prose = (n: number, from = 0): string => words(n, from, WORDS_WITH_CODE)
 
 /** A line of Rust as wide as `columns`. */
-const codeLine = (columns: number, i: number): string =>
-  `let w${String(i)} = ${"m".repeat(Math.max(1, columns - 12))};`.slice(
-    0,
-    columns
-  )
+const codeLine = (columns: number, i: number): string => {
+  const start = `let w${String(i)} = `
+  return `${start}${"m".repeat(Math.max(1, columns - start.length - 1))};`
+}
+
+const programOf = (lines: number, columns: number): string =>
+  Array.from({ length: lines }, (_, i) => codeLine(columns, i)).join("\n")
 
 export function sample(): Essay {
   const parsed = sampleEssay()
@@ -72,6 +81,46 @@ export function byPoints(): Essay {
   answer(1, 2, own("missing"))
   answer(2, 1, own("covered"))
   return essay
+}
+
+/**
+ * The sample with its first ticket's spec, figure and program those of
+ * w47's HF-202, whose question scene ran past the frame.
+ */
+export function hf202(): Essay {
+  const essay = structuredClone(sample())
+  const first = essay.tickets.at(0)
+  if (first === undefined) throw new Error("the sample changed shape")
+  first.spec =
+    "A dock's slots sit in a RefCell so every handler can reach them. When a bike arrives at a full dock, the oldest bike is sent away to make room. It compiles and works, until a dock fills up."
+  first.figures = [
+    "About one return in 40 arrives at a full dock during the evening peak.",
+  ]
+  first.program = `use std::cell::RefCell;
+
+type Slots = RefCell<Vec<u32>>;
+const CAP: usize = 2;
+
+fn send_away(slots: &Slots) {
+    slots.borrow_mut().remove(0);
+}
+
+fn park(slots: &Slots, bike: u32) {
+    let mut s = slots.borrow_mut();
+    if s.len() == CAP {
+        send_away(slots);
+    }
+    s.push(bike);
+}
+
+fn main() {
+    let slots = RefCell::new(vec![4]);
+    park(&slots, 9);
+    park(&slots, 12);
+    println!("{:?}", slots.borrow());
+}
+`
+  return EssaySchema.parse(essay)
 }
 
 /**
@@ -141,9 +190,23 @@ export function withForks(): Essay {
   return essay
 }
 
-/** Each text of the sample's best, beside and dive scenes, each grown to its limit. */
+/** Each text of the sample's question, best, beside and dive scenes, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<Essay> {
   const base = sample()
+  const longest = edited(
+    base,
+    (e) => {
+      for (const ticket of e.tickets)
+        ticket.program = programOf(PROGRAM_LINE_CAP, LINE_WIDTH_CAP)
+    },
+    (raw) => EssaySchema.parse(raw)
+  )
+  const tickets = (
+    e: Essay,
+    set: (t: Essay["tickets"][number]) => void
+  ): void => {
+    for (const ticket of e.tickets) set(ticket)
+  }
   const dives = (
     e: Essay,
     set: (d: Essay["tickets"][number]["dives"][number]) => void
@@ -201,6 +264,42 @@ export function atTheLimit(): ReadonlyArray<Essay> {
     grown(base, (e, n) => {
       dives(e, (dive) => {
         dive.code = [`${"\t".repeat(n)}let x = 1;`, codeLine(40, 1)].join("\n")
+      })
+    }),
+    // The question scene: its program by columns at the most lines, then
+    // each of its words beside the longest program.
+    grown(base, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.program = [
+          codeLine(LINE_WIDTH_CAP + n, 0),
+          programOf(PROGRAM_LINE_CAP - 1, LINE_WIDTH_CAP),
+        ].join("\n")
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.title = prose(n, n)
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.spec = prose(n, n)
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.figures = Array.from({ length: 3 }, (_, i) => prose(n, n + i))
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        ticket.figures = Array.from({ length: n }, (_, i) => prose(6, i))
+      })
+    }),
+    grown(longest, (e, n) => {
+      tickets(e, (ticket) => {
+        for (const [i, point] of ticket.points.entries())
+          point.to = prose(n, n + i)
       })
     }),
   ]
