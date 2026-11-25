@@ -148,7 +148,7 @@ describe("describeFinding", () => {
   })
 })
 
-describe("the essay's question scene (EF1, #3547)", () => {
+describe("the essay's question scene (EF1)", () => {
   it("holds the most lines a program may have, at the widest a line may be", () => {
     expect(QUESTION_PROGRAM_LINES).toBe(PROGRAM_LINE_CAP)
     const program = Array.from({ length: PROGRAM_LINE_CAP }, () =>

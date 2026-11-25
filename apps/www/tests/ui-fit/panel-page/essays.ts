@@ -1,3 +1,4 @@
+import { LINE_WIDTH_CAP, PROGRAM_LINE_CAP } from "@some-ui/rust-rounds"
 import {
   essayFit,
   EssaySchema,
@@ -18,19 +19,17 @@ import {
  * the sample with each text the routine writes on a best, beside or deep
  * dive scene grown word by word, a dive's code line by line, and each part
  * of a ticket's question beside a program of the most lines at its widest
- * (#3547), to the most the model accepts.
+ * to the most the model accepts.
  */
 
 const prose = (n: number, from = 0): string => words(n, from, WORDS_WITH_CODE)
 
 /** A line of Rust as wide as `columns`. */
-const codeLine = (columns: number, i: number): string =>
-  `let w${String(i)} = ${"m".repeat(Math.max(1, columns - 12))};`.slice(
-    0,
-    columns
-  )
+const codeLine = (columns: number, i: number): string => {
+  const start = `let w${String(i)} = `
+  return `${start}${"m".repeat(Math.max(1, columns - start.length - 1))};`
+}
 
-/** A program of `lines` lines, each `columns` wide. */
 const programOf = (lines: number, columns: number): string =>
   Array.from({ length: lines }, (_, i) => codeLine(columns, i)).join("\n")
 
@@ -86,7 +85,7 @@ export function byPoints(): Essay {
 
 /**
  * The sample with its first ticket's spec, figure and program those of
- * w47's HF-202 (#3547), whose question scene ran past the frame.
+ * w47's HF-202, whose question scene ran past the frame.
  */
 export function hf202(): Essay {
   const essay = structuredClone(sample())
@@ -194,12 +193,11 @@ export function withForks(): Essay {
 /** Each text of the sample's question, best, beside and dive scenes, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<Essay> {
   const base = sample()
-  // Every ticket's program at the most lines a week holds, each 40 columns
-  // wide, the widest a week holds (`@some-ui/rust-rounds`'s lint).
   const longest = edited(
     base,
     (e) => {
-      for (const ticket of e.tickets) ticket.program = programOf(25, 40)
+      for (const ticket of e.tickets)
+        ticket.program = programOf(PROGRAM_LINE_CAP, LINE_WIDTH_CAP)
     },
     (raw) => EssaySchema.parse(raw)
   )
@@ -268,16 +266,14 @@ export function atTheLimit(): ReadonlyArray<Essay> {
         dive.code = [`${"\t".repeat(n)}let x = 1;`, codeLine(40, 1)].join("\n")
       })
     }),
-    // The question scene (#3547): its program by lines, then by columns at
-    // the most lines, then each of its words beside the longest program.
+    // The question scene: its program by columns at the most lines, then
+    // each of its words beside the longest program.
     grown(base, (e, n) => {
       tickets(e, (ticket) => {
-        ticket.program = programOf(n, 40)
-      })
-    }),
-    grown(base, (e, n) => {
-      tickets(e, (ticket) => {
-        ticket.program = [codeLine(40 + n, 0), programOf(24, 40)].join("\n")
+        ticket.program = [
+          codeLine(LINE_WIDTH_CAP + n, 0),
+          programOf(PROGRAM_LINE_CAP - 1, LINE_WIDTH_CAP),
+        ].join("\n")
       })
     }),
     grown(longest, (e, n) => {

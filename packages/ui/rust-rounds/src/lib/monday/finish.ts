@@ -21,8 +21,9 @@
  *   is refused.
  *
  * What it holds beyond the parsers: each deep dive said in 2 to 5 minutes
- * (C103), every best, beside and deep dive scene within the essay's frame
- * (EF1, `essayFit`), every topic and seed covered by a ticket, and each
+ * (C103), every question, best, beside and deep dive scene within the
+ * essay's frame (EF1, `essayFit`), and next week's question scenes
+ * (`questionFit`) while the routine can still shorten their words, every topic and seed covered by a ticket, and each
  * topic's concept named as the area table names it.
  */
 import type { Judged } from "@rust-rounds/lib/decay"

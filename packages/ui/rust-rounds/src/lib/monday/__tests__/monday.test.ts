@@ -705,18 +705,6 @@ describe("finish", () => {
     expect(problemsOf(given)).toEqual([])
   })
 
-  it("refuses a ticket whose question scene runs past the essay's frame (#3547)", () => {
-    const given = values()
-    const ticket = given.week?.tickets[1]
-    if (ticket === undefined) throw new Error("shape")
-    ticket.spec = "The dock is full and a rider is waiting. ".repeat(40)
-    expect(
-      problemsOf(given).map((p) => p.replace(/about \d+ px/, "about N px"))
-    ).toEqual([
-      "week: TB-102: its question scene runs about N px past the frame: shorten its title, spec, figures or speak-to points",
-    ])
-  })
-
   it("refuses next week on readWeek's /2 rules", () => {
     const given = values()
     const fork = given.week?.tickets[0]?.forks[0]

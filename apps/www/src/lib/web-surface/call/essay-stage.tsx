@@ -297,7 +297,6 @@ const ForkPanel = ({
   )
 }
 
-/** A program or snippet, at the dives' size or at `em` (the question scene's, `questionCodeEm`). */
 const Code = ({ code, em }: { code: string; em?: number }): JSX.Element => (
   <pre
     className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre"

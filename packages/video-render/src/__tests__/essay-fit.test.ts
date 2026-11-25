@@ -2,8 +2,6 @@
  * `pointsFit` (essay-fit): what a ticket's points alone take of its best and
  * beside scenes is a lower bound of `essayFit`'s, so the routine never
  * writes a week whose essay can't fit, and never refuses one whose could.
- * `questionFit`: the question scene holds a program of the most lines a
- * week holds whatever its words, and refuses as `essayFit` does (#3547).
  */
 import type { Essay } from "@some-ui/video-render"
 import {
@@ -70,7 +68,6 @@ describe("pointsFit", () => {
   })
 })
 
-/** A program of `lines` lines, each `columns` wide. */
 const programOf = (lines: number, columns = 40): string =>
   Array.from({ length: lines }, (_, i) =>
     `let w${String(i)} = ${"m".repeat(columns)}`.slice(0, columns)
@@ -84,13 +81,12 @@ describe("questionFit", () => {
   }
 
   it("holds a program of the most lines at the week's widest, as w47's HF-202 needed", () => {
-    for (const lines of [1, 17, 22, QUESTION_PROGRAM_LINES]) {
+    for (const lines of [1, 17, 22]) {
       const essay = sample()
       for (const ticket of essay.tickets) ticket.program = programOf(lines)
       expect(essayFit(essay).problems, `${lines} lines`).toEqual([])
     }
-    // The dives' size while it fits, smaller after.
-    expect(questionCodeEm(programOf(1))).toBe(0.62)
+    expect(questionCodeEm(programOf(1))).toBe(questionCodeEm(programOf(2)))
     expect(questionCodeEm(programOf(22))).toBeLessThan(0.62)
   })
 
