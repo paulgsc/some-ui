@@ -1,0 +1,19 @@
+{
+  "id": "C1512",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/call_weeks/render.rs",
+    "server:apps/servers/file_host/src/call_weeks.rs",
+    "server:apps/servers/file_host/src/metrics/call_weeks.rs"
+  ],
+  "chose": "The combined cache-warning gauge (call_render_cache_warning_timestamp_seconds: the newest warning across the six render jobs' status folders, which CallRenderCacheFull reads) keeps a time read beside an unreadable job folder as a lower bound, and is NaN only when nothing reads. Each unreadable folder still counts in call-weeks/observe, so HomeFailuresOpen tells it.",
+  "options": [
+    "Keep a time read beside an unreadable folder as a lower bound; NaN only when nothing reads; each unreadable folder held open in call-weeks/observe",
+    "Any unreadable folder makes the combined gauge NaN, silencing a known-recent warning CallRenderCacheFull used to fire on, until HomeFailuresOpen speaks after about 2 hours",
+    "Skip unreadable folders silently and show the newest read, with no open level (an erasure)"
+  ],
+  "gray": "The owner's choice on server#1207, 'a failed reading empties the gauge', is kept for each reading: an unreadable job folder is unknown, never 0 or its last value, and is held open. The combined value shows what was read, since 'a warning in the last day' stays true of a time that was read, whatever another folder holds; the same lower-bound reading as C1511's deploy totals. The owner may read #1207 as covering the combined gauge too.",
+  "undo": "In Reading::newest, make Unreadable win over Read again (the first arm, (Self::Unreadable, _) | (_, Self::Unreadable) => Self::Unreadable), and restore the test's expectations (the_newest_of_two_readings_keeps_a_time_read_and_is_unknown_only_when_none_is in metrics/call_weeks.rs); the per-folder count in observe_renders can stay.",
+  "refs": ["server#1207", "server#1174"]
+}
