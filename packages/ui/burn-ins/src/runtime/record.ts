@@ -8,7 +8,8 @@
  *   none), and shows it on a stage that size, or gives every reason it
  *   can't be drawn;
  * - `seek(atMs)` shows the moment `atMs` ms into it and resolves once that
- *   moment is painted with its fonts loaded, with a key for the picture:
+ *   moment is painted with its fonts loaded and its pictures decoded, with
+ *   a key for the picture:
  *   equal keys, equal pictures, so the recorder captures a picture only
  *   when it changes, and a burn-in that holds still is captured once;
  * - `check({ burnIns, fps, frame })`, before any is recorded, gives every
@@ -42,6 +43,8 @@ import type { Parsed } from "@burn-ins/lib/parsed"
 export type RecordPorts = {
   /** Resolves once every font the page asked for has loaded. */
   readonly fontsReady: () => Promise<void>
+  /** Resolves once every picture on the page is decoded (the host's drawing). */
+  readonly imagesReady: () => Promise<void>
   /** Resolves after the next paint. */
   readonly afterPaint: () => Promise<void>
 }
@@ -123,6 +126,7 @@ export function createRecorder(ports: RecordPorts): Recorder {
       await drawnAt(seq)
       await ports.afterPaint()
       await ports.fontsReady()
+      await ports.imagesReady()
       await ports.afterPaint()
       // A newer seek may have replaced this frame while it waited.
       if (snapshot.seq === seq) shown = key
@@ -152,6 +156,9 @@ export function createRecorder(ports: RecordPorts): Recorder {
 export const browserRecordPorts: RecordPorts = {
   fontsReady: async () => {
     await document.fonts.ready
+  },
+  imagesReady: async () => {
+    await Promise.all(Array.from(document.images, (img) => img.decode()))
   },
   afterPaint: () =>
     new Promise((resolve) => {

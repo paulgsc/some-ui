@@ -214,6 +214,38 @@ export const SAMPLES: Readonly<
     sources: ["make help", "the README"],
     wins: "the README",
   },
+  // Mochi asks, Tin Bird answers from the corner, then comes in close.
+  host: {
+    seed: 7,
+    beats: [
+      {
+        atMs: 0,
+        character: "mochi",
+        emotion: "question",
+        shot: "medium",
+        placement: "bottom-left",
+        speaking: true,
+      },
+      {
+        atMs: 2000,
+        character: "tin-owlet",
+        emotion: "curious",
+        shot: "long",
+        placement: "bottom-right",
+        speaking: true,
+        lookAt: { x: 0.3, y: 0.3 },
+      },
+      {
+        atMs: 4000,
+        character: "tin-owlet",
+        emotion: "happy",
+        shot: "close-up",
+        placement: "center",
+        speaking: true,
+        opacity: 0.85,
+      },
+    ],
+  },
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

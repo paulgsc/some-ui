@@ -22,6 +22,7 @@
     "./theme/sources": "./src/theme/sources.ts",
     "./brand/cast": "./src/brand/cast.ts",
     "./brand/genres": "./src/brand/genres.ts",
+    "./brand/host": "./src/brand/host.ts",
     "./brand/mark": "./src/brand/mark.ts",
     "./preset": "./src/preset/index.ts",
     "./config": "./src/config.ts",

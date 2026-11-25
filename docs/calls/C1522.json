@@ -1,0 +1,19 @@
+{
+  "id": "C1522",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/host.ts"
+  ],
+  "chose": "The first members of the host's unions. Emotions both characters share: the owner's six (anxious, frustrated, angry, ceremonious, happy, perplexed) and three quieter ones a conversation spends most of its time in, which the owner named on 2026-11-25 (taciturn, curious) or which a beat needs when nothing is felt (neutral); Mochi alone adds its own beats, question, confusion, issue, intuition and hesitation (the owner, 2026-11-24). Ceremonies are keyed by character too: the NFL celebration is Mochi's, and Tin Bird has none yet, so the type and the cut list's schema refuse one on Tin Bird. Shots are close-up, medium and long, sized at 0.9, 0.5 and 0.26 of the safe area's shorter side; placements are each corner and the center of the safe area, flush to its edges. A beat is {atMs, character, emotion, animation?, shot, placement, speaking, opacity?, lookAt?}: opacity is the translucency and fade, and lookAt a generic point in the area (C1485). One host burn-in shows its latest beat, arriving from the one before over 380 ms when the character stays and cutting when it changes; two characters on screen at once are two host burn-ins.",
+  "options": [
+    "These members, ceremonies keyed by character, one beat on screen per host burn-in",
+    "Only the owner's six emotions and Mochi's beats, no quieter ones",
+    "Ceremonies shared by both characters",
+    "One host burn-in drawing both characters at once, each at its own latest beat"
+  ],
+  "gray": "The owner sees each member in the Cast wing and on every video, and the signature proposes from these sets; the quieter emotions, the shot sizes and Tin Bird having no ceremony are this session's proposal, not the owner's words. Each is a policy that moves with the story: a new member is a new entry in the tables keyed by it.",
+  "undo": "Edit SHARED_EMOTIONS, EMOTIONS, CEREMONIES, SHOT_SIZE or PLACEMENTS in packages/some-styles/src/brand/host.ts; the compiler then asks for each table entry, and the burn-ins schema follows the lists.",
+  "refs": ["#3522", "#3521"]
+}

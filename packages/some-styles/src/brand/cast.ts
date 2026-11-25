@@ -15,10 +15,12 @@
  * Every gradient and clip is named through `id`, which a host makes unique
  * per drawing, so two bubbles on one page never share one.
  *
- * The mochi's moving parts are grouped and named (`data-part`: its eyes,
- * each antenna), so a host that wants it alive can move them with its own
- * CSS (the public site's photo slot blinks and sways it, C1186). A name
- * draws nothing: a drawing that doesn't move them is the same picture.
+ * The moving parts are grouped and named (`data-part`: the mochi's eyes and
+ * each antenna, the tin owlet's eyes and key), so a host that wants a
+ * character alive can move them: with its own CSS (the public site's photo
+ * slot blinks and sways the mochi, C1186) or as a pure function of time
+ * (`./host`, the essays' living cast). A name draws nothing: a drawing that
+ * doesn't move them is the same picture.
  */
 
 import { MOCHI_BODY, MOCHI_CHEEK } from "./mark"
@@ -369,8 +371,10 @@ const tinOwlet = (id: IdOf): Array<CastNode> => [
     "stroke-width": 0.9,
     opacity: 0.8,
   }),
-  ...lens(id, 38.5, 41, 6.4, TEAL),
-  ...lens(id, 57.5, 41, 6.4, TEAL),
+  el("g", { "data-part": "eyes" }, [
+    ...lens(id, 38.5, 41, 6.4, TEAL),
+    ...lens(id, 57.5, 41, 6.4, TEAL),
+  ]),
   el("path", { d: "M44.5 50L51.5 50L48 56Z", fill: url(id("brass")) }),
   el("path", {
     d: "M45.5 50.6H50.5",

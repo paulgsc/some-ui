@@ -105,6 +105,11 @@ export const WORDS = {
       about:
         "A chart card: a row per thing measured, each a bar stacked from up to four parts, a row at a time, with a legend and an axis.",
     },
+    host: {
+      name: "Host",
+      about:
+        "Tin Bird or Mochi over the card, in a corner or the center, close up or far off, feeling what the scene asks; it covers what it covers.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -176,6 +181,11 @@ export const WORDS = {
       about:
         "Horizontal bars in the chart palette's fixed order, parted by a thin gap of ground, over a faint grid; every word in the card's ink.",
     },
+    "cast-v1": {
+      name: "The cast",
+      about:
+        "Tin Bird and Mochi drawn from the cast, breathing, blinking and glancing on a seed, so the same moment always looks the same.",
+    },
     "badge-v1": {
       name: "Badge",
       about:
@@ -194,7 +204,8 @@ export const WORDS = {
     | "legend-v1"
     | "rule-v1"
     | "flow-v1"
-    | "bars-v1",
+    | "bars-v1"
+    | "cast-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",

@@ -6,6 +6,7 @@ import { Caption } from "@burn-ins/components/stage/captions"
 import { CheatSheetLayer } from "@burn-ins/components/stage/cheat-sheet"
 import { FlowLayer } from "@burn-ins/components/stage/flow"
 import { GameCardLayer } from "@burn-ins/components/stage/game-card"
+import { HostLayer } from "@burn-ins/components/stage/host"
 import { LegendLayer } from "@burn-ins/components/stage/legend"
 import { RuleLayer } from "@burn-ins/components/stage/rule"
 import { TerminalLayer } from "@burn-ins/components/stage/terminal"
@@ -61,6 +62,9 @@ const Layer = ({
     }
     case "bars": {
       return <BarsLayer frame={frame.frame} units={units} />
+    }
+    case "host": {
+      return <HostLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)

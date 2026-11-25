@@ -48,6 +48,14 @@
     white-space: nowrap;
   }
 
+  /* The host (C1485): over everything else on the stage, as its own layer. */
+  .bi-host {
+    display: block;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+  }
+
   .bi-mono {
     white-space: pre;
   }

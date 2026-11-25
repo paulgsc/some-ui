@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest"
 
 const ports: RecordPorts = {
   fontsReady: () => Promise.resolve(),
+  imagesReady: () => Promise.resolve(),
   afterPaint: () => Promise.resolve(),
 }
 

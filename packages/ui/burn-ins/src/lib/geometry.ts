@@ -11,7 +11,9 @@
  *
  * Placement is the class's, not each kind's: a burn-in names a region, and
  * a frame's regions never overlap, so two burn-ins on screen together never
- * cover each other (`__tests__/placement.test.ts`). Each kind lays itself
+ * cover each other (`__tests__/placement.test.ts`). The host (`./host`) is
+ * the exception the owner chose (C1485): it names no region and floats over
+ * the safe area, covering what it covers. Each kind lays itself
  * out from the regions of the frame it is drawn for, so the same design
  * draws in either.
  *

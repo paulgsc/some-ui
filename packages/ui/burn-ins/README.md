@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`, `flow`, `bars`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`, `flow`, `bars`, `host`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -67,6 +67,13 @@ it is; each module's header does the same for its part:
 - `src/lib/bars.ts`: the chart card, design `bars-v1`: one to eight rows,
   each a bar stacked from up to four parts in the dataviz palette's fixed
   order, with a legend and an axis, a row at a time (#3387).
+- `src/lib/host.ts`: the host (HOST1, #3522), design `cast-v1`: Tin Bird
+  or Mochi over the card, beat by beat. Its closed unions (each
+  character's emotions and ceremonies, the shots, the placements) and its
+  seeded drawing live beside the cast in `@some-ui/styles/brand/host`,
+  where the phone reads them too; this kind checks a cut list's beats
+  against them. It claims no region: it floats over the safe area and covers
+  what it covers (C1485), so it never clashes with another kind.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 
