@@ -12,6 +12,7 @@ export { CLAIMS_POINTER, claimsAxis, createPager } from "./lib/pager/runtime"
 export type { FramePort, LoopClock } from "./lib/loop-clock"
 export {
   createLoopClock,
+  FRAME_MS,
   LOOP_FPS,
   LOOP_MS,
   loopTimeAt,

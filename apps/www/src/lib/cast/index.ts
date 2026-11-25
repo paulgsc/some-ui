@@ -87,6 +87,10 @@ export function lookOf(who: HostCharacter, raw: unknown): Look | undefined {
   return looksOf(who).find((look) => lookId(look) === raw)
 }
 
+/** The grid's page named `raw`, or the first; `pageOfLooks` keeps it in range. */
+export const pageOf = (raw: unknown): number =>
+  typeof raw === "number" && Number.isInteger(raw) ? raw : 0
+
 /** The shot named `raw`, or the medium shot. */
 export const shotOf = (raw: unknown): Shot =>
   SHOTS.find((shot) => shot === raw) ?? "medium"
@@ -137,7 +141,7 @@ export function seedOf(look: Look): number {
   return (HOST_CHARACTERS.indexOf(look.character) + 1) * 101 + at * 7
 }
 
-/** How many looks a page of the grid holds: two across, three down, on any phone. */
+/** How many looks a page of the grid holds: two across and three down, or three across held sideways. */
 export const LOOKS_PER_PAGE = 6
 
 /** The looks on page `page` (0-based), and how many pages there are. */

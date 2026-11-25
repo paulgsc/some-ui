@@ -36,6 +36,7 @@ export const CAST_FIXTURES = {
     () => (
       <CastLook
         look={look("mochi", "hesitation")}
+        page={2}
         shot="close-up"
         placement="center"
         onShot={noop}
@@ -48,6 +49,7 @@ export const CAST_FIXTURES = {
     () => (
       <CastLook
         look={look("mochi", "nfl-celebration")}
+        page={2}
         shot="long"
         placement="bottom-left"
         onShot={noop}

@@ -2,7 +2,6 @@ import {
   CEREMONIES,
   EMOTIONS,
   HOST_CHARACTERS,
-  hostAt,
   PLACEMENTS,
   SHOTS,
 } from "@some-ui/styles/brand/host"
@@ -15,6 +14,7 @@ import {
   lookOf,
   LOOKS_PER_PAGE,
   looksOf,
+  pageOf,
   pageOfLooks,
   placementOf,
   seedOf,
@@ -43,7 +43,7 @@ describe("the Cast wing's looks", () => {
     }
   })
 
-  it("draws each look as a scene's beat would, in every shot and placement", () => {
+  it("makes each look a scene's beat, in every shot and placement", () => {
     for (const who of HOST_CHARACTERS) {
       for (const look of looksOf(who)) {
         for (const shot of SHOTS) {
@@ -56,10 +56,6 @@ describe("the Cast wing's looks", () => {
               expect(beat.emotion).toBe("ceremonious")
               expect(beat.animation).toBe(look.ceremony)
             } else expect(beat.emotion).toBe(look.emotion)
-            const area = { x: 0, y: 0, width: 160, height: 90 }
-            expect(hostAt([beat], seedOf(look), 900, area)?.svg).toBe(
-              hostAt([beat], seedOf(look), 900, area)?.svg
-            )
           }
         }
       }
@@ -82,6 +78,9 @@ describe("the Cast wing's looks", () => {
     expect(shotOf(3)).toBe("medium")
     expect(placementOf("center")).toBe("center")
     expect(placementOf("middle")).toBe("bottom-right")
+    expect(pageOf(2)).toBe(2)
+    expect(pageOf("2")).toBe(0)
+    expect(pageOf(1.5)).toBe(0)
   })
 
   it("pages the looks, keeping a page in range", () => {
@@ -113,8 +112,7 @@ describe("the Cast wing's words", () => {
       CAST_WORDS.placement,
       CAST_WORDS.sample.title,
       CAST_WORDS.sample.body,
-      CAST_WORDS.still,
-      ...Object.values(CAST_WORDS.characters).flatMap((c) => [c.name, c.who]),
+      ...Object.values(CAST_WORDS.characters).map((c) => c.name),
       ...Object.values(CAST_WORDS.shots),
       ...Object.values(CAST_WORDS.placements),
       ...HOST_CHARACTERS.flatMap((who) => [

@@ -13,6 +13,7 @@ import {
   PageControls,
   useLoopTime,
   usePager,
+  type PreviewTime,
 } from "@some-ui/shared"
 import type { HostCharacter, Placement, Shot } from "@some-ui/styles/brand/host"
 import { HOST_CHARACTERS, PLACEMENTS, SHOTS } from "@some-ui/styles/brand/host"
@@ -47,7 +48,15 @@ const CharacterChips = ({
  * is a link only in a build that carries the wing's pages (A3,
  * packages/some-vite-config/AUDIENCES.md): the phone's.
  */
-const LookCard = ({ look, tMs }: { look: Look; tMs: number }): JSX.Element => {
+const LookCard = ({
+  look,
+  page,
+  tMs,
+}: {
+  look: Look
+  page: number
+  tMs: PreviewTime
+}): JSX.Element => {
   const body = (
     <>
       <HostPreview
@@ -75,6 +84,7 @@ const LookCard = ({ look, tMs }: { look: Look; tMs: number }): JSX.Element => {
           look: lookId(look),
           shot: "medium",
           placement: "bottom-right",
+          page,
         }}
       >
         {body}
@@ -122,7 +132,12 @@ export const CastHome = ({
           className="grid grid-cols-2 gap-3 landscape:grid-cols-3"
         >
           {paged.looks.map((look) => (
-            <LookCard key={lookId(look)} look={look} tMs={tMs} />
+            <LookCard
+              key={lookId(look)}
+              look={look}
+              page={paged.page}
+              tMs={tMs}
+            />
           ))}
         </div>
         <PageControls
@@ -151,6 +166,8 @@ const SampleCard = (): JSX.Element => (
 
 export type CastLookProps = {
   readonly look: Look
+  /** The grid's page the look was opened from, which its back link returns to. */
+  readonly page: number
   readonly shot: Shot
   readonly placement: Placement
   readonly onShot: (shot: Shot) => void
@@ -160,6 +177,7 @@ export type CastLookProps = {
 /** One look, in the shot and placement chosen, over a sample card. */
 export const CastLook = ({
   look,
+  page,
   shot,
   placement,
   onShot,
@@ -171,7 +189,7 @@ export const CastLook = ({
       {hasAudience("apk") && (
         <Link
           to="/cast"
-          search={{ who: look.character, page: 0 }}
+          search={{ who: look.character, page }}
           className="text-muted-foreground text-sm underline-offset-4 hover:underline"
         >
           {CAST_WORDS.back}

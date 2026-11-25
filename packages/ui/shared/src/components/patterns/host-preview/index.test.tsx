@@ -1,9 +1,10 @@
 import type { Beat } from "@some-ui/styles/brand/host"
-import { hostAt } from "@some-ui/styles/brand/host"
+import { hostAt, idleAt } from "@some-ui/styles/brand/host"
 import { render } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
-import { HostPreview } from "./index"
+import { STILL_MS } from "../../../lib/loop-clock"
+import { HostPreview, stillFor } from "./index"
 
 const BEAT: Beat = {
   atMs: 0,
@@ -36,14 +37,6 @@ describe("HostPreview", () => {
     )
   })
 
-  it("draws the same picture for the same beats, seed and time", () => {
-    const a = render(<HostPreview beats={[BEAT]} seed={5} tMs={2400} />)
-    const b = render(<HostPreview beats={[BEAT]} seed={5} tMs={2400} />)
-    expect(pictureOf(a.container).outerHTML).toBe(
-      pictureOf(b.container).outerHTML
-    )
-  })
-
   it("places the host as a scene does, as a share of its box", () => {
     const { container } = render(
       <HostPreview beats={[BEAT]} seed={1} tMs={0} aspect={16 / 9} />
@@ -54,6 +47,25 @@ describe("HostPreview", () => {
     expect(style.top).toBe("74%")
     expect(style.left).toBe(
       `${String(Math.round((1 - (26 * 9) / 1600) * 10_000) / 100)}%`
+    )
+  })
+
+  it("holds a still preview with its eyes open, whatever its seed", () => {
+    for (let seed = 0; seed < 400; seed += 1) {
+      expect(idleAt(seed, stillFor(seed)).blink, String(seed)).toBe(0)
+    }
+    const { container } = render(
+      <HostPreview beats={[BEAT]} seed={237} tMs="still" />
+    )
+    const frame = hostAt([BEAT], 237, stillFor(237), {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    })
+    expect(stillFor(237)).not.toBe(STILL_MS)
+    expect(pictureOf(container).getAttribute("src")).toBe(
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(frame?.svg ?? "")}`
     )
   })
 

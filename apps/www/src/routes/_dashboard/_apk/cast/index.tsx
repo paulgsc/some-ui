@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import type { HostCharacter } from "@some-ui/styles/brand/host"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { characterOf } from "@/lib/cast"
+import { characterOf, pageOf } from "@/lib/cast"
 import { CastHome } from "@/components/cast"
 
 /** The Cast wing's Home (HOST8): a character's every look, live. */
@@ -27,9 +27,6 @@ export const Route = createFileRoute("/_dashboard/_apk/cast/")({
   component: Cast,
   validateSearch: (search): { who: HostCharacter; page: number } => ({
     who: characterOf(search.who),
-    page:
-      typeof search.page === "number" && Number.isInteger(search.page)
-        ? search.page
-        : 0,
+    page: pageOf(search.page),
   }),
 })

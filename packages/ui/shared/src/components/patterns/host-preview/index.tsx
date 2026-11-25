@@ -13,12 +13,14 @@ import type { JSX, ReactNode } from "react"
 import { useSyncExternalStore } from "react"
 import { useMediaQuery } from "@some-ui/react-hooks"
 import type { Area, Beat } from "@some-ui/styles/brand/host"
-import { hostAt } from "@some-ui/styles/brand/host"
+import { hostAt, idleAt } from "@some-ui/styles/brand/host"
 
 import type { LoopClock } from "../../../lib/loop-clock"
 import {
   ANIMATION_FRAMES,
   createLoopClock,
+  FRAME_MS,
+  LOOP_MS,
   STILL_MS,
 } from "../../../lib/loop-clock"
 import { cn } from "../../../lib/utils"
@@ -34,6 +36,21 @@ const areaOf = (aspect: number): Area => ({
   height: UNITS,
 })
 
+/**
+ * Where a still preview of `seed` holds: the first frame from `STILL_MS`
+ * whose eyes are open, since a blink's schedule is the seed's own.
+ */
+export function stillFor(seed: number): number {
+  for (let t = STILL_MS; t < STILL_MS + LOOP_MS; t += FRAME_MS) {
+    const at = Math.round(t)
+    if (idleAt(seed, at).blink === 0) return at
+  }
+  return STILL_MS
+}
+
+/** A preview's time: ms into its beats, or held still where the phone asks for less motion. */
+export type PreviewTime = number | "still"
+
 /** `part` of `whole` as a CSS percentage. */
 const share = (part: number, whole: number): string =>
   `${String(Math.round((part / whole) * 10_000) / 100)}%`
@@ -41,8 +58,8 @@ const share = (part: number, whole: number): string =>
 export type HostPreviewProps = {
   readonly beats: ReadonlyArray<Beat>
   readonly seed: number
-  /** How far into the beats, in ms: `useLoopTime` for a live loop. */
-  readonly tMs: number
+  /** How far into the beats, in ms, or held still: `useLoopTime` for a live loop. */
+  readonly tMs: PreviewTime
   /** The box's width over its height: 1 for a square, 16 / 9 for a card. */
   readonly aspect?: number
   /** What the host stands over: a sample card, or nothing. */
@@ -63,7 +80,12 @@ export const HostPreview = ({
   className,
 }: HostPreviewProps): JSX.Element => {
   const area = areaOf(aspect)
-  const frame = hostAt(beats, seed, tMs, area)
+  const frame = hostAt(
+    beats,
+    seed,
+    tMs === "still" ? stillFor(seed) : tMs,
+    area
+  )
   return (
     <div
       className={cn("relative overflow-hidden", className)}
@@ -100,16 +122,17 @@ const subscribeLoop = (listener: () => void): (() => void) =>
   clock().subscribe(listener)
 const loopTime = (): number => clock().getTime()
 const holdStill = (): (() => void) => () => undefined
-const stillTime = (): number => STILL_MS
+const stillTime = (): PreviewTime => "still"
 
 /**
  * The time into the page's loop, for `HostPreview`'s `tMs`: every preview on
- * the page on the same frame. Held at `STILL_MS` where the phone asks for
- * less motion, and before the page runs.
+ * the page on the same frame, starting over every `LOOP_MS`, so it suits a
+ * look's idle loop, not a run of beats longer than that. Held still where
+ * the phone asks for less motion, and before the page runs.
  */
-export function useLoopTime(): number {
+export function useLoopTime(): PreviewTime {
   const still = useMediaQuery("(prefers-reduced-motion: reduce)")
-  return useSyncExternalStore(
+  return useSyncExternalStore<PreviewTime>(
     still ? holdStill : subscribeLoop,
     still ? stillTime : loopTime,
     stillTime

@@ -15,5 +15,5 @@ export {
 export { Dot } from "./dot"
 export type { TeleprompterWords } from "./teleprompter"
 export { Teleprompter } from "./teleprompter"
-export type { HostPreviewProps } from "./host-preview"
+export type { HostPreviewProps, PreviewTime } from "./host-preview"
 export { HostPreview, useLoopTime } from "./host-preview"

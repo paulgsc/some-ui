@@ -13,12 +13,12 @@ import type {
 
 import type { Look } from "./index"
 
-/** A character's name, and who it stands for. */
-type CharacterWords = { readonly name: string; readonly who: string }
+/** A character's name. */
+type CharacterWords = { readonly name: string }
 
 const CHARACTERS: Readonly<Record<HostCharacter, CharacterWords>> = {
-  "tin-owlet": { name: "Tin Bird", who: "the agent" },
-  mochi: { name: "Mochi", who: "you" },
+  "tin-owlet": { name: "Tin Bird" },
+  mochi: { name: "Mochi" },
 }
 
 const EMOTIONS: Readonly<Record<Emotion, string>> = {
@@ -88,8 +88,6 @@ export const CAST_WORDS = {
   /** How the look's own name reads on its picture. */
   pictured: (look: Look, shot: Shot, placement: Placement): string =>
     `${CHARACTERS[look.character].name}, ${lookName(look)}: ${SHOTS[shot]}, ${PLACEMENTS[placement].toLowerCase()}`,
-  /** Said once, when this phone asks for less motion. */
-  still: "Held still, as this phone asks for less motion.",
 } as const
 
 /** A look's name: its emotion's or its ceremony's. */
