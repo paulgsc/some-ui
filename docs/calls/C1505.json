@@ -1,0 +1,14 @@
+{
+  "id": "C1505",
+  "made": "2026-11-24",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/stamp.ts"],
+  "chose": "The 'Everything is slow' essay's stamp names server@fceea07 and some-ui@72346fa only. Its evidence is also true as of testing@c95c283, but no line of the essay cites testing, and cards-check refuses a stamp source nothing cites, so testing's commit is named in the essay's description instead.",
+  "options": [
+    "Stamp the two repositories the lines cite, and name testing's commit in the description",
+    "Cite a file in testing only to keep it on the stamp"
+  ],
+  "gray": "The coordinator asked for the end card to read 'true as of' all three commits; the check holds the stamp to what is cited.",
+  "undo": "Add a line that rests on a file in testing, cite it, and put testing@c95c283 back on the stamp.",
+  "refs": ["#3521"]
+}
