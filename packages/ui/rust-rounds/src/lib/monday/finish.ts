@@ -21,8 +21,9 @@
  *   is refused.
  *
  * What it holds beyond the parsers: each deep dive said in 2 to 5 minutes
- * (C103), every best, beside and deep dive scene within the essay's frame
- * (EF1, `essayFit`), every topic and seed covered by a ticket, and each
+ * (C103), every question, best, beside and deep dive scene within the
+ * essay's frame (EF1, `essayFit`), and next week's question scenes
+ * (`questionFit`) while the routine can still shorten their words, every topic and seed covered by a ticket, and each
  * topic's concept named as the area table names it.
  */
 import type { Judged } from "@rust-rounds/lib/decay"
@@ -68,6 +69,7 @@ import {
   essayFit,
   parseEssay,
   pointsFit,
+  questionFit,
 } from "@some-ui/video-render"
 
 /**
@@ -572,14 +574,20 @@ function buildWeek(
   }
   for (const { key, what, expect } of programsOf(read.week.tickets))
     checkRun(what, expect, runs[key], problems)
-  // Its essay restates each fork's question as written, so the week holds
-  // the room it takes there.
-  for (const ticket of read.week.tickets)
-    for (const unfit of pointsFit(
-      ticket.id,
-      ticket.forks.map((fork) => fork.question)
-    ))
+  // Its essay restates each fork's question, and its question scene the
+  // whole ticket, as written, so the week holds the room they take there.
+  for (const ticket of read.week.tickets) {
+    const points = ticket.forks.map((fork) => fork.question)
+    for (const unfit of [
+      ...pointsFit(ticket.id, points),
+      ...questionFit({
+        ...ticket,
+        figures: ticket.figures.map((figure) => figure.text),
+        points,
+      }),
+    ])
       problems.push(`week: ${unfit}`)
+  }
   const file = WeekV2Schema.parse(week)
   // The standing set reaches the week whole, or the week isn't put (C737).
   if (JSON.stringify(file.opening) !== JSON.stringify(STANDING_OPENING))

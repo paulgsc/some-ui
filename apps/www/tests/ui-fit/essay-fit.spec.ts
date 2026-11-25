@@ -1,6 +1,6 @@
 /**
  * EF1 (`@some-ui/video-render`'s `essay-fit.ts`): the model never says a
- * best, beside or deep dive scene is shorter than the stage's real frame
+ * question, best, beside or deep dive scene is shorter than the stage's real frame
  * draws it, and no such scene of an essay it accepts overflows or cuts off a
  * code line, for the essays of `./panel-page/essays.ts`. The page computes
  * the model, being built with the stage; this reads what it publishes.
@@ -100,6 +100,12 @@ test.describe("EF1: the essay's model holds the frame the stage draws", () => {
     page,
   }) => {
     expect(await expectHeld(page, "by-points")).toBe(true)
+  })
+
+  test("w47's HF-202, whose question scene ran past the frame (#3547)", async ({
+    page,
+  }) => {
+    expect(await expectHeld(page, "hf-202")).toBe(true)
   })
 
   test("a fork scene holds its table and its place between A and A′ (RR29)", async ({

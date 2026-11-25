@@ -8,6 +8,9 @@ import {
   essayFit,
   parseEssay,
   pointsFit,
+  QUESTION_PROGRAM_LINES,
+  questionCodeEm,
+  questionFit,
   sampleEssay,
 } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
@@ -62,5 +65,59 @@ describe("pointsFit", () => {
     expect(pointsFit("TB-101", Array(5).fill(SHORT))).toEqual([])
     expect(pointsFit("TB-101", Array(6).fill(SHORT))).not.toEqual([])
     expect(pointsFit("TB-101", Array(3).fill(WRAPS))).not.toEqual([])
+  })
+})
+
+const programOf = (lines: number, columns = 40): string =>
+  Array.from({ length: lines }, (_, i) =>
+    `let w${String(i)} = ${"m".repeat(columns)}`.slice(0, columns)
+  ).join("\n")
+
+describe("questionFit", () => {
+  const sample = (): Essay => {
+    const read = sampleEssay()
+    if (!read.ok) throw new Error(read.problems.join("\n"))
+    return structuredClone(read.value)
+  }
+
+  it("holds a program of the most lines at the week's widest, as w47's HF-202 needed", () => {
+    for (const lines of [1, 17, 22]) {
+      const essay = sample()
+      for (const ticket of essay.tickets) ticket.program = programOf(lines)
+      expect(essayFit(essay).problems, `${lines} lines`).toEqual([])
+    }
+    expect(questionCodeEm(programOf(1))).toBe(questionCodeEm(programOf(2)))
+    expect(questionCodeEm(programOf(22))).toBeLessThan(0.62)
+  })
+
+  it("refuses what runs past the frame, as essayFit does", () => {
+    const ticket = {
+      id: "HF-202",
+      title: "Park a bike at a full dock",
+      spec: "Words. ".repeat(400),
+      figures: [],
+      points: ["Borrow, clone or take the address?"],
+      program: programOf(QUESTION_PROGRAM_LINES + 1, 90),
+    }
+    expect(questionFit(ticket).map((p) => p.replace(/\d+ px/, "N px"))).toEqual(
+      [
+        "HF-202: its question scene runs about N px past the frame: shorten its title, spec, figures or speak-to points",
+        `HF-202: its question scene holds a program of ${QUESTION_PROGRAM_LINES + 1} lines, more than the frame's ${QUESTION_PROGRAM_LINES}`,
+        expect.stringMatching(
+          /^HF-202: its question scene has 26 program lines wider than the frame's \d+ columns$/
+        ),
+      ]
+    )
+    const essay = sample()
+    const first = essay.tickets[0]
+    if (first === undefined) throw new Error("the sample has tickets")
+    first.spec = ticket.spec
+    expect(essayFit(essay).problems).toEqual([
+      expect.stringMatching(
+        new RegExp(
+          `^${first.id} question \\([^)]+\\) runs about \\d+ px past the frame`
+        )
+      ),
+    ])
   })
 })

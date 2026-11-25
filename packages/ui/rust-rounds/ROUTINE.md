@@ -66,8 +66,9 @@ outside the checkout as `<run>`.
    says.
 4. **Finish:** `pnpm monday finish --from <run>`. It runs every program and
    every academy starter of next week with rustc (into `<run>/runs.json`), builds both files and checks them, measuring each
-   essay's best fit, comparison and deep dive scenes against the video's
-   frame (EF1) and naming any that runs past it and what to shorten. It answers
+   essay's question, best fit, comparison and deep dive scenes, and next
+   week's question scenes, against the video's frame (EF1) and naming any
+   that runs past it and what to shorten. It answers
    `ready` and writes them to `<run>/out`, or lists every problem. Fix
    exactly those problems in `values.json` and run it again. Never change the
    bundle, a fact it states or the code to get past a problem.
