@@ -34,6 +34,8 @@
  * Cast wing (HOST8) and the signature (HOST16) preview it from here.
  */
 
+import { unitIntervalsBySeed } from "@some-ui/core-utils"
+
 import {
   CAST_VIEW_BOX,
   castNodes,
@@ -234,17 +236,6 @@ function redrawsOf(beat: Beat): ReadonlyArray<Redraw> {
 
 // ---- Seeded idle life: blink, glance, breath, the key's turn ----
 
-/** A seeded generator (mulberry32): the same seed gives the same numbers, forever. */
-const seeded = (seed: number): (() => number) => {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
 const TAU = Math.PI * 2
 
 const clamp = (v: number, lo: number, hi: number): number =>
@@ -274,7 +265,7 @@ function ticks(
   spread: number,
   untilS: number
 ): ReadonlyArray<Tick> {
-  const r = seeded(seed)
+  const r = unitIntervalsBySeed(seed)
   const out: Array<Tick> = []
   for (let s = 0.6 + r() * every; s <= untilS; s += every + r() * spread) {
     out.push({ s, a: r(), b: r(), c: r() })
@@ -451,10 +442,48 @@ export function hostSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}"><g transform="${breath}">${body}</g></svg>`
 }
 
+/** Where the host is drawn, and how solid. */
+type Placed = { readonly box: Area; readonly opacity: number }
+
+/**
+ * Where beat `i` has the host at `tMs`: arriving over `BEAT_BLEND_MS` from
+ * where the beat before had it when this one started, so a beat that comes
+ * before the last has finished arriving starts from what was on screen. A
+ * change of character cuts. Cost: recurses only through beats less than
+ * `BEAT_BLEND_MS` apart, so a run of beats on top of each other.
+ */
+function placedAt(
+  beats: ReadonlyArray<Beat>,
+  i: number,
+  tMs: number,
+  area: Area
+): Placed {
+  const beat = beats[i]
+  if (beat === undefined) throw new Error(`no beat ${String(i)}`)
+  const to: Placed = {
+    box: placedBox(area, beat.shot, beat.placement),
+    opacity: beat.opacity ?? 1,
+  }
+  const before = beats[i - 1]
+  if (before?.character !== beat.character) return to
+  const from =
+    beat.atMs - before.atMs >= BEAT_BLEND_MS
+      ? {
+          box: placedBox(area, before.shot, before.placement),
+          opacity: before.opacity ?? 1,
+        }
+      : placedAt(beats, i - 1, beat.atMs, area)
+  const e = smooth((tMs - beat.atMs) / BEAT_BLEND_MS)
+  return {
+    box: mixBox(from.box, to.box, e),
+    opacity: mix(from.opacity, to.opacity, e),
+  }
+}
+
 /**
  * What the host shows `tMs` into its run, over `area` (the frame's safe
  * area, or a preview's card): the latest beat at or before `tMs`, arriving
- * from the one before over `BEAT_BLEND_MS` when the character stays and
+ * from what was on screen over `BEAT_BLEND_MS` when the character stays and
  * cutting when it changes. Null before the first beat, and when there are
  * none.
  */
@@ -469,17 +498,7 @@ export function hostAt(
   let i = 0
   for (const [j, b] of beats.entries()) if (b.atMs <= tMs) i = j
   const beat = beats[i] ?? first
-  const before = beats[i - 1]
-  const to = placedBox(area, beat.shot, beat.placement)
-  const solid = beat.opacity ?? 1
-  const blend =
-    before?.character === beat.character
-      ? smooth((tMs - beat.atMs) / BEAT_BLEND_MS)
-      : 1
-  const from =
-    before === undefined ? to : placedBox(area, before.shot, before.placement)
-  const box = mixBox(from, to, blend)
-  const opacity = mix(before?.opacity ?? 1, solid, blend)
+  const { box, opacity } = placedAt(beats, i, tMs, area)
   const aim = aimOf(beat, box, area, idleAt(seed, tMs))
   return {
     beat,

@@ -8,7 +8,7 @@
 
 import { authorshipParams } from "./authorship"
 import { withBadgesSeen } from "./badges"
-import { isAuthorship, isCaptions, isComposition } from "./cut-list"
+import { isAuthorship, isCaptions, isComposition, isOverlay } from "./cut-list"
 import type {
   BurnIn,
   Composition,
@@ -614,7 +614,11 @@ const framesUntilNext = (placement: Placement, i: number): number => {
   )
 }
 
-/** The burn-ins to record: the video's over its length, each scene's over it. */
+/**
+ * The burn-ins to record: the video's over its length, each scene's over it,
+ * laid in that order, but the host last of all, over every other (C1485),
+ * whether the video or a scene carries it.
+ */
 function burnInRequests(
   cutList: CutList,
   placement: Placement,
@@ -664,7 +668,8 @@ function burnInRequests(
       scenes: [s.id],
     }))
   })
-  return [...whole, ...perShot]
+  const layered = [...whole, ...perShot]
+  return [...layered.filter((b) => !isOverlay(b)), ...layered.filter(isOverlay)]
 }
 
 /**

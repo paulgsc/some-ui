@@ -66,6 +66,17 @@ export function unitIntervalBySeed(seed: number): number {
 }
 
 /**
+ * Uniform draws in `[0, 1)` from `seed`, one per call, for a schedule a seed
+ * replays (the essays' host blinks and glances on one, `@some-ui/styles`'
+ * `brand/host`). The seed is mixed first, as for `unitIntervalBySeed`, so a
+ * small seed's first draw is not tiny; that first draw is the same number.
+ */
+export function unitIntervalsBySeed(seed: number): () => number {
+  const random = randomValues(mixed(seed))
+  return () => random() / 2 ** 32
+}
+
+/**
  * FNV-1a over UTF-16 code units, 32 bits: a seed from a string key, or, from
  * another offset basis, a second independent hash of the same text.
  */

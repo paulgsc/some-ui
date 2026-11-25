@@ -1086,6 +1086,9 @@ importers:
 
   packages/some-styles:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../core-utils
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.3

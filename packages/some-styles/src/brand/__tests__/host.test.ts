@@ -129,6 +129,28 @@ describe("where the host sits (C1485)", () => {
     expect(at(2000)?.opacity).toBe(1)
   })
 
+  it("starts an interrupted arrival from what was on screen, never jumping", () => {
+    const beats: ReadonlyArray<Beat> = [
+      tin(),
+      tin({ atMs: 1000, placement: "top-left", opacity: 0 }),
+      tin({ atMs: 1100, placement: "bottom-left", opacity: 1 }),
+    ]
+    const just = hostAt(beats, 7, 1099, LANDSCAPE_SAFE)
+    const then = hostAt(beats, 7, 1100, LANDSCAPE_SAFE)
+    // One millisecond's motion, at most: the old start jumped about 1250 px.
+    const moved = Math.hypot(
+      (then?.box.x ?? NaN) - (just?.box.x ?? NaN),
+      (then?.box.y ?? NaN) - (just?.box.y ?? NaN)
+    )
+    expect(moved).toBeLessThan(10)
+    expect(
+      Math.abs((then?.opacity ?? NaN) - (just?.opacity ?? NaN))
+    ).toBeLessThan(0.01)
+    expect(hostAt(beats, 7, 1480, LANDSCAPE_SAFE)?.box).toEqual(
+      placedBox(LANDSCAPE_SAFE, "long", "bottom-left")
+    )
+  })
+
   it("draws nothing without beats, or before the first", () => {
     expect(hostAt([], 7, 0, LANDSCAPE_SAFE)).toBeNull()
     expect(hostAt([tin({ atMs: 3000 })], 7, 2999, LANDSCAPE_SAFE)).toBeNull()

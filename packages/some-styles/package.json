@@ -48,6 +48,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
     "jiti": "2.7.0",
     "postcss": "8.5.23",

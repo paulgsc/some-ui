@@ -640,6 +640,24 @@ describe("render", () => {
       leftOut.ok ? leftOut.value.leftOut.map((b) => b.kind) : leftOut.problems
     ).toEqual(["authorship", "headline", "headline", "captions"])
 
+    // The host floats over every other layer (C1485), even when the video
+    // carries it and a scene carries the card under it.
+    const hosted = await render(
+      {
+        ...withLayers,
+        burnIns: [
+          { kind: "host", design: "cast-v1", params: {} },
+          ...withLayers.burnIns,
+        ],
+      },
+      series(),
+      ports,
+      { workDir: "work-b4", out: "out-b4/video.mp4", withoutBurnIns: true }
+    )
+    expect(
+      hosted.ok ? hosted.value.leftOut.map((b) => b.kind) : hosted.problems
+    ).toEqual(["authorship", "headline", "headline", "host", "captions"])
+
     const asked: Array<string> = []
     const clashing = await render(
       withLayers,

@@ -42,4 +42,9 @@ export {
 } from "./storage"
 export type { AudioContextConstructor } from "./audio-context"
 export { audioContextConstructor } from "./audio-context"
-export { fnv1a, shuffledBySeed, unitIntervalBySeed } from "./seeded-random"
+export {
+  fnv1a,
+  shuffledBySeed,
+  unitIntervalBySeed,
+  unitIntervalsBySeed,
+} from "./seeded-random"

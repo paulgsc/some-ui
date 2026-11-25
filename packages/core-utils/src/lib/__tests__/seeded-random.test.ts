@@ -1,4 +1,9 @@
-import { fnv1a, shuffledBySeed } from "@core-utils/lib/seeded-random"
+import {
+  fnv1a,
+  shuffledBySeed,
+  unitIntervalBySeed,
+  unitIntervalsBySeed,
+} from "@core-utils/lib/seeded-random"
 import { describe, expect, it } from "vitest"
 
 describe("shuffledBySeed", () => {
@@ -43,5 +48,19 @@ describe("shuffledBySeed", () => {
       expect(count).toBeGreaterThan(900)
       expect(count).toBeLessThan(1100)
     }
+  })
+})
+
+describe("unitIntervalsBySeed", () => {
+  it("replays the same draws in [0, 1) for a seed, starting where unitIntervalBySeed draws", () => {
+    const draws = (seed: number): Array<number> => {
+      const next = unitIntervalsBySeed(seed)
+      return Array.from({ length: 1000 }, () => next())
+    }
+    expect(draws(7)).toEqual(draws(7))
+    expect(draws(7)).not.toEqual(draws(8))
+    expect(draws(7)[0]).toBe(unitIntervalBySeed(7))
+    expect(draws(7).every((d) => d >= 0 && d < 1)).toBe(true)
+    expect(new Set(draws(1)).size).toBe(1000)
   })
 })

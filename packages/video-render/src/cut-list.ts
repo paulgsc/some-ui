@@ -552,6 +552,15 @@ const CAPTIONS = "captions"
 /** Whether a burn-in is the captions. */
 export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
 
+/** The host's kind among the burn-ins (`@some-ui/burn-ins`' `host`). */
+const HOST = "host"
+
+/**
+ * Whether a burn-in floats over every other one: the host, a layer of its
+ * own over the card wherever it sits (C1485).
+ */
+export const isOverlay = (b: Pick<BurnIn, "kind">): boolean => b.kind === HOST
+
 /**
  * Whether a scene draws its own picture and way in and out: a composition,
  * or a screen of the app, which is drawn as one once home hands it
