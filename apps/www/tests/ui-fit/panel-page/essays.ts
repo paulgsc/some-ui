@@ -85,6 +85,46 @@ export function byPoints(): Essay {
 }
 
 /**
+ * The sample with its first ticket's spec, figure and program those of
+ * w47's HF-202 (#3547), whose question scene ran past the frame.
+ */
+export function hf202(): Essay {
+  const essay = structuredClone(sample())
+  const first = essay.tickets.at(0)
+  if (first === undefined) throw new Error("the sample changed shape")
+  first.spec =
+    "A dock's slots sit in a RefCell so every handler can reach them. When a bike arrives at a full dock, the oldest bike is sent away to make room. It compiles and works, until a dock fills up."
+  first.figures = [
+    "About one return in 40 arrives at a full dock during the evening peak.",
+  ]
+  first.program = `use std::cell::RefCell;
+
+type Slots = RefCell<Vec<u32>>;
+const CAP: usize = 2;
+
+fn send_away(slots: &Slots) {
+    slots.borrow_mut().remove(0);
+}
+
+fn park(slots: &Slots, bike: u32) {
+    let mut s = slots.borrow_mut();
+    if s.len() == CAP {
+        send_away(slots);
+    }
+    s.push(bike);
+}
+
+fn main() {
+    let slots = RefCell::new(vec![4]);
+    park(&slots, 9);
+    park(&slots, 12);
+    println!("{:?}", slots.borrow());
+}
+`
+  return EssaySchema.parse(essay)
+}
+
+/**
  * The sample with QM-311's first point as a fork (RR29): three listed
  * options, a hidden best, and the owner's decision judged and placed.
  */

@@ -5,7 +5,14 @@ import type { Essay } from "@some-ui/video-render"
 
 import { EssaySceneFrame } from "@/lib/web-surface"
 
-import { accepted, atTheLimit, byPoints, sample, withForks } from "./essays"
+import {
+  accepted,
+  atTheLimit,
+  byPoints,
+  hf202,
+  sample,
+  withForks,
+} from "./essays"
 
 /**
  * Every question, best, beside and deep dive scene of the essay `?essay=` names
@@ -18,6 +25,7 @@ function essayNamed(name: string | null): Essay | null {
   if (name === "sample") return sample()
   if (name === "by-points") return byPoints()
   if (name === "forks") return withForks()
+  if (name === "hf-202") return hf202()
   const limit = /^limit-(\d+)$/.exec(name ?? "")
   return limit ? (atTheLimit()[Number(limit[1]) - 1] ?? null) : null
 }

@@ -102,6 +102,12 @@ test.describe("EF1: the essay's model holds the frame the stage draws", () => {
     expect(await expectHeld(page, "by-points")).toBe(true)
   })
 
+  test("w47's HF-202, whose question scene ran past the frame (#3547)", async ({
+    page,
+  }) => {
+    expect(await expectHeld(page, "hf-202")).toBe(true)
+  })
+
   test("a fork scene holds its table and its place between A and A′ (RR29)", async ({
     page,
   }) => {
