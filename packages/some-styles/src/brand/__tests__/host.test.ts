@@ -6,7 +6,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  CEREMONIES,
   EMOTIONS,
   HOST_CHARACTERS,
   hostAt,
@@ -40,10 +39,6 @@ const inside = (inner: Area, outer: Area): boolean =>
   inner.y + inner.height <= outer.y + outer.height + 1e-9
 
 describe("the host's closed unions", () => {
-  it("are Tin Bird and Mochi, and no other", () => {
-    expect(HOST_CHARACTERS).toEqual(["tin-owlet", "mochi"])
-  })
-
   it("give both characters the shared emotions, and Mochi its own beats after them", () => {
     expect(EMOTIONS["tin-owlet"]).toEqual(SHARED_EMOTIONS)
     expect(EMOTIONS.mochi).toEqual([
@@ -64,13 +59,6 @@ describe("the host's closed unions", () => {
         "perplexed",
       ])
     )
-  })
-
-  it("give the NFL celebration to Mochi as its first ceremony", () => {
-    expect(CEREMONIES).toEqual({
-      "tin-owlet": [],
-      mochi: ["nfl-celebration"],
-    })
   })
 
   it("refuse, in the type, an emotion or ceremony that isn't the character's", () => {
@@ -141,8 +129,12 @@ describe("where the host sits (C1485)", () => {
     expect(at(2000)?.opacity).toBe(1)
   })
 
-  it("draws nothing without beats", () => {
+  it("draws nothing without beats, or before the first", () => {
     expect(hostAt([], 7, 0, LANDSCAPE_SAFE)).toBeNull()
+    expect(hostAt([tin({ atMs: 3000 })], 7, 2999, LANDSCAPE_SAFE)).toBeNull()
+    expect(
+      hostAt([tin({ atMs: 3000 })], 7, 3000, LANDSCAPE_SAFE)
+    ).not.toBeNull()
   })
 })
 

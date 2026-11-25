@@ -11,14 +11,18 @@
  *   emotion, an optional ceremonious animation, its shot, its placement,
  *   whether it speaks. Emotions and ceremonies are keyed by character, so
  *   the type of a tin owlet's beat refuses the mochi's own emotions. A new
- *   emotion is a new member of `EMOTIONS` and a new entry in each table it
- *   is keyed by, which the compiler asks for; never a module of its own.
+ *   emotion is a new member of `EMOTIONS` and a new entry in each drawing
+ *   table it is keyed by, which the compiler asks for; never a module of its
+ *   own. The cut list's schema (`@some-ui/burn-ins`) is held to the same
+ *   lists by its tests, member by member.
  * - Placement follows C1485: the host is a layer of its own over the card,
  *   in a corner or the center of the area it is given, and reserves no room
  *   in it. Its translucency and fade are its own (`opacity`), and where it
  *   looks is a generic point it is given (`lookAt`), never the content.
  * - Idle life (blink, breath, glance, the key's turn) is a seeded pure
- *   function of t: the same beats, seed and t give the same SVG bytes
+ *   function of t: the same beats, seed and t give the same SVG bytes in
+ *   one engine (numbers are rounded to three places, so engines whose
+ *   `Math.sin` differs in the last bits almost never disagree)
  *   (`__tests__/host.test.ts`). Nothing here reads a clock or `Math.random`.
  *
  * Each emotion's and ceremony's own drawing is a stub that returns the
@@ -196,18 +200,29 @@ const CEREMONY_DRAWINGS: {
   mochi: { "nfl-celebration": same },
 }
 
+/** The redraw a beat's ceremony calls for, if it names one. */
+function ceremonyOf<C extends HostCharacter>(
+  who: C,
+  animation: CeremonyOf<C> | undefined
+): ReadonlyArray<Redraw> {
+  if (animation === undefined) return []
+  const table: Readonly<Record<CeremonyOf<C>, Redraw>> = CEREMONY_DRAWINGS[who]
+  return [table[animation]]
+}
+
 /** The redraws a beat's emotion and ceremony call for. */
 function redrawsOf(beat: Beat): ReadonlyArray<Redraw> {
   switch (beat.character) {
     case "tin-owlet": {
-      return [EMOTION_DRAWINGS["tin-owlet"][beat.emotion]]
+      return [
+        EMOTION_DRAWINGS["tin-owlet"][beat.emotion],
+        ...ceremonyOf("tin-owlet", beat.animation),
+      ]
     }
     case "mochi": {
       return [
         EMOTION_DRAWINGS.mochi[beat.emotion],
-        ...(beat.animation === undefined
-          ? []
-          : [CEREMONY_DRAWINGS.mochi[beat.animation]]),
+        ...ceremonyOf("mochi", beat.animation),
       ]
     }
     default: {
@@ -440,7 +455,8 @@ export function hostSvg(
  * What the host shows `tMs` into its run, over `area` (the frame's safe
  * area, or a preview's card): the latest beat at or before `tMs`, arriving
  * from the one before over `BEAT_BLEND_MS` when the character stays and
- * cutting when it changes. Null when there are no beats.
+ * cutting when it changes. Null before the first beat, and when there are
+ * none.
  */
 export function hostAt(
   beats: ReadonlyArray<Beat>,
@@ -449,7 +465,7 @@ export function hostAt(
   area: Area
 ): HostFrame | null {
   const first = beats[0]
-  if (first === undefined) return null
+  if (first === undefined || tMs < first.atMs) return null
   let i = 0
   for (const [j, b] of beats.entries()) if (b.atMs <= tMs) i = j
   const beat = beats[i] ?? first

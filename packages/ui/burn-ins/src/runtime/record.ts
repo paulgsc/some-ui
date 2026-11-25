@@ -11,7 +11,9 @@
  *   moment is painted with its fonts loaded and its pictures decoded, with
  *   a key for the picture:
  *   equal keys, equal pictures, so the recorder captures a picture only
- *   when it changes, and a burn-in that holds still is captured once;
+ *   when it changes, and a burn-in that holds still is captured once (while
+ *   it is on screen the host never holds still: it breathes, so each of
+ *   those frames is captured);
  * - `check({ burnIns, fps, frame })`, before any is recorded, gives every
  *   pair of a video's burn-ins that would draw in one region at one moment
  *   of that frame (`lib/clash.ts`; the short when it names none), so the
@@ -43,7 +45,7 @@ import type { Parsed } from "@burn-ins/lib/parsed"
 export type RecordPorts = {
   /** Resolves once every font the page asked for has loaded. */
   readonly fontsReady: () => Promise<void>
-  /** Resolves once every picture on the page is decoded (the host's drawing). */
+  /** Resolves once every picture on the stage is decoded (the host's drawing). */
   readonly imagesReady: () => Promise<void>
   /** Resolves after the next paint. */
   readonly afterPaint: () => Promise<void>
@@ -158,7 +160,11 @@ export const browserRecordPorts: RecordPorts = {
     await document.fonts.ready
   },
   imagesReady: async () => {
-    await Promise.all(Array.from(document.images, (img) => img.decode()))
+    // The stage's pictures only: a broken one fails the seek, as it should.
+    const stage = document.querySelectorAll<HTMLImageElement>(
+      "[data-burn-ins-recorder] img"
+    )
+    await Promise.all(Array.from(stage, (img) => img.decode()))
   },
   afterPaint: () =>
     new Promise((resolve) => {

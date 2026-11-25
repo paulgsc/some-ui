@@ -17,7 +17,13 @@ import {
 } from "@burn-ins/lib/geometry"
 import { hostBox } from "@burn-ins/lib/host"
 import { SAMPLES, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
-import { PLACEMENTS, SHOTS } from "@some-ui/styles/brand/host"
+import {
+  CEREMONIES,
+  EMOTIONS,
+  HOST_CHARACTERS,
+  PLACEMENTS,
+  SHOTS,
+} from "@some-ui/styles/brand/host"
 import { describe, expect, it } from "vitest"
 
 const beat = {
@@ -47,6 +53,28 @@ const boxAt = (p: Prepared, t: number): ReturnType<typeof hostBox> => {
 }
 
 describe("the host's params", () => {
+  it.each(HOST_CHARACTERS)(
+    "take every emotion and ceremony of %s, the schema held to the cast's lists",
+    (character) => {
+      for (const emotion of EMOTIONS[character]) {
+        expect(
+          problems({ seed: 1, beats: [{ ...beat, character, emotion }] }),
+          emotion
+        ).toEqual([])
+      }
+      const ceremonies: ReadonlyArray<string> = CEREMONIES[character]
+      for (const animation of ceremonies) {
+        expect(
+          problems({
+            seed: 1,
+            beats: [{ ...beat, character, emotion: "happy", animation }],
+          }),
+          animation
+        ).toEqual([])
+      }
+    }
+  )
+
   it("take the sample: Mochi asks, Tin Bird answers", () => {
     expect(problems(SAMPLES.host)).toEqual([])
   })
