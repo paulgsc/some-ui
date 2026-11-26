@@ -60,6 +60,7 @@ import {
   lerp,
   moved,
   num,
+  retouched,
   smooth,
   TAU,
   type Moment,
@@ -515,6 +516,22 @@ export function hostSvg(
 // ---- One drawing from two poses ----
 
 const NUMBER = /-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/g
+/** A plain `#rrggbb` paint, its channels captured. */
+const HEX = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i
+
+/** The colour `w` of the way from `a` to `b`, channel by channel. */
+const hexBetween = (
+  a: RegExpExecArray,
+  b: RegExpExecArray,
+  w: number
+): string =>
+  `#${[1, 2, 3]
+    .map((i) =>
+      Math.round(lerp(parseInt(a[i] ?? "0", 16), parseInt(b[i] ?? "0", 16), w))
+        .toString(16)
+        .padStart(2, "0")
+    )
+    .join("")}`
 
 /** One attribute between two poses: numbers in the same places blend; anything else switches at the middle. */
 function blendValue(
@@ -532,6 +549,11 @@ function blendValue(
   const sx = String(x)
   const sy = String(y)
   if (sx === sy) return x
+  const cx = HEX.exec(sx)
+  const cy = HEX.exec(sy)
+  if (cx !== null && cy !== null) return hexBetween(cx, cy, w)
+  // a paint that isn't a plain hex colour (a url, a named colour) switches at the middle
+  if (sx.includes("#") || sy.includes("#")) return w < 0.5 ? x : y
   const nx = sx.match(NUMBER) ?? []
   const ny = sy.match(NUMBER) ?? []
   if (
@@ -642,34 +664,6 @@ const appended = (
       : { tag: node.tag, attrs: node.attrs, children: own }
   })
 
-/** `transform` put before the one `part` has, if any. */
-const prefixed = (
-  nodes: ReadonlyArray<CastNode>,
-  part: string,
-  transform: string,
-  attrs: CastNode["attrs"] = {}
-): ReadonlyArray<CastNode> =>
-  nodes.map((node) => {
-    const children =
-      node.children === undefined
-        ? undefined
-        : prefixed(node.children, part, transform, attrs)
-    if (node.attrs["data-part"] !== part)
-      return children === undefined
-        ? node
-        : { tag: node.tag, attrs: node.attrs, children }
-    const before = node.attrs.transform
-    const own = {
-      ...node.attrs,
-      ...attrs,
-      transform:
-        before === undefined ? transform : `${transform} ${String(before)}`,
-    }
-    return children === undefined
-      ? { tag: node.tag, attrs: own }
-      : { tag: node.tag, attrs: own, children }
-  })
-
 /** The play act's transform at its phase: each character's own (`PLAY_ACTS`). */
 function playTransform(play: Liveness["play"]): string {
   if (play === null) return ""
@@ -712,9 +706,14 @@ function livened(
   if (who === "mochi") {
     if (m > 0.08)
       out = appended(
-        prefixed(out, "mouth", "translate(0 0)", {
-          opacity: num(Math.max(0, 1 - 3 * m)),
-        }),
+        retouched(
+          out,
+          "mouth",
+          {
+            opacity: num(Math.max(0, 1 - 3 * m)),
+          },
+          "translate(0 0)"
+        ),
         "face",
         [
           el("ellipse", {
@@ -735,7 +734,7 @@ function livened(
           }),
         ]
       )
-  } else out = prefixed(out, "beak-low", `translate(0 ${num(3.6 * m)})`)
+  } else out = retouched(out, "beak-low", {}, `translate(0 ${num(3.6 * m)})`)
   if (point > 0) {
     const side = toward.x < 0 ? "left" : "right"
     const angle = (Math.atan2(toward.y, toward.x) * 180) / Math.PI
@@ -746,16 +745,17 @@ function livened(
       while (turn > 180) turn -= 360
       while (turn < -180) turn += 360
       turn = clamp(turn, -80, 80)
-      out = prefixed(
+      out = retouched(
         out,
         `arm-${side}`,
-        `translate(${sx} 60) rotate(${num(turn * point)}) translate(${-sx} -60)`,
-        { opacity: num(Math.min(1, point * 3)) }
+        { opacity: num(Math.min(1, point * 3)) },
+        `translate(${sx} 60) rotate(${num(turn * point)}) translate(${-sx} -60)`
       )
     } else
-      out = prefixed(
+      out = retouched(
         out,
         `wing-${side}`,
+        {},
         `rotate(${num((side === "left" ? -1 : 1) * 70 * point)})`
       )
   }

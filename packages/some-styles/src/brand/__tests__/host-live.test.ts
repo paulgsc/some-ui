@@ -15,6 +15,7 @@ import {
 } from "../host"
 import {
   EMOTION_REFRACTORY_MS,
+  livenessAt,
   NOTES_POLICY,
   pointAt,
   pulsesOf,
@@ -156,6 +157,20 @@ describe("attention: a point only toward a target, on a cue (HOST5)", () => {
   })
 })
 
+describe("play only in a pause (HOST5)", () => {
+  it("never plays while a word is being said", () => {
+    const words = [0, 1000, 2000].map((at) => ({
+      startMs: at,
+      endMs: at + 200,
+    }))
+    for (let seed = 0; seed < 50; seed++)
+      for (let t = 1000; t < 1200; t += 20) {
+        expect(livenessAt("tin-owlet", words, seed, t).play).toBeNull()
+        expect(livenessAt("mochi", words, seed, t).play).toBeNull()
+      }
+  })
+})
+
 const speaker = (over: Partial<BeatOf<"mochi">> = {}): BeatOf<"mochi"> => ({
   atMs: 0,
   character: "mochi",
@@ -248,6 +263,21 @@ describe("one drawing from two poses (#3564)", () => {
     // the vein is fading, neither gone nor whole
     const vein = /data-part="vein"[^>]*opacity="([\d.]+)"/.exec(mid)
     if (vein !== null) expect(Number(vein[1])).toBeLessThan(1)
+  })
+
+  it("blends a paint as a colour, never as a broken number", () => {
+    const beats = [mochi("angry", 0), mochi("happy", 2000)]
+    for (let t = 2000; t < 2000 + BEAT_BLEND_MS; t += 25) {
+      const svg = hostAt(beats, 7, t, area)?.svg ?? ""
+      for (const [, paint] of svg.matchAll(/"(#[^"]*)"/g))
+        expect(paint).toMatch(/^#[\da-f]{3}(?:[\da-f]{3})?$/i)
+    }
+    const living = speaker({ placement: "center", emotion: "happy" })
+    for (let t = 0; t < 1500; t += 25)
+      for (const [, paint] of (
+        hostAt([living], 7, t, area)?.svg ?? ""
+      ).matchAll(/"(#[^"]*)"/g))
+        expect(paint).toMatch(/^#[\da-f]{3}(?:[\da-f]{3})?$/i)
   })
 
   it("keeps a ceremony's run when only the emotion under it changes", () => {

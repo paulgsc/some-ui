@@ -217,6 +217,8 @@ function playAt(
   tMs: number
 ): Liveness["play"] {
   const P = LIVENESS_POLICY
+  // no play while a word is being said: only in a pause between two words
+  if (words.some((w) => w.startMs <= tMs && tMs < w.endMs)) return null
   const before = [...words].reverse().find((w) => w.endMs <= tMs)
   const after = words.find((w) => w.startMs > tMs)
   if (before === undefined || after === undefined) return null
