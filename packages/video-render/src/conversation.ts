@@ -29,7 +29,8 @@
  * voice. The record holds any number of speakers (the owner, 2026-11-26, on
  * #3521: a short drama's ensemble is the same record, "we can't silently
  * like drift into like an overly granular, over-repeated architecture"); an
- * essay is its two-speaker case, Mochi in the owner's takes and Tin Bird in
+ * essay is its two-speaker case, Mochi in the owner's takes and Tin Bird
+ * (`tin-owlet`) in
  * Kokoro's lines. The flags are keyed by a turn's voice, not by who speaks
  * it. The conversation essay is the essay family's member whose turns are
  * not fixed by a template (the call's sections, the Rust essay's tickets) but
@@ -168,7 +169,8 @@ export const ConversationTurnSchema = z.discriminatedUnion("voice", [
 /**
  * One of a version's speakers: a cast member (`CHARACTERS`), and how its
  * turns are voiced, the owner's own takes or the lines the agent writes for
- * Kokoro. An essay has two, Mochi in the owner's voice and Tin Bird in
+ * Kokoro. An essay has two, Mochi in the owner's voice and Tin Bird
+ * (`tin-owlet`) in
  * Kokoro's; a drama's ensemble is more of the same, none of them special.
  */
 export const ConversationSpeakerSchema = z.strictObject({
@@ -350,6 +352,7 @@ export type ConversationRefusal =
       readonly got: number
     }
   | { readonly why: "speaker-twice"; readonly speaker: string }
+  | { readonly why: "character-twice"; readonly character: string }
   | {
       readonly why: "speaker-unknown"
       readonly turn: string
@@ -439,8 +442,22 @@ export const greenLitVersion = (
 export const ownerTakes = (version: PodcastVersion): ReadonlyArray<string> =>
   version.turns.flatMap((t) => (t.voice === "owner" ? [t.take] : []))
 
-const sameTurn = (a: ConversationTurn, b: ConversationTurn): boolean =>
+/** The cast member who says `turn` in `version`. */
+const characterOf = (
+  version: PodcastVersion,
+  turn: ConversationTurn
+): string | undefined =>
+  version.speakers.find((s) => s.id === turn.speaker)?.character
+
+/** Whether turn `a` of version `va` says or plays what `b` of `vb` does, by the same speaker as the same cast member. */
+const sameTurn = (
+  a: ConversationTurn,
+  va: PodcastVersion,
+  b: ConversationTurn,
+  vb: PodcastVersion
+): boolean =>
   a.speaker === b.speaker &&
+  characterOf(va, a) === characterOf(vb, b) &&
   (a.voice === "kokoro"
     ? b.voice === "kokoro" && a.said === b.said
     : b.voice === "owner" && a.take === b.take)
@@ -464,7 +481,9 @@ export function changedTurns(
   const changed = after.turns.flatMap((t) => {
     const old = was.get(t.id)
     const moved = old !== undefined && old.prev !== now.get(t.id)?.prev
-    return old === undefined || !sameTurn(old.turn, t) || moved ? [t.id] : []
+    return old === undefined || !sameTurn(old.turn, before, t, after) || moved
+      ? [t.id]
+      : []
   })
   const removed = before.turns.flatMap((t) => (now.has(t.id) ? [] : [t.id]))
   return [...changed, ...removed]
@@ -474,7 +493,7 @@ export function changedTurns(
  * The first thing wrong with `version`'s speakers and turns: a speaker twice,
  * a turn whose speaker isn't the version's or speaks in another voice, a turn
  * id twice, a take twice or not one of the points, or a turn id an earlier
- * version gave the other voice.
+ * version gave another voice.
  */
 function turnsRefusal(
   version: PodcastVersion,
@@ -487,6 +506,8 @@ function turnsRefusal(
   for (const speaker of version.speakers) {
     if (speakers.has(speaker.id))
       return { why: "speaker-twice", speaker: speaker.id }
+    if ([...speakers.values()].some((s) => s.character === speaker.character))
+      return { why: "character-twice", character: speaker.character }
     speakers.set(speaker.id, speaker)
   }
   const ids = new Set<string>()
@@ -549,6 +570,7 @@ function answersRefusal(
         if (
           placed?.voice !== "owner" ||
           placed.take !== answer.take ||
+          placed.speaker !== was?.speaker ||
           (before !== null && ownerTakes(before).includes(answer.take))
         )
           return { why: "retook-unplaced", flag: flag.id }
@@ -566,7 +588,12 @@ function answersRefusal(
       }
       case "kept": {
         // What it says or plays: a rewrite beside it may still move it.
-        if (placed === undefined || was === undefined || !sameTurn(was, placed))
+        if (
+          placed === undefined ||
+          was === undefined ||
+          before === null ||
+          !sameTurn(was, before, placed, version)
+        )
           return { why: "kept-changed", flag: flag.id }
         break
       }
@@ -762,6 +789,9 @@ export function refusalLine(refusal: ConversationRefusal): string {
     }
     case "speaker-twice": {
       return `speaker ${refusal.speaker} is in the version twice`
+    }
+    case "character-twice": {
+      return `${refusal.character} speaks as two speakers; each cast member is one speaker`
     }
     case "speaker-unknown": {
       return `turn ${refusal.turn} is spoken by ${refusal.speaker}, who isn't one of the version's speakers`

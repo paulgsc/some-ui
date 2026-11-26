@@ -484,6 +484,36 @@ describe("speakers", () => {
     expect(stepped.ok).toBe(true)
   })
 
+  it("names a recast speaker's turns as changed, and refuses one cast member as two speakers", () => {
+    const v = (
+      speakers: ReadonlyArray<ConversationSpeaker>
+    ): PodcastVersion => ({
+      n: 1,
+      speakers: [...speakers],
+      turns: [ask, take, close],
+      answers: [],
+    })
+    const recast = ESSAY.map((s) =>
+      s.id === "tin" ? { ...s, character: "tin-sparrow" as const } : s
+    )
+    expect(changedTurns(v(ESSAY), v(recast))).toEqual(["k1", "k2"])
+    if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
+    expect(
+      stepConversation(
+        drafting.state,
+        version(
+          1,
+          [ask],
+          [],
+          [...ESSAY, { id: "tin2", character: "tin-owlet", voice: "kokoro" }]
+        )
+      )
+    ).toEqual({
+      ok: false,
+      refusal: { why: "character-twice", character: "tin-owlet" },
+    })
+  })
+
   it("refuses a turn by a speaker the version doesn't have, or in another voice", () => {
     if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
     expect(
