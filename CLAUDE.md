@@ -35,7 +35,10 @@ What follows from them:
   videos or design thumbnails. Every thumbnail comes from one deterministic, generic template
   that code fills from the episode's own facts, and a change of style (a pencil look, glass,
   depth) is a new version of that template, drawn by code, the same bytes for the same
-  inputs. A thumbnail never comes from a generator whose output can't be predicted.
+  inputs. A thumbnail never comes from a generator whose output can't be predicted. The
+  owner does review a conversation essay (C1536, which moves C1028): they flag its podcast's
+  turns, green-light a version and may override the signature the agent proposes, while the
+  agent's lines, their order and the segues stay the agent's editorial work.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
   Home is the owner's own store, as private as the phone, and sending to it is to be the
