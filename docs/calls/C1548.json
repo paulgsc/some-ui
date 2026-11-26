@@ -1,0 +1,20 @@
+{
+  "id": "C1548",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/some-styles/src/brand/host-live.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/host.ts"
+  ],
+  "moves": "C1485",
+  "chose": "Moves C1485 (the host claims no region and is a loose layer): a medium or long shot at a corner sits in its own bubble, a circle by default or a hexagon (`frame`, a closed union with `none`), ringed in its role's colour, the character enlarged and moving inside it; it grows in as the host arrives at a corner and dissolves as it leaves. A close-up, and any shot at the center, has nothing around it. The host's area stops above the lower third, so no shot covers the captions. It still claims no region against other burn-ins. The owner asked for the bubble (\"the character is in that layer world\"); the recon's caveat, that a framed host loses its link to the content, is kept by pointing across the frame at the beat's target. A soft plate under the host is the lighter option, not taken. Every choice here rests on the owner's tiebreaker (C1545): natural, cohesive, lifelike emulation first; not jarring, not distracting.",
+  "options": [
+    "a bubble at corners only (taken)",
+    "a soft plate under the host",
+    "no frame (C1485 as it was)"
+  ],
+  "gray": "Picture-in-picture separates the host from the content it talks about; whether the separation helps or hurts is a reading of the frame, not a check.",
+  "undo": "Set `frame: \"none\"` on beats, or make it the default in host.ts; the caption rule stays.",
+  "refs": ["#3526", "#3521"]
+}

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto"
 import { describe, expect, it } from "vitest"
 
 import {
+  BEAT_BLEND_MS,
   emotionsOf,
   hostAt,
   hostSvg,
@@ -24,6 +25,8 @@ const beat = (
   shot: "medium",
   placement: "bottom-right",
   speaking: false,
+  // the floor alone: no bubble around it (C1548)
+  frame: "none",
   ...over,
 })
 
@@ -42,16 +45,16 @@ const sha = (svgs: ReadonlyArray<string>): string =>
  * the contact sheet in the same PR.
  */
 const PINNED: Readonly<Record<EmotionOf<"tin-owlet">, string>> = {
-  neutral: "3404a6f8b19491c2",
-  curious: "c829eab1835e2f6d",
-  taciturn: "c38e590a918c9762",
-  happy: "b121ec2f02ce325e",
-  perplexed: "ca304da289f003e1",
-  anxious: "4e24619e52bb73ed",
-  frustrated: "10a6516e452a8c9b",
-  angry: "b15e10b2d89fd43c",
-  ceremonious: "9d7d0453840f73cf",
-  hungry: "1949f24b38429e03",
+  neutral: "cb90bdce768296ce",
+  curious: "3a3e6aba7cdba240",
+  taciturn: "4366f015bd550cd4",
+  happy: "4144a50318e0d878",
+  perplexed: "0607b7c3634aed17",
+  anxious: "e7f45d8662d69dc2",
+  frustrated: "857e3281d48fd873",
+  angry: "eae3c25f673cd2b2",
+  ceremonious: "481fe7e380df3847",
+  hungry: "68cb63dd21ef0810",
 }
 
 describe("Tin Bird's loops", () => {
@@ -116,8 +119,12 @@ describe("a loop's own time", () => {
     const moved = beat("happy", { atMs: 1700, placement: "top-left" })
     const angry = beat("angry", { atMs: 1700 })
     expect(at([happy, moved], 2000)).toBe(at([happy], 2000))
-    expect(at([happy, angry, beat("happy", { atMs: 3000 })], 3300)).toBe(
-      at([happy], 300)
-    )
+    // a change of emotion blends over BEAT_BLEND_MS (#3564), then the new run is its own
+    expect(
+      at(
+        [happy, angry, beat("happy", { atMs: 3000 })],
+        3000 + BEAT_BLEND_MS + 300
+      )
+    ).toBe(at([happy], BEAT_BLEND_MS + 300))
   })
 })
