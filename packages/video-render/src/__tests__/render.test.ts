@@ -905,6 +905,16 @@ describe("joins held on (HOST18)", () => {
       "j-held"
     )
     expect(held).toEqual(cut)
+    // Held joins are drawn the same way every time: the same bytes.
+    const again = await heard(
+      essay(["crossfade", "slow-crossfade"], "hold"),
+      "j-held-2"
+    )
+    expect(
+      (await sha("out-j-held/video.mp4")) ===
+        (await sha("out-j-held-2/video.mp4"))
+    ).toBe(true)
+    expect(again).toEqual(held)
     // Each scene's host gives way on the frame the next one's starts.
     expect(cut.hosts).toEqual(["0+60", "60+60", "120+60"])
     // The same joins overlapped would bring the takes in early.

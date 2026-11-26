@@ -19,6 +19,7 @@ import {
 import type { CutList } from "@video-render/cut-list"
 import { readSeries } from "@video-render/node"
 import type { Series } from "@video-render/series"
+import type { SpokenScene } from "@video-render/spoken-card"
 import { describe, expect, it } from "vitest"
 
 import { showcase } from "./showcase"
@@ -554,6 +555,15 @@ describe("a spoken essay (EXPLAIN6)", () => {
     expect(silent.shots.every((shot) => shot.take === undefined)).toBe(true)
   })
 
+  const sampleScene: SpokenScene = {
+    id: "ask-1",
+    exchange: 1,
+    role: "ask",
+    voice: "kokoro",
+    speaker: "asker",
+    said: "What moved?",
+  }
+
   // HOST18 (#3571): no hard cut, and nothing moved. Family: a scene inside
   // a chapter and one opening a chapter, each long enough or too short for
   // its join; a scene naming its own transition; the first scene.
@@ -620,5 +630,26 @@ describe("a spoken essay (EXPLAIN6)", () => {
       scenes.map(() => ({ ms: 2_000 }))
     )
     expect(picked.shots[1]?.overrides.transitionIn).toBe("cut")
+    // A spoken card's still draws the cast inside the picture: a crossfade
+    // into or out of one would show a character twice, so it is cut (C1546).
+    const asked = scenes.map((s, i) =>
+      i === 3
+        ? {
+            ...s,
+            spoken: {
+              card: "card-1",
+              scene: sampleScene,
+            },
+          }
+        : s
+    )
+    const spoken = voicedCardsCutList(
+      parsed.value,
+      asked,
+      asked.map(() => ({ ms: 2_000 }))
+    )
+    const spokenInto = spoken.shots.map((s) => s.overrides.transitionIn)
+    expect([spokenInto[3], spokenInto[4]]).toEqual(["cut", "cut"])
+    expect(spokenInto[2]).not.toBe("cut")
   })
 })

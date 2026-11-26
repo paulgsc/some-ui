@@ -4,14 +4,17 @@
   "by": "claude",
   "paths": [
     "some-ui:packages/video-render/src/render.ts",
-    "some-ui:packages/video-render/src/cards-essay.ts"
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/essay-parts.tsx"
   ],
-  "chose": "The cast is not hidden over a join's overlap while HOST5 is unmerged. Every burn-in, the host among them, is recorded on its own and laid over the joined picture (`burnInRequests`, `planAssembly`), never into a scene's segment, so the crossfade never fades the host with itself: a scene's host gives way on the frame the next scene's starts, and no frame shows two. Hiding it for each join's 400 to 800 ms would make the cast blink out at every card, which the owner's tiebreaker on #3521 (natural, cohesive, lifelike, never jarring) rules out. Easing the cast between its two shots across a join stays HOST5's (#3526).",
+  "chose": "Where the cast is a burn-in, it is not hidden over a join's overlap while HOST5 is unmerged: every burn-in, the host among them, is recorded on its own and laid over the joined picture (`burnInRequests`, `planAssembly`), never into a scene's segment, so the crossfade never fades the host with itself. A scene's host gives way on the frame the next scene's starts, and no frame shows two. Hiding it for each join's 400 to 800 ms would make the cast blink out at every card. Where the cast is drawn inside a scene's picture, as a spoken card's still draws it (the stage's CastProvider and Bubble), a crossfade would blend two pictures of it and could show a character twice. So a join into or out of a spoken card's scene is a cut (`joinInto`), until HOST5's camera layer draws the cast once across the join. Both follow the owner's tiebreaker on #3521: natural, cohesive, lifelike, never jarring. Easing the cast between its two shots across a join stays HOST5's (#3526).",
   "options": [
-    "Leave the host drawn over the join, one copy at a time, as the burn-ins already lay it",
-    "Hide the host over each join's overlap until HOST5's camera layer lands"
+    "Leave the host burn-in drawn over the join, one copy at a time, and cut where a still draws the cast",
+    "Hide the host over each join's overlap until HOST5's camera layer lands",
+    "Crossfade spoken cards too, excluding the cast's region from the fade",
+    "Crossfade spoken cards too, proving their cast's box stays put across stills"
   ],
-  "gray": "The issue asked for the host hidden over the join until HOST5 lands, to prevent ghosting; the renderer already prevents it another way, and hiding has a visible cost of its own.",
-  "undo": "Give each host burn-in a beat at opacity 0 over each join's overlap frames.",
+  "gray": "The issue asked for the host hidden over the join until HOST5 lands, to prevent ghosting; the renderer prevents it for the burn-in another way, and hiding has a visible cost of its own, while a still that draws the cast needs its own answer.",
+  "undo": "Remove the spoken-card cut from joinInto in cards-essay.ts; give each host burn-in a beat at opacity 0 over each join's overlap frames to hide it instead.",
   "refs": ["#3571", "#3526", "#3521"]
 }

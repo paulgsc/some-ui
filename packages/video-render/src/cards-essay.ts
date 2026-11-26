@@ -609,13 +609,16 @@ const JOIN_ROOM_MS = 100
 /**
  * The transition into the `i`th of `shots`: the scene's own, where it names
  * one; none into the first, or into or out of a composition, which draws its
- * own way in and out; a cut where either scene is too short to hold the join;
- * else `CARDS_JOINS`'s, by whether it opens a chapter (`mark`).
+ * own way in and out; a cut into or out of a spoken card's scene, whose
+ * still draws the cast inside the picture, so a crossfade would blend two
+ * pictures of it and show a character twice (C1546); a cut where either
+ * scene is too short to hold the join; else `CARDS_JOINS`'s, by whether it
+ * opens a chapter (`mark`).
  */
 function joinInto(
   shots: ReadonlyArray<Shot>,
-  i: number,
-  mark: string | undefined
+  scenes: ReadonlyArray<CardsScene>,
+  i: number
 ): Transition | undefined {
   const shot = shots[i]
   const before = shots[i - 1]
@@ -623,6 +626,9 @@ function joinInto(
   if (shot.overrides.transitionIn !== undefined)
     return shot.overrides.transitionIn
   if (isComposition(shot) || isComposition(before)) return undefined
+  if (scenes[i]?.spoken !== undefined || scenes[i - 1]?.spoken !== undefined)
+    return "cut"
+  const mark = scenes[i]?.mark
   const join = mark === undefined ? CARDS_JOINS.within : CARDS_JOINS.chapter
   const room = 2 * TRANSITION_MS[join] + JOIN_ROOM_MS
   return Math.min(shot.durationMs, before.durationMs) < room ? "cut" : join
@@ -675,7 +681,7 @@ export function voicedCardsCutList(
     ...cut,
     joins: "hold",
     shots: shots.map((shot, i) => {
-      const transitionIn = joinInto(shots, i, scenes[i]?.mark)
+      const transitionIn = joinInto(shots, scenes, i)
       return transitionIn === undefined
         ? shot
         : { ...shot, overrides: { ...shot.overrides, transitionIn } }
