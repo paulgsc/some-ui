@@ -175,6 +175,18 @@ describe("screenEdges (HOST12)", () => {
     expect(quiet.speakingDb).toBeLessThan(loud.speakingDb - 20)
   })
 
+  it("measures the speaking level by the words alone: a short answer in a long, hissing take", () => {
+    // 500 ms said in ten seconds: under a tenth of the take is speech.
+    const word: Piece = { kind: "word", fromMs: 4_000, toMs: 4_500 }
+    const s = screened(takeOf(10_000, [word]))
+    expect(s.speakingDb).toBeGreaterThan(-30)
+    expect(within(word, s.kept)).toBe(true)
+    expect(s.kept.fromMs).toBeGreaterThanOrEqual(3_900)
+    expect(s.kept.toMs).toBeLessThanOrEqual(4_500 + TAKE_POLICY.tailMs + 10)
+    expect(s.floorDb).toBeLessThan(TAKE_POLICY.noiseFloorMostDb)
+    expect(s.floorDb).toBeGreaterThan(-120)
+  })
+
   it("flags a take whose silences are above the floor, never failing it", () => {
     const noisy = screened(takeOf(3_000, words, { hissAmp: 0.008 }))
     expect(noisy.noisy).toBe(true)

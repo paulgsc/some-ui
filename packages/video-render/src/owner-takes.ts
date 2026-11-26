@@ -66,8 +66,12 @@ export const TAKE_POLICY = {
   leadMs: 60,
   /** What is kept after the last voiced frame, for a word's decay. */
   tailMs: 120,
-  /** The share of frames the speaking level sits above. */
+  /** The share of the speech-bearing frames the speaking level sits above. */
   speakingPercentile: 0.9,
+  /** The share of all frames a take's quiet sits above. */
+  quietPercentile: 0.2,
+  /** How far over the take's quiet a frame bears speech, for the speaking level alone. */
+  speechOverQuietDb: 15,
   /** How far under the speaking level a frame is still voiced. */
   voicedUnderSpeakingDb: 30,
   /** How near an edge a record button's transient lies. */
@@ -125,18 +129,29 @@ export function framesOf(
   return frames
 }
 
-/** How loud the voice is in a take: the level `speakingPercentile` of its frames sit under. */
+/** The level a `share` of sorted `levels` sit under. */
+const percentile = (levels: ReadonlyArray<number>, share: number): number =>
+  levels[Math.min(levels.length - 1, Math.floor(share * levels.length))] ??
+  SILENT_DB
+
+/**
+ * How loud the voice is in a take: the level `speakingPercentile` of its
+ * speech-bearing frames sit under, those `speechOverQuietDb` over its quiet.
+ * Measured over speech alone, so a short answer in a long, hissing take is
+ * measured by its words, not by the hiss around them.
+ */
 export function speakingDb(
   frames: ReadonlyArray<TakeFrame>,
   policy: TakePolicy = TAKE_POLICY
 ): number {
   const levels = frames.map((f) => f.db).sort((a, b) => a - b)
   if (levels.length === 0) return SILENT_DB
-  const at = Math.min(
-    levels.length - 1,
-    Math.floor(policy.speakingPercentile * levels.length)
+  const quiet = percentile(levels, policy.quietPercentile)
+  const bearing = levels.filter((db) => db >= quiet + policy.speechOverQuietDb)
+  return percentile(
+    bearing.length > 0 ? bearing : levels,
+    policy.speakingPercentile
   )
-  return levels[at] ?? SILENT_DB
 }
 
 /** What the screener found at a take's edges, and the stretch it keeps. */
