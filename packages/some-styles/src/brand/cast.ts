@@ -16,7 +16,7 @@
  * per drawing, so two bubbles on one page never share one.
  *
  * The moving parts are grouped and named (`data-part`: the mochi's eyes and
- * each antenna, the tin owlet's eyes and key), so a host that wants a
+ * each antenna; the tin owlet's eyes, lids, wings, tufts, key and lower beak), so a host that wants a
  * character alive can move them: with its own CSS (the public site's photo
  * slot blinks and sways the mochi, C1186) or as a pure function of time
  * (`./host`, the essays' living cast). A name draws nothing: a drawing that
@@ -333,65 +333,175 @@ const tin = (id: IdOf, d: string): Array<CastNode> => [
 const OWLET =
   "M48 16C32 16 22 27 22 42C22 49 24 55 27 59C25 69 30 80 38 84L58 84C66 80 71 69 69 59C72 55 74 49 74 42C74 27 64 16 48 16Z"
 
-/** The tutor: a wind-up tin owlet, its key at its side. */
+/** A tin wing drawn along +x from its pivot, so a host aims it by rotating it. */
+const WING =
+  "M-1 -4.2C6 -6.4 16 -5.6 23 -1.1C24.4 0 24.4 0.7 23 1.5C16 5.4 6 6 -1 4.2Z"
+
+/**
+ * One tin wing, pivoted at (`x`, 60) behind the body and folded into it
+ * (`rotate(fold)`), so the still drawing hides it; a host swings it out.
+ */
+const wing = (id: IdOf, part: string, x: number, fold: number): CastNode =>
+  el("g", { transform: `translate(${String(x)} 60)` }, [
+    el("g", { "data-part": part, transform: `rotate(${String(fold)})` }, [
+      el("path", { d: WING, fill: url(id("tin")) }),
+      el("path", { d: WING, fill: url(id("tin-shade")) }),
+      el("path", {
+        d: WING,
+        fill: "none",
+        stroke: "#6f7d8b",
+        "stroke-width": 0.8,
+      }),
+      el("path", {
+        d: "M7 -1.5H19M7 1.7H17",
+        stroke: "#7c8a98",
+        "stroke-width": 0.8,
+        "stroke-linecap": "round",
+      }),
+    ]),
+  ])
+
+/**
+ * A tin shutter over one lens, clipped to its rim: the upper lid parked
+ * above the glass and the lower one below it, so neither shows until a host
+ * draws one over the eye.
+ */
+const lids = (id: IdOf, side: "left" | "right", cx: number): CastNode =>
+  el("g", {}, [
+    el("defs", {}, [
+      el("clipPath", { id: id(`lid-${side}-clip`) }, [
+        el("circle", { cx, cy: 41, r: 7.25 }),
+      ]),
+    ]),
+    el("g", { "clip-path": url(id(`lid-${side}-clip`)) }, [
+      el("g", { "data-part": `lid-${side}` }, [
+        el("rect", {
+          x: cx - 11,
+          y: 13,
+          width: 22,
+          height: 20.6,
+          fill: url(id("tin")),
+        }),
+        el("rect", {
+          x: cx - 11,
+          y: 13,
+          width: 22,
+          height: 20.6,
+          fill: url(id("tin-shade")),
+        }),
+        el("path", {
+          d: `M${String(cx - 11)} 33.2H${String(cx + 11)}`,
+          stroke: "#55626f",
+          "stroke-width": 1.1,
+        }),
+      ]),
+      el("g", { "data-part": `low-lid-${side}` }, [
+        el("ellipse", { cx, cy: 58.4, rx: 12, ry: 9, fill: url(id("tin")) }),
+        el("ellipse", {
+          cx,
+          cy: 58.4,
+          rx: 12,
+          ry: 9,
+          fill: "none",
+          stroke: "#55626f",
+          "stroke-width": 1.1,
+        }),
+      ]),
+    ]),
+  ])
+
+/** An ear tuft, pivoted at its root so a host can raise or flatten it. */
+const tuft = (part: string, d: string): CastNode =>
+  el("g", { "data-part": part }, [
+    el("path", {
+      d,
+      stroke: "#8b99a7",
+      "stroke-width": 3,
+      "stroke-linecap": "round",
+    }),
+  ])
+
+/**
+ * The tutor: a wind-up tin owlet, its key at its side. Its moving parts are
+ * named for a host: the whole `figure`, the `eyes` and each eye's upper and
+ * lower lid, each `tuft`, each `wing` (folded behind the body), the `key`,
+ * and the `beak-low` that drops to open the beak over its `mouth`. Lids,
+ * wings, mouth and lower beak are tucked out of sight, so the still drawing
+ * is the owlet as it always was.
+ */
 const tinOwlet = (id: IdOf): Array<CastNode> => [
   tinDefs(id, TEAL),
   ...stage(id, { cy: 86, rx: 28 }),
-  el("path", {
-    d: "M73 46H80M80 41V51",
-    stroke: url(id("brass")),
-    "stroke-width": 3,
-    "stroke-linecap": "round",
-    "data-part": "key",
-  }),
-  el("path", {
-    d: "M30 18L36 25M66 18L60 25",
-    stroke: "#8b99a7",
-    "stroke-width": 3,
-    "stroke-linecap": "round",
-  }),
-  ...tin(id, OWLET),
-  el("path", {
-    d: "M24 56Q48 64 72 56",
-    fill: "none",
-    stroke: "#6f7d8b",
-    "stroke-width": 0.9,
-  }),
-  ...rivets([
-    [30, 59],
-    [40, 61.6],
-    [56, 61.6],
-    [66, 59],
-    [48, 62.4],
+  el("g", { "data-part": "figure" }, [
+    wing(id, "wing-left", 31, 0),
+    wing(id, "wing-right", 65, 180),
+    el("path", {
+      d: "M73 46H80M80 41V51",
+      stroke: url(id("brass")),
+      "stroke-width": 3,
+      "stroke-linecap": "round",
+      "data-part": "key",
+    }),
+    tuft("tuft-left", "M30 18L36 25"),
+    tuft("tuft-right", "M66 18L60 25"),
+    ...tin(id, OWLET),
+    el("path", {
+      d: "M24 56Q48 64 72 56",
+      fill: "none",
+      stroke: "#6f7d8b",
+      "stroke-width": 0.9,
+    }),
+    ...rivets([
+      [30, 59],
+      [40, 61.6],
+      [56, 61.6],
+      [66, 59],
+      [48, 62.4],
+    ]),
+    el("path", {
+      d: "M38 70Q48 75 58 70M40 76Q48 80 56 76",
+      fill: "none",
+      stroke: "#7c8a98",
+      "stroke-width": 0.9,
+      opacity: 0.8,
+    }),
+    el("g", { "data-part": "eyes" }, [
+      ...lens(id, 38.5, 41, 6.4, TEAL),
+      ...lens(id, 57.5, 41, 6.4, TEAL),
+      lids(id, "left", 38.5),
+      lids(id, "right", 57.5),
+    ]),
+    el("ellipse", {
+      cx: 48,
+      cy: 52.4,
+      rx: 1.4,
+      ry: 1.1,
+      fill: "#1a1410",
+      "data-part": "mouth",
+    }),
+    el("path", {
+      d: "M45.8 51.2L50.2 51.2L48 55.2Z",
+      fill: "#a9853f",
+      "data-part": "beak-low",
+    }),
+    el("path", { d: "M44.5 50L51.5 50L48 56Z", fill: url(id("brass")) }),
+    el("path", {
+      d: "M45.5 50.6H50.5",
+      stroke: "#ffffff",
+      "stroke-width": 0.6,
+      opacity: 0.7,
+    }),
+    el("ellipse", {
+      cx: 36,
+      cy: 24,
+      rx: 6.5,
+      ry: 2.4,
+      transform: "rotate(-25 36 24)",
+      fill: "#ffffff",
+      opacity: 0.8,
+    }),
+    ...rim(id, OWLET, "#d6f9ff", 3.2),
   ]),
-  el("path", {
-    d: "M38 70Q48 75 58 70M40 76Q48 80 56 76",
-    fill: "none",
-    stroke: "#7c8a98",
-    "stroke-width": 0.9,
-    opacity: 0.8,
-  }),
-  el("g", { "data-part": "eyes" }, [
-    ...lens(id, 38.5, 41, 6.4, TEAL),
-    ...lens(id, 57.5, 41, 6.4, TEAL),
-  ]),
-  el("path", { d: "M44.5 50L51.5 50L48 56Z", fill: url(id("brass")) }),
-  el("path", {
-    d: "M45.5 50.6H50.5",
-    stroke: "#ffffff",
-    "stroke-width": 0.6,
-    opacity: 0.7,
-  }),
-  el("ellipse", {
-    cx: 36,
-    cy: 24,
-    rx: 6.5,
-    ry: 2.4,
-    transform: "rotate(-25 36 24)",
-    fill: "#ffffff",
-    opacity: 0.8,
-  }),
-  ...rim(id, OWLET, "#d6f9ff", 3.2),
 ]
 
 const SPARROW =

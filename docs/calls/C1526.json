@@ -1,0 +1,18 @@
+{
+  "id": "C1526",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host-tin-owlet.ts",
+    "some-ui:packages/some-styles/src/brand/cast.ts"
+  ],
+  "chose": "Each of Tin Bird's nine emotions is a loop over one shared Pose (lids and their slant, lower lids, tufts, beak, both wings, the whole figure, the eyes) plus effects drawn beside the bird in plain paint (sweat, steam, sparks, a stroked question mark, an anger vein, silent dots), so each reads at a long shot by its silhouette and its effect, not by the eyes alone. The issue's six poses by six expressions from the prototype are not kept as a second union: HOST1 made the emotion the one choice a beat makes, so each emotion's loop is its pose. The new parts sit in cast.ts tucked out of sight (wings folded behind the body, lids parked outside the lens, mouth and lower beak behind the upper beak), so the still drawing is the same picture; the tufts became two parts, which changes anti-aliasing at their edges by at most 24 of 255 and nothing else.",
+  "options": [
+    "One shared Pose per emotion loop, effects drawn by the loop, parts tucked in the still drawing",
+    "Keep the prototype's poses × expressions as two unions under each emotion",
+    "Draw the wings hanging at the sides, as the prototype did, changing the still drawing"
+  ],
+  "gray": "How each emotion looks is taste the owner will see in every essay; which glyph names a feeling (dots for taciturn, a vein for angry) and whether the bird's thumbnail keeps its wingless silhouette are choices no check settles.",
+  "undo": "Edit the emotion's Loop in host-tin-owlet.ts and update its pinned hash in __tests__/host-tin-owlet.test.ts with a new contact sheet; to show wings at rest, change `wing(...)`'s fold angles in cast.ts.",
+  "refs": ["#3521", "#3524", "#3522"]
+}
