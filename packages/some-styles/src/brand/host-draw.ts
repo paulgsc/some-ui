@@ -18,7 +18,7 @@ export type Spot = { readonly x: number; readonly y: number }
  */
 export type Moment = { readonly aim: Spot; readonly pointing: boolean }
 
-/** A drawing changed for a moment: an emotion's or a ceremony's loop at `tMs`. */
+/** A drawing changed for a moment: an emotion's or a ceremony's loop `tMs` into its beat. */
 export type Redraw = (
   nodes: ReadonlyArray<CastNode>,
   tMs: number,

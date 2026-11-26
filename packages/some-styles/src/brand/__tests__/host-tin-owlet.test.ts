@@ -134,3 +134,14 @@ describe("Tin Bird's loops", () => {
     expect(wing(still, "right")).toBe(180)
   })
 })
+
+describe("a loop's own time", () => {
+  it("opens at its beat's start, wherever the beat falls", () => {
+    const at = (atMs: number, t: number): string =>
+      hostSvg(beat("happy", { atMs }), t, 7, 200, { x: 0, y: 0 })
+    // The same moment of the loop, the idle aside: only the hop and wings differ by when the beat began.
+    const figure = (svg: string): string =>
+      /data-part="figure" transform="([^"]+)"/.exec(svg)?.[1] ?? ""
+    expect(figure(at(0, 300))).toBe(figure(at(5000, 5300)))
+  })
+})
