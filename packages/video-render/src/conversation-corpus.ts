@@ -489,7 +489,8 @@ export type ConversationCorpus = {
 
 /**
  * Every state up to `depth` accepted events of the alphabet, by its first
- * path, and the step's answer to every event of the alphabet there. A state
+ * path, and the step's answer to every event of the alphabet there, each
+ * refusal once per state. A state
  * a seed's walk reaches twice is walked once, so the corpus grows with the
  * states, not the orders.
  */
@@ -510,10 +511,19 @@ export function conversationCorpus(
     if (seen.has(key)) return
     seen.add(key)
     const next: Array<[string, ConversationState]> = []
+    // A refusal the same at this state for two events is kept once: the
+    // step refused both before their contents differed (the phase, the
+    // author). Every event the step takes is kept.
+    const refused = new Set<string>()
     for (const name of names) {
       const event = CORPUS_ALPHABET[name]
       if (event === undefined) continue
       const stepped = stepConversation(state, event)
+      if (!stepped.ok) {
+        const key = JSON.stringify(stepped.refusal)
+        if (refused.has(key)) continue
+        refused.add(key)
+      }
       cases.push({
         id: `${path.join(">")}|${name}`,
         path,
