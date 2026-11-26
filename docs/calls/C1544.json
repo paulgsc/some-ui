@@ -6,13 +6,13 @@
     "some-ui:packages/some-styles/src/brand/host.ts",
     "some-ui:packages/ui/burn-ins/src/lib/host.ts"
   ],
-  "chose": "The beat names its role as an optional field, checked per character in the cut list's schema; a beat with none is the character's everyday self and draws exactly as before, so the cast-v1 design keeps its name. A change of role on the next beat cuts to the new look while the emotion's loop carries on; the costume joins the figure, so it moves with every loop's pose. Rendering stays a pure function of the beat, the seed and t, pinned by hash.",
+  "chose": "The beat names its role as an optional field, checked per character in the cut list's schema; a beat with no role is the character's everyday self. Its drawing is unchanged except where colour by feeling (C1541) now tints a feeling, which applies with or without a role. The design keeps the name cast-v1: no video has been published with the host yet (its pipeline, HOST2, HOST5, HOST9 and HOST10, has not landed), and HOST3's and HOST4's loops redrew cast-v1 the same way. A change of role on the next beat cuts to the new look while the emotion's loop carries on; the costume joins the figure, so it moves with every loop's pose. Rendering stays a pure function of the beat, the seed and t, pinned by hash.",
   "options": [
     "An optional role on the beat, absent meaning the everyday self, under cast-v1",
     "A required role on every beat",
     "A new host design (cast-v2) for beats with roles"
   ],
-  "gray": "Whether a role is a per-beat choice or a per-video one, and whether adding it is a new design, shapes HOST16's signature and every cut list after it.",
+  "gray": "Whether a role is a per-beat choice or a per-video one, and whether a change to how cast-v1 draws needs a new design while nothing published uses it, shapes HOST16's signature and every cut list after it.",
   "undo": "Remove `role` from BeatOf in host.ts and from BeatSchema in packages/ui/burn-ins/src/lib/host.ts.",
   "refs": ["#3531", "#3521"]
 }

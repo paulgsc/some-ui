@@ -162,10 +162,24 @@ describe("colour by feeling", () => {
   })
 
   it("leaves the signs beside the figure, and the costume's cloth, their own colours", () => {
-    // The angry mochi's vein and the analyst's tie keep their colours.
-    const svg = draw(beat("mochi", "analyst", "angry"), 2000)
-    expect(svg).toContain('stroke="#ff4a36"')
-    expect(svg).toContain('fill="#8c1f2c"')
+    // Each sign below shares its colour with a named colour the role
+    // repaints (Mochi's rim and shade, Tin Bird's lens), so only a swap kept
+    // to the figure leaves it standing.
+    const mochi = draw(beat("mochi", "fan", "angry"), 2000)
+    expect(mochi).not.toContain('stop-color="#fff2cf"')
+    expect(mochi).toContain('fill="#fff2cf"')
+    expect(mochi).toContain('stroke="#c9781f"')
+    expect(mochi).toContain('fill="#1f2f5c"')
+    const tin = draw(beat("tin-owlet", "analyst", "perplexed"), 2000)
+    expect(tin).toContain('stroke="#4ff0d8"')
+    expect(tin).not.toContain('stop-color="#4ff0d8"')
+  })
+
+  it("throbs in step with the Cast wing's loop, so its wrap meets its start", () => {
+    expect(tintAmountAt("angry", 6800 + 900)).toBeCloseTo(
+      tintAmountAt("angry", 900 + 8 * 850)
+    )
+    expect((6800 / (1000 * EMOTION_TINTS.angry.pulse.beatS)) % 1).toBeCloseTo(0)
   })
 
   it("mixes colours channel by channel, rounded", () => {

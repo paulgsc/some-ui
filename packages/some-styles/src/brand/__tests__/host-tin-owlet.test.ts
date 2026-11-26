@@ -49,7 +49,7 @@ const PINNED: Readonly<Record<EmotionOf<"tin-owlet">, string>> = {
   perplexed: "ca304da289f003e1",
   anxious: "4e24619e52bb73ed",
   frustrated: "10a6516e452a8c9b",
-  angry: "cc7c469481939157",
+  angry: "b15e10b2d89fd43c",
   ceremonious: "9d7d0453840f73cf",
   hungry: "1949f24b38429e03",
 }

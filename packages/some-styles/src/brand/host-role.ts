@@ -137,13 +137,24 @@ export const roleOf = <C extends Who>(
   raw: unknown
 ): RoleOf<C> | undefined => rolesOf(who).find((role) => role === raw)
 
-/** The look of `who` playing `role`. */
+/**
+ * The look of `who` playing `role`, or its everyday look when `role` isn't
+ * one of its own: a `who` typed as the union of characters admits every
+ * character's roles, so the lookup stays safe when their lists differ.
+ */
 export const roleLookOf = <C extends Who>(
   who: C,
   role: RoleOf<C>
 ): RoleLookOf<C> => {
   const looks: Readonly<Record<RoleOf<C>, RoleLookOf<C>>> = ROLE_LOOKS[who]
-  return looks[role]
+  const own = roleOf(who, role)
+  return own === undefined ? EVERYDAY[who] : looks[own]
+}
+
+/** Each character's everyday look, where a role it doesn't play falls back to. */
+const EVERYDAY: { readonly [C in Who]: RoleLookOf<C> } = {
+  "tin-owlet": ROLE_LOOKS["tin-owlet"].default,
+  mochi: ROLE_LOOKS.mochi.default,
 }
 
 // ---- Themes: a palette swap over each character's named colours ----
@@ -329,7 +340,7 @@ export const EMOTION_TINTS = {
   angry: {
     toward: "#e0301e",
     amount: 0.4,
-    pulse: { by: 0.08, beatS: 1.1 },
+    pulse: { by: 0.08, beatS: 0.85 },
   },
   /** Wan: drained toward a sickly green (the owner, 2026-11-26). */
   hungry: { toward: "#b5c37a", amount: 0.38 },
