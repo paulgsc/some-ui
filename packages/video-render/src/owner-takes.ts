@@ -468,8 +468,10 @@ function silenceBetween(
  * word and its neighbour in the waveform's own silence there
  * (`silenceBetween`), never at the transcript's time; at the take's own
  * edges, the take's bound (`screened.kept`). Refused, with the words named,
- * where they run together with no silence to cut in, and for indices
- * outside the words.
+ * where they run together with no silence to cut in, where the span found
+ * holds no voice, and for indices outside the words. TAKE1's family: each
+ * word's transcript middle lies in its own voice, its times off it by at
+ * most `transcriptErrorMs`.
  */
 export function spanOf(
   screened: Screened,
@@ -505,9 +507,22 @@ export function spanOf(
       : []),
     ...(toMs === null && after !== undefined ? [together(to, after)] : []),
   ]
-  return fromMs === null || toMs === null
-    ? { ok: false, problems }
-    : { ok: true, value: { fromMs, toMs } }
+  if (fromMs === null || toMs === null) return { ok: false, problems }
+  // Outside TAKE1's family (a transcript off by more than half a word's
+  // length) an edge can be found in the wrong silence; a span it leaves
+  // empty of voice is named, never kept.
+  const f = policy.frameMs
+  const voiced = screened.voiced.some(
+    (v, i) => v && i * f >= fromMs && (i + 1) * f <= toMs
+  )
+  return toMs > fromMs && voiced
+    ? { ok: true, value: { fromMs, toMs } }
+    : {
+        ok: false,
+        problems: [
+          `"${from.text}" to "${to.text}": the span the transcript's times give holds no voice; they are off by more than the words are long`,
+        ],
+      }
 }
 
 /** A word as compared: its letters and digits, lower case. */
@@ -518,8 +533,10 @@ const bare = (text: string): string =>
  * Whether `meant` is what `span` says, by the transcript's loose times
  * (TAKE1): the words whose middles lie well inside the span are said in it,
  * and each word whose middle lies within `slack` of an edge, on either
- * side, may be said in it or its neighbour's turn. So `meant` must be the
- * sure words with a run of the near ones before them and after.
+ * side, may be said in it or its neighbour's turn. So `meant` must be one
+ * run of those words, in order, holding every sure one; where the two
+ * edges' slack overlaps, a short turn's run may leave out near words at
+ * either end.
  */
 function saysWithin(
   meant: ReadonlyArray<string>,
@@ -541,17 +558,29 @@ function saysWithin(
       !near(span.fromMs, w.middle) &&
       !near(span.toMs, w.middle)
   )
-  const lead = kept.filter((w) => near(span.fromMs, w.middle))
-  const tail = kept.filter(
-    (w) => near(span.toMs, w.middle) && !near(span.fromMs, w.middle)
+  // The words that may be said in the turn, in order: every sure one and
+  // the near ones around them, a run of which the turn's text must be.
+  const may = kept.filter(
+    (w) =>
+      sure.includes(w) ||
+      near(span.fromMs, w.middle) ||
+      near(span.toMs, w.middle)
   )
-  const said = (a: ReadonlyArray<{ readonly text: string }>): string =>
-    a.map((w) => w.text).join(" ")
+  const first = may.findIndex((w) => sure.includes(w))
+  const last = may.reduce((at, w, k) => (sure.includes(w) ? k : at), -1)
   const want = meant.join(" ")
-  for (let i = 0; i <= lead.length; i++)
-    for (let j = 0; j <= tail.length; j++)
-      if (said([...lead.slice(i), ...sure, ...tail.slice(0, j)]) === want)
+  if (want === "") return sure.length === 0
+  for (let i = 0; i < may.length; i++)
+    for (let j = i; j <= may.length; j++) {
+      if (first >= 0 && (i > first || j <= last)) continue
+      if (
+        may
+          .slice(i, j)
+          .map((w) => w.text)
+          .join(" ") === want
+      )
         return true
+    }
   return false
 }
 

@@ -457,6 +457,96 @@ describe("a turn's span in a long take (TAKE1, #3582)", () => {
     expect(silentAt(s, (first.endMs + second.startMs) / 2)).toBe(false)
   })
 
+  // The transcript's error, independent of the words' length: every word
+  // of one length, its times shifted by one offset, all the same way or
+  // alternating, wherever its middle stays in its own voice (TAKE1).
+  const offsets = [200, 400, 800, 1_000].flatMap((length) =>
+    [-450, -200, 0, 200, 450].flatMap((shift) =>
+      (["same", "alternating"] as const).flatMap((pattern) =>
+        Math.abs(shift) < length / 2 ? [{ length, shift, pattern }] : []
+      )
+    )
+  )
+
+  it.each(offsets)(
+    "cuts in silence with the transcript off by $shift ms ($pattern) on words $length ms long",
+    ({ length, shift, pattern }) => {
+      const gap = 300
+      const real: ReadonlyArray<Stretch> = [0, 1, 2].map((i) => ({
+        fromMs: 600 + i * (length + gap),
+        toMs: 600 + i * (length + gap) + length,
+      }))
+      const end = (real.at(-1)?.toMs ?? 0) + 800
+      const s = screened(
+        takeOf(
+          end,
+          real.map((w) => ({ kind: "word" as const, ...w }))
+        )
+      )
+      const words: ReadonlyArray<TimedWord> = real.map((w, i) => {
+        const by = pattern === "same" || i % 2 === 0 ? shift : -shift
+        return {
+          text: TEXTS[i] ?? "",
+          startMs: w.fromMs + by,
+          endMs: w.toMs + by,
+        }
+      })
+      for (let split = 1; split < real.length; split++) {
+        const a = spanOf(s, words, 0, split - 1)
+        const b = spanOf(s, words, split, real.length - 1)
+        if (!a.ok || !b.ok) throw new Error([a, b].join(" "))
+        expect(silentAt(s, a.value.toMs)).toBe(true)
+        real.forEach((w, i) =>
+          expect(within(w, i < split ? a.value : b.value)).toBe(true)
+        )
+      }
+    }
+  )
+
+  it("names a span the transcript's times leave with no voice, beyond the family", () => {
+    // Codex's probe: words 200 ms long, the transcript 400 ms late, more
+    // than half a word: the edge is found after both, and the second turn
+    // would hold nothing.
+    const s = screened(
+      takeOf(1_600, [
+        { kind: "word", fromMs: 300, toMs: 500 },
+        { kind: "word", fromMs: 700, toMs: 900 },
+      ])
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "a", startMs: 700, endMs: 900 },
+      { text: "b", startMs: 1_100, endMs: 1_300 },
+    ]
+    expect(spanOf(s, words, 1, 1)).toEqual({
+      ok: false,
+      problems: [
+        '"b" to "b": the span the transcript\'s times give holds no voice; they are off by more than the words are long',
+      ],
+    })
+  })
+
+  it("lets a short turn leave out near words at either end", () => {
+    // Codex's probe: both edges' slack overlaps, and the turn says only
+    // its middle word.
+    const s = screened(
+      takeOf(1_600, [
+        { kind: "word", fromMs: 600, toMs: 700 },
+        { kind: "word", fromMs: 900, toMs: 1_000 },
+        { kind: "word", fromMs: 1_100, toMs: 1_200 },
+      ])
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "One", startMs: 600, endMs: 700 },
+      { text: "two", startMs: 900, endMs: 1_000 },
+      { text: "three", startMs: 1_100, endMs: 1_200 },
+    ]
+    const span: Stretch = { fromMs: 800, toMs: 1_050 }
+    expect(spanProblems({ id: "b", text: "two" }, s, words, span)).toEqual([])
+    expect(
+      spanProblems({ id: "b", text: "One three" }, s, words, span)
+    ).toHaveLength(1)
+  })
+
   it("finds the silence 400 ms from the transcript's boundary", () => {
     // The owner's m2: the transcript's times off the voice by about 0.4 s.
     const real: ReadonlyArray<Stretch> = [
@@ -508,9 +598,9 @@ describe("a turn's span in a long take (TAKE1, #3582)", () => {
     expect(spanProblems({ id: "b", text: "One two." }, s, words, span)).toEqual(
       []
     )
-    // A word said well inside the turn can't be left out of its text.
+    // A turn's text is one run of its words: none skipped in its middle.
     expect(
-      spanProblems({ id: "b", text: "Two." }, s, words, span)
+      spanProblems({ id: "b", text: "Zero two." }, s, words, span)
     ).toHaveLength(1)
   })
 
