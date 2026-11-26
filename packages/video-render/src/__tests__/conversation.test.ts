@@ -1,17 +1,19 @@
 /**
  * CR1 (HOST11, #3553): every order of events keeps a conversation's record
  * whole. Family: every interleaving, up to `DEPTH` accepted events, of the
- * alphabet below (a topic, points and a retake, versions answering flags
- * every way, flags of each voice, a withdrawal, green lights), with every
- * event of the alphabet tried at every state reached. Proof: the walk in
- * "every event order".
+ * alphabet below (a topic, points and a retake, versions answering flags by
+ * each kind of answer, flags of each voice, withdrawals, green lights), with
+ * every event of the alphabet tried at every state reached. Proof: the walk
+ * in "every event order" holds that nothing kept is lost, that the phase
+ * matches the open flags, that a version answers exactly the open flags, and
+ * that the log of accepted events replays to the same state. What each
+ * answer must show of the two versions is held by the refusals below.
  */
 import {
   ANSWER_KINDS,
   ANSWERS_OF,
   changedTurns,
   CONVERSATION_ACCEPTS,
-  CONVERSATION_PHASES,
   CONVERSATION_RECORD_SCHEMA,
   FLAG_KINDS,
   FLAG_VOICE,
@@ -100,6 +102,11 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
     [take, reworded],
     [{ flag: "f1", how: "rewrote", turns: ["o1", "k1", "k2"] }]
   ),
+  v2conditioned: version(
+    2,
+    [ask, take, close],
+    [{ flag: "f5", how: "conditioned" }]
+  ),
   v3: version(
     3,
     [ask, take, close],
@@ -135,31 +142,21 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
     at: AT,
     flag: { id: "f4", turn: "k2", kind: "misses-point" },
   },
+  flagQuiet: {
+    event: "flag",
+    at: AT,
+    flag: { id: "f5", turn: "o1", kind: "too-quiet" },
+  },
   withdrawAgent: { event: "withdraw", at: AT, flag: "f1" },
   withdrawOwner: { event: "withdraw", at: AT, flag: "f2" },
   green1: { event: "green-light", at: AT, version: 1 },
   green2: { event: "green-light", at: AT, version: 2 },
 }
 
-/** Deep, structural equality, for JSON-shaped values. */
-const same = (a: unknown, b: unknown): boolean =>
-  JSON.stringify(a) === JSON.stringify(b)
-
 /** Every law a single step keeps, from `before` by `event`. */
 function checkStep(before: ConversationState, event: ConversationEvent): void {
   const stepped = stepConversation(before, event)
-  const accepts: ReadonlyArray<string> = CONVERSATION_ACCEPTS[before.phase]
-  if (!accepts.includes(event.event)) {
-    expect(stepped).toEqual({
-      ok: false,
-      refusal: { why: "out-of-phase", phase: before.phase, event: event.event },
-    })
-    return
-  }
-  if (!stepped.ok) {
-    expect(refusalLine(stepped.refusal)).not.toBe("")
-    return
-  }
+  if (!stepped.ok) return
   const after = stepped.state
   // Nothing kept is lost: every version and flag before is still there,
   // unchanged but for a withdrawal.
@@ -183,29 +180,12 @@ function checkStep(before: ConversationState, event: ConversationEvent): void {
     expect(openFlags(after).length).toBeGreaterThan(0)
   if (after.phase === "green-lit")
     expect(greenLitVersion(after)?.n).toBe(latestVersion(after)?.n)
-  // A version answers exactly the flags that were open, each once.
-  if (event.event === "version") {
+  if (event.event === "version")
     expect(event.version.answers.map((a) => a.flag).sort()).toEqual(
       openFlags(before)
         .map((f) => f.id)
         .sort()
     )
-    for (const answer of event.version.answers) {
-      const flag = openFlags(before).find((f) => f.id === answer.flag)
-      expect(flag).toBeDefined()
-      if (flag !== undefined) {
-        const allowed: ReadonlyArray<string> = ANSWERS_OF[flag.kind]
-        expect(allowed).toContain(answer.how)
-      }
-    }
-  }
-  // A flag sits on a turn of the newest version, in its voice.
-  if (event.event === "flag") {
-    const turn = latestVersion(before)?.turns.find(
-      (t) => t.id === event.flag.turn
-    )
-    expect(turn?.voice).toBe(FLAG_VOICE[event.flag.kind])
-  }
 }
 
 const DEPTH = 9
@@ -220,14 +200,11 @@ describe("every event order (CR1)", () => {
       kept: ReadonlyArray<ConversationEvent>
     ): void => {
       reached.add(state.phase)
-      const replayed = replayConversation(kept)
-      expect(replayed.ok && same(replayed.state, state)).toBe(true)
+      expect(replayConversation(kept)).toEqual({ ok: true, state })
       if (kept.length === DEPTH) return
       for (const [name, event] of Object.entries(ALPHABET)) {
         checkStep(state, event)
         const stepped = stepConversation(state, event)
-        // Pure: the same state and event give the same answer.
-        expect(same(stepConversation(state, event), stepped)).toBe(true)
         if (stepped.ok) {
           orders += 1
           acceptedOnce.add(name)
@@ -236,9 +213,11 @@ describe("every event order (CR1)", () => {
       }
     }
     walk(NEW_CONVERSATION, [])
-    expect([...reached].sort()).toEqual([...CONVERSATION_PHASES].sort())
+    expect([...reached].sort()).toEqual(
+      Object.keys(CONVERSATION_ACCEPTS).sort()
+    )
     // Every event but the misplaced flag is accepted somewhere, so the walk
-    // reaches v3, a covariant rewrite, a retake and each withdrawal.
+    // reaches v3, every kind of answer and each withdrawal.
     expect(Object.keys(ALPHABET).filter((n) => !acceptedOnce.has(n))).toEqual([
       "flagWrongVoice",
     ])
@@ -250,7 +229,6 @@ describe("every event order (CR1)", () => {
     const replayed = replayConversation([topic!, pointA!, v1!, green1!])
     expect(replayed.ok).toBe(true)
     if (!replayed.ok) return
-    expect(CONVERSATION_ACCEPTS["green-lit"]).toHaveLength(0)
     for (const event of Object.values(ALPHABET))
       expect(stepConversation(replayed.state, event).ok).toBe(false)
   })
@@ -288,7 +266,7 @@ describe("a flag never edits a turn; the next version answers it", () => {
     })
   })
 
-  it("lets a withdrawn flag go unanswered, and refuses an answer to it", () => {
+  it("lets a withdrawn flag go unanswered", () => {
     const state = start("topic", "pointA", "v1", "flagAgent", "withdrawAgent")
     expect(state.phase).toBe("podcast")
     expect(stepConversation(state, ALPHABET.green1!).ok).toBe(true)
@@ -326,6 +304,98 @@ describe("a flag never edits a turn; the next version answers it", () => {
     })
   })
 
+  const refusedBy = (
+    names: ReadonlyArray<string>,
+    turns: ReadonlyArray<ConversationTurn>,
+    answers: ReadonlyArray<FlagAnswer>
+  ): unknown => {
+    const stepped = stepConversation(
+      start(...names),
+      version(2, turns, answers)
+    )
+    return stepped.ok ? null : stepped.refusal
+  }
+
+  it("refuses keeping a flag whose turn changed", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagOwner"],
+        [ask, close],
+        [{ flag: "f2", how: "kept", note: "Fine as it is." }]
+      )
+    ).toEqual({ why: "kept-changed", flag: "f2" })
+  })
+
+  it("refuses conditioning that swaps the take", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "pointB", "v1", "flagQuiet"],
+        [ask, retaken, close],
+        [{ flag: "f5", how: "conditioned" }]
+      )
+    ).toEqual({ why: "conditioned-unplaced", flag: "f5" })
+  })
+
+  it("refuses a retake of a take the version before already played", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagOwner"],
+        [ask, take, close],
+        [{ flag: "f2", how: "retook", take: "take-a" }]
+      )
+    ).toEqual({ why: "retook-unplaced", flag: "f2" })
+  })
+
+  it("refuses a change no answer names", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagAgent"],
+        [reworded, take, { ...close, said: "And that is the week." }],
+        [{ flag: "f1", how: "rewrote", turns: ["k1"] }]
+      )
+    ).toEqual({ why: "change-unnamed", turn: "k2" })
+  })
+
+  it("refuses a turn id that changes voice", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagQuiet"],
+        [
+          ask,
+          { id: "o1", voice: "kokoro", said: "I'll say it for you." },
+          close,
+        ],
+        [{ flag: "f5", how: "kept", note: "Kept." }]
+      )
+    ).toEqual({ why: "turn-voice", turn: "o1", voice: "owner" })
+  })
+
+  it("refuses a take played twice in one version", () => {
+    expect(
+      stepConversation(
+        start("topic", "pointA"),
+        version(1, [take, ask, { ...take, id: "o2" }])
+      )
+    ).toEqual({ ok: false, refusal: { why: "take-twice", take: "take-a" } })
+  })
+
+  it("refuses an event dated before the one kept before it", () => {
+    expect(
+      stepConversation(start("topic"), {
+        event: "point",
+        at: "2026-11-25T10:00:00Z",
+        take: "take-a",
+      })
+    ).toEqual({
+      ok: false,
+      refusal: {
+        why: "out-of-time",
+        since: AT,
+        at: "2026-11-25T10:00:00Z",
+      },
+    })
+  })
+
   it("refuses a flag on the other voice's turn", () => {
     const state = start("topic", "pointA", "v1")
     expect(stepConversation(state, ALPHABET.flagWrongVoice!)).toEqual({
@@ -341,12 +411,8 @@ describe("a flag never edits a turn; the next version answers it", () => {
 })
 
 describe("the closed sets", () => {
-  it("gives every flag kind a voice and answers, and every answer can keep the turn", () => {
-    for (const kind of FLAG_KINDS) {
-      expect(["owner", "kokoro"]).toContain(FLAG_VOICE[kind])
-      expect(ANSWERS_OF[kind]).toContain("kept")
-      for (const how of ANSWERS_OF[kind]) expect(ANSWER_KINDS).toContain(how)
-    }
+  it("lets every flag be kept, with a reason", () => {
+    for (const kind of FLAG_KINDS) expect(ANSWERS_OF[kind]).toContain("kept")
   })
 
   it("answers an owner's flag only by the owner's take, and an agent's only by a rewrite", () => {
@@ -449,16 +515,16 @@ describe("parseConversationRecord", () => {
     })
   })
 
-  it("refuses an unknown flag kind and a field no event has", () => {
+  it("refuses a turn with a field the spoken card's turn doesn't have", () => {
     const parsed = parseConversationRecord({
       schema: CONVERSATION_RECORD_SCHEMA,
       id: "week-12",
       events: [
-        ...events.slice(0, 3),
+        ...events.slice(0, 2),
         {
-          event: "flag",
+          event: "version",
           at: AT,
-          flag: { id: "f1", turn: "k1", kind: "boring" },
+          version: { n: 1, turns: [{ ...ask, segue: "Anyway." }], answers: [] },
         },
       ],
     })

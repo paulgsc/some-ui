@@ -45,11 +45,11 @@
 import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import { problemsOf, SPOKEN_TAKE_ID, SpokenTurnSchema } from "./cut-list"
+import { problemsOf, SpokenTurnSchema } from "./cut-list"
 import type { Parsed } from "./cut-list"
-import { words } from "./format"
+import { showId, words } from "./format"
 
-/** The record's schema. A new shape is `/2`, and `/1` is still read. */
+/** The record's schema. */
 export const CONVERSATION_RECORD_SCHEMA = "some-ui.conversation/1"
 
 /**
@@ -67,21 +67,16 @@ export const CONVERSATION_POLICY = {
 } as const
 
 /**
- * Flags on the owner's own turns (the owner, 2026-11-25): too quiet, too
- * fast or slow, say it again.
+ * The kinds of flag (the owner, 2026-11-25). On the owner's own turns: too
+ * quiet, too fast or slow, say it again. On the agent's: not salient,
+ * assumes context the listener lacks, unhuman phrasing, off-taste, misses
+ * the point. Whose turns each goes on is `FLAG_VOICE`.
  */
-export const OWNER_FLAGS = [
+export const FLAG_KINDS = [
   "too-quiet",
   "too-fast",
   "too-slow",
   "say-again",
-] as const
-
-/**
- * Flags on the agent's turns (the owner, 2026-11-25): not salient, assumes
- * context the listener lacks, unhuman phrasing, off-taste, misses the point.
- */
-export const AGENT_FLAGS = [
   "not-salient",
   "assumes-context",
   "unhuman",
@@ -89,11 +84,7 @@ export const AGENT_FLAGS = [
   "misses-point",
 ] as const
 
-export type OwnerFlagKind = (typeof OWNER_FLAGS)[number]
-export type AgentFlagKind = (typeof AGENT_FLAGS)[number]
-export type FlagKind = OwnerFlagKind | AgentFlagKind
-
-export const FLAG_KINDS = [...OWNER_FLAGS, ...AGENT_FLAGS] as const
+export type FlagKind = (typeof FLAG_KINDS)[number]
 
 /** A turn's voice: the agent's (Kokoro's) line, or the owner's take. */
 export type ConversationVoice = z.infer<typeof SpokenTurnSchema>["voice"]
@@ -112,15 +103,11 @@ export const FLAG_VOICE = {
 } as const satisfies Readonly<Record<FlagKind, ConversationVoice>>
 
 /**
- * How a version answers a flag:
- *
- * - `rewrote`: it changed these turns (added, removed, reworded, or moved,
- *   that is, the turn before it changed), which may reach past the flagged
- *   one;
- * - `retook`: it plays a new take of the owner's in the flagged turn;
- * - `conditioned`: it plays the flagged turn's take louder, faster or slower
- *   (HOST12's conditioning, #3554);
- * - `kept`: it keeps the turn as it was, and says why.
+ * How a version answers a flag. A version names every turn it changed, by its
+ * rewrites and retakes, so a change no flag asked for can't slip in; a
+ * rewrite may reach past the flagged turn. `conditioned` plays the same take
+ * louder, faster or slower (HOST12's conditioning, #3554); `kept` leaves the
+ * flagged turn as it was, and says why.
  */
 export const ANSWER_KINDS = [
   "rewrote",
@@ -143,18 +130,14 @@ export const ANSWERS_OF = {
   "misses-point": ["rewrote", "kept"],
 } as const satisfies Readonly<Record<FlagKind, ReadonlyArray<AnswerKind>>>
 
-/** A turn's or a flag's id, which lasts across versions: `k1`, `o3`, `f2`. */
-const RECORD_ID = /^[a-z0-9][a-z0-9-]{0,31}$/
-
-const IdSchema = z.string().regex(RECORD_ID, "it isn't a record's id")
-
-const TakeSchema = z
-  .string()
-  .regex(SPOKEN_TAKE_ID, "it isn't a take's id, as home keeps it")
+/** A turn's or a flag's id, a name the agent or Studio gives it, which lasts across versions: `k1`, `o3`, `f2`. */
+const IdSchema = showId
 
 const NoteSchema = words.max(CONVERSATION_POLICY.noteMost)
 
 const [KokoroTurnSchema, OwnerTurnSchema] = SpokenTurnSchema.options
+
+const TakeSchema = OwnerTurnSchema.shape.take
 
 /**
  * One turn of a version: the spoken card's turn (`SpokenTurnSchema`), a line
@@ -182,7 +165,7 @@ export const FlagAnswerSchema = z.discriminatedUnion("how", [
   z.strictObject({
     flag: IdSchema,
     how: z.literal("rewrote"),
-    turns: z.array(IdSchema).min(1),
+    turns: z.array(IdSchema).min(1).max(CONVERSATION_POLICY.turnsMost),
     note: NoteSchema.optional(),
   }),
   z.strictObject({
@@ -251,16 +234,6 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
 export type ConversationEvent = z.infer<typeof ConversationEventSchema>
 export type ConversationEventKind = ConversationEvent["event"]
 
-/** Who makes each kind of event: the owner, or the agent writing its version. */
-export const CONVERSATION_EVENT_BY = {
-  topic: "owner",
-  point: "owner",
-  version: "agent",
-  flag: "owner",
-  withdraw: "owner",
-  "green-light": "owner",
-} as const satisfies Readonly<Record<ConversationEventKind, "owner" | "agent">>
-
 /** The record as kept: its id and its events, oldest first, never rewritten. */
 export const ConversationRecordSchema = z.strictObject({
   schema: z.literal(CONVERSATION_RECORD_SCHEMA),
@@ -279,12 +252,12 @@ export type KeptFlag = ConversationFlag & {
 /** Everything kept once the topic is set; it only grows. */
 type Kept = {
   readonly topic: ConversationTopic
-  /** The owner's takes, in the order given, each once. */
+  /** The owner's takes, each once. */
   readonly points: ReadonlyArray<string>
-  /** Every version written, oldest first. */
   readonly versions: ReadonlyArray<PodcastVersion>
-  /** Every flag raised, oldest first. */
   readonly flags: ReadonlyArray<KeptFlag>
+  /** When the newest event was kept: no later event is dated before it. */
+  readonly since: string
 }
 
 /**
@@ -306,15 +279,11 @@ export type ConversationState =
 
 export type ConversationPhase = ConversationState["phase"]
 
-export const CONVERSATION_PHASES: ReadonlyArray<ConversationPhase> = [
-  "new",
-  "drafting",
-  "podcast",
-  "flagged",
-  "green-lit",
-]
-
-/** Which events each phase accepts; every other is refused as out of phase. */
+/**
+ * Which events each phase accepts; every other is refused as out of phase.
+ * A new point reaches a version only through a flag (say, `misses-point`
+ * with a note), since a version answers flags and changes nothing else.
+ */
 export const CONVERSATION_ACCEPTS = {
   new: ["topic"],
   drafting: ["point", "version"],
@@ -332,6 +301,7 @@ export type ConversationRefusal =
       readonly phase: ConversationPhase
       readonly event: ConversationEventKind
     }
+  | { readonly why: "out-of-time"; readonly since: string; readonly at: string }
   | { readonly why: "too-many-points" }
   | { readonly why: "point-again"; readonly take: string }
   | {
@@ -340,6 +310,13 @@ export type ConversationRefusal =
       readonly got: number
     }
   | { readonly why: "turn-twice"; readonly turn: string }
+  | { readonly why: "take-twice"; readonly take: string }
+  | {
+      readonly why: "turn-voice"
+      readonly turn: string
+      readonly voice: ConversationVoice
+    }
+  | { readonly why: "change-unnamed"; readonly turn: string }
   | {
       readonly why: "take-unknown"
       readonly turn: string
@@ -361,6 +338,7 @@ export type ConversationRefusal =
     }
   | { readonly why: "retook-unplaced"; readonly flag: string }
   | { readonly why: "conditioned-unplaced"; readonly flag: string }
+  | { readonly why: "kept-changed"; readonly flag: string }
   | { readonly why: "flag-again"; readonly flag: string }
   | {
       readonly why: "turn-unknown"
@@ -386,7 +364,6 @@ export type ConversationStepped =
 
 export const NEW_CONVERSATION: ConversationState = { phase: "new" }
 
-/** The newest version, or null before the first. */
 export const latestVersion = (
   state: ConversationState
 ): PodcastVersion | null =>
@@ -441,17 +418,31 @@ export function changedTurns(
   return [...changed, ...removed]
 }
 
-/** The first thing wrong with `version`'s turns, against the points given. */
+/**
+ * The first thing wrong with `version`'s turns: an id twice, a take twice or
+ * not one of the points, or an id an earlier version gave the other voice.
+ */
 function turnsRefusal(
   version: PodcastVersion,
-  points: ReadonlyArray<string>
+  kept: Kept
 ): ConversationRefusal | null {
-  const seen = new Set<string>()
+  const voiceOf = new Map(
+    kept.versions.flatMap((v) => v.turns.map((t) => [t.id, t.voice] as const))
+  )
+  const ids = new Set<string>()
+  const takes = new Set<string>()
   for (const turn of version.turns) {
-    if (seen.has(turn.id)) return { why: "turn-twice", turn: turn.id }
-    seen.add(turn.id)
-    if (turn.voice === "owner" && !points.includes(turn.take))
-      return { why: "take-unknown", turn: turn.id, take: turn.take }
+    if (ids.has(turn.id)) return { why: "turn-twice", turn: turn.id }
+    ids.add(turn.id)
+    const voice = voiceOf.get(turn.id)
+    if (voice !== undefined && voice !== turn.voice)
+      return { why: "turn-voice", turn: turn.id, voice }
+    if (turn.voice === "owner") {
+      if (!kept.points.includes(turn.take))
+        return { why: "take-unknown", turn: turn.id, take: turn.take }
+      if (takes.has(turn.take)) return { why: "take-twice", take: turn.take }
+      takes.add(turn.take)
+    }
   }
   return null
 }
@@ -464,6 +455,7 @@ function answersRefusal(
 ): ConversationRefusal | null {
   const byId = new Map(open.map((f) => [f.id, f]))
   const answered = new Set<string>()
+  const named = new Set<string>()
   const changed = before === null ? [] : changedTurns(before, version)
   for (const answer of version.answers) {
     const flag = byId.get(answer.flag)
@@ -485,23 +477,31 @@ function answersRefusal(
         const same = answer.turns.find((t) => !changed.includes(t))
         if (same !== undefined)
           return { why: "rewrote-unchanged", flag: flag.id, turn: same }
+        for (const turn of answer.turns) named.add(turn)
         break
       }
       case "retook": {
         if (
           placed?.voice !== "owner" ||
           placed.take !== answer.take ||
-          (was?.voice === "owner" && was.take === answer.take)
+          (before !== null && ownerTakes(before).includes(answer.take))
         )
           return { why: "retook-unplaced", flag: flag.id }
+        named.add(flag.turn)
         break
       }
       case "conditioned": {
-        if (placed?.voice !== "owner")
+        if (
+          placed?.voice !== "owner" ||
+          was?.voice !== "owner" ||
+          placed.take !== was.take
+        )
           return { why: "conditioned-unplaced", flag: flag.id }
         break
       }
       case "kept": {
+        if (changed.includes(flag.turn))
+          return { why: "kept-changed", flag: flag.id }
         break
       }
       default: {
@@ -510,9 +510,10 @@ function answersRefusal(
     }
   }
   const unanswered = open.find((f) => !answered.has(f.id))
-  return unanswered === undefined
-    ? null
-    : { why: "unanswered", flag: unanswered.id }
+  if (unanswered !== undefined)
+    return { why: "unanswered", flag: unanswered.id }
+  const unnamed = changed.find((t) => !named.has(t))
+  return unnamed === undefined ? null : { why: "change-unnamed", turn: unnamed }
 }
 
 /** Kept, with its phase derived from its open flags. */
@@ -531,47 +532,39 @@ export function stepConversation(
 ): ConversationStepped {
   const accepted: ReadonlyArray<ConversationEventKind> =
     CONVERSATION_ACCEPTS[state.phase]
-  if (!accepted.includes(event.event))
-    return refused({
-      why: "out-of-phase",
-      phase: state.phase,
-      event: event.event,
-    })
-  if (state.phase === "new") {
-    if (event.event !== "topic")
-      return refused({
-        why: "out-of-phase",
-        phase: state.phase,
-        event: event.event,
-      })
+  const outOfPhase = refused({
+    why: "out-of-phase",
+    phase: state.phase,
+    event: event.event,
+  })
+  if (!accepted.includes(event.event)) return outOfPhase
+  if (event.event === "topic")
     return ok({
       phase: "drafting",
       topic: event.topic,
       points: [],
       versions: [],
       flags: [],
+      since: event.at,
     })
-  }
+  // `new` accepts only a topic, so this only narrows the type.
+  if (state.phase === "new") return outOfPhase
+  if (Date.parse(event.at) < Date.parse(state.since))
+    return refused({ why: "out-of-time", since: state.since, at: event.at })
   const kept: Kept = {
     topic: state.topic,
     points: state.points,
     versions: state.versions,
     flags: state.flags,
+    since: event.at,
   }
   switch (event.event) {
-    case "topic": {
-      return refused({
-        why: "out-of-phase",
-        phase: state.phase,
-        event: event.event,
-      })
-    }
     case "point": {
       if (state.points.includes(event.take))
         return refused({ why: "point-again", take: event.take })
       if (state.points.length >= CONVERSATION_POLICY.pointsMost)
         return refused({ why: "too-many-points" })
-      return ok({ ...state, points: [...state.points, event.take] })
+      return ok({ ...state, ...kept, points: [...state.points, event.take] })
     }
     case "version": {
       const { version } = event
@@ -580,7 +573,7 @@ export function stepConversation(
       if (version.n !== expected)
         return refused({ why: "version-number", expected, got: version.n })
       const wrong =
-        turnsRefusal(version, state.points) ??
+        turnsRefusal(version, kept) ??
         answersRefusal(version, before, openFlags(state))
       if (wrong !== null) return refused(wrong)
       return ok({
@@ -668,11 +661,29 @@ export function replayConversation(events: ReadonlyArray<ConversationEvent>):
   return { ok: true, state }
 }
 
+const whose = (voice: ConversationVoice): string =>
+  voice === "owner" ? "the owner's" : "the agent's"
+
 /** A refusal as a line for whoever wrote the event: the routine, or a test. */
 export function refusalLine(refusal: ConversationRefusal): string {
   switch (refusal.why) {
     case "out-of-phase": {
       return `a ${refusal.event} event can't come while the conversation is ${refusal.phase}`
+    }
+    case "out-of-time": {
+      return `an event dated ${refusal.at} can't follow one dated ${refusal.since}`
+    }
+    case "take-twice": {
+      return `take ${refusal.take} is played twice in the version`
+    }
+    case "turn-voice": {
+      return `turn ${refusal.turn} was ${whose(refusal.voice)} in an earlier version; a turn keeps its voice`
+    }
+    case "change-unnamed": {
+      return `turn ${refusal.turn} changed, and no answer names it`
+    }
+    case "kept-changed": {
+      return `flag ${refusal.flag} is kept, but its turn changed`
     }
     case "too-many-points": {
       return `a conversation takes at most ${CONVERSATION_POLICY.pointsMost} points`
@@ -717,7 +728,7 @@ export function refusalLine(refusal: ConversationRefusal): string {
       return `flag ${refusal.flag} names turn ${refusal.turn}, which isn't in the newest version`
     }
     case "flag-voice": {
-      return `a ${refusal.kind} flag is raised on ${FLAG_VOICE[refusal.kind] === "owner" ? "the owner's" : "the agent's"} turns, and this one is ${refusal.voice === "owner" ? "the owner's" : "the agent's"}`
+      return `a ${refusal.kind} flag is raised on ${whose(FLAG_VOICE[refusal.kind])} turns, and this one is ${whose(refusal.voice)}`
     }
     case "flag-not-open": {
       return `flag ${refusal.flag} isn't open`
