@@ -22,7 +22,8 @@
  *   take above `noiseFloorMostDb` is flagged (`noisy`), never failed
  *   silently. The denoise pass is ffmpeg's, set from that floor.
  * - **The gaps** (`keptStretches`): every silence longer than `gapMostMs` is
- *   shortened to it from its middle, so each join lands in silence, faded.
+ *   shortened to it from its middle, so each join lands in silence, faded:
+ *   280 ms, except where a breath the cut would reach into is kept whole.
  *   Cut on the waveform's own silences, not on the transcript's word
  *   boundaries, which clipped word endings ("choppy… it clips word
  *   endings").
@@ -58,7 +59,13 @@ export const TAKE_POLICY = {
   tempo: 1.2,
   /** The loudness a take is brought to: the essay voice's. */
   loudnessLufs: -16,
-  /** The longest silence kept between phrases: what worked in v5. */
+  /**
+   * The longest silence kept between phrases, what worked in v5, except
+   * where a breath is kept whole: a pause is never cut into a breath or
+   * nearer the voice than half of this, since a clipped release or inhale
+   * is jarring and a slightly longer pause is not (the owner's tiebreaker:
+   * natural, never jarring).
+   */
   gapMostMs: 280,
   /** The fade at each join. */
   joinFadeMs: 10,
@@ -84,8 +91,11 @@ export const TAKE_POLICY = {
   clickBroadband: 0.3,
   /** How far over a take's floor a quiet run is a breath, which a cut never splits. */
   breathOverFloorDb: 12,
-  /** How near the voice a breath is the inhale before it, which a cut keeps. */
-  breathBeforeVoiceMs: 30,
+  /**
+   * The shortest a caption shows: a word wholly inside a cut, or past the
+   * take's end, still reads for a moment at its edge.
+   */
+  captionLeastMs: 80,
   /** The loudest a take's silences may be before it is flagged. */
   noiseFloorMostDb: -50,
 } as const
@@ -285,7 +295,8 @@ export function screenEdges(
 /**
  * The stretches of `within` a conditioned take keeps: every silence longer
  * than `gapMostMs` shortened to it from its middle, so each join is in
- * silence. In order, none empty.
+ * silence, except where a breath the cut would reach into is kept whole,
+ * which can leave that pause longer. In order, none empty.
  */
 export function keptStretches(
   screened: Screened,
@@ -302,22 +313,17 @@ export function keptStretches(
     if (from <= within.fromMs || to >= within.toMs) continue
     if (to - from <= policy.gapMostMs) continue
     let cut: Stretch = { fromMs: from + half, toMs: to - half }
-    // A breath the cut would split is kept whole where it is the inhale
-    // before the voice, else dropped whole.
+    // A breath the cut would reach into is kept whole, the cut drawn back
+    // off it: a cut edge never moves nearer the voice than half the cap,
+    // which keeps a word's release and the inhale before the next. A
+    // breath wholly inside the cut goes with it.
     for (const b of runsOf(screened.breath)) {
       const bFrom = b.from * f
       const bTo = b.to * f
-      if (bTo <= from || bFrom >= to) continue
       if (bTo <= cut.fromMs || bFrom >= cut.toMs) continue
-      if (to - bTo <= policy.breathBeforeVoiceMs)
-        cut = { fromMs: cut.fromMs, toMs: Math.min(cut.toMs, bFrom) }
-      else if (bFrom - from <= policy.breathBeforeVoiceMs)
-        cut = { fromMs: Math.max(cut.fromMs, bTo), toMs: cut.toMs }
-      else
-        cut = {
-          fromMs: Math.min(cut.fromMs, bFrom),
-          toMs: Math.max(cut.toMs, bTo),
-        }
+      if (bFrom >= cut.fromMs && bTo <= cut.toMs) continue
+      if (bFrom < cut.fromMs) cut = { fromMs: bTo, toMs: cut.toMs }
+      if (bTo > cut.toMs) cut = { fromMs: cut.fromMs, toMs: bFrom }
     }
     if (cut.toMs > cut.fromMs) cuts.push(cut)
   }
@@ -360,18 +366,46 @@ export function playedAt(
  * same cut and tempo, so captions follow the voice. Never one dropped: a
  * word's edge that falls where the cut took silence away (a transcript's
  * padded start before the first voiced frame, a sentence's end padded into
- * a long pause) is drawn in to the nearest kept edge.
+ * a long pause) is drawn in to the nearest kept edge, and a word drawn to
+ * nothing (an "um" wholly inside a cut, a word past the take's end) still
+ * shows for `captionLeastMs` at that edge. In order, none overlapping the
+ * next, none past the audio's end while there is room before it.
  */
 export function retimed(
   words: ReadonlyArray<TimedWord>,
   kept: ReadonlyArray<Stretch>,
-  tempo: number
+  tempo: number,
+  least: number = TAKE_POLICY.captionLeastMs
 ): ReadonlyArray<TimedWord> {
-  return words.map((w) => {
+  const endOf = Math.round(
+    kept.reduce((ms, s) => ms + s.toMs - s.fromMs, 0) / tempo
+  )
+  const placed = words.map((w) => {
     const startMs = Math.round(playedAt(w.startMs, kept, tempo))
-    const endMs = Math.round(playedAt(w.endMs, kept, tempo))
-    return { text: w.text, startMs, endMs: Math.max(startMs, endMs) }
+    return {
+      text: w.text,
+      startMs,
+      endMs: Math.max(startMs, Math.round(playedAt(w.endMs, kept, tempo))),
+    }
   })
+  // Forward: each at least `least`, starting no sooner than the last ends.
+  let at = 0
+  const forward = placed.map((w) => {
+    const startMs = Math.max(w.startMs, at)
+    const endMs = Math.max(w.endMs, startMs + least)
+    at = endMs
+    return { ...w, startMs, endMs }
+  })
+  // Back: none past the audio's end, each ending before the next starts.
+  let until = endOf
+  const back: Array<TimedWord> = []
+  for (const w of [...forward].reverse()) {
+    const endMs = Math.min(w.endMs, until)
+    const startMs = Math.max(0, Math.min(w.startMs, endMs - least))
+    until = startMs
+    back.push({ ...w, startMs, endMs: Math.max(startMs, endMs) })
+  }
+  return back.reverse()
 }
 
 /**
@@ -489,9 +523,16 @@ function plainPath(path: string): string {
   return (path.startsWith("/") ? "/" : "") + parts.join("/")
 }
 
-/** Whether two paths, relative to one folder, name the same file. */
-export const samePath = (a: string, b: string): boolean =>
-  plainPath(a) === plainPath(b)
+/**
+ * Whether two paths name the same file: each made absolute from `cwd` (the
+ * folder relative paths are read from), so an absolute `out` against a
+ * relative take is caught.
+ */
+export const samePath = (a: string, b: string, cwd: string = "/"): boolean => {
+  const whole = (p: string): string =>
+    plainPath(p.startsWith("/") ? p : `${cwd}/${p}`)
+  return whole(a) === whole(b)
+}
 
 /** How one turn's take is played (conversation/2's conditioning): its tempo, loudness and longest gap. */
 export type TakeConditioning = {
@@ -531,11 +572,13 @@ export async function conditionTake(
   },
   conditioning: TakeConditioning,
   work: string,
-  out: string
+  out: string,
+  /** The folder relative paths are read from (ffmpeg's working folder). */
+  cwd: string
 ): Promise<Parsed<ConditionedTake>> {
   const raw = `${work}/conditioned.wav`
   // The owner's take is the record: nothing this step writes lands on it.
-  if ([out, raw].some((file) => samePath(file, take.file)))
+  if ([out, raw].some((file) => samePath(file, take.file, cwd)))
     return {
       ok: false,
       problems: [`${take.file}: conditioning would write over the take itself`],

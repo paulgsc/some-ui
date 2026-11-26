@@ -266,6 +266,33 @@ describe("keptStretches (HOST12)", () => {
   })
 })
 
+describe("retimed captions (HOST12)", () => {
+  it("shows a word drawn to nothing for a moment at its edge, never over the next, never past the end", () => {
+    // The review's probe: "um" and "uh" wholly inside a cut, and a word
+    // past the take's end.
+    const kept: ReadonlyArray<Stretch> = [
+      { fromMs: 0, toMs: 1_000 },
+      { fromMs: 2_000, toMs: 2_500 },
+    ]
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "So", startMs: 100, endMs: 900 },
+      { text: "um", startMs: 1_200, endMs: 1_400 },
+      { text: "uh", startMs: 1_500, endMs: 1_700 },
+      { text: "then", startMs: 2_000, endMs: 2_300 },
+      { text: "bye", startMs: 2_600, endMs: 2_800 },
+    ]
+    const out = retimed(words, kept, 1)
+    expect(out.map((w) => w.text)).toEqual(words.map((w) => w.text))
+    for (const w of out)
+      expect(w.endMs - w.startMs).toBeGreaterThanOrEqual(
+        TAKE_POLICY.captionLeastMs
+      )
+    for (const [i, w] of out.slice(1).entries())
+      expect(w.startMs).toBeGreaterThanOrEqual(out[i]?.endMs ?? 0)
+    expect(out.at(-1)?.endMs).toBe(1_500)
+  })
+})
+
 describe("breaths (HOST12)", () => {
   const f = TAKE_POLICY.frameMs
   /** Whether the breath's frames are all kept, or all cut, never split. */
@@ -280,17 +307,37 @@ describe("breaths (HOST12)", () => {
   }
 
   it.each([
-    // In the pause, across where the cut would end: dropped whole.
+    // Across where the cut would end, 120 ms before the voice: kept whole,
+    // the cut drawn back off it, never nearer the voice than half the cap.
     {
-      name: "inside a long pause",
+      name: "across the cut's end, near the next word",
       breath: { fromMs: 1_700, toMs: 1_980 },
-      is: "cut",
+      is: "kept",
     },
     // The inhale right before the next word: kept whole.
     {
       name: "just before the voice",
       breath: { fromMs: 1_850, toMs: 2_090 },
       is: "kept",
+    },
+    // A soft tail starting right after a word: kept whole.
+    {
+      name: "just after the voice",
+      breath: { fromMs: 910, toMs: 1_100 },
+      is: "kept",
+    },
+    // The review's probe: a quiet run 50 ms after a word's end, across
+    // where the cut would start: kept whole, the release with it.
+    {
+      name: "across the cut's start, after a word",
+      breath: { fromMs: 950, toMs: 1_100 },
+      is: "kept",
+    },
+    // Wholly inside the cut: it goes with the silence.
+    {
+      name: "wholly inside a long pause",
+      breath: { fromMs: 1_300, toMs: 1_600 },
+      is: "cut",
     },
   ] as const)("keeps or drops a breath whole: $name", ({ breath, is }) => {
     const pieces: ReadonlyArray<Piece> = [
@@ -302,7 +349,13 @@ describe("breaths (HOST12)", () => {
     // The breath is read as one: quiet, over the floor, under the voice.
     const frames = s.breath.slice(breath.fromMs / f + 2, breath.toMs / f - 2)
     expect(frames.every(Boolean)).toBe(true)
-    expect(whole(keptStretches(s), breath)).toBe(is)
+    const kept = keptStretches(s)
+    expect(whole(kept, breath)).toBe(is)
+    // No cut edge falls nearer the voice than half the gap cap.
+    for (const j of joinsOf(kept)) {
+      expect(j.fromMs - 900).toBeGreaterThanOrEqual(TAKE_POLICY.gapMostMs / 2)
+      expect(2_100 - j.toMs).toBeGreaterThanOrEqual(TAKE_POLICY.gapMostMs / 2)
+    }
   })
 })
 
@@ -418,19 +471,27 @@ describe("conditionTake (HOST12)", () => {
   it("never writes over the take it conditions", async () => {
     const wav = wavOf(takeOf(1_000, [{ kind: "word", fromMs: 100, toMs: 900 }]))
     const ports = nodePorts(root)
-    for (const out of ["take.wav", "./take.wav", "work/../take.wav"]) {
+    for (const out of [
+      "take.wav",
+      "./take.wav",
+      "work/../take.wav",
+      `${root}/take.wav`,
+    ]) {
       const done = await conditionTake(
         ports,
         { file: "take.wav", wav },
         DEFAULT_CONDITIONING,
         "work",
-        out
+        out,
+        root
       )
       expect(done.ok ? [] : done.problems).toEqual([
         "take.wav: conditioning would write over the take itself",
       ])
     }
     expect(samePath("a/./b.wav", "a//c/../b.wav")).toBe(true)
+    expect(samePath("/w/a/b.wav", "a/b.wav", "/w")).toBe(true)
+    expect(samePath("/x/a/b.wav", "a/b.wav", "/w")).toBe(false)
   })
 
   it("cuts, speeds and levels a take, the same bytes each time", async () => {
@@ -455,7 +516,8 @@ describe("conditionTake (HOST12)", () => {
         },
         DEFAULT_CONDITIONING,
         `work-${String(k)}`,
-        `out-${String(k)}.wav`
+        `out-${String(k)}.wav`,
+        root
       )
       if (!done.ok) throw new Error(done.problems.join("\n"))
       const kept = done.value.kept.reduce((n, s) => n + s.toMs - s.fromMs, 0)
