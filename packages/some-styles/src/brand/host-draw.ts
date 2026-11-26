@@ -33,6 +33,9 @@ export const smooth = (p: number): number => {
   return q * q * (3 - 2 * q)
 }
 
+/** The way from `a` to `b`, `e` of it (0 to 1). */
+export const lerp = (a: number, b: number, e: number): number => a + (b - a) * e
+
 /** A number as SVG text: three places, and never `-0`. */
 export const num = (v: number): string => {
   const r = Math.round(v * 1000) / 1000
@@ -64,3 +67,36 @@ export const moved = (
   transform: string
 ): ReadonlyArray<CastNode> =>
   changed(nodes, part, (attrs) => ({ ...attrs, transform }))
+
+/**
+ * `nodes` with `transform` applied outside whatever every node named `part`
+ * already carries, so a loop moves a part the idle has moved without
+ * undoing the idle.
+ */
+export const movedFurther = (
+  nodes: ReadonlyArray<CastNode>,
+  part: string,
+  transform: string
+): ReadonlyArray<CastNode> =>
+  changed(nodes, part, (attrs) => {
+    const before = attrs.transform
+    return {
+      ...attrs,
+      transform:
+        before === undefined ? transform : `${transform} ${String(before)}`,
+    }
+  })
+
+/**
+ * `nodes` with every node named `part` given `attrs`, which replace its
+ * own, and moved `further` by `transform` when one is given.
+ */
+export const retouched = (
+  nodes: ReadonlyArray<CastNode>,
+  part: string,
+  attrs: CastNode["attrs"],
+  transform?: string
+): ReadonlyArray<CastNode> => {
+  const set = changed(nodes, part, (own) => ({ ...own, ...attrs }))
+  return transform === undefined ? set : movedFurther(set, part, transform)
+}

@@ -50,7 +50,35 @@ describe("the cast", () => {
     const parts = walk(castNodes("mochi", (name) => name)).flatMap((n) =>
       typeof n.attrs["data-part"] === "string" ? [n.attrs["data-part"]] : []
     )
-    expect(parts).toEqual(["antenna-left", "antenna-right", "eyes"])
+    expect(parts).toEqual([
+      "shadow",
+      "figure",
+      "antenna-left",
+      "antenna-right",
+      "arm-left",
+      "arm-right",
+      "face",
+      "cheeks",
+      "eyes",
+      "eyes-happy",
+      "brow-left",
+      "brow-right",
+      "mouth",
+      "football",
+      "question",
+      "bang",
+      "bulb",
+      "swirl",
+      "dot-1",
+      "dot-2",
+      "dot-3",
+      "sweat",
+      "vein",
+      "puff",
+      "spark-1",
+      "spark-2",
+      "spark-3",
+    ])
   })
 
   it("names the tin owlet's moving parts, tucked in the still drawing", () => {

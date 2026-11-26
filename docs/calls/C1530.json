@@ -1,0 +1,16 @@
+{
+  "id": "C1530",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": ["some-ui:packages/some-styles/src/brand/host-mochi.ts"],
+  "chose": "The NFL celebration (the owner, 2026-11-24: 'my character is a football fan ... when it's excited, it's a kind of NFL celebration') is one 3.6 s loop: Mochi crouches with a football in its hand, leaps with both arms up in a V (the touchdown signal, angled out because its stubby arms would vanish behind its body held straight up), lands, spikes the ball, which bounces away and fades, and dances side to side, pumping its arms, until it picks up another. It plays over whatever emotion the beat has, its moves wrapping the emotion's, with joy on its face (closed happy eyes, a grin, full blush, glints).",
+  "options": [
+    "A touchdown spike, then an end-zone shimmy",
+    "An end-zone dance alone, with no ball",
+    "A Lambeau leap: a jump out of frame",
+    "A first-down point"
+  ],
+  "gray": "Which NFL celebration is Mochi's is the owner's taste as a fan, and the owner sees it every time Mochi is excited. The spike and shimmy read in a long shot and keep inside the box. A leap out of frame would clip in a corner.",
+  "undo": "Rewrite celebrationAt in host-mochi.ts. The ceremony's name and its place in the closed set stay as they are.",
+  "refs": ["#3525", "#3521"]
+}
