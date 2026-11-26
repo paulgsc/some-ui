@@ -3,7 +3,8 @@
  * whole. Family: every interleaving, up to `DEPTH` accepted events, of the
  * alphabet below (a topic, points and a retake, versions answering flags by
  * each kind of answer, flags of each voice, withdrawals, green lights), with
- * every event of the alphabet tried at every state reached. Proof: the walk
+ * every event of the alphabet tried at every state short of `DEPTH`; the
+ * order of events' dates is held by its own refusal below. Proof: the walk
  * in "every event order" holds that nothing kept is lost, that the phase
  * matches the open flags, that a version answers exactly the open flags, and
  * that the log of accepted events replays to the same state. What each
@@ -344,6 +345,22 @@ describe("a flag never edits a turn; the next version answers it", () => {
         [{ flag: "f2", how: "retook", take: "take-a" }]
       )
     ).toEqual({ why: "retook-unplaced", flag: "f2" })
+  })
+
+  it("keeps a turn that only moved, when a rewrite names the move", () => {
+    const state = start("topic", "pointA", "v1", "flagAgent", "flagOwner")
+    const stepped = stepConversation(
+      state,
+      version(
+        2,
+        [take, close],
+        [
+          { flag: "f1", how: "rewrote", turns: ["k1", "o1"] },
+          { flag: "f2", how: "kept", note: "The take is clear." },
+        ]
+      )
+    )
+    expect(stepped.ok).toBe(true)
   })
 
   it("refuses a change no answer names", () => {

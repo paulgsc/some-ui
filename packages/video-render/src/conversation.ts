@@ -165,7 +165,11 @@ export const FlagAnswerSchema = z.discriminatedUnion("how", [
   z.strictObject({
     flag: IdSchema,
     how: z.literal("rewrote"),
-    turns: z.array(IdSchema).min(1).max(CONVERSATION_POLICY.turnsMost),
+    // A whole new version changes every turn it has and every one it drops.
+    turns: z
+      .array(IdSchema)
+      .min(1)
+      .max(2 * CONVERSATION_POLICY.turnsMost),
     note: NoteSchema.optional(),
   }),
   z.strictObject({
@@ -500,7 +504,8 @@ function answersRefusal(
         break
       }
       case "kept": {
-        if (changed.includes(flag.turn))
+        // What it says or plays: a rewrite beside it may still move it.
+        if (placed === undefined || was === undefined || !sameTurn(was, placed))
           return { why: "kept-changed", flag: flag.id }
         break
       }
