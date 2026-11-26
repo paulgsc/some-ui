@@ -83,6 +83,7 @@ export function approveEvent(
 ): Extract<ConversationEvent, { event: "approve" }> | null {
   const base = {
     event: "approve" as const,
+    by: "owner" as const,
     at,
     preview: offer.preview,
     offered: offer.variants.map((v) => v.variant),

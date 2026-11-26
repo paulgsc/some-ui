@@ -19,10 +19,11 @@ const AT = "2026-11-26T10:00:00.000Z"
 
 const greenLit = (): ReturnType<typeof replayConversation> =>
   replayConversation([
-    { event: "topic", at: AT, topic: { said: "The runners" } },
-    { event: "point", at: AT, take: "take-a" },
+    { event: "topic", by: "owner", at: AT, topic: { said: "The runners" } },
+    { event: "point", by: "owner", at: AT, take: "take-a" },
     {
       event: "version",
+      by: "agent",
       at: AT,
       version: {
         n: 1,
@@ -37,8 +38,8 @@ const greenLit = (): ReturnType<typeof replayConversation> =>
         answers: [],
       },
     },
-    { event: "heard", at: AT, version: 1, ms: 60_000 },
-    { event: "green-light", at: AT, version: 1 },
+    { event: "heard", by: "home", at: AT, version: 1, ms: 60_000 },
+    { event: "green-light", by: "owner", at: AT, version: 1 },
   ])
 
 describe("approveEvent (HOST16)", () => {
