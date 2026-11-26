@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto"
 import { describe, expect, it } from "vitest"
 
-import { emotionsOf, hostSvg, type BeatOf } from "../host"
+import { emotionsOf, hostAt, hostSvg, type BeatOf } from "../host"
 import { CELEBRATION_S } from "../host-mochi"
 
 const mochi = (over: Partial<BeatOf<"mochi">> = {}): BeatOf<"mochi"> => ({
@@ -71,6 +71,26 @@ describe("the mochi's loops", () => {
     end.forEach((v, i) =>
       expect(Math.abs(v - (start[i] ?? NaN))).toBeLessThan(1)
     )
+  })
+
+  it("carries on celebrating through a beat that only moves it", () => {
+    const area = { x: 0, y: 0, width: 1920, height: 1080 }
+    const celebrating = mochi({
+      emotion: "happy",
+      animation: "nfl-celebration",
+    })
+    const own = (svg: string | undefined): ReadonlyArray<string> =>
+      svg?.match(/data-part="(?:figure|arm-left|arm-right|football)"[^>]*/g) ??
+      []
+    const moved = hostAt(
+      [celebrating, { ...celebrating, atMs: 2000, placement: "bottom-left" }],
+      7,
+      2500,
+      area
+    )
+    const still = hostAt([celebrating], 7, 2500, area)
+    expect(own(moved?.svg)).toEqual(own(still?.svg))
+    expect(own(moved?.svg)).toHaveLength(4)
   })
 
   it("puts its glints where the celebration has them, whatever the emotion", () => {
