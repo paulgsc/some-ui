@@ -889,25 +889,34 @@ function runStartsOf(
   beats: ReadonlyArray<Beat>,
   i: number
 ): { readonly emotion: number; readonly ceremony: number } {
-  const beat = beats[i]
-  const runFrom = (same: (b: Beat) => boolean): number => {
-    let start = beat?.atMs ?? 0
-    for (let j = i - 1; j >= 0; j--) {
-      const before = beats[j]
-      if (
-        before === undefined ||
-        before.character !== beat?.character ||
-        !same(before)
-      )
-        break
-      start = before.atMs
-    }
-    return start
-  }
+  const start = (same: (b: Beat, beat: Beat) => boolean): number =>
+    beats[runBounds(beats, i, same).from]?.atMs ?? beats[i]?.atMs ?? 0
   return {
-    emotion: runFrom((b) => b.emotion === beat?.emotion),
-    ceremony: runFrom((b) => b.animation === beat?.animation),
+    emotion: start((b, beat) => b.emotion === beat.emotion),
+    ceremony: start((b, beat) => b.animation === beat.animation),
   }
+}
+
+/**
+ * The unbroken stretch of beats around beat `i`, before and after it, with
+ * its character and whatever `same` asks of them too: the one walk both
+ * `runStartsOf` and `runOf` take.
+ */
+function runBounds(
+  beats: ReadonlyArray<Beat>,
+  i: number,
+  same: (b: Beat, beat: Beat) => boolean
+): { readonly from: number; readonly to: number } {
+  const beat = beats[i]
+  const joins = (b: Beat | undefined): boolean => {
+    if (b === undefined || beat === undefined) return false
+    return b.character === beat.character && same(b, beat)
+  }
+  let from = i
+  while (from > 0 && joins(beats[from - 1])) from -= 1
+  let to = i
+  while (to < beats.length - 1 && joins(beats[to + 1])) to += 1
+  return { from, to }
 }
 
 /**
@@ -919,14 +928,7 @@ function runOf(
   beats: ReadonlyArray<Beat>,
   i: number
 ): { readonly from: number; readonly to: number } {
-  const beat = beats[i]
-  const same = (b: Beat | undefined): boolean =>
-    b?.character === beat?.character && b?.emotion === beat?.emotion
-  let from = i
-  while (from > 0 && same(beats[from - 1])) from -= 1
-  let to = i
-  while (to < beats.length - 1 && same(beats[to + 1])) to += 1
-  return { from, to }
+  return runBounds(beats, i, (b, beat) => b.emotion === beat.emotion)
 }
 
 /** The run's scene for the notes ends at the beat that breaks it, or its last word plus a hold. */
@@ -1009,6 +1011,7 @@ function pulseList(
         startMs,
         endMs,
         intro: beat.emotion,
+        // every beat in the run is Mochi (`runOf`); the test only narrows the type
         words: run.flatMap((b) =>
           b.character === "mochi" ? (b.words ?? []) : []
         ),
@@ -1019,6 +1022,7 @@ function pulseList(
         startMs,
         endMs,
         intro: beat.emotion,
+        // every beat in the run is Tin Bird (`runOf`); the test only narrows the type
         words: run.flatMap((b) =>
           b.character === "tin-owlet" ? (b.words ?? []) : []
         ),

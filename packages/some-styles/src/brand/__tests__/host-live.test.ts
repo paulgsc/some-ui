@@ -464,6 +464,73 @@ describe("a note in flight survives a move (HN1, #3580)", () => {
     }
   })
 
+  const happyAt3 = at([1000, null], [3000, "happy"], [4500, null])
+
+  /** A long speaking stretch from `fromMs`, no notes of its own: long enough that the ceiling would keep a leaked note. */
+  const after = (fromMs: number): ReadonlyArray<SpokenWordOf<"mochi">> =>
+    wordsBy(21, 160, fromMs)
+
+  it("ends the run at a change of emotion: the next run never shows the last one's note", () => {
+    const angry: Beat = {
+      atMs: 5000,
+      character: "mochi",
+      emotion: "angry",
+      shot: "medium",
+      placement: "bottom-left",
+      speaking: true,
+      words: after(5000),
+    }
+    const beats: ReadonlyArray<Beat> = [
+      {
+        atMs: 0,
+        character: "mochi",
+        emotion: "curious",
+        shot: "medium",
+        placement: "bottom-left",
+        speaking: true,
+        words: happyAt3,
+      },
+      angry,
+    ]
+    for (let t = 5000; t <= 30_000; t += 100)
+      expect(hostAt(beats, 7, t, AREAS.landscape)?.note, String(t)).toEqual(
+        hostAt([angry], 7, t, AREAS.landscape)?.note
+      )
+    expect(hostAt(beats, 7, 5500, AREAS.landscape)?.note.emotion).toBe("angry")
+  })
+
+  it("ends the run at a change of character, even with the same emotion", () => {
+    const tin: Beat = {
+      atMs: 5000,
+      character: "tin-owlet",
+      emotion: "curious",
+      shot: "medium",
+      placement: "bottom-right",
+      speaking: true,
+      words: after(5000).map(({ startMs, endMs, stress }) => ({
+        startMs,
+        endMs,
+        ...(stress === undefined ? {} : { stress }),
+      })),
+    }
+    const beats: ReadonlyArray<Beat> = [
+      {
+        atMs: 0,
+        character: "mochi",
+        emotion: "curious",
+        shot: "medium",
+        placement: "bottom-left",
+        speaking: true,
+        words: happyAt3,
+      },
+      tin,
+    ]
+    for (let t = 5000; t <= 30_000; t += 100)
+      expect(hostAt(beats, 7, t, AREAS.landscape)?.note, String(t)).toEqual(
+        hostAt([tin], 7, t, AREAS.landscape)?.note
+      )
+  })
+
   it("shows the same note moved or not, over seeded streams, moves, shots and placements", () => {
     for (let seed = 0; seed < 60; seed++) {
       const words =
@@ -598,6 +665,8 @@ describe("the bubble's clip never pops (HB1, #3580)", () => {
           reaches.push(reachOf(f.svg))
         }
         expect(reaches.length).toBeGreaterThan(5)
+        // and it ends at the bubble's own shape, full: grown in, or before it dissolves
+        expect(reaches.at(way === "grows in" ? -1 : 0)).toBe(1)
         const sorted = [...reaches].sort((x, y) =>
           way === "grows in" ? y - x : x - y
         )
