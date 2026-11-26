@@ -7,8 +7,10 @@
  * Today's port is the phone's own store (`phonePicks`): home keeps no
  * conversation yet (paulgsc/server#1243), so a pick stays on this phone,
  * and the screen says so. Home's port takes its place, one swap, once its
- * routes land. Either keeps every pick, and refuses a second pick on one
- * preview: the record only grows (CLAUDE.md, "Never lose the record").
+ * routes land. Either keeps every pick: a pick that changes an earlier one
+ * on the same preview `moves` it (C1581), and the latest stands, so the
+ * record only grows (CLAUDE.md, "Never lose the record"). A sample's picks
+ * (`samplePicks`) are held in memory and never kept.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -38,8 +40,8 @@ export type PreviewPicks = {
   /** Every pick kept on `conversation`, oldest first; null when they can't be read. */
   readonly list: (conversation: string) => ReadonlyArray<KeptPick> | null
   readonly keep: (pick: KeptPick) => Keeping
-  /** Where a pick is kept, for the screen to say. */
-  readonly where: "phone" | "home"
+  /** Where a pick is kept, for the screen to say; a sample's are never kept. */
+  readonly where: "phone" | "home" | "sample"
 }
 
 export const PICKS_KEY = "some-ui:studio:preview-picks"
@@ -51,7 +53,26 @@ const KeptPickSchema = z.object({
 
 const isKeptPick = (value: unknown): value is KeptPick => {
   const parsed = KeptPickSchema.safeParse(value)
-  return parsed.success && parsed.data.event.event === "approve"
+  return (
+    parsed.success &&
+    parsed.data.event.event === "approve" &&
+    parsed.data.event.by === "owner"
+  )
+}
+
+/** Why `pick` can't follow `kept`, the picks on its conversation; null when it can. */
+const notAfter = (
+  kept: ReadonlyArray<KeptPick>,
+  pick: KeptPick
+): Keeping | null => {
+  const standing = pickOn(kept, pick.event.preview)
+  if (standing === undefined)
+    return pick.event.moves === undefined ? null : "refused"
+  if (pick.event.moves !== pick.event.preview) return "already"
+  return JSON.stringify(standing.event.chose) ===
+    JSON.stringify(pick.event.chose)
+    ? "already"
+    : null
 }
 
 const readPicks = onJson(salvageList(isKeptPick))
@@ -73,14 +94,11 @@ export function phonePicks(
     keep: (pick): Keeping => {
       const opened = open()
       if (!opened.writable) return "refused"
-      if (
-        opened.value.some(
-          (p) =>
-            p.conversation === pick.conversation &&
-            p.event.preview === pick.event.preview
-        )
+      const not = notAfter(
+        opened.value.filter((p) => p.conversation === pick.conversation),
+        pick
       )
-        return "already"
+      if (not !== null) return not
       return writeKept(storage(), PICKS_KEY, [...opened.value, pick], readPicks)
         ? "kept"
         : "refused"
@@ -88,8 +106,31 @@ export function phonePicks(
   }
 }
 
-/** The pick kept on `preview`, if one is. */
-export const pickOn = (
+/**
+ * A sample's picks, held in memory for as long as the screen is open and
+ * never kept: a pick on a fixture is no approval.
+ */
+export function samplePicks(): PreviewPicks {
+  const held: Array<KeptPick> = []
+  return {
+    where: "sample",
+    list: (conversation) => held.filter((p) => p.conversation === conversation),
+    keep: (pick): Keeping => {
+      const not = notAfter(
+        held.filter((p) => p.conversation === pick.conversation),
+        pick
+      )
+      if (not !== null) return not
+      held.push(pick)
+      return "kept"
+    },
+  }
+}
+
+/** The pick standing on `preview`: the latest kept, if one is. */
+export function pickOn(
   picks: ReadonlyArray<KeptPick>,
   preview: string
-): KeptPick | undefined => picks.find((p) => p.event.preview === preview)
+): KeptPick | undefined {
+  return picks.filter((p) => p.event.preview === preview).at(-1)
+}

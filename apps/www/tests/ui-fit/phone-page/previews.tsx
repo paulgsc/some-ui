@@ -1,14 +1,14 @@
 /**
  * Studio's Previews (HOST16), as the phone draws them, for
  * `../previews-fit.spec.ts`: the transitions preview with one clip playing
- * and one not made yet, unpicked, and after a pick, each under a router of
- * its own.
+ * and one not made yet, as the route draws it (a sample, its picks held in
+ * memory), unpicked and after a pick, each under a router of its own.
  */
 import type { JSX } from "react"
-import type { KeyedStorage } from "@some-ui/core-utils"
 import { approveEvent, sampleTransitionsOffer } from "@some-ui/video-render"
 
-import { phonePicks, PICK_WORDS } from "@/lib/preview-pick"
+import { PICK_WORDS, samplePicks } from "@/lib/preview-pick"
+import type { PreviewPicks } from "@/lib/preview-pick"
 import { KIND_WORDS } from "@/lib/studio-index"
 import { Part, StudioPage } from "@/components/studio/layout"
 import { PreviewPick } from "@/components/studio/preview-pick"
@@ -17,18 +17,9 @@ import { routed } from "./my-data"
 
 const OFFER = sampleTransitionsOffer()
 
-/** A store held in memory, with `picked` kept in it already. */
-const held = (picked: string | null): KeyedStorage => {
-  const kept = new Map<string, string>()
-  const storage: KeyedStorage = {
-    getItem: (k) => kept.get(k) ?? null,
-    setItem: (k, v): void => {
-      kept.set(k, v)
-    },
-    removeItem: (k): void => {
-      kept.delete(k)
-    },
-  }
+/** The sample's picks, as the route holds them, with `picked` picked already. */
+const held = (picked: string | null): PreviewPicks => {
+  const picks = samplePicks()
   const event =
     picked === null
       ? null
@@ -37,13 +28,12 @@ const held = (picked: string | null): KeyedStorage => {
           { kind: "variant", variant: picked },
           "2026-11-26T10:00:00.000Z"
         )
-  if (event !== null)
-    phonePicks(() => storage).keep({ conversation: "sample", event })
-  return storage
+  if (event !== null) picks.keep({ conversation: "sample", event })
+  return picks
 }
 
 const screen = (picked: string | null): (() => JSX.Element) => {
-  const storage = held(picked)
+  const picks = held(picked)
   const Screen = (): JSX.Element => (
     <StudioPage
       heading={KIND_WORDS.previews.name}
@@ -54,7 +44,7 @@ const screen = (picked: string | null): (() => JSX.Element) => {
         <PreviewPick
           offer={OFFER}
           conversation="sample"
-          picks={phonePicks(() => storage)}
+          picks={picks}
           clipSrc={(v) =>
             v.variant === OFFER.recommended ? "/sample-clip.mp4" : null
           }

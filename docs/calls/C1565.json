@@ -6,16 +6,21 @@
     "some-ui:packages/video-render/src/preview-offer.ts",
     "some-ui:apps/www/src/components/studio/preview-pick.tsx",
     "some-ui:apps/www/src/lib/preview-pick/index.ts",
-    "some-ui:apps/www/src/lib/studio-index/index.ts"
+    "some-ui:apps/www/src/lib/studio-index/index.ts",
+    "some-ui:packages/ui/shared/src/components/ui/decision-pick/index.tsx",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/previews.tsx"
   ],
-  "chose": "A preview to approve is a case of the shared DecisionPick (C693), not a component of its own: each of the two or three variants is an option whose decision node is its card (the clip muted and looping, \"what's in it\" from the clip's own callouts, \"Use this\"), one recommended, and DecisionPick's own option is \"something else\", said in the owner's words, which sets no rule and asks for new previews. No toggle, slider or build-your-own (the owner's guard on #3521). One tap keeps the pick at once as conversation/2's approve event, built by approveEvent from the offer, and a second pick on the same preview is refused, so the record only grows. Picks go through a port (PreviewPicks): today the phone's own store, the screen saying the pick is kept on this phone and not on home, until paulgsc/server#1243's routes take its place by one swap. The screen is a new member of Studio's kinds, Previews, A to Z between Intuitions and Spoken, and until home offers a conversation's previews it shows HOST18's transitions preview from a fixture, saying where a clip isn't made yet.",
+  "chose": "A preview to approve is a case of the shared DecisionPick (C693), not a component of its own. Each of the two or three variants is an option whose card (its title, the clip muted and looping, \"what's in it\" from the clip's own callouts) is what the option shows, drawn above its \"Use this\" button and outside it, a new optional member of DecisionPick's option: watching the clip never picks, only the button does. One is recommended, and DecisionPick's own option is \"something else\", said in the owner's words, which sets no rule and asks for new previews. No toggle, slider or build-your-own (the owner's guard on #3521). A pick is kept at once as conversation/2's approve event, built by approveEvent from the offer; using another variant later is a new approval that moves the earlier one (C1581), both kept and the latest the rule, so a mis-tap is undone by a pick, never by a delete. Nothing picked says just that: no default is applied for it. Picks go through a port (PreviewPicks): the phone's own store, the screen saying the pick is kept on this phone until home takes picks, and paulgsc/server#1243's routes take its place by one swap. Until home offers a conversation's previews, the screen shows HOST18's transitions preview from a fixture, labelled a sample, its picks held in memory while the screen is open and never kept, since a pick on a fixture is no approval. The screen is a new member of Studio's kinds, Previews, A to Z between Intuitions and Spoken.",
   "options": [
-    "A DecisionPick case, picked in one tap, kept on the phone until home's routes (chosen)",
+    "A DecisionPick case whose clip sits outside the pick button, a pick changed by a new one that moves it, the sample's picks never kept (chosen)",
+    "The whole card one button, as DecisionPick drew an option: tapping the clip to watch it picks, a mis-tap that only a second, refused pick could follow",
     "A component of its own for previews",
     "A pick confirmed by a second tap before it is kept",
+    "A pick undone by deleting it",
+    "The sample's picks kept on the phone like real ones",
     "Hold the screen back until home keeps conversations"
   ],
-  "gray": "How the owner approves a preview, where the pick is kept before home can keep it, and where the screen sits in Studio are what the owner meets on the phone; the guard settles that there are no controls, not this shape.",
-  "undo": "Remove previews from STUDIO_KINDS and its route; picks kept on the phone stay under some-ui:studio:preview-picks.",
-  "refs": ["#3558", "#3521", "#3567"]
+  "gray": "How the owner approves a preview, what a stray tap does, how a pick is changed, what the sample keeps, where a pick is kept before home can keep it, and where the screen sits in Studio are what the owner meets on the phone; the guard settles that there are no controls, not this shape. The owner's tiebreaker (natural, never jarring) puts the pick on a button of its own, not on the clip being watched.",
+  "undo": "Remove previews from STUDIO_KINDS and its route, and DecisionPick's shows; picks kept on the phone stay under some-ui:studio:preview-picks.",
+  "refs": ["#3521", "#3558", "#3567", "#3573"]
 }

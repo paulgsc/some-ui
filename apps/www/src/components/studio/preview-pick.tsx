@@ -1,24 +1,30 @@
 /**
  * A preview to approve (HOST16, #3558; the owner's guard on #3521): the
- * agent's two or three variants of one bundle of choices, each a card in
- * the shared `DecisionPick` (C693) with its clip playing muted and looping,
- * "what's in it" (the clip's own callouts) and "Use this"; one recommended;
- * and something else, said in the owner's words, which asks the agent for
- * new previews. No toggle and no lever: one tap picks, and the pick is kept
- * as the record's `approve` event through `picks`, the screen saying where.
+ * agent's two or three variants of one bundle of choices, each an option of
+ * the shared `DecisionPick` (C693). Above each option's button, outside it,
+ * its clip plays muted and looping with "what's in it" (the clip's own
+ * callouts), so watching never picks; only its "Use this" button does. One
+ * is recommended, and something else, said in the owner's words, asks the
+ * agent for new previews. No toggle and no lever. A pick is kept as the
+ * record's `approve` event through `picks`, the screen saying where; using
+ * another variant later is a new pick that moves the earlier one (C1581).
  * Phone build only.
  */
 import type { JSX } from "react"
 import { useReducer, useState } from "react"
 import { Button, DecisionPick, Notice, Textarea } from "@some-ui/shared"
 import type { DecisionPicked } from "@some-ui/shared"
-import type { PreviewOffer, PreviewVariant } from "@some-ui/video-render"
-import { approveEvent } from "@some-ui/video-render"
+import type {
+  PreviewPick as Pick,
+  PreviewOffer,
+  PreviewVariant,
+} from "@some-ui/video-render"
+import { approveEvent, CONVERSATION_POLICY } from "@some-ui/video-render"
 
 import { pickOn, PICK_WORDS as W } from "@/lib/preview-pick"
 import type { Keeping, PreviewPicks } from "@/lib/preview-pick"
 
-/** One variant's card: its clip, muted and looping, and what's in it. */
+/** One variant's card: its title, its clip muted and looping, and what's in it. */
 const VariantCard = ({
   variant,
   src,
@@ -26,7 +32,7 @@ const VariantCard = ({
   variant: PreviewVariant
   src: string | null
 }): JSX.Element => (
-  <span className="flex flex-col gap-2">
+  <div className="flex flex-col gap-2">
     <span className="font-semibold">{variant.title}</span>
     {src === null ? (
       <span className="bg-muted text-muted-foreground flex aspect-video w-full items-center justify-center rounded-lg px-3 text-center text-xs">
@@ -45,13 +51,12 @@ const VariantCard = ({
     <span className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
       {W.inIt}
     </span>
-    <span className="flex flex-col gap-0.5 text-xs">
+    <ul className="flex flex-col gap-0.5 text-xs">
       {variant.callouts.map((c) => (
-        <span key={c}>{c}</span>
+        <li key={c}>{c}</li>
       ))}
-    </span>
-    <span className="text-brand self-end text-sm font-bold">{W.use}</span>
-  </span>
+    </ul>
+  </div>
 )
 
 export type PreviewPickProps = {
@@ -65,7 +70,10 @@ export type PreviewPickProps = {
   readonly now: () => string
 }
 
-/** A preview's cards, the one picked shown so, and what keeping it came to. */
+/** The option id a variant is listed under: A, B, C. */
+const idOf = (i: number): string => String.fromCharCode(65 + i)
+
+/** A preview's cards, the one standing shown so, and what keeping a pick came to. */
 export const PreviewPick = ({
   offer,
   conversation,
@@ -75,56 +83,64 @@ export const PreviewPick = ({
 }: PreviewPickProps): JSX.Element => {
   // Every read is the store's own: a pick is reread after each keep.
   const [, reread] = useReducer((n: number) => n + 1, 0)
-  const [said, setSaid] = useState<Keeping | null>(null)
+  // Each keep is said afresh, the same words again included.
+  const [said, setSaid] = useState<{ n: number; keeping: Keeping } | null>(null)
   const [asking, setAsking] = useState(false)
   const [words, setWords] = useState("")
-  const kept = pickOn(picks.list(conversation) ?? [], offer.preview)
-  const keep = (pick: Parameters<typeof approveEvent>[1]): void => {
-    const event = approveEvent(offer, pick, now())
+  const standing = pickOn(picks.list(conversation) ?? [], offer.preview)
+  const keep = (pick: Pick): void => {
+    const event = approveEvent(
+      offer,
+      pick,
+      now(),
+      standing === undefined ? {} : { moves: offer.preview }
+    )
     if (event === null) return
-    setSaid(picks.keep({ conversation, event }))
-    setAsking(false)
+    const keeping = picks.keep({ conversation, event })
+    setSaid((s) => ({ n: (s?.n ?? 0) + 1, keeping }))
+    if (keeping === "kept") {
+      setAsking(false)
+      setWords("")
+    }
     reread()
   }
-  const picked: DecisionPicked | null =
-    kept === undefined
-      ? asking
-        ? { kind: "own" }
-        : null
-      : kept.event.chose.kind === "variant"
-        ? { kind: "option", option: kept.event.chose.variant }
+  const chose = standing?.event.chose
+  const picked: DecisionPicked | null = asking
+    ? { kind: "own" }
+    : chose === undefined
+      ? null
+      : chose.kind === "variant"
+        ? {
+            kind: "option",
+            option: idOf(
+              offer.variants.findIndex((v) => v.variant === chose.variant)
+            ),
+          }
         : { kind: "own" }
   return (
     <div className="flex flex-col gap-3">
+      {picks.where === "sample" && (
+        <p className="text-muted-foreground text-sm font-semibold">
+          {W.sample}
+        </p>
+      )}
       <DecisionPick
-        options={offer.variants.map((variant) => ({
-          id: String.fromCharCode(65 + offer.variants.indexOf(variant)),
-          decision: <VariantCard variant={variant} src={clipSrc(variant)} />,
+        options={offer.variants.map((variant, i) => ({
+          id: idOf(i),
+          decision: W.use,
+          shows: <VariantCard variant={variant} src={clipSrc(variant)} />,
           recommended: variant.variant === offer.recommended,
         }))}
-        picked={
-          picked?.kind === "option"
-            ? {
-                kind: "option",
-                option: String.fromCharCode(
-                  65 +
-                    offer.variants.findIndex((v) => v.variant === picked.option)
-                ),
-              }
-            : picked
-        }
+        picked={picked}
         onPick={(pick) => {
-          if (kept !== undefined) {
-            setSaid("already")
-            return
-          }
           if (pick.kind === "own") {
             setAsking(true)
             return
           }
           const variant = offer.variants.at(pick.option.charCodeAt(0) - 65)
-          if (variant !== undefined)
-            keep({ kind: "variant", variant: variant.variant })
+          if (variant === undefined) return
+          setAsking(false)
+          keep({ kind: "variant", variant: variant.variant })
         }}
         words={{
           label: W.label(offer.about),
@@ -133,7 +149,7 @@ export const PreviewPick = ({
           none: W.none,
         }}
       />
-      {asking && kept === undefined && (
+      {asking && (
         <form
           className="flex flex-col gap-2"
           onSubmit={(e) => {
@@ -147,6 +163,7 @@ export const PreviewPick = ({
           <Textarea
             id="preview-else"
             value={words}
+            maxLength={CONVERSATION_POLICY.noteMost}
             onChange={(e) => {
               setWords(e.target.value)
             }}
@@ -158,12 +175,12 @@ export const PreviewPick = ({
       )}
       {said !== null && (
         <Notice
-          key={said}
-          {...(said === "refused" ? { tone: "danger" as const } : {})}
+          key={said.n}
+          {...(said.keeping === "refused" ? { tone: "danger" as const } : {})}
         >
-          {said === "kept"
+          {said.keeping === "kept"
             ? W.kept[picks.where]
-            : said === "already"
+            : said.keeping === "already"
               ? W.already
               : W.refused}
         </Notice>

@@ -74,4 +74,24 @@ describe("DecisionPick", () => {
     expect(own).toHaveAttribute("aria-pressed", "true")
     expect(own).toBeDisabled()
   })
+
+  it("draws what an option shows outside its button, so a tap on it picks nothing", () => {
+    const onPick = vi.fn<(pick: DecisionPicked) => void>()
+    render(
+      <DecisionPick
+        options={[
+          { ...OPTIONS[0]!, shows: <span>the clip</span> },
+          OPTIONS[1]!,
+        ]}
+        picked={null}
+        onPick={onPick}
+        words={WORDS}
+      />
+    )
+    const shown = screen.getByText("the clip")
+    expect(shown.closest("button")).toBeNull()
+    fireEvent.click(shown)
+    expect(onPick).not.toHaveBeenCalled()
+    expect(screen.getAllByRole("button")).toHaveLength(3)
+  })
 })

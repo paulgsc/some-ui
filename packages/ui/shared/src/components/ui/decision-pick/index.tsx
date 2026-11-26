@@ -14,7 +14,9 @@ import { cn } from "../../../lib/utils"
  * pick at once against what main chose; Rust Rounds checks it after the
  * deadline against the week's best fit. The host holds the pick as data and
  * passes it back in: this draws it and forwards taps, nothing more. Each
- * option is a button, pressed while picked, in a group named for the fork.
+ * option is a button, pressed while picked, in a group named for the fork;
+ * what an option `shows` (a preview's clip, HOST16) sits above its button,
+ * outside it.
  */
 
 /** An option as listed: its id ("A"), what it would do, and whether it is the recommended one. */
@@ -23,6 +25,11 @@ export type DecisionOption = {
   /** What it would do, as the host draws it (code in its own face, say). */
   readonly decision: ReactNode
   readonly recommended: boolean
+  /**
+   * What the option shows before it is picked (a clip playing, say), drawn
+   * above its button and outside it, so watching it never picks.
+   */
+  readonly shows?: ReactNode
 }
 
 /** What is picked: a listed option, or the person's own. */
@@ -87,7 +94,7 @@ export const DecisionPick = ({
     >
       {options.map((option) => {
         const on = isPicked(picked, option.id)
-        return (
+        const button = (
           <button
             key={option.id}
             type="button"
@@ -106,6 +113,14 @@ export const DecisionPick = ({
               {option.decision}
             </span>
           </button>
+        )
+        return option.shows === undefined ? (
+          button
+        ) : (
+          <div key={option.id} className="flex flex-col gap-1.5">
+            {option.shows}
+            {button}
+          </div>
         )
       })}
       <button

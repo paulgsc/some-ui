@@ -1,16 +1,23 @@
 /**
  * @vitest-environment jsdom
  *
- * HOST16 (#3558): the preview card picks with one tap and keeps the pick as
- * the record's approval, saying where it is kept; something else takes the
- * owner's words; a kept pick can't be picked over.
+ * HOST16 (#3558): only a variant's "Use this" picks, never its clip; the
+ * pick is kept as the record's approval, saying where; using another later
+ * is a new pick that moves the earlier one, both kept; something else takes
+ * the owner's words; a sample's picks are held in memory and never kept.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
-import { phonePicks, PICK_WORDS } from "@/lib/preview-pick"
+import {
+  phonePicks,
+  PICK_WORDS,
+  PICKS_KEY,
+  samplePicks,
+} from "@/lib/preview-pick"
+import type { PreviewPicks } from "@/lib/preview-pick"
 import { PreviewPick } from "@/components/studio/preview-pick"
 
 afterEach(cleanup)
@@ -30,8 +37,14 @@ const memory = (): KeyedStorage => {
 
 const AT = "2026-11-26T10:00:00.000Z"
 
-const drawn = (storage: KeyedStorage): ReturnType<typeof phonePicks> => {
-  const picks = phonePicks(() => storage)
+/** Each variant's Use this, in the order offered. */
+const useButtons = (): Array<HTMLElement> =>
+  screen.getAllByRole("button", { name: new RegExp(PICK_WORDS.use) })
+
+const drawn = (
+  storage: KeyedStorage,
+  picks: PreviewPicks = phonePicks(() => storage)
+): PreviewPicks => {
   render(
     <PreviewPick
       offer={sampleTransitionsOffer()}
@@ -56,21 +69,61 @@ describe("PreviewPick (HOST16)", () => {
     expect(screen.getByText(PICK_WORDS.noClip)).toBeTruthy()
   })
 
-  it("keeps one tap as the record's approval, says where, and refuses a second pick", () => {
+  it("picks nothing on a tap of the clip or its card: only Use this picks", () => {
+    const picks = drawn(memory())
+    fireEvent.click(document.querySelector("video")!)
+    fireEvent.click(screen.getByText("Dip to black"))
+    fireEvent.click(screen.getByText("New chapter: dip to black"))
+    expect(picks.list("runners")).toEqual([])
+    expect(screen.getByText(PICK_WORDS.none)).toBeTruthy()
+  })
+
+  it("keeps a pick as the record's approval, says where, and keeps a change as a move", () => {
     const storage = memory()
     const picks = drawn(storage)
-    fireEvent.click(screen.getByText("Dip to black"))
+    const [crossfade, dip] = useButtons()
+    fireEvent.click(dip)
     expect(screen.getByText(PICK_WORDS.kept.phone)).toBeTruthy()
-    expect(picks.list("runners")?.map((p) => p.event.chose)).toEqual([
-      {
-        kind: "variant",
-        variant: "dip-to-black",
-        rule: "joins-dip-at-chapters",
-      },
-    ])
-    fireEvent.click(screen.getByText("Crossfade"))
+    expect(dip.getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(dip)
     expect(screen.getByText(PICK_WORDS.already)).toBeTruthy()
+    fireEvent.click(crossfade)
+    const kept = picks.list("runners") ?? []
+    expect(kept.map((p) => [p.event.chose, p.event.moves])).toEqual([
+      [
+        {
+          kind: "variant",
+          variant: "dip-to-black",
+          rule: "joins-dip-at-chapters",
+        },
+        undefined,
+      ],
+      [
+        { kind: "variant", variant: "crossfade", rule: "joins-crossfade" },
+        "transitions-1",
+      ],
+    ])
+    expect(crossfade.getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("says the same words again when they are earned again", () => {
+    drawn(memory())
+    const [, dip] = useButtons()
+    fireEvent.click(dip)
+    fireEvent.click(dip)
+    const first = screen.getByText(PICK_WORDS.already)
+    fireEvent.click(dip)
+    expect(screen.getByText(PICK_WORDS.already)).not.toBe(first)
+  })
+
+  it("holds a sample's picks in memory, says so, and keeps nothing", () => {
+    const storage = memory()
+    const picks = drawn(storage, samplePicks())
+    expect(screen.getByText(PICK_WORDS.sample)).toBeTruthy()
+    fireEvent.click(useButtons()[1])
+    expect(screen.getByText(PICK_WORDS.kept.sample)).toBeTruthy()
     expect(picks.list("runners")).toHaveLength(1)
+    expect(storage.getItem(PICKS_KEY)).toBeNull()
   })
 
   it("asks for something else in the owner's words, and keeps them", () => {

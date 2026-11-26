@@ -27,17 +27,21 @@ export const PreviewVariantSchema = z.strictObject({
   /** What it is, in a few words: "Crossfade". */
   title: words.max(60),
   /** Each moment the clip shows, as its on-screen callout says it. */
-  callouts: z.array(words.max(80)).min(1).max(12),
+  callouts: z
+    .array(words.max(80))
+    .min(1)
+    .max(12)
+    .refine((c) => new Set(c).size === c.length, "a callout is listed twice"),
   /** The rule this variant sets once picked. */
   rule: Name,
 })
 
 export type PreviewVariant = z.infer<typeof PreviewVariantSchema>
 
-/** A preview offered on a conversation: what it bundles, its variants, and the one recommended. */
 /** The schema a preview's manifest names, as home keeps it beside its clips. */
 export const PREVIEW_OFFER_SCHEMA = "some-ui.conversation-preview/1"
 
+/** A preview offered on a conversation: what it bundles, its variants, and the one recommended. */
 export const PreviewOfferSchema = z
   .strictObject({
     schema: z.literal(PREVIEW_OFFER_SCHEMA),
@@ -50,6 +54,10 @@ export const PreviewOfferSchema = z
   .refine(
     (o) => new Set(o.variants.map((v) => v.variant)).size === o.variants.length,
     "two variants share an id"
+  )
+  .refine(
+    (o) => new Set(o.variants.map((v) => v.rule)).size === o.variants.length,
+    "two variants set the same rule, so picking between them decides nothing"
   )
   .refine(
     (o) => o.variants.some((v) => v.variant === o.recommended),
@@ -74,12 +82,14 @@ export type PreviewPick =
 /**
  * The owner's pick on `offer` as conversation/2's `approve` event, at `at`;
  * null for a variant the offer doesn't hold, or something else said in no
- * words.
+ * words. A pick that changes an earlier one on the same preview `moves` it
+ * (C1581): the earlier stays kept, and this one is the rule.
  */
 export function approveEvent(
   offer: PreviewOffer,
   pick: PreviewPick,
-  at: string
+  at: string,
+  changes: { readonly moves?: string } = {}
 ): Extract<ConversationEvent, { event: "approve" }> | null {
   const base = {
     event: "approve" as const,
@@ -88,6 +98,7 @@ export function approveEvent(
     preview: offer.preview,
     offered: offer.variants.map((v) => v.variant),
     recommended: offer.recommended,
+    ...(changes.moves === undefined ? {} : { moves: changes.moves }),
   }
   if (pick.kind === "else") {
     const said = pick.said.trim()
