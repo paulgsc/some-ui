@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 28,
+  "contract_epoch": 30,
   "oldest_supported": 1,
   "routes": [
     {
@@ -207,6 +207,41 @@
       "full_path": "/compat",
       "versioned": false,
       "module": "compat"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations",
+      "full_path": "/api/v1/conversations",
+      "versioned": true,
+      "module": "conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/:id",
+      "full_path": "/api/v1/conversations/:id",
+      "versioned": true,
+      "module": "conversations"
+    },
+    {
+      "method": "POST",
+      "path": "/conversations/:id/events",
+      "full_path": "/api/v1/conversations/:id/events",
+      "versioned": true,
+      "module": "conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/:id/previews",
+      "full_path": "/api/v1/conversations/:id/previews",
+      "versioned": true,
+      "module": "conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/:id/previews/:preview/:variant/video",
+      "full_path": "/api/v1/conversations/:id/previews/:preview/:variant/video",
+      "versioned": true,
+      "module": "conversations"
     },
     {
       "method": "GET",
