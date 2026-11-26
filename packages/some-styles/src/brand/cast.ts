@@ -40,7 +40,7 @@ export type Character = (typeof CHARACTERS)[number]
 /** Names a gradient or clip for one drawing: `id("body")` is unique to it. */
 export type IdOf = (name: string) => string
 
-const el = (
+export const el = (
   tag: string,
   attrs: Readonly<Record<string, string | number>>,
   children?: ReadonlyArray<CastNode>
@@ -344,8 +344,7 @@ const WING =
 const wing = (id: IdOf, part: string, x: number, fold: number): CastNode =>
   el("g", { transform: `translate(${String(x)} 60)` }, [
     el("g", { "data-part": part, transform: `rotate(${String(fold)})` }, [
-      el("path", { d: WING, fill: url(id("tin")) }),
-      el("path", { d: WING, fill: url(id("tin-shade")) }),
+      ...tin(id, WING),
       el("path", {
         d: WING,
         fill: "none",
@@ -362,35 +361,39 @@ const wing = (id: IdOf, part: string, x: number, fold: number): CastNode =>
   ])
 
 /**
+ * Where the tin owlet's moving parts sit, for a host that moves them
+ * (`./host-tin-owlet`): each lens's center on the eye line, each tuft's
+ * root, and how far an upper lid travels from parked to shut.
+ */
+export const TIN_OWLET_RIG = {
+  lens: { left: 38.5, right: 57.5 },
+  eyeLine: 41,
+  tuftRoot: { left: { x: 36, y: 25 }, right: { x: 60, y: 25 } },
+  lidTravel: 14.8,
+} as const
+
+/**
  * A tin shutter over one lens, clipped to its rim: the upper lid parked
  * above the glass and the lower one below it, so neither shows until a host
  * draws one over the eye.
  */
-const lids = (id: IdOf, side: "left" | "right", cx: number): CastNode =>
-  el("g", {}, [
+const lids = (id: IdOf, side: "left" | "right"): CastNode => {
+  const cx = TIN_OWLET_RIG.lens[side]
+  const cy = TIN_OWLET_RIG.eyeLine
+  const top = cy - 7.4 - TIN_OWLET_RIG.lidTravel
+  const left = String(cx - 11)
+  const right = String(cx + 11)
+  return el("g", {}, [
     el("defs", {}, [
       el("clipPath", { id: id(`lid-${side}-clip`) }, [
-        el("circle", { cx, cy: 41, r: 7.25 }),
+        el("circle", { cx, cy, r: 7.25 }),
       ]),
     ]),
     el("g", { "clip-path": url(id(`lid-${side}-clip`)) }, [
       el("g", { "data-part": `lid-${side}` }, [
-        el("rect", {
-          x: cx - 11,
-          y: 13,
-          width: 22,
-          height: 20.6,
-          fill: url(id("tin")),
-        }),
-        el("rect", {
-          x: cx - 11,
-          y: 13,
-          width: 22,
-          height: 20.6,
-          fill: url(id("tin-shade")),
-        }),
+        ...tin(id, `M${left} ${String(top)}H${right}V33.6H${left}Z`),
         el("path", {
-          d: `M${String(cx - 11)} 33.2H${String(cx + 11)}`,
+          d: `M${left} 33.2H${right}`,
           stroke: "#55626f",
           "stroke-width": 1.1,
         }),
@@ -409,26 +412,22 @@ const lids = (id: IdOf, side: "left" | "right", cx: number): CastNode =>
       ]),
     ]),
   ])
+}
 
-/** An ear tuft, pivoted at its root so a host can raise or flatten it. */
-const tuft = (part: string, d: string): CastNode =>
-  el("g", { "data-part": part }, [
+/** An ear tuft, from its tip to its root, where a host turns it. */
+const tuft = (part: string, side: "left" | "right", tipX: number): CastNode => {
+  const root = TIN_OWLET_RIG.tuftRoot[side]
+  return el("g", { "data-part": part }, [
     el("path", {
-      d,
+      d: `M${String(tipX)} 18L${String(root.x)} ${String(root.y)}`,
       stroke: "#8b99a7",
       "stroke-width": 3,
       "stroke-linecap": "round",
     }),
   ])
+}
 
-/**
- * The tutor: a wind-up tin owlet, its key at its side. Its moving parts are
- * named for a host: the whole `figure`, the `eyes` and each eye's upper and
- * lower lid, each `tuft`, each `wing` (folded behind the body), the `key`,
- * and the `beak-low` that drops to open the beak over its `mouth`. Lids,
- * wings, mouth and lower beak are tucked out of sight, so the still drawing
- * is the owlet as it always was.
- */
+/** The tutor: a wind-up tin owlet, its key at its side, its moving parts tucked out of sight. */
 const tinOwlet = (id: IdOf): Array<CastNode> => [
   tinDefs(id, TEAL),
   ...stage(id, { cy: 86, rx: 28 }),
@@ -442,8 +441,8 @@ const tinOwlet = (id: IdOf): Array<CastNode> => [
       "stroke-linecap": "round",
       "data-part": "key",
     }),
-    tuft("tuft-left", "M30 18L36 25"),
-    tuft("tuft-right", "M66 18L60 25"),
+    tuft("tuft-left", "left", 30),
+    tuft("tuft-right", "right", 66),
     ...tin(id, OWLET),
     el("path", {
       d: "M24 56Q48 64 72 56",
@@ -466,10 +465,10 @@ const tinOwlet = (id: IdOf): Array<CastNode> => [
       opacity: 0.8,
     }),
     el("g", { "data-part": "eyes" }, [
-      ...lens(id, 38.5, 41, 6.4, TEAL),
-      ...lens(id, 57.5, 41, 6.4, TEAL),
-      lids(id, "left", 38.5),
-      lids(id, "right", 57.5),
+      ...lens(id, TIN_OWLET_RIG.lens.left, TIN_OWLET_RIG.eyeLine, 6.4, TEAL),
+      ...lens(id, TIN_OWLET_RIG.lens.right, TIN_OWLET_RIG.eyeLine, 6.4, TEAL),
+      lids(id, "left"),
+      lids(id, "right"),
     ]),
     el("ellipse", {
       cx: 48,

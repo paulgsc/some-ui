@@ -1,9 +1,7 @@
 /**
  * What every character's loops draw with (`./host`, HOST1; Tin Bird's loops
  * in `./host-tin-owlet`, HOST3): the shape of a loop, and the pure helpers
- * that move a cast drawing's named parts. Nothing here reads a clock or
- * `Math.random`; numbers become SVG text through `num`, three places, so
- * the same moment gives the same bytes.
+ * that move a cast drawing's named parts.
  */
 
 import type { CastNode } from "./cast"
@@ -66,22 +64,3 @@ export const moved = (
   transform: string
 ): ReadonlyArray<CastNode> =>
   changed(nodes, part, (attrs) => ({ ...attrs, transform }))
-
-/**
- * `nodes` with `transform` applied outside whatever every node named `part`
- * already carries, so a loop moves a part the idle has moved without
- * undoing the idle.
- */
-export const movedFurther = (
-  nodes: ReadonlyArray<CastNode>,
-  part: string,
-  transform: string
-): ReadonlyArray<CastNode> =>
-  changed(nodes, part, (attrs) => {
-    const before = attrs.transform
-    return {
-      ...attrs,
-      transform:
-        before === undefined ? transform : `${transform} ${String(before)}`,
-    }
-  })

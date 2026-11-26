@@ -119,7 +119,7 @@ export const PLACEMENTS = [
 ] as const
 export type Placement = (typeof PLACEMENTS)[number]
 
-export type { Moment, Redraw, Spot } from "./host-draw"
+export type { Spot } from "./host-draw"
 
 /** One character's beat: what it does from `atMs` until the next beat. */
 export type BeatOf<C extends HostCharacter> = {
@@ -160,7 +160,7 @@ export type Area = {
 /** The drawing as it is: each emotion's and ceremony's stub until its rig story draws it. */
 const same: Redraw = (nodes) => nodes
 
-/** Each character's emotions, drawn: Tin Bird's by HOST3 (#3524, `./host-tin-owlet`), Mochi's by HOST4 (#3525). */
+/** Each character's emotions, drawn. */
 const EMOTION_DRAWINGS: {
   readonly [C in HostCharacter]: Readonly<Record<EmotionOf<C>, Redraw>>
 } = {

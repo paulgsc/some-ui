@@ -1,31 +1,18 @@
 /**
- * Tin Bird's emotions, each a loop (HOST3, #3524): the tin owlet's drawing
- * (`./cast`) moved at a moment, by its named parts, as a pure function of
- * the time. Every emotion is a `Pose` over time, the same vector for all of
- * them (how far each lid is drawn, the tufts, the beak, both wings, the
- * whole figure), plus the effects that loop draws beside the bird (a sweat
- * drop, steam, sparks, a question mark). A new emotion is a new entry in
- * `TIN_OWLET_EMOTIONS`, which the compiler asks for (`EmotionOf`).
- *
- * Each loop is drawn to read at a long shot as well as a close-up: the
+ * Tin Bird's emotions, each a loop (HOST3, #3524): every emotion is a `Pose`
+ * over time, the same vector for all of them, plus the effects that loop
+ * draws beside the bird (a sweat drop, steam, sparks, a question mark).
+ * Each is drawn to read at a long shot as well as a close-up: the
  * silhouette changes (wings out, the body hopping, tilting or bowing) and
  * an effect names the feeling, so neither depends on the eyes alone.
- *
- * - The loops ride on the host's idle (`./host`: blink, glance, breath and
- *   the key's turn): a part the idle moves (the eyes, the key) is moved
- *   further, never reset, except the key a ceremony spins.
- * - When the beat gives a point to look at, the wing on that side points
- *   at it over whatever the emotion does with it (C1525).
- * - Same t, same bytes: no clock, no `Math.random`, numbers through `num`
- *   (`__tests__/host-tin-owlet.test.ts`).
  */
 
-import type { CastNode } from "./cast"
+import { el, TIN_OWLET_RIG, type CastNode } from "./cast"
 import type { EmotionOf } from "./host"
 import {
+  changed,
   clamp,
   moved,
-  movedFurther,
   num,
   smooth,
   TAU,
@@ -106,17 +93,12 @@ const g = (
   transform: string,
   opacity: number,
   children: ReadonlyArray<CastNode>
-): CastNode => ({
-  tag: "g",
-  attrs: { transform, opacity: num(clamp(opacity, 0, 1)) },
-  children,
-})
+): CastNode =>
+  el("g", { transform, opacity: num(clamp(opacity, 0, 1)) }, children)
 
-const path = (attrs: CastNode["attrs"]): CastNode => ({ tag: "path", attrs })
-const circle = (cx: number, cy: number, r: number, fill: string): CastNode => ({
-  tag: "circle",
-  attrs: { cx, cy, r, fill },
-})
+const path = (attrs: CastNode["attrs"]): CastNode => el("path", attrs)
+const circle = (cx: number, cy: number, r: number, fill: string): CastNode =>
+  el("circle", { cx, cy, r, fill })
 
 /** A drop of sweat, sliding from the brow. */
 const sweat = (x: number, y: number, opacity: number): CastNode =>
@@ -394,9 +376,6 @@ const ceremonious: Loop = (s) => {
 const wingAngle = (side: "left" | "right", elevation: number): number =>
   side === "right" ? -elevation : 180 + elevation
 
-/** The lens centers the lids close over. */
-const LENS = { left: 38.5, right: 57.5 } as const
-
 /** `pose` drawn onto the tin owlet's `nodes`, its effects after them. */
 function posed(
   nodes: ReadonlyArray<CastNode>,
@@ -406,19 +385,20 @@ function posed(
   moment: Moment
 ): ReadonlyArray<CastNode> {
   let out = nodes
+  // A beat's point to look at, the wing on its side points to (C1525).
   const pointWith = moment.pointing
     ? moment.aim.x >= 0
       ? "right"
       : "left"
     : undefined
   for (const side of ["left", "right"] as const) {
-    const cx = LENS[side]
+    const cx = TIN_OWLET_RIG.lens[side]
     const lid = side === "left" ? pose.lidLeft : pose.lidRight
     const slant = side === "left" ? -pose.slant : pose.slant
     out = moved(
       out,
       `lid-${side}`,
-      `rotate(${num(slant)} ${num(cx)} 41) translate(0 ${num(14.8 * clamp(lid, 0, 1))})`
+      `rotate(${num(slant)} ${num(cx)} ${num(TIN_OWLET_RIG.eyeLine)}) translate(0 ${num(TIN_OWLET_RIG.lidTravel * clamp(lid, 0, 1))})`
     )
     out = moved(
       out,
@@ -426,8 +406,12 @@ function posed(
       `translate(0 ${num(-8 * clamp(pose.lowLid, 0, 1))})`
     )
     const tuft = side === "left" ? -pose.tuftLeft : pose.tuftRight
-    const root = side === "left" ? 36 : 60
-    out = moved(out, `tuft-${side}`, `rotate(${num(tuft)} ${num(root)} 25)`)
+    const root = TIN_OWLET_RIG.tuftRoot[side]
+    out = moved(
+      out,
+      `tuft-${side}`,
+      `rotate(${num(tuft)} ${num(root.x)} ${num(root.y)})`
+    )
     const angle =
       pointWith === side
         ? (Math.atan2(moment.aim.y, moment.aim.x) * 180) / Math.PI +
@@ -443,11 +427,11 @@ function posed(
     `translate(48 52.4) scale(${num(1 + 0.9 * open)} ${num(1 + 3.8 * open)}) translate(-48 -52.4)`
   )
   if (pose.lookX !== 0 || pose.lookY !== 0)
-    out = movedFurther(
-      out,
-      "eyes",
-      `translate(${num(pose.lookX)} ${num(pose.lookY)})`
-    )
+    // Further than the idle's glance and blink, never in place of them.
+    out = changed(out, "eyes", (attrs) => ({
+      ...attrs,
+      transform: `translate(${num(pose.lookX)} ${num(pose.lookY)}) ${String(attrs.transform ?? "")}`,
+    }))
   out = moved(
     out,
     "figure",
@@ -456,7 +440,6 @@ function posed(
   return [...out, ...effects]
 }
 
-/** A loop as a redraw of the tin owlet. */
 const drawn =
   (loop: Loop): Redraw =>
   (nodes, tMs, moment) => {
@@ -465,7 +448,6 @@ const drawn =
     return posed(nodes, pose, effects, s, moment)
   }
 
-/** Tin Bird's emotions, each its own loop. */
 export const TIN_OWLET_EMOTIONS: Readonly<
   Record<EmotionOf<"tin-owlet">, Redraw>
 > = {
