@@ -91,10 +91,10 @@ describe("where the host sits (C1485)", () => {
 
   it("sits flush in its corner, and grows from long to medium to close-up", () => {
     expect(placedBox(LANDSCAPE_SAFE, "long", "bottom-right")).toEqual({
-      x: 96 + 1728 - 864 * 0.26,
-      y: 86 + 864 - 864 * 0.26,
-      width: 864 * 0.26,
-      height: 864 * 0.26,
+      x: 96 + 1728 - 864 * 0.37,
+      y: 86 + 864 - 864 * 0.37,
+      width: 864 * 0.37,
+      height: 864 * 0.37,
     })
     const sizes = SHOTS.map((s) => placedBox(LANDSCAPE_SAFE, s, "center").width)
     expect(sizes).toEqual([...sizes].sort((a, b) => b - a))
@@ -207,7 +207,14 @@ describe("the deterministic contract", () => {
     for (const character of HOST_CHARACTERS) {
       const svg = hostSvg(
         character === "mochi"
-          ? { ...tin(), character, emotion: "issue" }
+          ? {
+              atMs: 0,
+              character,
+              emotion: "issue",
+              shot: "long",
+              placement: "bottom-right",
+              speaking: false,
+            }
           : tin(),
         1234,
         7,
