@@ -9,6 +9,15 @@ export type { Deck, PagerState, Turn } from "./lib/pager"
 export { lockOf, offsetOf, SLOP_PX } from "./lib/pager"
 export type { PagerRuntime } from "./lib/pager/runtime"
 export { CLAIMS_POINTER, claimsAxis, createPager } from "./lib/pager/runtime"
+export type { FramePort, LoopClock } from "./lib/loop-clock"
+export {
+  createLoopClock,
+  FRAME_MS,
+  LOOP_FPS,
+  LOOP_MS,
+  loopTimeAt,
+  STILL_MS,
+} from "./lib/loop-clock"
 export type { DotMeaning } from "./lib/dot-meaning"
 export { DOT_MEANINGS, dotClass } from "./lib/dot-meaning"
 export type { Prompter, PrompterEvent } from "./lib/teleprompter"

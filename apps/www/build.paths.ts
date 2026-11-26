@@ -324,8 +324,8 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       modules: ["packages/some-styles/src/brand/cast.ts"],
-      profiles: ["lan"],
-      why: "the cast the essays' speaking bubbles draw (PDA6, #2883): only the web surface's essay stages draw it, and neither the Android app nor the public site (C1055) has an essay stage",
+      profiles: ["lan", "mobile"],
+      why: "the cast the essays' speaking bubbles draw (PDA6, #2883), on the web surface's essay stages, and the two characters the Android app's Cast wing previews (HOST8, #3532) through the host's rig; the public site (C1055) has neither",
     },
     {
       modules: [

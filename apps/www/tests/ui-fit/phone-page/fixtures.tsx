@@ -54,6 +54,7 @@ import {
 
 import { APH_FIXTURES } from "./aph"
 import { ATTENTION_FIXTURES } from "./attention"
+import { CAST_FIXTURES } from "./cast"
 import { EPISODES_FIXTURES } from "./episodes"
 import { INTERVIEW_FIXTURES } from "./interview"
 import { JOURNAL_FIXTURES } from "./journal"
@@ -411,6 +412,8 @@ export const PHONE_FIXTURES = {
   ...JOURNAL_FIXTURES,
   /** The foyer's wings and Practice Home (`./wings`, `../wings-fit.spec.ts`). */
   ...WINGS_FIXTURES,
+  /** The Cast wing's grid and a look (`./cast`, `../cast-fit.spec.ts`). */
+  ...CAST_FIXTURES,
   /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
   ...TAKES_FIXTURES,
   /** Takes › Needs your attention (`./attention`, `../attention-fit.spec.ts`). */
