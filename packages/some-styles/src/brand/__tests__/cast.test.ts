@@ -52,4 +52,48 @@ describe("the cast", () => {
     )
     expect(parts).toEqual(["antenna-left", "antenna-right", "eyes"])
   })
+
+  it("names the tin owlet's moving parts, tucked in the still drawing", () => {
+    const parts = walk(castNodes("tin-owlet", (name) => name)).flatMap((n) =>
+      typeof n.attrs["data-part"] === "string" ? [n.attrs["data-part"]] : []
+    )
+    expect(parts).toEqual([
+      "figure",
+      "wing-left",
+      "wing-right",
+      "key",
+      "tuft-left",
+      "tuft-right",
+      "eyes",
+      "lid-left",
+      "low-lid-left",
+      "lid-right",
+      "low-lid-right",
+      "mouth",
+      "beak-low",
+    ])
+  })
+
+  it("draws the tin owlet's moving parts tucked: wings folded, lids, mouth and lower beak unmoved", () => {
+    const moves = walk(castNodes("tin-owlet", (name) => name)).flatMap((n) =>
+      typeof n.attrs["data-part"] === "string"
+        ? [[n.attrs["data-part"], n.attrs.transform ?? null]]
+        : []
+    )
+    expect(Object.fromEntries(moves)).toEqual({
+      figure: null,
+      "wing-left": "rotate(0)",
+      "wing-right": "rotate(180)",
+      key: null,
+      "tuft-left": null,
+      "tuft-right": null,
+      eyes: null,
+      "lid-left": null,
+      "low-lid-left": null,
+      "lid-right": null,
+      "low-lid-right": null,
+      mouth: null,
+      "beak-low": null,
+    })
+  })
 })

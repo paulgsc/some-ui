@@ -25,10 +25,11 @@
  *   `Math.sin` differs in the last bits almost never disagree)
  *   (`__tests__/host.test.ts`). Nothing here reads a clock or `Math.random`.
  *
- * Each emotion's and ceremony's own drawing is a stub that returns the
- * drawing unchanged: the tin owlet's loops are HOST3's (#3524), the mochi's
- * HOST4's (#3525), each filling its entry in `EMOTION_DRAWINGS` or
- * `CEREMONY_DRAWINGS`. Speaking motion is HOST5's (#3526).
+ * Each emotion's and ceremony's own drawing fills its entry in
+ * `EMOTION_DRAWINGS` or `CEREMONY_DRAWINGS`: the tin owlet's loops are
+ * HOST3's (#3524, `./host-tin-owlet`), the mochi's HOST4's (#3525), a stub
+ * returning the drawing unchanged until drawn. Speaking motion is HOST5's
+ * (#3526).
  *
  * The essays draw it as the burn-ins' `host` kind (`@some-ui/burn-ins`); the
  * Cast wing (HOST8) and the signature (HOST16) preview it from here.
@@ -36,13 +37,18 @@
 
 import { unitIntervalsBySeed } from "@some-ui/core-utils"
 
+import { CAST_VIEW_BOX, castNodes, nodesText, type Character } from "./cast"
 import {
-  CAST_VIEW_BOX,
-  castNodes,
-  nodesText,
-  type CastNode,
-  type Character,
-} from "./cast"
+  clamp,
+  moved,
+  num,
+  smooth,
+  TAU,
+  type Moment,
+  type Redraw,
+  type Spot,
+} from "./host-draw"
+import { TIN_OWLET_EMOTIONS } from "./host-tin-owlet"
 
 /** The host's characters: Tin Bird and Mochi, and no other. */
 export const HOST_CHARACTERS = [
@@ -113,8 +119,7 @@ export const PLACEMENTS = [
 ] as const
 export type Placement = (typeof PLACEMENTS)[number]
 
-/** A point in the host's area, each axis from 0 (left, top) to 1 (right, bottom). */
-export type Spot = { readonly x: number; readonly y: number }
+export type { Spot } from "./host-draw"
 
 /** One character's beat: what it does from `atMs` until the next beat. */
 export type BeatOf<C extends HostCharacter> = {
@@ -152,30 +157,14 @@ export type Area = {
   readonly height: number
 }
 
-/** A drawing changed for a moment: an emotion's or a ceremony's loop at `tMs`. */
-type Redraw = (
-  nodes: ReadonlyArray<CastNode>,
-  tMs: number
-) => ReadonlyArray<CastNode>
-
 /** The drawing as it is: each emotion's and ceremony's stub until its rig story draws it. */
 const same: Redraw = (nodes) => nodes
 
-/** Each character's emotions, drawn: Tin Bird's by HOST3 (#3524), Mochi's by HOST4 (#3525). */
+/** Each character's emotions, drawn. */
 const EMOTION_DRAWINGS: {
   readonly [C in HostCharacter]: Readonly<Record<EmotionOf<C>, Redraw>>
 } = {
-  "tin-owlet": {
-    neutral: same,
-    curious: same,
-    taciturn: same,
-    happy: same,
-    perplexed: same,
-    anxious: same,
-    frustrated: same,
-    angry: same,
-    ceremonious: same,
-  },
+  "tin-owlet": TIN_OWLET_EMOTIONS,
   mochi: {
     neutral: same,
     curious: same,
@@ -235,16 +224,6 @@ function redrawsOf(beat: Beat): ReadonlyArray<Redraw> {
 }
 
 // ---- Seeded idle life: blink, glance, breath, the key's turn ----
-
-const TAU = Math.PI * 2
-
-const clamp = (v: number, lo: number, hi: number): number =>
-  Math.max(lo, Math.min(hi, v))
-
-const smooth = (p: number): number => {
-  const q = clamp(p, 0, 1)
-  return q * q * (3 - 2 * q)
-}
 
 /** A moment of a seeded schedule: when, and three draws to spend on it. */
 type Tick = {
@@ -370,37 +349,11 @@ const mixBox = (a: Area, b: Area, e: number): Area => ({
   height: mix(a.height, b.height, e),
 })
 
-/** A number as SVG text: three places, and never `-0`. */
-const num = (v: number): string => {
-  const r = Math.round(v * 1000) / 1000
-  return String(r === 0 ? 0 : r)
-}
-
 /** Where each character's eyes sit in the 96 box: the line a blink closes on. */
 const EYE_LINE: Readonly<Record<HostCharacter, number>> = {
   "tin-owlet": 41,
   mochi: 55,
 }
-
-/** `nodes` with `transform` set on every node named `part`. */
-const moved = (
-  nodes: ReadonlyArray<CastNode>,
-  part: string,
-  transform: string
-): ReadonlyArray<CastNode> =>
-  nodes.map((node) => {
-    const children =
-      node.children === undefined
-        ? undefined
-        : moved(node.children, part, transform)
-    const attrs =
-      node.attrs["data-part"] === part
-        ? { ...node.attrs, transform }
-        : node.attrs
-    return children === undefined
-      ? { tag: node.tag, attrs }
-      : { tag: node.tag, attrs, children }
-  })
 
 /** Where the eyes aim: toward `lookAt` from the box's center, or the idle's glance. */
 function aimOf(beat: Beat, box: Area, area: Area, idle: Idle): Spot {
@@ -436,7 +389,10 @@ export function hostSvg(
     "key",
     `translate(80 46) scale(1 ${num(Math.sign(turn || 1) * Math.max(0.1, Math.abs(turn)))}) translate(-80 -46)`
   )
-  for (const redraw of redrawsOf(beat)) nodes = redraw(nodes, tMs)
+  const moment: Moment = { aim, pointing: beat.lookAt !== undefined }
+  // A loop runs on its beat's own time (`hostAt` gives the start of its run).
+  for (const redraw of redrawsOf(beat))
+    nodes = redraw(nodes, tMs - beat.atMs, moment)
   const breath = `translate(48 84) scale(${num(1 - 0.006 * idle.breath)} ${num(1 + 0.013 * idle.breath)}) translate(-48 -84)`
   const body = nodesText(nodes, { ground: "none", glow: false })
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}"><g transform="${breath}">${body}</g></svg>`
@@ -481,6 +437,27 @@ function placedAt(
 }
 
 /**
+ * When beat `i`'s loop began: the start of the unbroken run of beats with
+ * its character, emotion and ceremony, so a beat that only moves the host
+ * or has it speak carries the loop on rather than restarting it.
+ */
+function loopStartOf(beats: ReadonlyArray<Beat>, i: number): number {
+  const beat = beats[i]
+  let start = beat?.atMs ?? 0
+  for (let j = i - 1; j >= 0; j--) {
+    const before = beats[j]
+    if (
+      before?.character !== beat?.character ||
+      before?.emotion !== beat?.emotion ||
+      before?.animation !== beat?.animation
+    )
+      break
+    start = before?.atMs ?? start
+  }
+  return start
+}
+
+/**
  * What the host shows `tMs` into its run, over `area` (the frame's safe
  * area, or a preview's card): the latest beat at or before `tMs`, arriving
  * from what was on screen over `BEAT_BLEND_MS` when the character stays and
@@ -504,6 +481,12 @@ export function hostAt(
     beat,
     box,
     opacity: clamp(opacity, 0, 1),
-    svg: hostSvg(beat, tMs, seed, box.width, aim),
+    svg: hostSvg(
+      { ...beat, atMs: loopStartOf(beats, i) },
+      tMs,
+      seed,
+      box.width,
+      aim
+    ),
   }
 }
