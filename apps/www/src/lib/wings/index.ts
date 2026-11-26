@@ -1,6 +1,7 @@
 import type { FileRoutesByTo } from "@/routeTree.gen"
 
 import { hasAudience } from "@/lib/build-profile"
+import { CAST_WORDS } from "@/lib/cast/words"
 import { VIEWER_BUILD } from "@/lib/data-mode"
 import type { Purpose } from "@/lib/purpose"
 import { offeredHere } from "@/lib/purpose"
@@ -28,6 +29,7 @@ export type WingId =
   | "self"
   | "studio"
   | "jobs"
+  | "cast"
   | "operate"
   | "public"
 
@@ -124,6 +126,16 @@ export const WINGS: ReadonlyArray<Wing> = [
     },
   },
   {
+    // HOST8 (#3532): the two characters, every look previewed. The phone's
+    // alone, and its name is the owner's to change (C1531).
+    id: "cast",
+    name: CAST_WORDS.wing.name,
+    job: CAST_WORDS.wing.job,
+    home: "/cast",
+    settings: null,
+    web: null,
+  },
+  {
     id: "operate",
     name: "Operate",
     job: "Lessons for every learner",
@@ -181,6 +193,7 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "report", wing: "studio", roots: ["/report"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
+  { id: "cast", wing: "cast", roots: ["/cast"] },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
   // Administration (#2357): offered from the home network's launcher and
   // front page (`lib/site-map`), not a sidebar, since Operate's web side is

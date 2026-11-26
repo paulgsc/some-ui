@@ -1,0 +1,19 @@
+{
+  "id": "C1532",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/cast/index.ts",
+    "some-ui:apps/www/src/components/cast/index.tsx",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/cast"
+  ],
+  "chose": "The reach for the Cast wing, a player of the cast's looks: inward, the wing draws every look with hostAt from @some-ui/styles/brand/host, the very function the essays' burn-ins draw the host with, so what it shows is what a scene renders, and its lists are the host's closed unions (an emotion or ceremony added there is a look here with nothing but its words to add). Outward, the animation tools were weighed in HOST1's reach (Rive, Lottie and Spine against the rig, C1484 chose the SVG rig), so no other player is owed: the wing builds only its two screens. Nothing is kept: the wing previews, and a choice made in it (the character, the page, the look, the shot, the corner) lives in the page's address alone. Whether a chosen look becomes a record kept on home waits on HOST7's themes and costumes and HOST16's signature, which will say what is chosen and where it is kept.",
+  "options": [
+    "Draw with hostAt, keep nothing (rung 3, the gap only)",
+    "Embed an animation player (Rive or Lottie) for the previews",
+    "Keep the owner's last-chosen look per character on home now"
+  ],
+  "gray": "The issue names a new kind of record and a player as this story's reach triggers; the owner has not said whether a chosen look is kept, and keeping one before the signature exists would be a record with no reader.",
+  "undo": "Add the record with HOST16's signature, as a new call that moves this one.",
+  "refs": ["#3532", "#3521", "#3522"]
+}

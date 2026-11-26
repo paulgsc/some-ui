@@ -8,7 +8,8 @@ import { FOYER } from "@/lib/wings"
  * What the Android app (apps/mobile) carries, by wing (lib/wings): the foyer,
  * where a wing is chosen; Practice (its Home and settings, sessions - the
  * list, the composer and the player - the soundbites and Rust Rounds); Self (aph);
- * Studio (the Build Journal and game-day bites); Jobs (the day's picks); and
+ * Studio (the Build Journal and game-day bites); Jobs (the day's picks); Cast
+ * (the two characters' looks); and
  * the front desk (settings: this phone, the theme). Everything else www routes to (the landing, the web's Home, the
  * résumé, profile, the extensions tour, the LAN tools) is the web app's, and
  * the phone has no use for it.
@@ -21,8 +22,8 @@ const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
   // The pages only the Android app's build carries (the "apk" audience): the
   // foyer, Practice's Home and settings, the soundbites (the phone's
-  // microphone), Rust Rounds, aph, the Build Journal, game-day bites and Jobs. Asked rather than assumed, like
-  // any gated link.
+  // microphone), Rust Rounds, aph, the Build Journal, game-day bites, Jobs
+  // and Cast. Asked rather than assumed, like any gated link.
   ...(hasAudience("apk")
     ? ([
         "/foyer",
@@ -33,6 +34,7 @@ const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
         "/journal",
         "/game-week",
         "/jobs",
+        "/cast",
       ] as const)
     : []),
   "/settings",

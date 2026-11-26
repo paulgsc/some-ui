@@ -603,9 +603,9 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `apps/www/src/lib/device-backend/capacitor-sqlite/`; the launcher
 >   activity (`MainActivity`), `MainActivity.java` and its launcher
 >   intent-filter in `android/app/src/main/AndroidManifest.xml`; the wings'
->   launcher icons (`WingPractice`, `WingSelf`, `WingStudio`, `WingJobs`), their
->   `<activity-alias>` entries in that manifest, `MainActivity`'s wing table
->   and `apps/www/src/lib/wings/`.
+>   launcher icons (`WingPractice`, `WingSelf`, `WingStudio`, `WingJobs`,
+>   `WingCast`), their `<activity-alias>` entries in that manifest,
+>   `MainActivity`'s wing table and `apps/www/src/lib/wings/`.
 > - _Scope:_ `apps/mobile/review/policy.json`, the code listed above, and
 >   those library declarations.
 > - _Why not enforced:_ the review enforces that a reason exists, and that

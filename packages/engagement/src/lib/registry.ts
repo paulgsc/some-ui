@@ -29,7 +29,13 @@ import type { EventKind, Surface } from "@engagement/lib/events"
 import { ELSEWHERE } from "@engagement/lib/events"
 
 /** The wings of `apps/www/src/lib/wings` that hold a pipeline. */
-export type WingId = "practice" | "self" | "studio" | "jobs" | "operate"
+export type WingId =
+  | "practice"
+  | "self"
+  | "studio"
+  | "jobs"
+  | "cast"
+  | "operate"
 
 /** What accumulates by coming back. */
 export type DomainId =
