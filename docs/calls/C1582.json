@@ -1,0 +1,16 @@
+{
+  "id": "C1582",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/conversation.ts"],
+  "chose": "A preview is the agent's `offer` event in the conversation record, the one source of what was offered (C1565's manifest retired): its folder-safe id, what it bundles (`about`, at most 80 characters), two or three variants each with a folder-safe id, a title (at most 60), one to twelve distinct callouts (at most 80 each) and the rule picking it sets, no two setting one rule, and the one recommended among them. Written by the agent only, accepted once green-lit, each preview id offered once (`offer-again`); home also refuses an offer whose variants' clips aren't on disk. The owner's `approve` names the preview and a variant, or says something else, and never a rule: the step finds the offer and takes the rule from it. Approve is checked in this order: author, phase, `preview-unknown` (nothing offered under that id), `preview-variant` (the offer holds no such variant), `moves-unknown`, `preview-again`, `rule-again`. `moves` stays (C1581). The owner only chooses; every rule's name is the agent's.",
+  "options": [
+    "An agent-authored offer event the approve names, its rule taken from the offer (chosen)",
+    "The approve restating offered, recommended and the rule, the owner writing a rule's name",
+    "The offer kept in a manifest beside the clips, outside the record",
+    "Home writing the offer once its clips are rendered"
+  ],
+  "gray": "Who proposes a preview and where it is kept is how the owner's guard reads in the record, and what home and the phone port; no check settles whether the agent or home writes it. The agent proposes the bundle and its rules, home renders and checks the clips, so the author is the agent.",
+  "undo": "Drop the offer event and give approve back its offered, recommended and rule; records with offers would need lowering.",
+  "refs": ["#3558", "#3567", "#3521"]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "C1580",
+  "made": "2026-11-26",
+  "by": "claude",
+  "moves": "C1537",
+  "paths": ["some-ui:packages/video-render/src/conversation.ts"],
+  "chose": "A conversation record's events are ordered by their place in its append-only log, never by the writers' clocks: each event's `at` is the writer's time, kept as information and never compared, so the phone, Studio or the cloud agent writing with a clock behind the log's newest event is never refused for it. A writer may name `basis`, how many events the log held when it wrote; an event written against an older log is refused by that number (`stale`), and one naming none is placed after what the log holds. This follows paulgsc/server's docs/conveyor.md, invariant 2 (moves are ordered by their number, never by a clock), and the wedge of server#839 it rules out. Home stores each event's place as a gapless seq and replays in that order. It moves C1537's \"events are kept in the order of their dates\".",
+  "options": [
+    "Order by the log's own sequence, `at` informational, a stale writer refused by number (chosen)",
+    "Order by `at`, refusing an event dated before the newest (C1537)",
+    "Order by `at`, sorting late events into place"
+  ],
+  "gray": "Several writers on different clocks append to one record; whether time or sequence orders it decides whether a slow clock can wedge the owner's conversation.",
+  "undo": "Restore the out-of-time refusal in stepConversation and Kept's `since`; records kept since would need their dates to be in order to replay.",
+  "refs": ["#3567", "#3558", "server#839", "server#1243"]
+}

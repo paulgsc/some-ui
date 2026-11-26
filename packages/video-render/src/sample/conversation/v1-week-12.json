@@ -1,0 +1,91 @@
+{
+  "schema": "some-ui.conversation/1",
+  "id": "week-12",
+  "events": [
+    {
+      "event": "topic",
+      "at": "2026-11-25T18:00:00.000Z",
+      "topic": { "said": "Why the line moved in week twelve" }
+    },
+    { "event": "point", "at": "2026-11-25T18:05:00.000Z", "take": "take-a" },
+    {
+      "event": "version",
+      "at": "2026-11-25T18:20:00.000Z",
+      "version": {
+        "n": 1,
+        "speakers": [
+          { "id": "tin", "character": "tin-owlet", "voice": "kokoro" },
+          { "id": "mochi", "character": "mochi", "voice": "owner" }
+        ],
+        "turns": [
+          {
+            "id": "k1",
+            "speaker": "tin",
+            "voice": "kokoro",
+            "said": "What changed in week twelve?"
+          },
+          {
+            "id": "o1",
+            "speaker": "mochi",
+            "voice": "owner",
+            "take": "take-a"
+          },
+          {
+            "id": "k2",
+            "speaker": "tin",
+            "voice": "kokoro",
+            "said": "So the line moved because of the injury."
+          }
+        ],
+        "answers": []
+      }
+    },
+    {
+      "event": "flag",
+      "at": "2026-11-25T18:30:00.000Z",
+      "flag": {
+        "id": "f1",
+        "turn": "k1",
+        "kind": "assumes-context",
+        "note": "Which line?"
+      }
+    },
+    {
+      "event": "version",
+      "at": "2026-11-25T18:45:00.000Z",
+      "version": {
+        "n": 2,
+        "speakers": [
+          { "id": "tin", "character": "tin-owlet", "voice": "kokoro" },
+          { "id": "mochi", "character": "mochi", "voice": "owner" }
+        ],
+        "turns": [
+          {
+            "id": "k1",
+            "speaker": "tin",
+            "voice": "kokoro",
+            "said": "Week twelve: what moved the line?"
+          },
+          {
+            "id": "o1",
+            "speaker": "mochi",
+            "voice": "owner",
+            "take": "take-a"
+          },
+          {
+            "id": "k2",
+            "speaker": "tin",
+            "voice": "kokoro",
+            "said": "So the line moved because of the injury."
+          }
+        ],
+        "answers": [{ "flag": "f1", "how": "rewrote", "turns": ["k1"] }]
+      }
+    },
+    {
+      "event": "flag",
+      "at": "2026-11-25T18:50:00.000Z",
+      "flag": { "id": "f2", "turn": "o1", "kind": "too-quiet" }
+    }
+  ]
+}

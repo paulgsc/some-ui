@@ -53,7 +53,7 @@ const SourcePathSchema = z
  * essay's stamp pins, and the lines (first and last, from 1), a phrase
  * quoted from it, or both, when the phrase is in those lines.
  */
-const ClaimSourceSchema = z
+export const ClaimSourceSchema = z
   .strictObject({
     repo: z.string().regex(SOURCE_REPO, "it isn't owner/repo"),
     path: SourcePathSchema,
