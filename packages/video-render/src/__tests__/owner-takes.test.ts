@@ -1,0 +1,378 @@
+/**
+ * HOST12 (#3554): the owner's takes, conditioned. The screener's family, by
+ * dimension: a record button's click at the start, the end, both or
+ * neither; a word starting within 100 ms of an edge, voiced or with a
+ * broadband (fricative) onset, right after a click or with none; the same
+ * take quieter, so the threshold is the speaking level's; a floor above
+ * the bound or under it. Then the gaps, a turn's span against its words,
+ * the captions through the cut, the WAV read by its chunks, and the ffmpeg
+ * step's bytes.
+ */
+import { createHash } from "node:crypto"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import type { TimedWord } from "@video-render/cut-list"
+import { nodePorts } from "@video-render/node"
+import {
+  conditionTake,
+  DEFAULT_CONDITIONING,
+  framesOf,
+  joinsOf,
+  keptStretches,
+  retimed,
+  screenEdges,
+  spanOf,
+  spanProblems,
+  TAKE_POLICY,
+} from "@video-render/owner-takes"
+import type { Stretch } from "@video-render/owner-takes"
+import { samplesOf, wavMs } from "@video-render/wav"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+
+const RATE = 48_000
+
+/** A deterministic hiss: a small LCG's noise at `amp`. */
+function hiss(n: number, amp: number, seed = 7): Float32Array {
+  const out = new Float32Array(n)
+  let x = seed
+  for (let i = 0; i < n; i++) {
+    x = (x * 1103515245 + 12345) % 2147483648
+    out[i] = ((x / 2147483648) * 2 - 1) * amp
+  }
+  return out
+}
+
+type Piece =
+  | { readonly kind: "word"; readonly fromMs: number; readonly toMs: number }
+  | { readonly kind: "click"; readonly fromMs: number; readonly toMs: number }
+  | {
+      readonly kind: "fricative"
+      readonly fromMs: number
+      readonly toMs: number
+    }
+
+const at = (ms: number): number => Math.round((ms * RATE) / 1000)
+
+/** A take `ms` long: hiss under it, and each piece laid on it. */
+function takeOf(
+  ms: number,
+  pieces: ReadonlyArray<Piece>,
+  { scale = 1, hissAmp = 0.001 } = {}
+): Float32Array {
+  const out = hiss(at(ms), hissAmp)
+  for (const p of pieces) {
+    const from = at(p.fromMs)
+    const to = at(p.toMs)
+    const burst = hiss(to - from, 0.6, p.fromMs + 1)
+    for (let i = from; i < to && i < out.length; i++) {
+      const t = (i - from) / RATE
+      const ramp = Math.min(1, (i - from) / at(5), (to - i) / at(5))
+      const voice =
+        0.3 *
+        ramp *
+        (Math.sin(2 * Math.PI * 150 * t) +
+          0.5 * Math.sin(2 * Math.PI * 300 * t) +
+          0.25 * Math.sin(2 * Math.PI * 450 * t))
+      out[i] =
+        (out[i] ?? 0) + (p.kind === "word" ? voice : (burst[i - from] ?? 0))
+    }
+  }
+  return scale === 1 ? out : out.map((x) => x * scale)
+}
+
+const screened = (samples: Float32Array): ReturnType<typeof screenEdges> =>
+  screenEdges(framesOf(samples, RATE))
+
+const within = (inner: Stretch, outer: Stretch): boolean =>
+  inner.fromMs >= outer.fromMs && inner.toMs <= outer.toMs
+
+const meets = (a: Stretch, b: Stretch): boolean =>
+  a.fromMs < b.toMs && b.fromMs < a.toMs
+
+describe("screenEdges (HOST12)", () => {
+  const words: ReadonlyArray<Piece> = [
+    { kind: "word", fromMs: 400, toMs: 1400 },
+    { kind: "word", fromMs: 1900, toMs: 2600 },
+  ]
+  const startClick: Piece = { kind: "click", fromMs: 20, toMs: 25 }
+  const endClick: Piece = { kind: "click", fromMs: 2950, toMs: 2955 }
+  const cases: ReadonlyArray<{
+    readonly name: string
+    readonly pieces: ReadonlyArray<Piece>
+    readonly clicks: readonly [boolean, boolean]
+  }> = [
+    { name: "neither", pieces: words, clicks: [false, false] },
+    {
+      name: "a click at the start",
+      pieces: [startClick, ...words],
+      clicks: [true, false],
+    },
+    {
+      name: "a click at the end",
+      pieces: [...words, endClick],
+      clicks: [false, true],
+    },
+    {
+      name: "both",
+      pieces: [startClick, ...words, endClick],
+      clicks: [true, true],
+    },
+  ]
+
+  it.each(cases)(
+    "finds the clicks by shape, and keeps every word: $name",
+    ({ pieces, clicks }) => {
+      const s = screened(takeOf(3_000, pieces))
+      expect([s.clicks.start !== null, s.clicks.end !== null]).toEqual(clicks)
+      for (const p of pieces) {
+        if (p.kind === "word") expect(within(p, s.kept)).toBe(true)
+        else expect(meets(p, s.kept)).toBe(false)
+      }
+      // The hiss before the first word is gone: the turn starts within 0.1 s of it.
+      expect(400 - s.kept.fromMs).toBeLessThanOrEqual(100)
+      expect(s.kept.toMs - 2600).toBeLessThanOrEqual(TAKE_POLICY.tailMs + 10)
+      expect(s.noisy).toBe(false)
+    }
+  )
+
+  it.each([
+    {
+      name: "a voiced word at 40 ms",
+      pieces: [{ kind: "word", fromMs: 40, toMs: 900 }],
+    },
+    {
+      name: "a word at 70 ms, after a click",
+      pieces: [
+        { kind: "click", fromMs: 0, toMs: 5 },
+        { kind: "word", fromMs: 70, toMs: 900 },
+      ],
+    },
+    {
+      name: "a word at 30 ms with a broadband onset, as an s is",
+      pieces: [
+        { kind: "fricative", fromMs: 30, toMs: 55 },
+        { kind: "word", fromMs: 55, toMs: 900 },
+      ],
+    },
+  ] satisfies ReadonlyArray<{ name: string; pieces: ReadonlyArray<Piece> }>)(
+    "never clips a word that starts within 100 ms of the edge: $name",
+    ({ pieces }) => {
+      const s = screened(takeOf(1_200, pieces))
+      const first = pieces.find((p) => p.kind !== "click")
+      if (first === undefined) throw new Error("no word")
+      expect(s.kept.fromMs).toBeLessThanOrEqual(first.fromMs)
+      expect(s.clicks.start === null).toBe(pieces[0]?.kind !== "click")
+    }
+  )
+
+  it("takes its threshold from the speaking level: the same take quieter is cut the same", () => {
+    const pieces = [startClick, ...words, endClick]
+    const loud = screened(takeOf(3_000, pieces))
+    const quiet = screened(takeOf(3_000, pieces, { scale: 0.05 }))
+    expect(quiet.kept).toEqual(loud.kept)
+    expect(quiet.clicks).toEqual(loud.clicks)
+    expect(quiet.speakingDb).toBeLessThan(loud.speakingDb - 20)
+  })
+
+  it("flags a take whose silences are above the floor, never failing it", () => {
+    const noisy = screened(takeOf(3_000, words, { hissAmp: 0.008 }))
+    expect(noisy.noisy).toBe(true)
+    expect(noisy.floorDb).toBeGreaterThan(TAKE_POLICY.noiseFloorMostDb)
+    const clean = screened(takeOf(3_000, words))
+    expect(clean.floorDb).toBeLessThan(TAKE_POLICY.noiseFloorMostDb)
+  })
+})
+
+describe("keptStretches (HOST12)", () => {
+  it("shortens each long silence to the gap cap from its middle, every join in silence", () => {
+    const pieces: ReadonlyArray<Piece> = [
+      { kind: "word", fromMs: 300, toMs: 900 },
+      { kind: "word", fromMs: 2_000, toMs: 2_400 },
+      { kind: "word", fromMs: 2_550, toMs: 3_000 },
+    ]
+    const s = screened(takeOf(3_400, pieces))
+    const kept = keptStretches(s)
+    // The 1100 ms silence is cut to 280; the 150 ms one is kept whole.
+    const joins = joinsOf(kept)
+    expect(joins).toHaveLength(1)
+    const [join] = joins
+    if (join === undefined) throw new Error("no join")
+    expect(join.fromMs - 900).toBeGreaterThanOrEqual(
+      TAKE_POLICY.gapMostMs / 2 - 10
+    )
+    expect(2_000 - join.toMs).toBeGreaterThanOrEqual(
+      TAKE_POLICY.gapMostMs / 2 - 10
+    )
+    for (const p of pieces) expect(kept.some((k) => within(p, k))).toBe(true)
+    // Every join's two sides are silence, by the screener's own frames.
+    const f = TAKE_POLICY.frameMs
+    for (const j of joins)
+      for (const ms of [j.fromMs - f, j.toMs])
+        expect(s.voiced[Math.floor(ms / f)]).toBe(false)
+  })
+
+  it("places the words on the cut, sped-up audio", () => {
+    const kept: ReadonlyArray<Stretch> = [
+      { fromMs: 100, toMs: 1_100 },
+      { fromMs: 2_000, toMs: 3_000 },
+    ]
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "One", startMs: 200, endMs: 500 },
+      { text: "two.", startMs: 2_100, endMs: 2_400 },
+    ]
+    expect(retimed(words, kept, 2)).toEqual([
+      { text: "One", startMs: 50, endMs: 200 },
+      { text: "two.", startMs: 550, endMs: 700 },
+    ])
+  })
+})
+
+describe("spanProblems (HOST12)", () => {
+  const words: ReadonlyArray<TimedWord> = [
+    { text: "The", startMs: 0, endMs: 200 },
+    { text: "third.", startMs: 200, endMs: 600 },
+    { text: "The", startMs: 1_000, endMs: 1_200 },
+    { text: "fourth.", startMs: 1_200, endMs: 1_700 },
+  ]
+
+  it("agrees when the turn says what its span's words say, and its edges fall between words", () => {
+    expect(
+      spanProblems({ id: "o3", text: "The third." }, words, {
+        fromMs: 0,
+        toMs: 800,
+      })
+    ).toEqual([])
+  })
+
+  it("cuts a long take into turns whose spans agree with their words, every way it is split", () => {
+    const texts = ["The", "third.", "The", "fourth."]
+    for (let split = 1; split < words.length; split++) {
+      const a = spanOf(words, 0, split - 1)
+      const b = spanOf(words, split, words.length - 1)
+      if (a === null || b === null) throw new Error("no span")
+      expect(a.toMs).toBeLessThanOrEqual(b.fromMs)
+      expect([
+        ...spanProblems(
+          { id: "a", text: texts.slice(0, split).join(" ") },
+          words,
+          a
+        ),
+        ...spanProblems(
+          { id: "b", text: texts.slice(split).join(" ") },
+          words,
+          b
+        ),
+      ]).toEqual([])
+    }
+    expect(spanOf(words, 2, 1)).toBeNull()
+  })
+
+  it("names a sentence moved into the wrong turn, and an edge inside a word", () => {
+    expect(
+      spanProblems({ id: "o3", text: "The third." }, words, {
+        fromMs: 0,
+        toMs: 1_800,
+      })
+    ).toEqual([
+      'o3: its span says "the third the fourth", and the turn "the third"',
+    ])
+    expect(
+      spanProblems({ id: "o4", text: "The fourth." }, words, {
+        fromMs: 1_100,
+        toMs: 1_800,
+      })
+    ).toEqual(['o4: its span cuts "The" at 1100 ms'])
+  })
+})
+
+/** A 16-bit mono WAV of `samples`, its sizes 0xFFFFFFFF as a stream writes them when `streamed`. */
+function wavOf(samples: Float32Array, streamed = false): Uint8Array {
+  const data = samples.length * 2
+  const out = new Uint8Array(44 + data)
+  const view = new DataView(out.buffer)
+  const ascii = (o: number, s: string): void => {
+    for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i))
+  }
+  ascii(0, "RIFF")
+  view.setUint32(4, streamed ? 0xffffffff : 36 + data, true)
+  ascii(8, "WAVE")
+  ascii(12, "fmt ")
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, RATE, true)
+  view.setUint32(28, RATE * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  ascii(36, "data")
+  view.setUint32(40, streamed ? 0xffffffff : data, true)
+  samples.forEach((x, i) =>
+    view.setInt16(
+      44 + i * 2,
+      Math.max(-32768, Math.min(32767, Math.round(x * 32767))),
+      true
+    )
+  )
+  return out
+}
+
+describe("a take's WAV, read by its chunks", () => {
+  it("measures a streamed WAV by what it holds, never by its header's 0xFFFFFFFF", () => {
+    const samples = takeOf(1_000, [{ kind: "word", fromMs: 100, toMs: 900 }])
+    for (const streamed of [false, true]) {
+      const wav = wavOf(samples, streamed)
+      expect(wavMs(wav)).toBe(1_000)
+      expect(samplesOf(wav)?.samples.length).toBe(samples.length)
+    }
+  })
+})
+
+describe("conditionTake (HOST12)", () => {
+  let root = ""
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), "owner-takes-"))
+  })
+  afterAll(async () => {
+    if (root) await rm(root, { recursive: true, force: true })
+  })
+
+  it("cuts, speeds and levels a take, the same bytes each time", async () => {
+    const pieces: ReadonlyArray<Piece> = [
+      { kind: "click", fromMs: 20, toMs: 25 },
+      { kind: "word", fromMs: 400, toMs: 1_400 },
+      { kind: "word", fromMs: 2_600, toMs: 3_400 },
+      { kind: "click", fromMs: 3_900, toMs: 3_905 },
+    ]
+    const wav = wavOf(takeOf(4_000, pieces), true)
+    await writeFile(join(root, "take.wav"), wav)
+    const ports = nodePorts(root)
+    const sums: Array<string> = []
+    for (const k of [1, 2]) {
+      await ports.mkdir(`work-${String(k)}`)
+      const done = await conditionTake(
+        ports,
+        {
+          file: "take.wav",
+          wav,
+          words: [{ text: "Hello", startMs: 400, endMs: 1_400 }],
+        },
+        DEFAULT_CONDITIONING,
+        `work-${String(k)}`,
+        `out-${String(k)}.wav`
+      )
+      if (!done.ok) throw new Error(done.problems.join("\n"))
+      const kept = done.value.kept.reduce((n, s) => n + s.toMs - s.fromMs, 0)
+      const out = new Uint8Array(
+        await readFile(join(root, `out-${String(k)}.wav`))
+      )
+      // The kept audio, played 1.2 times as fast.
+      expect(
+        Math.abs((wavMs(out) ?? 0) - kept / DEFAULT_CONDITIONING.tempo)
+      ).toBeLessThan(30)
+      expect(done.value.words?.[0]?.startMs).toBeLessThanOrEqual(100)
+      sums.push(createHash("sha256").update(out).digest("hex"))
+    }
+    expect(sums[0]).toBe(sums[1])
+  }, 60_000)
+})

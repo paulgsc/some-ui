@@ -596,10 +596,17 @@ export function planVoice(
   }
 }
 
-export const LOUDNESS = "I=-16:TP=-1.5:LRA=11"
+/** loudnorm's target: `lufs` integrated, under -1.5 dB true peak. */
+export const loudnessAt = (lufs: number): string =>
+  `I=${String(lufs)}:TP=-1.5:LRA=11`
+
+export const LOUDNESS = loudnessAt(-16)
 
 /** The measuring pass: ffmpeg prints the voice's loudness as JSON. */
-export function planMeasure(voice: string): FfmpegCall {
+export function planMeasure(
+  voice: string,
+  target: string = LOUDNESS
+): FfmpegCall {
   return {
     args: [
       "-hide_banner",
@@ -607,7 +614,7 @@ export function planMeasure(voice: string): FfmpegCall {
       "-i",
       voice,
       "-af",
-      `loudnorm=${LOUDNESS}:print_format=json`,
+      `loudnorm=${target}:print_format=json`,
       "-f",
       "null",
       "-",
@@ -726,11 +733,12 @@ export function duckExpr(
   return `1-${(1 - under).toFixed(6)}*${w}`
 }
 
-/** The voice brought to -16 LUFS, from the measured pass, on its own. */
+/** The voice brought to -16 LUFS (or `target`), from the measured pass, on its own. */
 export function planLevel(
   voice: string,
   loudness: Loudness,
-  out: string
+  out: string,
+  target: string = LOUDNESS
 ): FfmpegCall {
   const l = loudness
   return {
@@ -739,9 +747,64 @@ export function planLevel(
       "-i",
       voice,
       "-af",
-      `loudnorm=${LOUDNESS}:measured_I=${l.input_i}:measured_TP=${l.input_tp}:` +
+      `loudnorm=${target}:measured_I=${l.input_i}:measured_TP=${l.input_tp}:` +
         `measured_LRA=${l.input_lra}:measured_thresh=${l.input_thresh}:` +
         `offset=${l.target_offset}:linear=true,${MONO}`,
+      "-c:a",
+      "pcm_s16le",
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
+/**
+ * One of the owner's takes conditioned, before its level (HOST12): high-
+ * passed, denoised from its own floor (`floorDb`), cut to `kept` with a fade
+ * at each join, and sped up by `tempo` with its pitch kept. One input, so
+ * the same take and cut give the same bytes.
+ */
+export function planCondition(
+  take: string,
+  cut: {
+    readonly kept: ReadonlyArray<{
+      readonly fromMs: number
+      readonly toMs: number
+    }>
+    readonly floorDb: number
+    readonly tempo: number
+    readonly fadeMs: number
+  },
+  out: string
+): FfmpegCall {
+  if (cut.kept.length === 0)
+    throw new Error("a take keeps at least one stretch")
+  const nf = Math.min(-20, Math.max(-80, Math.round(cut.floorDb)))
+  const fade = sec(cut.fadeMs)
+  const n = cut.kept.length
+  const parts = cut.kept.map((s, i) => {
+    const fadesOut = sec(Math.max(0, s.toMs - s.fromMs - cut.fadeMs))
+    return (
+      `[c${String(i)}]atrim=start=${sec(s.fromMs)}:end=${sec(s.toMs)},asetpts=PTS-STARTPTS,` +
+      `afade=t=in:d=${fade},afade=t=out:st=${fadesOut}:d=${fade}[k${String(i)}];`
+    )
+  })
+  const graph = `[0:a]${MONO},highpass=f=80,afftdn=nf=${String(nf)},asplit=${String(n)}${cut.kept
+    .map((_, i) => `[c${String(i)}]`)
+    .join("")};${parts.join("")}${cut.kept
+    .map((_, i) => `[k${String(i)}]`)
+    .join(
+      ""
+    )}concat=n=${String(n)}:v=0:a=1,atempo=${cut.tempo.toFixed(6)},${MONO}[a]`
+  return {
+    args: [
+      ...QUIET,
+      "-i",
+      take,
+      "-filter_complex",
+      graph,
+      "-map",
+      "[a]",
       "-c:a",
       "pcm_s16le",
       ...BITEXACT,
