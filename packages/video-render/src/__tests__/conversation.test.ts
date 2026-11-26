@@ -30,6 +30,7 @@ import {
 } from "@video-render/conversation"
 import type {
   ConversationEvent,
+  ConversationSpeaker,
   ConversationState,
   ConversationTurn,
   FlagAnswer,
@@ -39,14 +40,30 @@ import { describe, expect, it } from "vitest"
 
 const AT = "2026-11-26T10:00:00.000Z"
 
-const ask: ConversationTurn = {
+type Line = Extract<ConversationTurn, { voice: "kokoro" }>
+type Take = Extract<ConversationTurn, { voice: "owner" }>
+
+/** An essay's two speakers: Tin Bird in Kokoro's voice, Mochi in the owner's. */
+const ESSAY: ReadonlyArray<ConversationSpeaker> = [
+  { id: "tin", character: "tin-owlet", voice: "kokoro" },
+  { id: "mochi", character: "mochi", voice: "owner" },
+]
+
+const ask: Line = {
   id: "k1",
+  speaker: "tin",
   voice: "kokoro",
   said: "What changed in week twelve?",
 }
-const take: ConversationTurn = { id: "o1", voice: "owner", take: "take-a" }
-const close: ConversationTurn = {
+const take: Take = {
+  id: "o1",
+  speaker: "mochi",
+  voice: "owner",
+  take: "take-a",
+}
+const close: Line = {
   id: "k2",
+  speaker: "tin",
   voice: "kokoro",
   said: "So the line moved because of the injury.",
 }
@@ -54,18 +71,24 @@ const close: ConversationTurn = {
 const version = (
   n: number,
   turns: ReadonlyArray<ConversationTurn>,
-  answers: ReadonlyArray<FlagAnswer> = []
+  answers: ReadonlyArray<FlagAnswer> = [],
+  speakers: ReadonlyArray<ConversationSpeaker> = ESSAY
 ): ConversationEvent => ({
   event: "version",
   at: AT,
-  version: { n, turns: [...turns], answers: [...answers] },
+  version: {
+    n,
+    speakers: [...speakers],
+    turns: [...turns],
+    answers: [...answers],
+  },
 })
 
-const reworded: ConversationTurn = {
+const reworded: Line = {
   ...ask,
   said: "Week twelve: what moved the line?",
 }
-const retaken: ConversationTurn = { ...take, take: "take-b" }
+const retaken: Take = { ...take, take: "take-b" }
 
 /** The alphabet every order is drawn from. */
 const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
@@ -379,7 +402,12 @@ describe("a flag never edits a turn; the next version answers it", () => {
         ["topic", "pointA", "v1", "flagQuiet"],
         [
           ask,
-          { id: "o1", voice: "kokoro", said: "I'll say it for you." },
+          {
+            id: "o1",
+            speaker: "tin",
+            voice: "kokoro",
+            said: "I'll say it for you.",
+          },
           close,
         ],
         [{ flag: "f5", how: "kept", note: "Kept." }]
@@ -423,6 +451,58 @@ describe("a flag never edits a turn; the next version answers it", () => {
         kind: "unhuman",
         voice: "owner",
       },
+    })
+  })
+})
+
+describe("speakers", () => {
+  const drama: ReadonlyArray<ConversationSpeaker> = [
+    { id: "owlet", character: "tin-owlet", voice: "kokoro" },
+    { id: "sparrow", character: "tin-sparrow", voice: "kokoro" },
+    { id: "mochi", character: "mochi", voice: "owner" },
+  ]
+  const drafting = replayConversation([
+    { event: "topic", at: AT, topic: { said: "A panel at the bus stop" } },
+    { event: "point", at: AT, take: "take-a" },
+  ])
+
+  it("takes a drama's ensemble as the same record: three speakers, two in Kokoro", () => {
+    if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
+    const stepped = stepConversation(
+      drafting.state,
+      version(
+        1,
+        [
+          { id: "s1", speaker: "owlet", voice: "kokoro", said: "Late again." },
+          { id: "s2", speaker: "sparrow", voice: "kokoro", said: "Always." },
+          { id: "s3", speaker: "mochi", voice: "owner", take: "take-a" },
+        ],
+        [],
+        drama
+      )
+    )
+    expect(stepped.ok).toBe(true)
+  })
+
+  it("refuses a turn by a speaker the version doesn't have, or in another voice", () => {
+    if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
+    expect(
+      stepConversation(
+        drafting.state,
+        version(1, [{ ...ask, speaker: "sparrow" }])
+      )
+    ).toEqual({
+      ok: false,
+      refusal: { why: "speaker-unknown", turn: "k1", speaker: "sparrow" },
+    })
+    expect(
+      stepConversation(
+        drafting.state,
+        version(1, [{ ...ask, speaker: "mochi" }])
+      )
+    ).toEqual({
+      ok: false,
+      refusal: { why: "speaker-voice", turn: "k1", speaker: "mochi" },
     })
   })
 })
@@ -476,6 +556,7 @@ describe("the closed sets", () => {
 describe("changedTurns", () => {
   const v = (turns: ReadonlyArray<ConversationTurn>): PodcastVersion => ({
     n: 1,
+    speakers: [...ESSAY],
     turns: [...turns],
     answers: [],
   })
@@ -493,6 +574,12 @@ describe("changedTurns", () => {
       "k2",
     ])
     expect(changedTurns(v([ask, take, close]), v([ask, take]))).toEqual(["k2"])
+    expect(
+      changedTurns(
+        v([ask, take, close]),
+        v([{ ...ask, speaker: "mochi" }, take, close])
+      )
+    ).toEqual(["k1"])
   })
 })
 
@@ -541,7 +628,12 @@ describe("parseConversationRecord", () => {
         {
           event: "version",
           at: AT,
-          version: { n: 1, turns: [{ ...ask, segue: "Anyway." }], answers: [] },
+          version: {
+            n: 1,
+            speakers: ESSAY,
+            turns: [{ ...ask, segue: "Anyway." }],
+            answers: [],
+          },
         },
       ],
     })

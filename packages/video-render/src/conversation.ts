@@ -25,6 +25,12 @@
  * The family. A turn is the spoken card's turn (`SpokenTurnSchema` in
  * `cut-list.ts`: a line home's Kokoro says, or the owner's take by its id),
  * given an id that lasts across versions so a flag and its answer can name
+ * it, and spoken by one of the version's speakers: a cast member and its
+ * voice. The record holds any number of speakers (the owner, 2026-11-26, on
+ * #3521: a short drama's ensemble is the same record, "we can't silently
+ * like drift into like an overly granular, over-repeated architecture"); an
+ * essay is its two-speaker case, Mochi in the owner's takes and Tin Bird in
+ * Kokoro's lines. The flags are keyed by a turn's voice, not by who speaks
  * it. The conversation essay is the essay family's member whose turns are
  * not fixed by a template (the call's sections, the Rust essay's tickets) but
  * written and revised by the agent, so what is new here is only the gap: the
@@ -43,6 +49,7 @@
  */
 
 import { assertNever } from "@some-ui/core-utils"
+import { CHARACTERS } from "@some-ui/styles/brand/cast"
 import { z } from "zod"
 
 import { problemsOf, SpokenTurnSchema } from "./cut-list"
@@ -64,6 +71,11 @@ export const CONVERSATION_POLICY = {
   pointsMost: 40,
   /** The most characters a topic, a note or a kept answer's reason runs. */
   noteMost: 600,
+  /**
+   * The most speakers one version has: an essay has two, and a short drama's
+   * ensemble a few more.
+   */
+  speakersMost: 8,
 } as const
 
 /**
@@ -88,6 +100,11 @@ export type FlagKind = (typeof FLAG_KINDS)[number]
 
 /** A turn's voice: the agent's (Kokoro's) line, or the owner's take. */
 export type ConversationVoice = z.infer<typeof SpokenTurnSchema>["voice"]
+
+const VOICES = [
+  "kokoro",
+  "owner",
+] as const satisfies ReadonlyArray<ConversationVoice>
 
 /** The voice whose turns each kind of flag is raised on. */
 export const FLAG_VOICE = {
@@ -144,9 +161,23 @@ const TakeSchema = OwnerTurnSchema.shape.take
  * the agent wrote for Kokoro or a take of the owner's, with its id.
  */
 export const ConversationTurnSchema = z.discriminatedUnion("voice", [
-  KokoroTurnSchema.extend({ id: IdSchema }),
-  OwnerTurnSchema.extend({ id: IdSchema }),
+  KokoroTurnSchema.extend({ id: IdSchema, speaker: IdSchema }),
+  OwnerTurnSchema.extend({ id: IdSchema, speaker: IdSchema }),
 ])
+
+/**
+ * One of a version's speakers: a cast member (`CHARACTERS`), and how its
+ * turns are voiced, the owner's own takes or the lines the agent writes for
+ * Kokoro. An essay has two, Mochi in the owner's voice and Tin Bird in
+ * Kokoro's; a drama's ensemble is more of the same, none of them special.
+ */
+export const ConversationSpeakerSchema = z.strictObject({
+  id: IdSchema,
+  character: z.enum(CHARACTERS),
+  voice: z.enum(VOICES),
+})
+
+export type ConversationSpeaker = z.infer<typeof ConversationSpeakerSchema>
 
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>
 
@@ -190,6 +221,11 @@ export type FlagAnswer = z.infer<typeof FlagAnswerSchema>
 /** One podcast version: its number from 1, its turns in order, and how it answers the flags on the one before. */
 export const PodcastVersionSchema = z.strictObject({
   n: z.number().int().min(1),
+  /** Who speaks in this version: the agent's editorial work, as its turns are. */
+  speakers: z
+    .array(ConversationSpeakerSchema)
+    .min(1)
+    .max(CONVERSATION_POLICY.speakersMost),
   turns: z
     .array(ConversationTurnSchema)
     .min(1)
@@ -313,6 +349,17 @@ export type ConversationRefusal =
       readonly expected: number
       readonly got: number
     }
+  | { readonly why: "speaker-twice"; readonly speaker: string }
+  | {
+      readonly why: "speaker-unknown"
+      readonly turn: string
+      readonly speaker: string
+    }
+  | {
+      readonly why: "speaker-voice"
+      readonly turn: string
+      readonly speaker: string
+    }
   | { readonly why: "turn-twice"; readonly turn: string }
   | { readonly why: "take-twice"; readonly take: string }
   | {
@@ -393,9 +440,10 @@ export const ownerTakes = (version: PodcastVersion): ReadonlyArray<string> =>
   version.turns.flatMap((t) => (t.voice === "owner" ? [t.take] : []))
 
 const sameTurn = (a: ConversationTurn, b: ConversationTurn): boolean =>
-  a.voice === "kokoro"
+  a.speaker === b.speaker &&
+  (a.voice === "kokoro"
     ? b.voice === "kokoro" && a.said === b.said
-    : b.voice === "owner" && a.take === b.take
+    : b.voice === "owner" && a.take === b.take)
 
 /**
  * The turns that differ between two versions: added, removed, reworded or
@@ -423,8 +471,10 @@ export function changedTurns(
 }
 
 /**
- * The first thing wrong with `version`'s turns: an id twice, a take twice or
- * not one of the points, or an id an earlier version gave the other voice.
+ * The first thing wrong with `version`'s speakers and turns: a speaker twice,
+ * a turn whose speaker isn't the version's or speaks in another voice, a turn
+ * id twice, a take twice or not one of the points, or a turn id an earlier
+ * version gave the other voice.
  */
 function turnsRefusal(
   version: PodcastVersion,
@@ -433,9 +483,20 @@ function turnsRefusal(
   const voiceOf = new Map(
     kept.versions.flatMap((v) => v.turns.map((t) => [t.id, t.voice] as const))
   )
+  const speakers = new Map<string, ConversationSpeaker>()
+  for (const speaker of version.speakers) {
+    if (speakers.has(speaker.id))
+      return { why: "speaker-twice", speaker: speaker.id }
+    speakers.set(speaker.id, speaker)
+  }
   const ids = new Set<string>()
   const takes = new Set<string>()
   for (const turn of version.turns) {
+    const speaker = speakers.get(turn.speaker)
+    if (speaker === undefined)
+      return { why: "speaker-unknown", turn: turn.id, speaker: turn.speaker }
+    if (speaker.voice !== turn.voice)
+      return { why: "speaker-voice", turn: turn.id, speaker: turn.speaker }
     if (ids.has(turn.id)) return { why: "turn-twice", turn: turn.id }
     ids.add(turn.id)
     const voice = voiceOf.get(turn.id)
@@ -698,6 +759,15 @@ export function refusalLine(refusal: ConversationRefusal): string {
     }
     case "version-number": {
       return `the next version is ${refusal.expected}, not ${refusal.got}`
+    }
+    case "speaker-twice": {
+      return `speaker ${refusal.speaker} is in the version twice`
+    }
+    case "speaker-unknown": {
+      return `turn ${refusal.turn} is spoken by ${refusal.speaker}, who isn't one of the version's speakers`
+    }
+    case "speaker-voice": {
+      return `turn ${refusal.turn} isn't in ${refusal.speaker}'s voice`
     }
     case "turn-twice": {
       return `turn ${refusal.turn} is in the version twice`
