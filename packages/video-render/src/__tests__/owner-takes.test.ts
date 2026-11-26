@@ -457,6 +457,63 @@ describe("a turn's span in a long take (TAKE1, #3582)", () => {
     expect(silentAt(s, (first.endMs + second.startMs) / 2)).toBe(false)
   })
 
+  it("finds the silence 400 ms from the transcript's boundary", () => {
+    // The owner's m2: the transcript's times off the voice by about 0.4 s.
+    const real: ReadonlyArray<Stretch> = [
+      { fromMs: 300, toMs: 1_100 },
+      { fromMs: 1_300, toMs: 2_100 },
+    ]
+    const s = screened(
+      takeOf(
+        2_500,
+        real.map((w) => ({ kind: "word" as const, ...w }))
+      )
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "Late", startMs: 300, endMs: 1_600 },
+      { text: "boundary.", startMs: 1_600, endMs: 2_100 },
+    ]
+    const a = spanOf(s, words, 0, 0)
+    const b = spanOf(s, words, 1, 1)
+    if (!a.ok || !b.ok) throw new Error("no span")
+    expect(silentAt(s, a.value.toMs)).toBe(true)
+    expect(within(real[0]!, a.value)).toBe(true)
+    expect(within(real[1]!, b.value)).toBe(true)
+  })
+
+  it("holds a span cut in silence to its words, the transcript 0.45 s off at both edges", () => {
+    const real: ReadonlyArray<Stretch> = [
+      { fromMs: 300, toMs: 700 },
+      { fromMs: 1_000, toMs: 1_400 },
+      { fromMs: 1_500, toMs: 1_900 },
+      { fromMs: 2_200, toMs: 2_600 },
+    ]
+    const s = screened(
+      takeOf(
+        2_900,
+        real.map((w) => ({ kind: "word" as const, ...w }))
+      )
+    )
+    // Each edge of the middle turn in the silence before and after it; the
+    // transcript late by up to 0.45 s, so "two" has its middle past the
+    // turn's end.
+    const span: Stretch = { fromMs: 850, toMs: 2_050 }
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "Zero", startMs: 300, endMs: 1_150 },
+      { text: "one", startMs: 1_150, endMs: 2_000 },
+      { text: "two.", startMs: 2_000, endMs: 2_350 },
+      { text: "Three", startMs: 2_350, endMs: 2_600 },
+    ]
+    expect(silentAt(s, span.fromMs) && silentAt(s, span.toMs)).toBe(true)
+    expect(spanProblems({ id: "b", text: "One two." }, s, words, span)).toEqual(
+      []
+    )
+    // A word said well inside the turn can't be left out of its text.
+    expect(
+      spanProblems({ id: "b", text: "Two." }, s, words, span)
+    ).toHaveLength(1)
+  })
+
   it("keeps a breath between two words whole, on one side of the edge", () => {
     const real: ReadonlyArray<Stretch> = [
       { fromMs: 300, toMs: 900 },
