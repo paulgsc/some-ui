@@ -180,7 +180,7 @@ const inked = (
     d,
     fill: "none",
     stroke: INK,
-    "stroke-width": width + 1.8,
+    "stroke-width": Math.round((width + 1.8) * 100) / 100,
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
     ...extra,

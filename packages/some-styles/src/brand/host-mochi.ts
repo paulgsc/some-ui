@@ -209,9 +209,9 @@ const SIGN_SCALE = 1.4
 const SIGN_AT: Readonly<
   Record<Exclude<Sign, "sparks">, { x: number; y: number }>
 > = {
-  question: { x: 82, y: 22 },
-  bang: { x: 83, y: 22 },
-  bulb: { x: 79, y: 21 },
+  question: { x: 82, y: 24 },
+  bang: { x: 83, y: 25 },
+  bulb: { x: 79, y: 25 },
   swirl: { x: 81, y: 18 },
   sweat: { x: 72, y: 33 },
   vein: { x: 71, y: 35 },
@@ -311,7 +311,7 @@ function signTouches(
         `spark-${String(i + 1)}`,
         {
           opacity: num(clamp(strength, 0, 1) * tw),
-          transform: `translate(${String(x)} ${String(y)}) rotate(${num(45 * phase)}) scale(${num(0.6 + 0.7 * tw)})`,
+          transform: `translate(${String(x)} ${String(y)}) rotate(${num(90 * phase)}) scale(${num(0.6 + 0.7 * tw)})`,
         },
       ]
     })
@@ -553,8 +553,8 @@ export const MOCHI_EMOTIONS: Readonly<Record<EmotionOf<"mochi">, Redraw>> = {
     mouth: GRIT,
     blush: 1,
     cheekSize: 1.3,
-    antennaLeft: 16 + 1.5 * Math.sin(TAU * 11 * s),
-    antennaRight: 16 + 1.5 * Math.sin(TAU * 11 * s + 0.7),
+    antennaLeft: 14 + 1.5 * Math.sin(TAU * 11 * s),
+    antennaRight: 14 + 1.5 * Math.sin(TAU * 11 * s + 0.7),
     signs: { vein: 1 },
     phase: (s / 0.62) % 1,
   })),
@@ -616,14 +616,14 @@ export const MOCHI_EMOTIONS: Readonly<Record<EmotionOf<"mochi">, Redraw>> = {
   issue: posedBy((s) => {
     const start = s < 0.5 ? Math.sin((Math.PI * s) / 0.5) : 0
     return {
-      stretch: 1.04 + 0.04 * start,
-      dy: -3 * start,
+      stretch: 1.04 + 0.02 * start,
+      dy: -1.5 * start,
       brows: brows({ turn: 9, lift: 0.4 }),
       eyeW: 1.1,
       eyeH: 1.1,
       mouth: FLAT,
-      antennaLeft: 16 + 4 * Math.max(0, wave(s, 2.1)),
-      antennaRight: 16 + 4 * Math.max(0, wave(s, 2.1, 0.5)),
+      antennaLeft: 11 + 4 * Math.max(0, wave(s, 2.1)),
+      antennaRight: 11 + 4 * Math.max(0, wave(s, 2.1, 0.5)),
       signs: { bang: pop(s, 0.05, 0.36) },
       phase: (s / 1.2) % 1,
     }
@@ -632,15 +632,15 @@ export const MOCHI_EMOTIONS: Readonly<Record<EmotionOf<"mochi">, Redraw>> = {
   intuition: posedBy((s) => {
     const spring = s < 0.6 ? Math.sin((Math.PI * s) / 0.6) : 0
     return {
-      stretch: 1.03 + 0.06 * spring,
-      dy: -2.5 * spring,
+      stretch: 1.03 + 0.03 * spring,
+      dy: -1.2 * spring,
       brows: brows({ turn: -6, lift: 2.6 }),
       eyeW: 1.16,
       eyeH: 1.18,
       mouth: SMILE,
       blush: 0.9,
-      antennaLeft: 18,
-      antennaRight: 18,
+      antennaLeft: 14,
+      antennaRight: 14,
       signs: { bulb: pop(s, 0, 0.45) },
       phase: (s / 1.8) % 1,
     }
@@ -670,10 +670,13 @@ const ARMS_DOWN = { left: -55, right: 55 }
 const ARMS_UP = { left: 40, right: -40 }
 const SHOULDER = { left: { x: 24, y: 60 }, right: { x: 72, y: 60 } }
 
+/** How much of the dance is left near the loop's end: it settles back to where the loop starts, so the loop is seamless. */
+const settleAt = (u: number): number => 1 - smooth((u - 3.15) / 0.45)
+
 /** Where the right hand is with the arm turned `deg`. */
 const handAt = (deg: number): { x: number; y: number } => ({
-  x: SHOULDER.right.x + 16 * Math.cos((deg * Math.PI) / 180),
-  y: SHOULDER.right.y + 16 * Math.sin((deg * Math.PI) / 180),
+  x: SHOULDER.right.x + 13 * Math.cos((deg * Math.PI) / 180),
+  y: SHOULDER.right.y + 13 * Math.sin((deg * Math.PI) / 180),
 })
 
 /** The celebration at `u` s into its loop: the figure, the arms, the ball. */
@@ -714,8 +717,8 @@ function celebrationAt(u: number): {
     const e = smooth(p / 0.35)
     const right = lerp(ARMS_DOWN.right, ARMS_UP.right, e)
     return {
-      stretch: 1.08 - 0.06 * p,
-      dy: -9 * Math.sin(Math.PI * p),
+      stretch: 1.04 - 0.04 * p,
+      dy: -4 * Math.sin(Math.PI * p),
       dx: 0,
       tilt: 0,
       left: lerp(ARMS_DOWN.left, ARMS_UP.left, e),
@@ -738,11 +741,20 @@ function celebrationAt(u: number): {
     }
   }
   const spike = smooth((u - 1.15) / 0.2)
-  const pump = 35 * beat * smooth(dance / 0.3)
-  const right =
-    lerp(ARMS_UP.right, 50, spike) + (-5 - 50) * smooth(dance / 0.3) + pump
-  const left = lerp(ARMS_UP.left, 5, smooth(dance / 0.3)) + pump
-  const ground = { x: 80, y: 80.2 }
+  const settle = settleAt(u)
+  const amp = smooth(dance / 0.3) * settle
+  const pump = 35 * beat * amp
+  const right = lerp(
+    ARMS_DOWN.right,
+    lerp(ARMS_UP.right, 50, spike) - 55 * smooth(dance / 0.3) + pump,
+    settle
+  )
+  const left = lerp(
+    ARMS_DOWN.left,
+    lerp(ARMS_UP.left, 5, smooth(dance / 0.3)) + pump,
+    settle
+  )
+  const ground = { x: 76, y: 80.2 }
   let ball: {
     x: number
     y: number
@@ -764,7 +776,7 @@ function celebrationAt(u: number): {
     const b = u - 1.35
     const hop = Math.abs(Math.sin(TAU * 1.4 * b)) * 10 * Math.exp(-2.2 * b)
     ball = {
-      x: ground.x + 8 * smooth(b / 1.2),
+      x: ground.x + 6 * smooth(b / 1.2),
       y: ground.y - hop,
       turn: 540 * b,
       squash: b < 0.06 ? 0.7 : 1,
@@ -772,14 +784,14 @@ function celebrationAt(u: number): {
     }
   }
   return {
-    stretch: 1 - 0.05 * Math.abs(beat),
+    stretch: 1 - 0.05 * Math.abs(beat) * settle,
     dy: 0,
-    dx: 2.5 * Math.sin(TAU * 1.6 * dance + Math.PI / 2) * smooth(dance / 0.3),
-    tilt: 9 * beat * smooth(dance / 0.3),
+    dx: 2.5 * Math.sin(TAU * 1.6 * dance + Math.PI / 2) * amp,
+    tilt: 9 * beat * amp,
     left,
     right,
     ball,
-    dancing: smooth(dance / 0.3),
+    dancing: amp,
   }
 }
 
@@ -787,13 +799,27 @@ function celebrationAt(u: number): {
  * The NFL celebration (the owner, 2026-11-24): it crouches, leaps with
  * both arms up (the touchdown signal), lands, spikes the ball and dances
  * while the ball bounces off, then picks up another. Its face is joy over
- * whatever the emotion was, and its moves wrap the emotion's.
+ * whatever the emotion was, and its moves take the place of the emotion's.
  */
 const nflCelebration: Redraw = (nodes, tMs) => {
   const u = (Math.max(0, tMs) / 1000) % CELEBRATION_S
   const c = celebrationAt(u)
-  const touches: ReadonlyArray<readonly [string, Touch]> = [
+  const wiggle = 16 * smooth(u / 0.3) * settleAt(u)
+  const own: ReadonlyArray<readonly [string, Touch]> = [
     ["figure", figureAt(c)],
+    [
+      "antenna-left",
+      { transform: `rotate(${num(wiggle * Math.sin(TAU * 1.6 * u))} 40 27)` },
+    ],
+    [
+      "antenna-right",
+      {
+        transform: `rotate(${num(-wiggle * Math.sin(TAU * 1.6 * u + 0.6))} 56 27)`,
+      },
+    ],
+    ...signTouches("sparks", c.dancing, (u / 1.2) % 1),
+  ]
+  const touches: ReadonlyArray<readonly [string, Touch]> = [
     [
       "shadow",
       {
@@ -818,7 +844,7 @@ const nflCelebration: Redraw = (nodes, tMs) => {
       "football",
       {
         opacity: num(c.ball.shown),
-        transform: `translate(${num(c.ball.x)} ${num(c.ball.y)}) rotate(${num(c.ball.turn)}) scale(1.3 ${num(1.3 * c.ball.squash)})`,
+        transform: `translate(${num(c.ball.x)} ${num(c.ball.y)}) rotate(${num(c.ball.turn)}) scale(1.15 ${num(1.15 * c.ball.squash)})`,
       },
     ],
     ["eyes", { opacity: 0 }],
@@ -827,26 +853,12 @@ const nflCelebration: Redraw = (nodes, tMs) => {
     ["brow-right", { opacity: 0 }],
     ["mouth", { d: mouthD(GRIN), fill: INK, stroke: "none" }],
     ["cheeks", { opacity: 1 }],
-    [
-      "antenna-left",
-      { transform: `rotate(${num(16 * Math.sin(TAU * 1.6 * u))} 40 27)` },
-    ],
-    [
-      "antenna-right",
-      {
-        transform: `rotate(${num(-16 * Math.sin(TAU * 1.6 * u + 0.6))} 56 27)`,
-      },
-    ],
     ...SIGNS.filter((sign) => sign !== "sparks")
       .flatMap(partsOf)
       .map((part) => [part, { opacity: 0 }] as const),
   ]
-  // The glints are the celebration's own, wherever the emotion had them.
-  return touched(
-    touched(nodes, touches),
-    signTouches("sparks", c.dancing, (u / 1.2) % 1),
-    "replace"
-  )
+  // Its figure, antennas and glints are its own, wherever the emotion had them.
+  return touched(touched(nodes, touches), own, "replace")
 }
 
 export const MOCHI_CEREMONIES: Readonly<Record<CeremonyOf<"mochi">, Redraw>> = {

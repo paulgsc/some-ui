@@ -54,17 +54,23 @@ describe("the mochi's loops", () => {
     }
   })
 
-  it("celebrates in a loop: one celebration later, its arms and ball are where they were", () => {
+  it("celebrates in a seamless loop: its end meets its start", () => {
     const beat = mochi({ emotion: "taciturn", animation: "nfl-celebration" })
-    const own = (svg: string): ReadonlyArray<string> =>
-      svg.match(/data-part="(?:arm-left|arm-right|football|spark-\d)"[^>]*/g) ??
-      []
-    for (const t of [100, 700, 1300, 2500]) {
-      expect(own(draw(beat, t + CELEBRATION_S * 1000))).toEqual(
-        own(draw(beat, t))
+    // Every number in the celebration's own parts' transforms.
+    const pose = (t: number): ReadonlyArray<number> =>
+      (
+        draw(beat, t).match(
+          /data-part="(?:figure|arm-left|arm-right|antenna-left|antenna-right)"[^>]*/g
+        ) ?? []
+      ).flatMap((part) =>
+        [...part.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]))
       )
-    }
-    expect(own(draw(beat, 700))).toHaveLength(6)
+    const end = pose(CELEBRATION_S * 1000 - 10)
+    const start = pose(CELEBRATION_S * 1000 + 10)
+    expect(end).toHaveLength(start.length)
+    end.forEach((v, i) =>
+      expect(Math.abs(v - (start[i] ?? NaN))).toBeLessThan(1)
+    )
   })
 
   it("puts its glints where the celebration has them, whatever the emotion", () => {
