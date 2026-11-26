@@ -211,7 +211,7 @@ const SIGN_AT: Readonly<
 > = {
   question: { x: 82, y: 24 },
   bang: { x: 83, y: 25 },
-  bulb: { x: 79, y: 25 },
+  bulb: { x: 74, y: 27 },
   swirl: { x: 81, y: 18 },
   sweat: { x: 72, y: 33 },
   vein: { x: 71, y: 35 },
@@ -819,6 +819,8 @@ const nflCelebration: Redraw = (nodes, tMs) => {
     ],
     ...signTouches("sparks", c.dancing, (u / 1.2) % 1),
   ]
+  // The arms come out as the celebration begins.
+  const arms = num(smooth(tMs / 150))
   const touches: ReadonlyArray<readonly [string, Touch]> = [
     [
       "shadow",
@@ -829,14 +831,14 @@ const nflCelebration: Redraw = (nodes, tMs) => {
     [
       "arm-left",
       {
-        opacity: 1,
+        opacity: arms,
         transform: `rotate(${num(c.left)} ${String(SHOULDER.left.x)} ${String(SHOULDER.left.y)})`,
       },
     ],
     [
       "arm-right",
       {
-        opacity: 1,
+        opacity: arms,
         transform: `rotate(${num(c.right)} ${String(SHOULDER.right.x)} ${String(SHOULDER.right.y)})`,
       },
     ],
@@ -844,7 +846,8 @@ const nflCelebration: Redraw = (nodes, tMs) => {
       "football",
       {
         opacity: num(c.ball.shown),
-        transform: `translate(${num(c.ball.x)} ${num(c.ball.y)}) rotate(${num(c.ball.turn)}) scale(1.15 ${num(1.15 * c.ball.squash)})`,
+        // In hand it moves with the figure; spiked, it keeps to the floor.
+        transform: `${u < 1.15 ? `${String(figureAt(c).transform)} ` : ""}translate(${num(c.ball.x)} ${num(c.ball.y)}) rotate(${num(c.ball.turn)}) scale(1.15 ${num(1.15 * c.ball.squash)})`,
       },
     ],
     ["eyes", { opacity: 0 }],

@@ -368,7 +368,7 @@ const football = (): CastNode =>
 
 /**
  * The mochi, its moving parts named for a host (`./host`, `./host-mochi`):
- * `figure` holds all of it but its shadow and signs, so it squashes and
+ * `figure` holds all of it but its shadow, football and signs, so it squashes and
  * stretches whole from its feet; `face` holds what it feels with (cheeks,
  * eyes, brows, mouth). What only a loop shows (brows, the happy eyes,
  * arms, the signs, the football) is drawn clear, so the still mochi is the
@@ -493,8 +493,8 @@ const mochi = (id: IdOf): Array<CastNode> => [
       }),
     ]),
     ...rim(id, MOCHI_BODY, "#fff2cf", 2.4, MOCHI_AT),
-    football(),
   ]),
+  football(),
   ...mochiSigns(),
 ]
 
