@@ -27,9 +27,8 @@
  *
  * Each emotion's and ceremony's own drawing fills its entry in
  * `EMOTION_DRAWINGS` or `CEREMONY_DRAWINGS`: the tin owlet's loops are
- * HOST3's (#3524, `./host-tin-owlet`), the mochi's HOST4's (#3525), a stub
- * returning the drawing unchanged until drawn. Speaking motion is HOST5's
- * (#3526).
+ * HOST3's (#3524, `./host-tin-owlet`), the mochi's HOST4's (#3525,
+ * `./host-mochi`). Speaking motion is HOST5's (#3526).
  *
  * The essays draw it as the burn-ins' `host` kind (`@some-ui/burn-ins`); the
  * Cast wing (HOST8) and the signature (HOST16) preview it from here.
@@ -40,6 +39,7 @@ import { unitIntervalsBySeed } from "@some-ui/core-utils"
 import { CAST_VIEW_BOX, castNodes, nodesText, type Character } from "./cast"
 import {
   clamp,
+  lerp,
   moved,
   num,
   smooth,
@@ -48,6 +48,7 @@ import {
   type Redraw,
   type Spot,
 } from "./host-draw"
+import { MOCHI_CEREMONIES, MOCHI_EMOTIONS } from "./host-mochi"
 import { TIN_OWLET_EMOTIONS } from "./host-tin-owlet"
 
 /** The host's characters: Tin Bird and Mochi, and no other. */
@@ -157,30 +158,12 @@ export type Area = {
   readonly height: number
 }
 
-/** The drawing as it is: each emotion's and ceremony's stub until its rig story draws it. */
-const same: Redraw = (nodes) => nodes
-
-/** Each character's emotions, drawn. */
+/** Each character's emotions, drawn: Tin Bird's by HOST3 (#3524), Mochi's by HOST4 (#3525). */
 const EMOTION_DRAWINGS: {
   readonly [C in HostCharacter]: Readonly<Record<EmotionOf<C>, Redraw>>
 } = {
   "tin-owlet": TIN_OWLET_EMOTIONS,
-  mochi: {
-    neutral: same,
-    curious: same,
-    taciturn: same,
-    happy: same,
-    perplexed: same,
-    anxious: same,
-    frustrated: same,
-    angry: same,
-    ceremonious: same,
-    question: same,
-    confusion: same,
-    issue: same,
-    intuition: same,
-    hesitation: same,
-  },
+  mochi: MOCHI_EMOTIONS,
 }
 
 /** Each character's ceremonies, drawn: the NFL celebration by HOST4 (#3525). */
@@ -188,7 +171,7 @@ const CEREMONY_DRAWINGS: {
   readonly [C in HostCharacter]: Readonly<Record<CeremonyOf<C>, Redraw>>
 } = {
   "tin-owlet": {},
-  mochi: { "nfl-celebration": same },
+  mochi: MOCHI_CEREMONIES,
 }
 
 /** The redraw a beat's ceremony calls for, if it names one. */
@@ -340,13 +323,11 @@ export type HostFrame = {
   readonly svg: string
 }
 
-const mix = (a: number, b: number, e: number): number => a + (b - a) * e
-
 const mixBox = (a: Area, b: Area, e: number): Area => ({
-  x: mix(a.x, b.x, e),
-  y: mix(a.y, b.y, e),
-  width: mix(a.width, b.width, e),
-  height: mix(a.height, b.height, e),
+  x: lerp(a.x, b.x, e),
+  y: lerp(a.y, b.y, e),
+  width: lerp(a.width, b.width, e),
+  height: lerp(a.height, b.height, e),
 })
 
 /** Where each character's eyes sit in the 96 box: the line a blink closes on. */
@@ -432,7 +413,7 @@ function placedAt(
   const e = smooth((tMs - beat.atMs) / BEAT_BLEND_MS)
   return {
     box: mixBox(from.box, to.box, e),
-    opacity: mix(from.opacity, to.opacity, e),
+    opacity: lerp(from.opacity, to.opacity, e),
   }
 }
 

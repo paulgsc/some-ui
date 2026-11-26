@@ -1,0 +1,18 @@
+{
+  "id": "C1529",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/cast.ts",
+    "some-ui:packages/some-styles/src/brand/host-mochi.ts"
+  ],
+  "chose": "Mochi's emotions are carried by its squash and stretch and its face, each one a Pose (stretch, lean, face and eye placement, brows, mouth, blush, antennas, one sign) as a pure function of the seconds since its beat began, eased in over the beat's arrival and drawn by one function, so a new emotion is one new member of MOCHI_EMOTION_DRAWINGS. To have something to move, the cast's mochi gains named parts: a figure group that squashes from its feet, a face group, brows, closed happy eyes, a mouth whose shape a loop sets, stubby arms, and signs over its head (a question mark, a bang, a bulb, a swirl, three dots, a sweat drop, a cross vein, a sigh, glints). Every part a loop adds is drawn clear (opacity 0), so the still mochi on the landing and in the thumbnails is the same picture as before, though its SVG text grows. Mochi's own beats each have a sign the owner can read in a long shot: question a bobbing question mark, confusion a spinning swirl, issue a bang, intuition a lit bulb, hesitation three dots filling in. The signs are drawn at 1.4 times their size and outlined in ink, so they read on light and dark grounds.",
+  "options": [
+    "Face and squash only: brows, eyes and mouth, no signs over the head",
+    "Face, squash and a sign per emotion, the signs clear until a loop shows them",
+    "A separate mochi drawing per emotion, swapped whole"
+  ],
+  "gray": "How Mochi shows each emotion is taste the owner will see in every scene. The signs (a question mark, a bulb) are the editorial choice: they make Mochi's own beats read in a long shot, and they add marks the still drawing never had. The first tuning round with the owner may move any of them.",
+  "undo": "Drop a sign by removing it from that emotion's pose in host-mochi.ts (its part stays clear), or return an emotion to the plain drawing by setting its entry to a Redraw that returns its nodes.",
+  "refs": ["#3525", "#3521"]
+}
