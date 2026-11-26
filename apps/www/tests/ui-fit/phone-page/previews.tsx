@@ -26,20 +26,23 @@ const sampled = (standing: KeptChoice | null): PreviewSource => ({
   read: () =>
     Promise.resolve({
       kind: "read",
-      value: [
-        {
-          id: "sample",
-          topic: OFFER.about,
-          previews: [
-            {
-              ...OFFER,
-              clips: { [OFFER.recommended]: "/sample-clip.mp4" },
-              standing,
-            },
-          ],
-          unshown: 0,
-        },
-      ],
+      value: {
+        unreadable: 0,
+        conversations: [
+          {
+            id: "sample",
+            topic: OFFER.about,
+            previews: [
+              {
+                ...OFFER,
+                clips: { [OFFER.recommended]: "/sample-clip.mp4" },
+                standing,
+              },
+            ],
+            unshown: 0,
+          },
+        ],
+      },
     }),
 })
 

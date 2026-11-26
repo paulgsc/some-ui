@@ -22,6 +22,10 @@ export const PICK_WORDS = {
   again: "Try again",
   /** Home answered, and offers nothing to pick yet. */
   empty: "Home has no previews for you to pick yet.",
+  unreadableConversations: (n: number): string =>
+    n === 1
+      ? "One conversation on home can't be read, so its previews aren't shown."
+      : `${String(n)} conversations on home can't be read, so their previews aren't shown.`,
   unshown: (n: number): string =>
     n === 1
       ? "One preview can't be shown: its clips are gone from home."

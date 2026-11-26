@@ -21,6 +21,7 @@ export type {
   ConversationPreviews,
   OfferedPreview,
   PickOutcome,
+  PreviewsRead,
   PreviewsState,
 } from "./model"
 export { stepPreviews } from "./model"
@@ -47,7 +48,11 @@ export function sampleSource(
   })
   return {
     where: "sample",
-    read: () => Promise.resolve({ kind: "read", value: [now()] }),
+    read: () =>
+      Promise.resolve({
+        kind: "read",
+        value: { conversations: [now()], unreadable: 0 },
+      }),
     reread: () => Promise.resolve({ kind: "read", value: now() }),
     approve: (conversation, event): Promise<PreviewWrite> => {
       const refused = { kind: "refused" } as const

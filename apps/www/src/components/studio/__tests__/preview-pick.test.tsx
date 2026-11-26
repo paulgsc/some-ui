@@ -50,7 +50,11 @@ function keepingHome(
     sent,
     source: {
       where: "home",
-      read: () => Promise.resolve({ kind: "read", value: [now()] }),
+      read: () =>
+        Promise.resolve({
+          kind: "read",
+          value: { conversations: [now()], unreadable: 0 },
+        }),
       reread: () => Promise.resolve({ kind: "read", value: now() }),
       approve: (_c, event): Promise<PreviewWrite> => {
         sent.push(event)

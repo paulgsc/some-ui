@@ -24,6 +24,7 @@ import { askWhileBusy } from "@/lib/home-link/while-busy"
 import type {
   ConversationPreviews,
   PreviewSource,
+  PreviewsRead,
   PreviewWrite,
 } from "@/lib/preview-pick"
 
@@ -39,6 +40,8 @@ const ListSchema = z.object({
       offers: z.number().int().nonnegative(),
     })
   ),
+  /** Conversations whose kept log home couldn't replay. */
+  unreadable: z.array(z.string()).default([]),
 })
 
 const ChoiceSchema = z.discriminatedUnion("kind", [
@@ -163,7 +166,7 @@ const RefusedSchema = z.object({
 
 export const homePreviews: PreviewSource = {
   where: "home",
-  async read(): Promise<HomeRead<ReadonlyArray<ConversationPreviews>>> {
+  async read(): Promise<HomeRead<PreviewsRead>> {
     const list = await read({ kind: "conversations" }, ListSchema)
     if (list.kind !== "read") return list
     const offering = list.value.conversations
@@ -176,7 +179,10 @@ export const homePreviews: PreviewSource = {
       if (one.kind !== "read") return one
       out.push(one.value)
     }
-    return { kind: "read", value: out }
+    return {
+      kind: "read",
+      value: { conversations: out, unreadable: list.value.unreadable.length },
+    }
   },
   reread: (id) => conversation(id, ""),
   async approve(id, event): Promise<PreviewWrite> {

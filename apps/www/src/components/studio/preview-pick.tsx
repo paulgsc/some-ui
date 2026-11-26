@@ -225,7 +225,14 @@ export const Previews = ({
           {W.sample}
         </p>
       )}
-      {state.conversations.length === 0 && <p className="text-sm">{W.empty}</p>}
+      {state.conversations.length === 0 && state.unreadable === 0 && (
+        <p className="text-sm">{W.empty}</p>
+      )}
+      {state.unreadable > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {W.unreadableConversations(state.unreadable)}
+        </p>
+      )}
       {state.conversations.map((c) => (
         <Part key={c.id} label={c.topic}>
           {c.previews.map((offered) => (

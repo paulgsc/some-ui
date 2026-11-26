@@ -34,6 +34,13 @@ export type ConversationPreviews = {
   readonly unshown: number
 }
 
+/** What a read found: the conversations shown, and how many couldn't be read. */
+export type PreviewsRead = {
+  readonly conversations: ReadonlyArray<ConversationPreviews>
+  /** Conversations whose records home couldn't read, so none of their previews show. */
+  readonly unreadable: number
+}
+
 /** Why there are no previews to show. */
 type NotShown = Exclude<HomeRead<never>["kind"], "read">
 
@@ -64,6 +71,8 @@ export type PreviewsState =
   | {
       readonly phase: "shown"
       readonly conversations: ReadonlyArray<ConversationPreviews>
+      /** Conversations home couldn't read. */
+      readonly unreadable: number
       /** The pick on its way, if one is. */
       readonly keeping: {
         readonly conversation: string
@@ -82,7 +91,7 @@ export type PreviewsState =
 export type PreviewsEvent =
   | {
       readonly kind: "read"
-      readonly result: HomeRead<ReadonlyArray<ConversationPreviews>>
+      readonly result: HomeRead<PreviewsRead>
     }
   | { readonly kind: "again" }
   | {
@@ -195,7 +204,8 @@ export function stepPreviews(
       return event.result.kind === "read"
         ? {
             phase: "shown",
-            conversations: event.result.value,
+            conversations: event.result.value.conversations,
+            unreadable: event.result.value.unreadable,
             keeping: null,
             said: null,
             reconciling: false,
@@ -245,7 +255,7 @@ export function stepPreviews(
               )
             : state.conversations
       return {
-        phase: "shown",
+        ...state,
         conversations,
         keeping: null,
         said: said(state, event.outcome),

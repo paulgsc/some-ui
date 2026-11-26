@@ -12,7 +12,7 @@ import { approveEvent } from "@some-ui/video-render"
 import type { Readable } from "@/lib/cell"
 import { cell } from "@/lib/cell"
 
-import type { ConversationPreviews, PreviewsState } from "./model"
+import type { ConversationPreviews, PreviewsRead, PreviewsState } from "./model"
 import { movesFor, previewIn, READING, stepPreviews, UNCERTAIN } from "./model"
 
 /**
@@ -27,7 +27,7 @@ export type PreviewWrite =
 export type PreviewSource = {
   /** Home, or a sample whose picks are held in memory and never kept. */
   readonly where: "home" | "sample"
-  readonly read: () => Promise<HomeRead<ReadonlyArray<ConversationPreviews>>>
+  readonly read: () => Promise<HomeRead<PreviewsRead>>
   /** One conversation read again, as where picks are kept now holds it. */
   readonly reread: (
     conversation: string

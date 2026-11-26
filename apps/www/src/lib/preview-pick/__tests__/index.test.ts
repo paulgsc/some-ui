@@ -21,6 +21,7 @@ import {
 import type {
   ConversationPreviews,
   PreviewSource,
+  PreviewsRead,
   PreviewsState,
   PreviewWrite,
 } from "@/lib/preview-pick"
@@ -40,7 +41,10 @@ const conversation = (
 const shown = (c: ConversationPreviews = conversation()): PreviewsState =>
   stepPreviews(
     { phase: "reading" },
-    { kind: "read", result: { kind: "read", value: [c] } }
+    {
+      kind: "read",
+      result: { kind: "read", value: { conversations: [c], unreadable: 0 } },
+    }
   )
 
 /** A promise and its resolve, to answer when the test says. */
@@ -135,16 +139,12 @@ describe("stepPreviews (HOST16)", () => {
 /** A source that answers when the test says, and records what it was sent. */
 function scripted(): {
   readonly source: PreviewSource
-  readonly reads: Array<
-    (value: HomeRead<ReadonlyArray<ConversationPreviews>>) => void
-  >
+  readonly reads: Array<(value: HomeRead<PreviewsRead>) => void>
   readonly sent: Array<Extract<ConversationEvent, { event: "approve" }>>
   readonly rereads: Array<(value: HomeRead<ConversationPreviews>) => void>
   readonly answer: Array<(value: PreviewWrite) => void>
 } {
-  const reads: Array<
-    (value: HomeRead<ReadonlyArray<ConversationPreviews>>) => void
-  > = []
+  const reads: Array<(value: HomeRead<PreviewsRead>) => void> = []
   const sent: Array<Extract<ConversationEvent, { event: "approve" }>> = []
   const answer: Array<(value: PreviewWrite) => void> = []
   const rereads: Array<(value: HomeRead<ConversationPreviews>) => void> = []
@@ -160,8 +160,8 @@ function scripted(): {
         rereads.push(l.resolve)
         return l.promise
       },
-      read: (): Promise<HomeRead<ReadonlyArray<ConversationPreviews>>> => {
-        const l = later<HomeRead<ReadonlyArray<ConversationPreviews>>>()
+      read: (): Promise<HomeRead<PreviewsRead>> => {
+        const l = later<HomeRead<PreviewsRead>>()
         reads.push(l.resolve)
         return l.promise
       },
@@ -175,6 +175,22 @@ function scripted(): {
   }
 }
 
+describe("conversations home can't read (HOST16)", () => {
+  it("are counted, the rest shown", () => {
+    const state = stepPreviews(
+      { phase: "reading" },
+      {
+        kind: "read",
+        result: {
+          kind: "read",
+          value: { conversations: [conversation()], unreadable: 2 },
+        },
+      }
+    )
+    expect(state.phase === "shown" && state.unreadable).toBe(2)
+  })
+})
+
 describe("previewsRuntime (HOST16)", () => {
   it("drops a read a newer one overtook", async () => {
     const s = scripted()
@@ -182,7 +198,10 @@ describe("previewsRuntime (HOST16)", () => {
     runtime.open()
     runtime.open()
     expect(s.reads).toHaveLength(2)
-    s.reads[1]?.({ kind: "read", value: [conversation()] })
+    s.reads[1]?.({
+      kind: "read",
+      value: { conversations: [conversation()], unreadable: 0 },
+    })
     await settled()
     s.reads[0]?.({ kind: "away" })
     await settled()
@@ -193,7 +212,10 @@ describe("previewsRuntime (HOST16)", () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)
     runtime.open()
-    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    s.reads[0]?.({
+      kind: "read",
+      value: { conversations: [conversation()], unreadable: 0 },
+    })
     await settled()
     runtime.pick("runners", OFFER.preview, {
       kind: "variant",
@@ -228,7 +250,10 @@ describe("previewsRuntime (HOST16)", () => {
       const s = scripted()
       const runtime = previewsRuntime(s.source, () => AT)
       runtime.open()
-      s.reads[0]?.({ kind: "read", value: [conversation()] })
+      s.reads[0]?.({
+        kind: "read",
+        value: { conversations: [conversation()], unreadable: 0 },
+      })
       await settled()
       runtime.pick("runners", OFFER.preview, {
         kind: "variant",
@@ -251,7 +276,10 @@ describe("previewsRuntime (HOST16)", () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)
     runtime.open()
-    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    s.reads[0]?.({
+      kind: "read",
+      value: { conversations: [conversation()], unreadable: 0 },
+    })
     await settled()
     runtime.pick("runners", OFFER.preview, {
       kind: "variant",
@@ -281,7 +309,10 @@ describe("previewsRuntime (HOST16)", () => {
       const s = scripted()
       const runtime = previewsRuntime(s.source, () => AT)
       runtime.open()
-      s.reads[0]?.({ kind: "read", value: [conversation()] })
+      s.reads[0]?.({
+        kind: "read",
+        value: { conversations: [conversation()], unreadable: 0 },
+      })
       await settled()
       runtime.pick("runners", OFFER.preview, {
         kind: "variant",
@@ -316,7 +347,10 @@ describe("previewsRuntime (HOST16)", () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)
     runtime.open()
-    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    s.reads[0]?.({
+      kind: "read",
+      value: { conversations: [conversation()], unreadable: 0 },
+    })
     await settled()
     runtime.pick("runners", OFFER.preview, { kind: "else", said: "Softer." })
     s.answer[0]?.({ kind: "away" })
@@ -342,27 +376,30 @@ describe("previewsRuntime (HOST16)", () => {
     runtime.open()
     s.reads[0]?.({
       kind: "read",
-      value: [
-        {
-          ...conversation({
-            kind: "variant",
-            variant: "crossfade",
-            rule: "joins-crossfade",
-          }),
-          previews: [
-            {
-              ...OFFER,
-              clips: {},
-              standing: {
-                kind: "variant",
-                variant: "crossfade",
-                rule: "joins-crossfade",
+      value: {
+        unreadable: 0,
+        conversations: [
+          {
+            ...conversation({
+              kind: "variant",
+              variant: "crossfade",
+              rule: "joins-crossfade",
+            }),
+            previews: [
+              {
+                ...OFFER,
+                clips: {},
+                standing: {
+                  kind: "variant",
+                  variant: "crossfade",
+                  rule: "joins-crossfade",
+                },
               },
-            },
-            { ...again, clips: {}, standing: null },
-          ],
-        },
-      ],
+              { ...again, clips: {}, standing: null },
+            ],
+          },
+        ],
+      },
     })
     await settled()
     runtime.pick("runners", again.preview, {
@@ -379,7 +416,10 @@ describe("previewsRuntime (HOST16)", () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)
     runtime.open()
-    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    s.reads[0]?.({
+      kind: "read",
+      value: { conversations: [conversation()], unreadable: 0 },
+    })
     await settled()
     runtime.pick("runners", OFFER.preview, { kind: "else", said: "   " })
     expect(s.sent).toEqual([])
@@ -416,7 +456,8 @@ describe("sampleSource (HOST16)", () => {
     // A second sample starts over: nothing was kept.
     const fresh = await sampleSource().read()
     expect(
-      fresh.kind === "read" && fresh.value[0]?.previews[0]?.standing
+      fresh.kind === "read" &&
+        fresh.value.conversations[0]?.previews[0]?.standing
     ).toBeNull()
   })
 
@@ -463,6 +504,8 @@ describe("the preview card's words", () => {
       PICK_WORDS.again,
       PICK_WORDS.empty,
       PICK_WORDS.unshown(1),
+      PICK_WORDS.unreadableConversations(1),
+      PICK_WORDS.unreadableConversations(3),
       PICK_WORDS.unshown(2),
       ...Object.values(PICK_WORDS.nothing),
       ...Object.values(PICK_WORDS.picked),

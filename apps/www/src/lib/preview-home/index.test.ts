@@ -92,25 +92,48 @@ describe("homePreviews (HOST16)", () => {
     ])
     expect(read).toEqual({
       kind: "read",
-      value: [
-        {
-          id: "runners",
-          topic: "About runners",
-          previews: [
-            {
-              ...OFFER,
-              clips: {},
-              standing: {
-                kind: "variant",
-                variant: "dip-to-black",
-                rule: "joins-dip-at-chapters",
+      value: {
+        unreadable: 0,
+        conversations: [
+          {
+            id: "runners",
+            topic: "About runners",
+            previews: [
+              {
+                ...OFFER,
+                clips: {},
+                standing: {
+                  kind: "variant",
+                  variant: "dip-to-black",
+                  rule: "joins-dip-at-chapters",
+                },
               },
-            },
-          ],
-          unshown: 1,
-        },
-      ],
+            ],
+            unshown: 1,
+          },
+        ],
+      },
     })
+  })
+
+  it("counts the conversations home couldn't read", async () => {
+    start([
+      answered(200, {
+        conversations: [
+          {
+            id: "runners",
+            topic: "About runners",
+            phase: "green-lit",
+            offers: 1,
+            standing: 0,
+          },
+        ],
+        unreadable: ["broken", "older"],
+      }),
+      answered(200, served()),
+    ])
+    const read = await homePreviews.read()
+    expect(read.kind === "read" && read.value.unreadable).toBe(2)
   })
 
   it("reads at most its bound of conversations", async () => {
@@ -123,7 +146,9 @@ describe("homePreviews (HOST16)", () => {
       ...many.map(() => answered(200, served())),
     ])
     const read = await homePreviews.read()
-    expect(read.kind === "read" && read.value).toHaveLength(CONVERSATIONS_MOST)
+    expect(read.kind === "read" && read.value.conversations).toHaveLength(
+      CONVERSATIONS_MOST
+    )
   })
 
   it.each([
@@ -150,10 +175,10 @@ describe("homePreviews (HOST16)", () => {
     ])
     const read = await homePreviews.read()
     if (read.kind !== "read") throw new Error(read.kind)
-    expect(read.value[0]?.previews.map((p) => p.preview)).toEqual([
-      OFFER.preview,
-    ])
-    expect(read.value[0]?.unshown).toBe(1)
+    expect(read.value.conversations[0]?.previews.map((p) => p.preview)).toEqual(
+      [OFFER.preview]
+    )
+    expect(read.value.conversations[0]?.unshown).toBe(1)
   })
 
   const pick: Extract<ConversationEvent, { event: "approve" }> = {
