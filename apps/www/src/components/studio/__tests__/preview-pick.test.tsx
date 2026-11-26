@@ -94,14 +94,10 @@ describe("PreviewPick (HOST16)", () => {
         {
           kind: "variant",
           variant: "dip-to-black",
-          rule: "joins-dip-at-chapters",
         },
         undefined,
       ],
-      [
-        { kind: "variant", variant: "crossfade", rule: "joins-crossfade" },
-        "transitions-1",
-      ],
+      [{ kind: "variant", variant: "crossfade" }, "transitions-1"],
     ])
     expect(crossfade.getAttribute("aria-pressed")).toBe("true")
   })

@@ -1,16 +1,19 @@
 /**
- * HOST16 (#3558): a pick on a preview is the record's `approve` event,
- * accepted as it is. Family: each variant offered, something else in the
- * owner's words, a variant the offer doesn't hold, and words left empty.
+ * HOST16 (#3558): a preview is the record's `offer` event and a pick on it
+ * its `approve` event, accepted as they are. Family: each variant offered,
+ * something else in the owner's words, a variant the offer doesn't hold,
+ * words left empty, and a pick changed by a move. What an offer may hold
+ * is `PreviewOfferSchema`'s, tested with the record.
  */
 import {
   approvedRules,
+  PreviewOfferSchema,
   replayConversation,
   stepConversation,
 } from "@video-render/conversation"
 import {
   approveEvent,
-  parsePreviewOffer,
+  offerEvent,
   sampleTransitionsOffer,
 } from "@video-render/preview-offer"
 import { describe, expect, it } from "vitest"
@@ -40,13 +43,14 @@ const greenLit = (): ReturnType<typeof replayConversation> =>
     },
     { event: "heard", by: "home", at: AT, version: 1, ms: 60_000 },
     { event: "green-light", by: "owner", at: AT, version: 1 },
+    offerEvent(sampleTransitionsOffer(), AT),
   ])
 
 describe("approveEvent (HOST16)", () => {
   const offer = sampleTransitionsOffer()
 
   it("reads its own sample", () => {
-    expect(parsePreviewOffer(offer)).toEqual({ ok: true, value: offer })
+    expect(PreviewOfferSchema.parse(offer)).toEqual(offer)
   })
 
   it.each(offer.variants.map((v) => v.variant))(
@@ -119,31 +123,5 @@ describe("approveEvent (HOST16)", () => {
       changed.state.phase === "green-lit" && changed.state.approvals.length
     ).toBe(2)
     expect(approvedRules(changed.state)).toEqual(["joins-dip-at-chapters"])
-  })
-
-  it("refuses an offer whose recommended variant it doesn't hold", () => {
-    expect(parsePreviewOffer({ ...offer, recommended: "wipe" }).ok).toBe(false)
-  })
-
-  const [a, b] = offer.variants
-  if (a === undefined || b === undefined) throw new Error("no sample")
-  const third = { ...b, variant: "cut", title: "Cut", rule: "joins-cut" }
-  it.each([
-    ["one variant, nothing to choose between", [a]],
-    [
-      "four variants, more than three",
-      [a, b, third, { ...third, variant: "wipe", rule: "joins-wipe" }],
-    ],
-    ["two variants with one id", [a, { ...b, variant: a.variant }]],
-    ["two variants setting one rule", [a, { ...b, rule: a.rule }]],
-    ["a callout listed twice", [a, { ...b, callouts: ["Cut", "Cut"] }]],
-  ])("refuses an offer of %s", (_, variants) => {
-    expect(parsePreviewOffer({ ...offer, variants }).ok).toBe(false)
-  })
-
-  it("reads three variants", () => {
-    expect(parsePreviewOffer({ ...offer, variants: [a, b, third] }).ok).toBe(
-      true
-    )
   })
 })

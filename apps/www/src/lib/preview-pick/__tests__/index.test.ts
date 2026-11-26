@@ -80,11 +80,10 @@ describe("phonePicks (HOST16)", () => {
     expect(picks.keep(move("runners", "dip-to-black"))).toBe("kept")
     const kept = picks.list("runners")
     expect(kept?.map((p) => p.event.chose)).toEqual([
-      { kind: "variant", variant: "crossfade", rule: "joins-crossfade" },
+      { kind: "variant", variant: "crossfade" },
       {
         kind: "variant",
         variant: "dip-to-black",
-        rule: "joins-dip-at-chapters",
       },
     ])
     expect(pickOn(kept ?? [], "transitions-1")?.event.chose).toMatchObject({
