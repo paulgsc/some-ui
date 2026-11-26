@@ -503,6 +503,46 @@ describe("a turn's span in a long take (TAKE1, #3582)", () => {
     }
   )
 
+  // A word broken by its own silent closure (the hold of a stop) that can
+  // outlast the gap after it (Codex on #3583): wherever the transcript's
+  // boundary is nearer the gap than the closure, the edge is the gap.
+  const closures = [60, 100, 150].flatMap((closure) =>
+    (["middle", "before its release"] as const).flatMap((at) =>
+      [40, 80, 200].flatMap((gap) =>
+        [-30, 0, 30].map((shift) => ({ closure, at, gap, shift }))
+      )
+    )
+  )
+
+  it.each(closures)(
+    "cuts at the gap, not a $closure ms closure in its $at: gap $gap ms, transcript $shift ms",
+    ({ closure, at, gap, shift }) => {
+      const a: Stretch = { fromMs: 300, toMs: 1_000 }
+      const hold: Stretch =
+        at === "middle"
+          ? { fromMs: 650 - closure / 2, toMs: 650 + closure / 2 }
+          : { fromMs: 940 - closure, toMs: 940 }
+      const b: Stretch = { fromMs: a.toMs + gap, toMs: a.toMs + gap + 360 }
+      const s = screened(
+        takeOf(b.toMs + 600, [
+          { kind: "word", fromMs: a.fromMs, toMs: hold.fromMs },
+          { kind: "word", fromMs: hold.toMs, toMs: a.toMs },
+          { kind: "word", ...b },
+        ])
+      )
+      const words: ReadonlyArray<TimedWord> = [
+        { text: "Pocket", startMs: a.fromMs, endMs: a.toMs + shift },
+        { text: "watch.", startMs: b.fromMs + shift, endMs: b.toMs },
+      ]
+      const first = spanOf(s, words, 0, 0)
+      const second = spanOf(s, words, 1, 1)
+      if (!first.ok || !second.ok) throw new Error("no span")
+      expect(silentAt(s, first.value.toMs)).toBe(true)
+      expect(within(a, first.value)).toBe(true)
+      expect(within(b, second.value)).toBe(true)
+    }
+  )
+
   it("names a span the transcript's times leave with no voice, beyond the family", () => {
     // Codex's probe: words 200 ms long, the transcript 400 ms late, more
     // than half a word: the edge is found after both, and the second turn

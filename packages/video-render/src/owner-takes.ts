@@ -420,8 +420,8 @@ export function retimed(
 
 /**
  * Where a span's edge between words `a` and `b` falls (TAKE1, #3582): in the
- * longest run of the waveform's own silence (frames neither voiced nor a
- * breath) near the transcript's boundary, at its middle, so no word is cut
+ * run of the waveform's own silence (frames neither voiced nor a breath)
+ * nearest the transcript's boundary, at its middle, so no word is cut
  * and a breath goes whole to one side. Looked for within `transcriptErrorMs` of
  * the boundary and never past either word's middle, since the transcript's
  * times are loose and its words often abut. Null when the words run
@@ -450,14 +450,17 @@ function silenceBetween(
       i * f >= fromMs &&
       (i + 1) * f <= toMs
   )
+  // The silence nearest the transcript's boundary, not the longest: a
+  // word's own closure (the hold of a stop) can outlast the gap after it,
+  // and the transcript, loose as it is, is nearer the gap.
+  const away = (r: { readonly from: number; readonly to: number }): number =>
+    Math.max(0, r.from * f - boundary, boundary - r.to * f)
   const runs = runsOf(silent)
   const best = runs.reduce<(typeof runs)[number] | undefined>((kept, run) => {
     if (kept === undefined) return run
-    const longer = run.to - run.from - (kept.to - kept.from)
-    if (longer !== 0) return longer > 0 ? run : kept
-    const near = (r: typeof run): number =>
-      Math.abs(((r.from + r.to) / 2) * f - boundary)
-    return near(run) < near(kept) ? run : kept
+    const nearer = away(kept) - away(run)
+    if (nearer !== 0) return nearer > 0 ? run : kept
+    return run.to - run.from > kept.to - kept.from ? run : kept
   }, undefined)
   return best === undefined ? null : Math.round(((best.from + best.to) / 2) * f)
 }
@@ -471,7 +474,8 @@ function silenceBetween(
  * where they run together with no silence to cut in, where the span found
  * holds no voice, and for indices outside the words. TAKE1's family: each
  * word's transcript middle lies in its own voice, its times off it by at
- * most `transcriptErrorMs`.
+ * most `transcriptErrorMs`, and the transcript's boundary nearer the gap
+ * between two words than any closure inside them.
  */
 export function spanOf(
   screened: Screened,
