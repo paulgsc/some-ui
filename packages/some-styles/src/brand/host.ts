@@ -390,7 +390,7 @@ export function hostSvg(
     `translate(80 46) scale(1 ${num(Math.sign(turn || 1) * Math.max(0.1, Math.abs(turn)))}) translate(-80 -46)`
   )
   const moment: Moment = { aim, pointing: beat.lookAt !== undefined }
-  // A loop runs on the beat's own time, so it opens at its start in every scene.
+  // A loop runs on its beat's own time (`hostAt` gives the start of its run).
   for (const redraw of redrawsOf(beat))
     nodes = redraw(nodes, tMs - beat.atMs, moment)
   const breath = `translate(48 84) scale(${num(1 - 0.006 * idle.breath)} ${num(1 + 0.013 * idle.breath)}) translate(-48 -84)`
