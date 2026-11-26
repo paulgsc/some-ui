@@ -59,6 +59,7 @@ import { EPISODES_FIXTURES } from "./episodes"
 import { INTERVIEW_FIXTURES } from "./interview"
 import { JOURNAL_FIXTURES } from "./journal"
 import { MY_DATA_FIXTURES } from "./my-data"
+import { PREVIEWS_FIXTURES } from "./previews"
 import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
 import { RustWeekFixture } from "./rust-week"
@@ -414,6 +415,8 @@ export const PHONE_FIXTURES = {
   ...WINGS_FIXTURES,
   /** The Cast wing's grid and a look (`./cast`, `../cast-fit.spec.ts`). */
   ...CAST_FIXTURES,
+  /** Studio's Previews, unpicked and picked (`./previews`, `../previews-fit.spec.ts`). */
+  ...PREVIEWS_FIXTURES,
   /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
   ...TAKES_FIXTURES,
   /** Takes › Needs your attention (`./attention`, `../attention-fit.spec.ts`). */

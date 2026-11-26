@@ -16,6 +16,7 @@ export const STUDIO_KINDS = [
   "feedback",
   "feeds",
   "intuitions",
+  "previews",
   "spoken",
   "takes",
   "templates",
