@@ -1,0 +1,18 @@
+{
+  "id": "C1567",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/some-styles/src/brand/host-live.ts"
+  ],
+  "chose": "Every visible character lives, speaking or not. A beat that names no words takes the same living layer a speaking one does, with nothing to say: it breathes, sways and bobs; its emotion is a note, the intro pulse showing 4 s and fading, never the sign held the whole beat; and it plays in its silence, a seeded chance each 4 s (LIVENESS_POLICY.quietPlayEveryMs) at the same share and length as play in a pause between words. The same open-silence play runs before a speaker's first word and after its last. A beat that keeps its character and emotion carries its pulses on from where that emotion's run began, so moving a host doesn't pulse its sign again. Under the owner's \"there isn't any moment where it just stands still\" and their rule that a sign shows a few seconds and fades, weighed by C1545.",
+  "options": [
+    "the listener lives, with play every 4 s of silence (taken)",
+    "the listener breathes, sways and pulses but never plays",
+    "the floor alone for a listener, the sign held the whole beat, which the review ruled a still sticker"
+  ],
+  "gray": "How often a listener should fidget before it distracts from the speaker is taste; no check can settle it, and the owner sees it in the preview's Listening segment.",
+  "undo": "Move quietPlayEveryMs, or give a wordless beat the floor again in poseOf and hostAt; record the move as a call that moves this one.",
+  "refs": ["#3526", "#3521"]
+}

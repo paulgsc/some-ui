@@ -1,5 +1,5 @@
 import type { Beat } from "@some-ui/styles/brand/host"
-import { hostAt, idleAt } from "@some-ui/styles/brand/host"
+import { hostAt, idleAt, SHOT_SIZE } from "@some-ui/styles/brand/host"
 import { render } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -42,11 +42,12 @@ describe("HostPreview", () => {
       <HostPreview beats={[BEAT]} seed={1} tMs={0} aspect={16 / 9} />
     )
     const style = pictureOf(container).style
-    // A long shot is 0.26 of the shorter side, flush to the bottom right.
-    expect(style.height).toBe("26%")
-    expect(style.top).toBe("74%")
+    // A long shot is its SHOT_SIZE share of the shorter side, flush to the bottom right.
+    const pct = Math.round(SHOT_SIZE.long * 10_000) / 100
+    expect(style.height).toBe(`${String(pct)}%`)
+    expect(style.top).toBe(`${String(Math.round((100 - pct) * 100) / 100)}%`)
     expect(style.left).toBe(
-      `${String(Math.round((1 - (26 * 9) / 1600) * 10_000) / 100)}%`
+      `${String(Math.round((1 - (pct * 9) / 1600) * 10_000) / 100)}%`
     )
   })
 
