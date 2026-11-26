@@ -910,12 +910,34 @@ function runStartsOf(
   }
 }
 
-/** A beat's scene for the notes: from its emotion's run start (so a beat that keeps the emotion doesn't pulse it again) to the next beat, or its last word plus a hold. */
-function sceneEnd(beats: ReadonlyArray<Beat>, i: number): number {
+/**
+ * Where beat `i`'s emotion run starts and ends among the beats: the unbroken
+ * stretch with its character and emotion, before and after it. A move
+ * inside it is not a new scene for the notes (HN1).
+ */
+function runOf(
+  beats: ReadonlyArray<Beat>,
+  i: number
+): { readonly from: number; readonly to: number } {
   const beat = beats[i]
-  const next = beats[i + 1]
-  const lastWord = beat?.words?.at(-1)?.endMs ?? beat?.atMs ?? 0
-  return next?.atMs ?? lastWord + 4000
+  const same = (b: Beat | undefined): boolean =>
+    b?.character === beat?.character && b?.emotion === beat?.emotion
+  let from = i
+  while (from > 0 && same(beats[from - 1])) from -= 1
+  let to = i
+  while (to < beats.length - 1 && same(beats[to + 1])) to += 1
+  return { from, to }
+}
+
+/** The run's scene for the notes ends at the beat that breaks it, or its last word plus a hold. */
+function sceneEnd(beats: ReadonlyArray<Beat>, i: number): number {
+  const { from, to } = runOf(beats, i)
+  const after = beats[to + 1]
+  if (after !== undefined) return after.atMs
+  const ends = beats
+    .slice(from, to + 1)
+    .flatMap((b) => (b.words ?? []).map((w) => w.endMs))
+  return (ends.at(-1) ?? beats[to]?.atMs ?? 0) + 4000
 }
 
 /**
@@ -946,7 +968,7 @@ function poseOf(
     starts.emotion,
     starts.ceremony
   )
-  const pulses = pulseList(beat, starts.emotion, sceneEnd(beats, i))
+  const pulses = pulseList(beats, i, starts.emotion, sceneEnd(beats, i))
   const note = notesAt(pulses, tMs)
   const pulse = [...pulses].reverse().find((p) => p.atMs <= tMs)
   if (note.emotion === null || pulse === undefined) return { nodes: calm, note }
@@ -962,9 +984,14 @@ function poseOf(
   return { nodes: blendNodes(calm, felt, note.weight), note }
 }
 
-/** A beat's pulses, by its character. */
+/**
+ * Beat `i`'s pulses, by its character: those of its emotion's whole run
+ * (`runOf`), so the notes are the same whether the host moves inside it or
+ * not, and a note fired before a move keeps showing across it (HN1).
+ */
 function pulseList(
-  beat: Beat,
+  beats: ReadonlyArray<Beat>,
+  i: number,
   startMs: number,
   endMs: number
 ): ReadonlyArray<{
@@ -972,13 +999,19 @@ function pulseList(
   readonly emotion: Emotion
   readonly weight: number
 }> {
+  const beat = beats[i]
+  if (beat === undefined) throw new Error(`no beat ${String(i)}`)
+  const { from, to } = runOf(beats, i)
+  const run = beats.slice(from, to + 1)
   switch (beat.character) {
     case "mochi": {
       return pulsesOf({
         startMs,
         endMs,
         intro: beat.emotion,
-        words: beat.words ?? [],
+        words: run.flatMap((b) =>
+          b.character === "mochi" ? (b.words ?? []) : []
+        ),
       })
     }
     case "tin-owlet": {
@@ -986,7 +1019,9 @@ function pulseList(
         startMs,
         endMs,
         intro: beat.emotion,
-        words: beat.words ?? [],
+        words: run.flatMap((b) =>
+          b.character === "tin-owlet" ? (b.words ?? []) : []
+        ),
       })
     }
     default: {

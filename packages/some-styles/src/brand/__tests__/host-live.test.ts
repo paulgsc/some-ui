@@ -418,6 +418,82 @@ describe("one drawing from two poses (#3564)", () => {
   })
 })
 
+describe("a note in flight survives a move (HN1, #3580)", () => {
+  const PLACES = ["bottom-left", "top-right", "center", "bottom-right"] as const
+
+  /** `words` said by one Mochi beat, or split at `cuts` into beats that keep its emotion but move. */
+  const split = (
+    words: ReadonlyArray<SpokenWordOf<"mochi">>,
+    cuts: ReadonlyArray<number>
+  ): ReadonlyArray<Beat> =>
+    [0, ...cuts].map((atMs, k) => ({
+      atMs,
+      character: "mochi",
+      emotion: "curious",
+      shot: "medium",
+      placement: PLACES[k % PLACES.length] ?? "center",
+      speaking: true,
+      words: words.filter(
+        (w) => w.startMs >= atMs && w.startMs < (cuts[k] ?? Infinity)
+      ),
+    }))
+
+  const noteAt = (beats: ReadonlyArray<Beat>, t: number): string => {
+    const n = hostAt(beats, 7, t, AREAS.landscape)?.note
+    return n === undefined
+      ? "none"
+      : `${String(n.emotion)} ${n.weight.toFixed(6)}`
+  }
+
+  it("keeps happy at full across the review's move at 19 s", () => {
+    const words = at(
+      ...Array.from(
+        { length: 60 },
+        (_, k) => [300 + k * 310, k === 57 ? "happy" : null] as const
+      )
+    )
+    expect(words[57]?.startMs).toBe(17_970)
+    for (let t = 19_000; t <= 20_000; t += 50)
+      expect(noteAt(split(words, [19_000]), t)).toBe(
+        noteAt(split(words, []), t)
+      )
+    expect(noteAt(split(words, [19_000]), 19_100)).toBe("happy 1.000000")
+  })
+
+  it("shows the same note moved or not, over seeded streams and seeded moves", () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const words =
+        seed % 2 === 0
+          ? wordsBy(seed, 90, 0, (i, r) =>
+              r() < 0.15
+                ? [
+                    {
+                      emotion:
+                        MOCHI[1 + Math.floor(r() * (MOCHI.length - 1))] ??
+                        "happy",
+                      weight: 0.5 + 0.5 * r(),
+                    },
+                  ]
+                : undefined
+            )
+          : refiredThenChanged(seed)
+      const r = unitIntervalsBySeed(seed + 500)
+      const end = words.at(-1)?.endMs ?? 0
+      const cuts = Array.from({ length: 3 }, () =>
+        Math.round(1000 + r() * (end - 2000))
+      )
+        .sort((a, b) => a - b)
+        .filter((c, k, all) => k === 0 || c - (all[k - 1] ?? 0) > 500)
+      const alone = split(words, [])
+      const moved = split(words, cuts)
+      for (let t = 0; t < end; t += 100)
+        expect(noteAt(moved, t), `seed ${String(seed)} at ${String(t)}`).toBe(
+          noteAt(alone, t)
+        )
+    }
+  })
+})
+
 describe("a silent listener is never a still sticker (HOST5 review)", () => {
   const listener = (
     who: "mochi" | "tin-owlet",
@@ -468,7 +544,7 @@ describe("a silent listener is never a still sticker (HOST5 review)", () => {
     expect(f(6000)?.note.emotion).toBeNull()
   })
 
-  it("plays in its silence, now and then, and never while another beat's words run", () => {
+  it("plays in its silence, now and then", () => {
     const beat = listener("tin-owlet", "medium", "bottom-right")
     const acts = Array.from(
       { length: 300 },
@@ -479,40 +555,50 @@ describe("a silent listener is never a still sticker (HOST5 review)", () => {
   })
 })
 
-describe("the bubble's clip (HOST5 review)", () => {
-  it("clips every frame the bubble shows in, tightening as it grows, so nothing pops", () => {
-    const area = AREAS.landscape
-    const beats: ReadonlyArray<Beat> = [
-      {
-        atMs: 0,
-        character: "mochi",
-        emotion: "happy",
-        shot: "medium",
-        placement: "center",
-        speaking: false,
-      },
-      {
-        atMs: 2000,
-        character: "mochi",
-        emotion: "happy",
-        shot: "medium",
-        placement: "bottom-left",
-        speaking: false,
-      },
-    ]
-    let last = Infinity
-    for (let t = 2000; t <= 2000 + BEAT_BLEND_MS; t += 10) {
-      const f = hostAt(beats, 7, t, area)
-      if (f === null || f.bubble <= 0.01) continue
-      expect(f.svg).toContain('clip-path="url(#')
-      const reach = Number(
-        /clipPath[^>]*><path[^>]*scale\(([\d.]+)\)/.exec(f.svg)?.[1]
-      )
-      expect(reach).toBeLessThanOrEqual(last)
-      last = reach
-    }
-    expect(last).toBe(1)
-  })
+describe("the bubble's clip never pops (HB1, #3580)", () => {
+  const reachOf = (svg: string): number =>
+    Number(/clipPath[^>]*><path[^>]*scale\(([\d.]+)\)/.exec(svg)?.[1])
+
+  for (const frame of ["circle", "hex"] as const)
+    for (const [way, from, to] of [
+      ["grows in", "center", "bottom-left"],
+      ["dissolves", "bottom-left", "center"],
+    ] as const)
+      it(`${frame}: applies its own clip on every frame it shows, and ${way} smoothly`, () => {
+        const beats: ReadonlyArray<Beat> = [
+          {
+            atMs: 0,
+            character: "mochi",
+            emotion: "happy",
+            shot: "medium",
+            placement: from,
+            speaking: false,
+            frame,
+          },
+          {
+            atMs: 2000,
+            character: "mochi",
+            emotion: "happy",
+            shot: "medium",
+            placement: to,
+            speaking: false,
+            frame,
+          },
+        ]
+        const reaches: Array<number> = []
+        for (let t = 2000; t <= 2000 + BEAT_BLEND_MS; t += 10) {
+          const f = hostAt(beats, 7, t, AREAS.landscape)
+          if (f === null || f.bubble <= 0.01) continue
+          // the bubble's own clip, not the character's rim
+          expect(f.svg).toMatch(/clip-path="url\(#[^)]*-bubble\)"/)
+          reaches.push(reachOf(f.svg))
+        }
+        expect(reaches.length).toBeGreaterThan(5)
+        const sorted = [...reaches].sort((x, y) =>
+          way === "grows in" ? y - x : x - y
+        )
+        expect(reaches).toEqual(sorted)
+      })
 })
 
 describe("the same bytes for the same inputs (HOST5)", () => {
