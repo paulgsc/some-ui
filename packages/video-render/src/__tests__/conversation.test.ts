@@ -1555,6 +1555,38 @@ describe("conversation/2", () => {
     ).toBe(true)
   })
 
+  it("changes a pick by a new approval that moves it: both kept, the latest the rule", () => {
+    const signed = after(
+      opened(),
+      v1,
+      ALPHABET.heard1!,
+      ALPHABET.green1!,
+      ALPHABET.approveA!
+    )
+    const corner = {
+      ...eventOf("approveA", "approve"),
+      chose: {
+        kind: "variant" as const,
+        variant: "corner",
+        rule: "verdict-corner",
+      },
+    }
+    // Picked over, unnamed: refused, so one tap never replaces a rule.
+    expect(refusal(signed, corner)).toEqual({
+      why: "preview-again",
+      preview: "close-up-on-verdict",
+    })
+    const changed = after(signed, { ...corner, moves: "close-up-on-verdict" })
+    if (changed.phase === "new") throw new Error("no record")
+    expect(changed.approvals).toHaveLength(2)
+    expect(approvedRules(changed)).toEqual(["verdict-corner"])
+    // Moving a preview nothing approved is refused.
+    expect(refusal(signed, { ...corner, moves: "no-such-preview" })).toEqual({
+      why: "moves-unknown",
+      preview: "no-such-preview",
+    })
+  })
+
   // A record main's /1 code wrote and reads (`sample/conversation`), lifted.
   // Family: read as kept; saved again; a /2 version past its boundary,
   // unmeasured; a /2 record claiming /1's rules for events /1 never kept;

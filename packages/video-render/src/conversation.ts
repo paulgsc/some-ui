@@ -721,12 +721,29 @@ export type KeptApproval = {
 }
 
 /** The rules the owner's approvals set, in the order set. */
+/**
+ * The approvals that stand, by preview: each preview's latest, less any a
+ * later approval of another preview moved. Every approval stays kept; only
+ * the standing ones set rules.
+ */
+export function standingApprovals(
+  approvals: ReadonlyArray<KeptApproval>
+): ReadonlyMap<string, KeptApproval> {
+  const standing = new Map<string, KeptApproval>()
+  for (const a of approvals) {
+    if (a.moves !== undefined && a.moves !== a.preview) standing.delete(a.moves)
+    standing.set(a.preview, a)
+  }
+  return standing
+}
+
+/** The rules the owner's standing approvals set, in the order set. */
 export const approvedRules = (
   state: ConversationState
 ): ReadonlyArray<string> =>
   state.phase === "new"
     ? []
-    : state.approvals.flatMap((a) =>
+    : [...standingApprovals(state.approvals).values()].flatMap((a) =>
         a.chose.kind === "variant" ? [a.chose.rule] : []
       )
 
@@ -924,6 +941,7 @@ export type ConversationRefusal =
       readonly got: number
     }
   | { readonly why: "rule-again"; readonly rule: string }
+  | { readonly why: "moves-unknown"; readonly preview: string }
   | { readonly why: "preview-again"; readonly preview: string }
   | {
       readonly why: "preview-variant"
@@ -1598,7 +1616,12 @@ export function stepConversation(
       return ok({ ...state, ...kept, notes })
     }
     case "approve": {
-      if (state.approvals.some((a) => a.preview === event.preview))
+      const standing = standingApprovals(state.approvals)
+      // A pick is changed by a new approval that names the one it moves:
+      // the earlier one stays kept, and the latest sets the rule.
+      if (event.moves !== undefined && !standing.has(event.moves))
+        return refused({ why: "moves-unknown", preview: event.moves })
+      if (standing.has(event.preview) && event.moves !== event.preview)
         return refused({ why: "preview-again", preview: event.preview })
       const named = [
         event.recommended,
@@ -1612,8 +1635,11 @@ export function stepConversation(
         })
       if (event.chose.kind === "variant") {
         const rule = event.chose.rule
-        const setBy = state.approvals.find(
-          (a) => a.chose.kind === "variant" && a.chose.rule === rule
+        const setBy = [...standing.values()].find(
+          (a) =>
+            a.preview !== event.preview &&
+            a.chose.kind === "variant" &&
+            a.chose.rule === rule
         )
         if (setBy !== undefined && event.moves !== setBy.preview)
           return refused({ why: "rule-again", rule })
@@ -1816,6 +1842,9 @@ export function refusalLine(refusal: ConversationRefusal): string {
     case "flag-version": {
       return `flag ${refusal.flag} was raised on version ${String(refusal.got)}, and the newest is ${String(refusal.expected)}`
     }
+    case "moves-unknown": {
+      return `no standing approval of preview ${refusal.preview} to move`
+    }
     case "rule-again": {
       return `rule ${refusal.rule} is already set; a new approval of it names the one it moves`
     }
@@ -1826,7 +1855,7 @@ export function refusalLine(refusal: ConversationRefusal): string {
       return `preview ${refusal.preview} offered no variant ${refusal.variant}`
     }
     case "preview-again": {
-      return `preview ${refusal.preview} is already approved`
+      return `preview ${refusal.preview} is already approved; a new pick on it names it as the one it moves`
     }
     default: {
       return assertNever(refusal)
