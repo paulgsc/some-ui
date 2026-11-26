@@ -405,36 +405,54 @@ const TurnsNamed = z
  * How a version answered one flag of the version before it (`ANSWER_KINDS`),
  * or named a change no flag asked for (`unasked`), with why.
  */
+/**
+ * Which of a flag's kinds an answer answers: every kind when it names none.
+ * A flag of several kinds may take an answer for each ("too fast… and raise
+ * the volume" conditioned, "and that line is unhuman" rewritten), and is
+ * answered once every kind is.
+ */
+const AnswerKindsSchema = z
+  .array(z.enum(FLAG_KINDS))
+  .min(1)
+  .max(FLAG_KINDS.length)
+  .optional()
+
 export const FlagAnswerSchema = z.discriminatedUnion("how", [
   z.strictObject({
     flag: FlagIdSchema,
+    kinds: AnswerKindsSchema,
     how: z.literal("rewrote"),
     turns: TurnsNamed,
     note: NoteSchema.optional(),
   }),
   z.strictObject({
     flag: FlagIdSchema,
+    kinds: AnswerKindsSchema,
     how: z.literal("retook"),
     take: TakeSchema,
     span: SpanSchema.optional(),
   }),
   z.strictObject({
     flag: FlagIdSchema,
+    kinds: AnswerKindsSchema,
     how: z.literal("conditioned"),
     note: NoteSchema.optional(),
   }),
   z.strictObject({
     flag: FlagIdSchema,
+    kinds: AnswerKindsSchema,
     how: z.literal("corrected"),
     note: NoteSchema.optional(),
   }),
   z.strictObject({
     flag: FlagIdSchema,
+    kinds: AnswerKindsSchema,
     how: z.literal("recast"),
     note: NoteSchema.optional(),
   }),
   z.strictObject({
     flag: FlagIdSchema,
+    kinds: AnswerKindsSchema,
     how: z.literal("kept"),
     note: NoteSchema,
   }),
@@ -538,6 +556,17 @@ export type PreviewChoice = z.infer<typeof PreviewChoiceSchema>
 const at = z.iso.datetime()
 
 /**
+ * Who writes a record's events: the owner, the agent, or home itself
+ * (measuring a version's audio). Which may write each kind is
+ * `EVENT_AUTHORS` (C1581): the owner sets the topic, gives points, flags,
+ * withdraws, green-lights and approves a preview, and never sets a value
+ * (the owner's guard on #3521); the agent writes versions and notes; home
+ * measures.
+ */
+export const AUTHORS = ["owner", "agent", "home"] as const
+export type Author = (typeof AUTHORS)[number]
+
+/**
  * When and against what an event was written. `at` is the writer's clock,
  * kept as information and never compared: a phone or an agent whose clock
  * runs behind is never refused for it. The record's order is the log's own,
@@ -550,6 +579,7 @@ const at = z.iso.datetime()
 const stamp = {
   at,
   basis: z.number().int().nonnegative().optional(),
+  by: z.enum(["owner", "agent", "home"]),
 }
 
 /** One event of the record, in the order it was kept. */
@@ -568,6 +598,8 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
   z.strictObject({
     event: z.literal("flag"),
     ...stamp,
+    /** The version the owner heard when flagging it: a flag lands on it or nowhere. */
+    version: z.number().int().min(1),
     flag: ConversationFlagSchema,
   }),
   z.strictObject({
@@ -597,7 +629,7 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
     ...stamp,
     turn: IdSchema,
     words: z.array(WordNoteSchema).min(1),
-    rules: z.array(NameSchema).optional(),
+    rules: z.array(NameSchema).min(1),
   }),
   /**
    * The owner's pick on a preview (HOST16): the variants it offered, the one
@@ -618,8 +650,28 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
       ),
     recommended: NameSchema,
     chose: PreviewChoiceSchema,
+    /** The earlier approval whose rule this one sets anew, by its preview. */
+    moves: NameSchema.optional(),
   }),
 ])
+
+/** Who may write each kind of event (C1581). */
+export const EVENT_AUTHORS = {
+  topic: ["owner"],
+  point: ["owner"],
+  version: ["agent"],
+  flag: ["owner"],
+  withdraw: ["owner"],
+  heard: ["home"],
+  "green-light": ["owner"],
+  notes: ["agent"],
+  approve: ["owner"],
+} as const satisfies Readonly<
+  Record<
+    z.infer<typeof ConversationEventSchema>["event"],
+    ReadonlyArray<Author>
+  >
+>
 
 export type ConversationEvent = z.infer<typeof ConversationEventSchema>
 export type ConversationEventKind = ConversationEvent["event"]
@@ -629,10 +681,18 @@ export const ConversationRecordSchema = z.strictObject({
   schema: z.literal(CONVERSATION_RECORD_SCHEMA),
   id: IdSchema,
   /**
-   * A record first kept in /1 and lifted (`liftV1`): its events replay
-   * under /1's rules, so a lifted record saved again reads as it did.
+   * A record first kept in /1 and lifted (`liftV1`): its first `through`
+   * events replay under /1's rules, so a lifted record saved again reads as
+   * it did, and every event after them under /2's. Those first events must
+   * be ones a lift makes (`lowerToV1`), so a record can't claim /1's rules
+   * for events /1 never kept.
    */
-  lifted: z.literal(CONVERSATION_RECORD_SCHEMA_V1).optional(),
+  lifted: z
+    .strictObject({
+      from: z.literal(CONVERSATION_RECORD_SCHEMA_V1),
+      through: z.number().int().nonnegative(),
+    })
+    .optional(),
   events: z.array(ConversationEventSchema),
 })
 
@@ -657,6 +717,7 @@ export type KeptApproval = {
   readonly offered: ReadonlyArray<string>
   readonly recommended: string
   readonly chose: PreviewChoice
+  readonly moves?: string
 }
 
 /** The rules the owner's approvals set, in the order set. */
@@ -719,8 +780,8 @@ export type ConversationPhase = ConversationState["phase"]
 export const CONVERSATION_ACCEPTS = {
   new: ["topic"],
   drafting: ["point", "version"],
-  podcast: ["point", "flag", "heard", "green-light", "notes"],
-  flagged: ["point", "flag", "withdraw", "version", "heard", "notes"],
+  podcast: ["point", "flag", "heard", "green-light"],
+  flagged: ["point", "flag", "withdraw", "version", "heard"],
   "green-lit": ["notes", "approve"],
 } as const satisfies Readonly<
   Record<ConversationPhase, ReadonlyArray<ConversationEventKind>>
@@ -780,6 +841,11 @@ export type ConversationRefusal =
   | { readonly why: "unanswered"; readonly flag: string }
   | { readonly why: "answer-unknown"; readonly flag: string }
   | { readonly why: "answer-twice"; readonly flag: string }
+  | {
+      readonly why: "answer-kinds"
+      readonly flag: string
+      readonly kind: FlagKind
+    }
   | {
       readonly why: "answer-kind"
       readonly flag: string
@@ -846,6 +912,18 @@ export type ConversationRefusal =
       readonly emotion: string
     }
   | { readonly why: "notes-rule"; readonly rule: string }
+  | {
+      readonly why: "author"
+      readonly event: ConversationEventKind
+      readonly by: Author
+    }
+  | {
+      readonly why: "flag-version"
+      readonly flag: string
+      readonly expected: number
+      readonly got: number
+    }
+  | { readonly why: "rule-again"; readonly rule: string }
   | { readonly why: "preview-again"; readonly preview: string }
   | {
       readonly why: "preview-variant"
@@ -1123,7 +1201,8 @@ function answersRefusal(
   open: ReadonlyArray<KeptFlag>
 ): ConversationRefusal | null {
   const byId = new Map(open.map((f) => [f.id, f]))
-  const answered = new Set<string>()
+  /** The kinds of each flag answered so far. */
+  const answered = new Map<string, Set<FlagKind>>()
   const named = new Set<string>()
   const changed = before === null ? [] : changedTurns(before, version)
   const turnIn = (
@@ -1139,9 +1218,17 @@ function answersRefusal(
     }
     const flag = byId.get(answer.flag)
     if (flag === undefined) return { why: "answer-unknown", flag: answer.flag }
-    if (answered.has(flag.id)) return { why: "answer-twice", flag: flag.id }
-    answered.add(flag.id)
-    const refusedKind = flag.kinds.find(
+    // The kinds this answers: those it names, else all of the flag's.
+    const kinds = answer.kinds ?? flag.kinds
+    const foreign = kinds.find((k) => !flag.kinds.includes(k))
+    if (foreign !== undefined)
+      return { why: "answer-kinds", flag: flag.id, kind: foreign }
+    const done = answered.get(flag.id) ?? new Set<FlagKind>()
+    if (kinds.some((k) => done.has(k)))
+      return { why: "answer-twice", flag: flag.id }
+    answered.set(flag.id, new Set([...done, ...kinds]))
+    const asked: KeptFlag = { ...flag, kinds: [...kinds] }
+    const refusedKind = asked.kinds.find(
       (k) => !answersOf(k).includes(answer.how)
     )
     if (refusedKind !== undefined)
@@ -1151,7 +1238,7 @@ function answersRefusal(
         kind: refusedKind,
         how: answer.how,
       }
-    const scoped = before === null ? [] : inScope(flag, before)
+    const scoped = before === null ? [] : inScope(asked, before)
     switch (answer.how) {
       case "rewrote": {
         const same = answer.turns.find((t) => !changed.includes(t))
@@ -1251,7 +1338,9 @@ function answersRefusal(
       }
     }
   }
-  const unanswered = open.find((f) => !answered.has(f.id))
+  const unanswered = open.find((f) =>
+    f.kinds.some((k) => answered.get(f.id)?.has(k) !== true)
+  )
   if (unanswered !== undefined)
     return { why: "unanswered", flag: unanswered.id }
   const unnamed = changed.find((t) => !named.has(t))
@@ -1318,7 +1407,7 @@ function notesRefusal(
   latest: PodcastVersion,
   rules: ReadonlyArray<string>
 ): ConversationRefusal | null {
-  const unknownRule = (event.rules ?? []).find((r) => !rules.includes(r))
+  const unknownRule = event.rules.find((r) => !rules.includes(r))
   if (unknownRule !== undefined) return { why: "notes-rule", rule: unknownRule }
   const turn = latest.turns.find((t) => t.id === event.turn)
   const character = latest.speakers.find(
@@ -1330,7 +1419,7 @@ function notesRefusal(
   const own = emotionsOf(character)
   const seen = new Set<number>()
   for (const word of event.words) {
-    if (seen.has(word.at) || (count !== null && word.at >= count))
+    if (seen.has(word.at) || count === null || word.at >= count)
       return { why: "notes-word", turn: event.turn, at: word.at }
     seen.add(word.at)
     const foreign = (word.notes ?? []).find((n) => !own.includes(n.emotion))
@@ -1368,6 +1457,9 @@ export function stepConversation(
   const seq = state.phase === "new" ? 0 : state.seq
   if (event.basis !== undefined && event.basis !== seq)
     return refused({ why: "stale", basis: event.basis, seq })
+  const authors: ReadonlyArray<Author> = EVENT_AUTHORS[event.event]
+  if (!authors.includes(event.by))
+    return refused({ why: "author", event: event.event, by: event.by })
   if (!accepted.includes(event.event)) return outOfPhase
   if (event.event === "topic")
     return ok({
@@ -1428,6 +1520,15 @@ export function stepConversation(
           why: "out-of-phase",
           phase: state.phase,
           event: "flag",
+        })
+      // A flag lands on the version the owner heard, or nowhere: a turn's
+      // id outlasts its version, so a late flag on v1's k1 is never v2's.
+      if (event.version !== latest.n)
+        return refused({
+          why: "flag-version",
+          flag: flag.id,
+          expected: latest.n,
+          got: event.version,
         })
       const wrong = flagRefusal(flag, latest)
       if (wrong !== null) return refused(wrong)
@@ -1509,7 +1610,21 @@ export function stepConversation(
           preview: event.preview,
           variant: named,
         })
-      const { event: _event, at: _at, basis: _basis, ...approval } = event
+      if (event.chose.kind === "variant") {
+        const rule = event.chose.rule
+        const setBy = state.approvals.find(
+          (a) => a.chose.kind === "variant" && a.chose.rule === rule
+        )
+        if (setBy !== undefined && event.moves !== setBy.preview)
+          return refused({ why: "rule-again", rule })
+      }
+      const {
+        event: _event,
+        at: _at,
+        basis: _basis,
+        by: _by,
+        ...approval
+      } = event
       return ok({
         ...state,
         ...kept,
@@ -1531,10 +1646,14 @@ const refused = (refusal: ConversationRefusal): ConversationStepped => ({
   refusal,
 })
 
-/** The state `events` leave, from the start under `schema`'s rules, or the first refused event and why. */
+/**
+ * The state `events` leave, from the start, or the first refused event and
+ * why: the first `lifted` under /1's rules (a record lifted from /1), every
+ * later one under /2's.
+ */
 export function replayConversation(
   events: ReadonlyArray<ConversationEvent>,
-  schema: ConversationSchemaVersion = 2
+  lifted = 0
 ):
   | { readonly ok: true; readonly state: ConversationState }
   | {
@@ -1542,13 +1661,15 @@ export function replayConversation(
       readonly at: number
       readonly refusal: ConversationRefusal
     } {
-  let state = newConversation(schema)
+  let state = newConversation(lifted > 0 ? 1 : 2)
   for (const [i, event] of events.entries()) {
-    const stepped = stepConversation(state, event)
+    const schema: ConversationSchemaVersion = i < lifted ? 1 : 2
+    const stepped = stepConversation({ ...state, schema }, event)
     if (!stepped.ok) return { ok: false, at: i, refusal: stepped.refusal }
     state = stepped.state
   }
-  return { ok: true, state }
+  // Whatever comes next is past every lifted event: /2's rules.
+  return { ok: true, state: { ...state, schema: 2 } }
 }
 
 const whose = (voice: ConversationVoice): string =>
@@ -1616,6 +1737,9 @@ export function refusalLine(refusal: ConversationRefusal): string {
     }
     case "answer-unknown": {
       return `flag ${refusal.flag} isn't open on the version before`
+    }
+    case "answer-kinds": {
+      return `flag ${refusal.flag} isn't of kind ${refusal.kind}, which its answer names`
     }
     case "answer-twice": {
       return `flag ${refusal.flag} is answered twice`
@@ -1686,6 +1810,15 @@ export function refusalLine(refusal: ConversationRefusal): string {
     case "notes-emotion": {
       return `turn ${refusal.turn}'s speaker has no ${refusal.emotion} emotion`
     }
+    case "author": {
+      return `a ${refusal.event} event is written by ${EVENT_AUTHORS[refusal.event].join(" or ")}, not the ${refusal.by}`
+    }
+    case "flag-version": {
+      return `flag ${refusal.flag} was raised on version ${String(refusal.got)}, and the newest is ${String(refusal.expected)}`
+    }
+    case "rule-again": {
+      return `rule ${refusal.rule} is already set; a new approval of it names the one it moves`
+    }
     case "notes-rule": {
       return `the notes follow rule ${refusal.rule}, which no approval of the owner's set`
     }
@@ -1702,6 +1835,8 @@ export function refusalLine(refusal: ConversationRefusal): string {
 }
 
 // The record as /1 kept it, frozen: read, then lifted into /2's events.
+// Every schema below is a copy of what /1 read with, so a later change to
+// the spoken card's turns or to the shared names never changes what /1 was.
 
 const V1_FLAG_KINDS = [
   "too-quiet",
@@ -1715,14 +1850,30 @@ const V1_FLAG_KINDS = [
   "misses-point",
 ] as const satisfies ReadonlyArray<FlagKind>
 
-const V1NoteSchema = words.max(600)
+const V1Words = z.string().trim().min(1)
+const V1NoteSchema = V1Words.max(600)
+const V1IdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
+const V1TakeSchema = z
+  .string()
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/,
+    "it isn't a take's id, as home keeps it"
+  )
+const V1SayableSchema = z
+  .string()
+  .trim()
+  .min(1, "it says nothing")
+  .max(4_000, "home's speaker says at most 4000 characters in one line")
+  .refine((text) => /[\p{L}\p{N}]/u.test(text), {
+    message: "it has no letter or digit, so the speaker has nothing to say",
+  })
 
 const V1VersionSchema = z.strictObject({
   n: z.number().int().min(1),
   speakers: z
     .array(
       z.strictObject({
-        id: IdSchema,
+        id: V1IdSchema,
         character: z.enum(CHARACTERS),
         voice: z.enum(["kokoro", "owner"]),
       })
@@ -1732,8 +1883,18 @@ const V1VersionSchema = z.strictObject({
   turns: z
     .array(
       z.discriminatedUnion("voice", [
-        KokoroTurnSchema.extend({ id: IdSchema, speaker: IdSchema }),
-        OwnerTurnSchema.extend({ id: IdSchema, speaker: IdSchema }),
+        z.strictObject({
+          voice: z.literal("kokoro"),
+          said: V1SayableSchema,
+          id: V1IdSchema,
+          speaker: V1IdSchema,
+        }),
+        z.strictObject({
+          voice: z.literal("owner"),
+          take: V1TakeSchema,
+          id: V1IdSchema,
+          speaker: V1IdSchema,
+        }),
       ])
     )
     .min(1)
@@ -1741,23 +1902,23 @@ const V1VersionSchema = z.strictObject({
   answers: z.array(
     z.discriminatedUnion("how", [
       z.strictObject({
-        flag: IdSchema,
+        flag: V1IdSchema,
         how: z.literal("rewrote"),
-        turns: z.array(IdSchema).min(1).max(80),
+        turns: z.array(V1IdSchema).min(1).max(80),
         note: V1NoteSchema.optional(),
       }),
       z.strictObject({
-        flag: IdSchema,
+        flag: V1IdSchema,
         how: z.literal("retook"),
-        take: TakeSchema,
+        take: V1TakeSchema,
       }),
       z.strictObject({
-        flag: IdSchema,
+        flag: V1IdSchema,
         how: z.literal("conditioned"),
         note: V1NoteSchema.optional(),
       }),
       z.strictObject({
-        flag: IdSchema,
+        flag: V1IdSchema,
         how: z.literal("kept"),
         note: V1NoteSchema,
       }),
@@ -1765,35 +1926,37 @@ const V1VersionSchema = z.strictObject({
   ),
 })
 
+const V1At = z.iso.datetime()
+
 const V1EventSchema = z.discriminatedUnion("event", [
   z.strictObject({
     event: z.literal("topic"),
-    at,
+    at: V1At,
     topic: z.strictObject({
       said: V1NoteSchema,
       chat: z.url().optional(),
     }),
   }),
-  z.strictObject({ event: z.literal("point"), at, take: TakeSchema }),
+  z.strictObject({ event: z.literal("point"), at: V1At, take: V1TakeSchema }),
   z.strictObject({
     event: z.literal("version"),
-    at,
+    at: V1At,
     version: V1VersionSchema,
   }),
   z.strictObject({
     event: z.literal("flag"),
-    at,
+    at: V1At,
     flag: z.strictObject({
-      id: IdSchema,
-      turn: IdSchema,
+      id: V1IdSchema,
+      turn: V1IdSchema,
       kind: z.enum(V1_FLAG_KINDS),
       note: V1NoteSchema.optional(),
     }),
   }),
-  z.strictObject({ event: z.literal("withdraw"), at, flag: IdSchema }),
+  z.strictObject({ event: z.literal("withdraw"), at: V1At, flag: V1IdSchema }),
   z.strictObject({
     event: z.literal("green-light"),
-    at,
+    at: V1At,
     version: z.number().int().min(1),
   }),
 ])
@@ -1801,56 +1964,117 @@ const V1EventSchema = z.discriminatedUnion("event", [
 /** A record as `some-ui.conversation/1` kept it. */
 export const ConversationRecordV1Schema = z.strictObject({
   schema: z.literal(CONVERSATION_RECORD_SCHEMA_V1),
-  id: IdSchema,
+  id: V1IdSchema,
   events: z.array(V1EventSchema),
 })
 
 export type ConversationRecordV1 = z.infer<typeof ConversationRecordV1Schema>
 
+type V1Event = ConversationRecordV1["events"][number]
+
 /**
- * A /1 event as /2 says it: a speaker's voice as its kind (the voice policy
- * chose Kokoro's), a flag on its one turn, of its one kind. Everything else
- * /1 held is already /2's.
+ * /1's events as /2 says them, in order: each speaker's voice as its kind
+ * (the voice policy chose Kokoro's), each flag on its one turn, of its one
+ * kind, on the version it followed, and each event's author, which /1 left
+ * unsaid and its kind fixes (`EVENT_AUTHORS`). Everything else /1 held is
+ * already /2's.
  */
 export function liftV1(
-  event: ConversationRecordV1["events"][number]
-): ConversationEvent {
-  switch (event.event) {
-    case "version": {
-      return {
-        ...event,
-        version: {
-          ...event.version,
-          speakers: event.version.speakers.map((s) => ({
-            ...s,
-            voice: { kind: s.voice },
-          })),
-        },
+  events: ReadonlyArray<V1Event>
+): ReadonlyArray<ConversationEvent> {
+  let latest = 0
+  return events.map((event): ConversationEvent => {
+    switch (event.event) {
+      case "version": {
+        latest = event.version.n
+        return {
+          ...event,
+          by: "agent",
+          version: {
+            ...event.version,
+            speakers: event.version.speakers.map((s) => ({
+              ...s,
+              voice: { kind: s.voice },
+            })),
+          },
+        }
+      }
+      case "flag": {
+        const { turn, kind, ...flag } = event.flag
+        return {
+          ...event,
+          by: "owner",
+          version: latest,
+          flag: { ...flag, on: { scope: "turn", turn }, kinds: [kind] },
+        }
+      }
+      case "topic":
+      case "point":
+      case "withdraw":
+      case "green-light": {
+        return { ...event, by: "owner" }
+      }
+      default: {
+        return assertNever(event)
       }
     }
-    case "flag": {
-      const { turn, kind, ...flag } = event.flag
-      return {
-        ...event,
-        flag: { ...flag, on: { scope: "turn", turn }, kinds: [kind] },
+  })
+}
+
+/**
+ * The /1 event `event` was lifted from, or null for one no lift makes: a
+ * named voice, a flag beyond one turn and one of /1's kinds, any field /1
+ * never had. Read back through /1's own schema, so it holds what /1 held.
+ */
+export function lowerToV1(event: ConversationEvent): V1Event | null {
+  const lowered = ((): unknown => {
+    const { by: _by, basis, ...rest } = event
+    if (basis !== undefined) return null
+    switch (rest.event) {
+      case "version": {
+        const speakers = rest.version.speakers.map((s) => {
+          const { voice, ...speaker } = s
+          return voice.kind === "kokoro" && voice.id !== undefined
+            ? null
+            : { ...speaker, voice: voice.kind }
+        })
+        return speakers.includes(null)
+          ? null
+          : { ...rest, version: { ...rest.version, speakers } }
+      }
+      case "flag": {
+        const { version: _version, flag, ...flagEvent } = rest
+        const { on, kinds, ...kept } = flag
+        const [kind, ...more] = kinds
+        return on.scope !== "turn" || more.length > 0
+          ? null
+          : { ...flagEvent, flag: { ...kept, turn: on.turn, kind } }
+      }
+      case "topic":
+      case "point":
+      case "withdraw":
+      case "green-light":
+      case "heard":
+      case "notes":
+      case "approve": {
+        // /1's own schema refuses the kinds it never had.
+        return rest
+      }
+      default: {
+        return assertNever(rest)
       }
     }
-    case "topic":
-    case "point":
-    case "withdraw":
-    case "green-light": {
-      return event
-    }
-    default: {
-      return assertNever(event)
-    }
-  }
+  })()
+  const parsed = V1EventSchema.safeParse(lowered)
+  return parsed.success ? parsed.data : null
 }
 
 /**
  * A kept record, read by its own schema's version and replayed: its state,
  * or every reason it can't be read. A /1 record is lifted (`liftV1`) and
- * replayed under /1's rules.
+ * marked so; a lifted record replays its lifted events under /1's rules and
+ * every later one under /2's, and is refused where an event it claims was
+ * lifted is one no lift makes.
  */
 export function parseConversationRecord(raw: unknown): Parsed<{
   readonly record: ConversationRecord
@@ -1860,45 +2084,56 @@ export function parseConversationRecord(raw: unknown): Parsed<{
     raw !== null && typeof raw === "object" && "schema" in raw
       ? raw.schema
       : undefined
-  const read: Parsed<{
-    readonly record: ConversationRecord
-    readonly version: ConversationSchemaVersion
-  }> = (() => {
+  const read: Parsed<ConversationRecord> = (() => {
     if (schema === CONVERSATION_RECORD_SCHEMA_V1) {
       const v1 = ConversationRecordV1Schema.safeParse(raw)
       return v1.success
         ? {
             ok: true,
             value: {
-              record: {
-                schema: CONVERSATION_RECORD_SCHEMA,
-                id: v1.data.id,
-                lifted: CONVERSATION_RECORD_SCHEMA_V1,
-                events: v1.data.events.map(liftV1),
+              schema: CONVERSATION_RECORD_SCHEMA,
+              id: v1.data.id,
+              lifted: {
+                from: CONVERSATION_RECORD_SCHEMA_V1,
+                through: v1.data.events.length,
               },
-              version: 1,
+              events: [...liftV1(v1.data.events)],
             },
           }
         : { ok: false, problems: problemsOf(v1.error, "conversation") }
     }
     const v2 = ConversationRecordSchema.safeParse(raw)
     return v2.success
-      ? {
-          ok: true,
-          value: {
-            record: v2.data,
-            version: v2.data.lifted === undefined ? 2 : 1,
-          },
-        }
+      ? { ok: true, value: v2.data }
       : { ok: false, problems: problemsOf(v2.error, "conversation") }
   })()
   if (!read.ok) return read
-  const { record, version } = read.value
-  const replayed = replayConversation(record.events, version)
+  const record = read.value
+  const through = record.lifted?.through ?? 0
+  if (through > record.events.length)
+    return {
+      ok: false,
+      problems: [
+        `lifted: it claims ${String(through)} events were lifted, and it holds ${String(record.events.length)}`,
+      ],
+    }
+  const unlifted = record.events
+    .slice(0, through)
+    .findIndex((event) => lowerToV1(event) === null)
+  if (unlifted >= 0)
+    return {
+      ok: false,
+      problems: [
+        `events.${String(unlifted)}: it is marked lifted from /1, and /1 never kept it`,
+      ],
+    }
+  const replayed = replayConversation(record.events, through)
   return replayed.ok
     ? { ok: true, value: { record, state: replayed.state } }
     : {
         ok: false,
-        problems: [`events.${replayed.at}: ${refusalLine(replayed.refusal)}`],
+        problems: [
+          `events.${String(replayed.at)}: ${refusalLine(replayed.refusal)}`,
+        ],
       }
 }
