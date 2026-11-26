@@ -27,8 +27,10 @@
  * 6. **The signature**: the owner never sets a value (the owner's guard on
  *    #3521: no video editor). The agent proposes each line's emotion notes
  *    (`notes`) under the rules the owner approved, and where a rule is new
- *    or in doubt renders a preview of two or three variants; the owner picks
- *    one, which sets a rule, or says what else they want (`approve`, #3558).
+ *    or in doubt offers a preview of two or three variants, each with the
+ *    rule it would set (`offer`); the owner picks one, which sets its rule,
+ *    or says what else they want (`approve`, #3558). The owner only chooses:
+ *    every rule's name is the agent's, in the offer.
  *
  * The family. A turn is the spoken card's turn (`SpokenTurnSchema` in
  * `cut-list.ts`: a line home's Kokoro says, or the owner's take by its id),
@@ -536,22 +538,82 @@ const NameSchema = FlagIdSchema
 /** The most variants one preview offers the owner (HOST16: two or three). */
 export const PREVIEW_VARIANTS_MOST = 3
 
+/** The fewest variants one preview offers: a choice needs two. */
+export const PREVIEW_VARIANTS_LEAST = 2
+
 /**
- * What the owner chose on a preview (#3558, the owner's guard on #3521: the
- * owner never sets a value, only approves a preview, which becomes a rule):
- * a variant, and the rule it set; or something else, in the owner's own
- * words, which sets none and asks the agent for another preview.
+ * One variant of a preview: what it is, what its clip shows, and the rule
+ * picking it sets. Its id names its clip on home
+ * (`<subject>/<conversation>/<preview>/<variant>.mp4`), so it is folder-safe.
+ */
+export const PreviewVariantSchema = z.strictObject({
+  variant: IdSchema,
+  /** What it is, in a few words: "Crossfade". */
+  title: words.max(60),
+  /** Each moment the clip shows, as its on-screen callout says it. */
+  callouts: z
+    .array(words.max(80))
+    .min(1)
+    .max(12)
+    .refine((c) => new Set(c).size === c.length, "a callout is listed twice"),
+  /** The rule this variant sets once picked. */
+  rule: NameSchema,
+})
+
+export type PreviewVariant = z.infer<typeof PreviewVariantSchema>
+
+/**
+ * A preview the agent offers the owner (HOST16, #3558; C1582): the family
+ * of choices it bundles, its variants, and the one recommended. Its id
+ * names its folder on home, so it is folder-safe.
+ */
+export const PreviewOfferSchema = z
+  .strictObject({
+    preview: IdSchema,
+    /** The family of choices it bundles, as the card's heading says it. */
+    about: words.max(80),
+    variants: z
+      .array(PreviewVariantSchema)
+      .min(PREVIEW_VARIANTS_LEAST)
+      .max(PREVIEW_VARIANTS_MOST),
+    recommended: IdSchema,
+  })
+  .refine(
+    (o) => new Set(o.variants.map((v) => v.variant)).size === o.variants.length,
+    "two variants share an id"
+  )
+  .refine(
+    (o) => new Set(o.variants.map((v) => v.rule)).size === o.variants.length,
+    "two variants set the same rule, so picking between them decides nothing"
+  )
+  .refine(
+    (o) => o.variants.some((v) => v.variant === o.recommended),
+    "the recommended variant isn't one offered"
+  )
+
+export type PreviewOffer = z.infer<typeof PreviewOfferSchema>
+
+/**
+ * What the owner chose on an offered preview (#3558, the owner's guard on
+ * #3521: the owner never sets a value, only approves a preview, which
+ * becomes a rule): one of its variants, or something else, in the owner's
+ * own words, which sets none and asks the agent for another preview.
  */
 export const PreviewChoiceSchema = z.discriminatedUnion("kind", [
-  z.strictObject({
-    kind: z.literal("variant"),
-    variant: NameSchema,
-    rule: NameSchema,
-  }),
+  z.strictObject({ kind: z.literal("variant"), variant: IdSchema }),
   z.strictObject({ kind: z.literal("else"), said: NoteSchema }),
 ])
 
 export type PreviewChoice = z.infer<typeof PreviewChoiceSchema>
+
+/** A choice as the state keeps it: a variant with the rule its offer gave it. */
+export type KeptChoice =
+  | {
+      readonly kind: "variant"
+      readonly variant: string
+      readonly rule: string
+    }
+  | Extract<PreviewChoice, { kind: "else" }>
 
 const at = z.iso.datetime()
 
@@ -632,26 +694,28 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
     rules: z.array(NameSchema).min(1),
   }),
   /**
-   * The owner's pick on a preview (HOST16): the variants it offered, the one
-   * the agent recommended, and what the owner chose ("preview approvals as
-   * events", #3558).
+   * A preview the agent offers the owner to pick from (HOST16; C1582): its
+   * variants and the rule each sets, and the one recommended. Home keeps
+   * each variant's clip beside it, and refuses an offer whose clips aren't
+   * made yet.
+   */
+  z.strictObject({
+    event: z.literal("offer"),
+    ...stamp,
+    offer: PreviewOfferSchema,
+  }),
+  /**
+   * The owner's pick on an offered preview (HOST16): which variant, or what
+   * else they want ("preview approvals as events", #3558). The rule it sets
+   * is the offer's, never written here.
    */
   z.strictObject({
     event: z.literal("approve"),
     ...stamp,
-    preview: NameSchema,
-    offered: z
-      .array(NameSchema)
-      .min(2)
-      .max(PREVIEW_VARIANTS_MOST)
-      .refine(
-        (v) => new Set(v).size === v.length,
-        "a variant is offered twice"
-      ),
-    recommended: NameSchema,
+    preview: IdSchema,
     chose: PreviewChoiceSchema,
-    /** The earlier approval whose rule this one sets anew, by its preview. */
-    moves: NameSchema.optional(),
+    /** The earlier approval this one changes or moves, by its preview (C1581). */
+    moves: IdSchema.optional(),
   }),
 ])
 
@@ -665,6 +729,7 @@ export const EVENT_AUTHORS = {
   heard: ["home"],
   "green-light": ["owner"],
   notes: ["agent"],
+  offer: ["agent"],
   approve: ["owner"],
 } as const satisfies Readonly<
   Record<
@@ -714,13 +779,10 @@ export type KeptNotes = {
 /** An approval as the state keeps it. */
 export type KeptApproval = {
   readonly preview: string
-  readonly offered: ReadonlyArray<string>
-  readonly recommended: string
-  readonly chose: PreviewChoice
+  readonly chose: KeptChoice
   readonly moves?: string
 }
 
-/** The rules the owner's approvals set, in the order set. */
 /**
  * The approvals that stand, by preview: each preview's latest, less any a
  * later approval of another preview moved. Every approval stays kept; only
@@ -764,6 +826,8 @@ type Kept = {
     readonly ms: number
   }>
   readonly notes: ReadonlyArray<KeptNotes>
+  /** The previews the agent offered, each once. */
+  readonly offers: ReadonlyArray<PreviewOffer>
   readonly approvals: ReadonlyArray<KeptApproval>
   /** How many events the log holds: the next one's place in it. */
   readonly seq: number
@@ -778,7 +842,7 @@ type Kept = {
  * - `podcast`: the newest version waits on the owner, with no open flag;
  * - `flagged`: the newest version has open flags, which the next answers;
  * - `green-lit`: the owner approved a version, and the conversation is
- *   settled: only its signature goes on (notes and approvals).
+ *   settled: only its signature goes on (notes, offers and approvals).
  */
 export type ConversationState =
   | { readonly phase: "new"; readonly schema: ConversationSchemaVersion }
@@ -799,7 +863,7 @@ export const CONVERSATION_ACCEPTS = {
   drafting: ["point", "version"],
   podcast: ["point", "flag", "heard", "green-light"],
   flagged: ["point", "flag", "withdraw", "version", "heard"],
-  "green-lit": ["notes", "approve"],
+  "green-lit": ["notes", "offer", "approve"],
 } as const satisfies Readonly<
   Record<ConversationPhase, ReadonlyArray<ConversationEventKind>>
 >
@@ -943,6 +1007,8 @@ export type ConversationRefusal =
   | { readonly why: "rule-again"; readonly rule: string }
   | { readonly why: "moves-unknown"; readonly preview: string }
   | { readonly why: "preview-again"; readonly preview: string }
+  | { readonly why: "offer-again"; readonly preview: string }
+  | { readonly why: "preview-unknown"; readonly preview: string }
   | {
       readonly why: "preview-variant"
       readonly preview: string
@@ -1489,6 +1555,7 @@ export function stepConversation(
       flags: [],
       heard: [],
       notes: [],
+      offers: [],
       approvals: [],
       seq: 1,
     })
@@ -1502,6 +1569,7 @@ export function stepConversation(
     flags: state.flags,
     heard: state.heard,
     notes: state.notes,
+    offers: state.offers,
     approvals: state.approvals,
     seq: state.seq + 1,
   }
@@ -1615,7 +1683,35 @@ export function stepConversation(
       ]
       return ok({ ...state, ...kept, notes })
     }
+    case "offer": {
+      // A preview's id is one offer's: a new preview is a new offer.
+      if (state.offers.some((o) => o.preview === event.offer.preview))
+        return refused({ why: "offer-again", preview: event.offer.preview })
+      return ok({ ...state, ...kept, offers: [...state.offers, event.offer] })
+    }
     case "approve": {
+      // Checked in this order: the offer, its variant, the move, the pick
+      // again, the rule again.
+      const offer = state.offers.find((o) => o.preview === event.preview)
+      if (offer === undefined)
+        return refused({ why: "preview-unknown", preview: event.preview })
+      const chose: KeptChoice | null = (() => {
+        if (event.chose.kind === "else") return event.chose
+        const variant = event.chose.variant
+        const offered = offer.variants.find((v) => v.variant === variant)
+        return offered === undefined
+          ? null
+          : { kind: "variant", variant, rule: offered.rule }
+      })()
+      if (chose === null)
+        return refused({
+          why: "preview-variant",
+          preview: event.preview,
+          variant:
+            event.chose.kind === "variant"
+              ? event.chose.variant
+              : event.preview,
+        })
       const standing = standingApprovals(state.approvals)
       // A pick is changed by a new approval that names the one it moves:
       // the earlier one stays kept, and the latest sets the rule.
@@ -1623,18 +1719,8 @@ export function stepConversation(
         return refused({ why: "moves-unknown", preview: event.moves })
       if (standing.has(event.preview) && event.moves !== event.preview)
         return refused({ why: "preview-again", preview: event.preview })
-      const named = [
-        event.recommended,
-        ...(event.chose.kind === "variant" ? [event.chose.variant] : []),
-      ].find((v) => !event.offered.includes(v))
-      if (named !== undefined)
-        return refused({
-          why: "preview-variant",
-          preview: event.preview,
-          variant: named,
-        })
-      if (event.chose.kind === "variant") {
-        const rule = event.chose.rule
+      if (chose.kind === "variant") {
+        const rule = chose.rule
         const setBy = [...standing.values()].find(
           (a) =>
             a.preview !== event.preview &&
@@ -1644,13 +1730,11 @@ export function stepConversation(
         if (setBy !== undefined && event.moves !== setBy.preview)
           return refused({ why: "rule-again", rule })
       }
-      const {
-        event: _event,
-        at: _at,
-        basis: _basis,
-        by: _by,
-        ...approval
-      } = event
+      const approval: KeptApproval = {
+        preview: event.preview,
+        chose,
+        ...(event.moves === undefined ? {} : { moves: event.moves }),
+      }
       return ok({
         ...state,
         ...kept,
@@ -1857,6 +1941,12 @@ export function refusalLine(refusal: ConversationRefusal): string {
     case "preview-again": {
       return `preview ${refusal.preview} is already approved; a new pick on it names it as the one it moves`
     }
+    case "offer-again": {
+      return `preview ${refusal.preview} was offered already; a new preview has a new id`
+    }
+    case "preview-unknown": {
+      return `no preview ${refusal.preview} was offered`
+    }
     default: {
       return assertNever(refusal)
     }
@@ -1878,6 +1968,13 @@ const V1_FLAG_KINDS = [
   "off-taste",
   "misses-point",
 ] as const satisfies ReadonlyArray<FlagKind>
+
+/** The cast /1 knew, frozen: a later cast member is no /1 speaker. */
+const V1_CHARACTERS = [
+  "mochi",
+  "tin-owlet",
+  "tin-sparrow",
+] as const satisfies ReadonlyArray<(typeof CHARACTERS)[number]>
 
 const V1Words = z.string().trim().min(1)
 const V1NoteSchema = V1Words.max(600)
@@ -1903,7 +2000,7 @@ const V1VersionSchema = z.strictObject({
     .array(
       z.strictObject({
         id: V1IdSchema,
-        character: z.enum(CHARACTERS),
+        character: z.enum(V1_CHARACTERS),
         voice: z.enum(["kokoro", "owner"]),
       })
     )
@@ -2085,6 +2182,7 @@ export function lowerToV1(event: ConversationEvent): V1Event | null {
       case "green-light":
       case "heard":
       case "notes":
+      case "offer":
       case "approve": {
         // /1's own schema refuses the kinds it never had.
         return rest

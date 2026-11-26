@@ -26,6 +26,7 @@ import {
   CONVERSATION_POLICY,
   CONVERSATION_RECORD_SCHEMA,
   CONVERSATION_RECORD_SCHEMA_V1,
+  ConversationEventSchema,
   FLAG_KINDS,
   FLAG_SCOPES,
   FLAG_VOICE,
@@ -38,6 +39,7 @@ import {
   ownerSpans,
   ownerTakes,
   parseConversationRecord,
+  PreviewOfferSchema,
   refusalLine,
   replayConversation,
   stepConversation,
@@ -50,6 +52,7 @@ import type {
   ConversationTurn,
   FlagAnswer,
   PodcastVersion,
+  PreviewOffer,
   Span,
 } from "@video-render/conversation"
 import { describe, expect, it } from "vitest"
@@ -108,6 +111,27 @@ const reworded: Line = {
 const retaken: Take = { ...take, take: "take-b" }
 
 /** The alphabet every order is drawn from. */
+/** The agent's preview of the verdict's framing: two variants, each its rule. */
+const OFFER_A: PreviewOffer = {
+  preview: "close-up-on-verdict",
+  about: "How the verdict is framed",
+  recommended: "close-up",
+  variants: [
+    {
+      variant: "close-up",
+      title: "Close-up",
+      callouts: ["Verdict: close-up"],
+      rule: "verdict-close-up",
+    },
+    {
+      variant: "corner",
+      title: "In the corner",
+      callouts: ["Verdict: corner"],
+      rule: "verdict-corner",
+    },
+  ],
+}
+
 const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   topic: {
     event: "topic",
@@ -225,14 +249,18 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
     words: [{ at: 0, notes: [{ emotion: "perplexed", weight: 0.5 }] }],
     rules: ["verdict-close-up"],
   },
+  offerA: {
+    event: "offer",
+    by: "agent",
+    at: AT,
+    offer: OFFER_A,
+  },
   approveA: {
     event: "approve",
     by: "owner",
     at: AT,
     preview: "close-up-on-verdict",
-    offered: ["close-up", "corner"],
-    recommended: "close-up",
-    chose: { kind: "variant", variant: "close-up", rule: "verdict-close-up" },
+    chose: { kind: "variant", variant: "close-up" },
   },
   green1: { event: "green-light", by: "owner", at: AT, version: 1 },
   green2: { event: "green-light", by: "owner", at: AT, version: 2 },
@@ -390,11 +418,12 @@ describe("every event order (CR1)", () => {
     ])
     expect(replayed.ok).toBe(true)
     if (!replayed.ok) return
-    // Only the signature goes on: notes and approvals.
+    // Only the signature goes on: notes, offers and approvals, and an
+    // approval only of what was offered.
     const after = Object.entries(ALPHABET).filter(
       ([, event]) => stepConversation(replayed.state, event).ok
     )
-    expect(after.map(([name]) => name)).toEqual(["approveA"])
+    expect(after.map(([name]) => name)).toEqual(["offerA"])
   })
 })
 
@@ -1302,7 +1331,12 @@ describe("conversation/2", () => {
       why: "notes-rule",
       rule: "verdict-close-up",
     })
-    const state = after(green, ALPHABET.approveA!, ALPHABET.notesAgent!)
+    const state = after(
+      green,
+      ALPHABET.offerA!,
+      ALPHABET.approveA!,
+      ALPHABET.notesAgent!
+    )
     expect(lineNotes(state, "k1").get(0)?.stress).toBe(0.6)
     const settled = after(state, ALPHABET.notesRuled!)
     expect(lineNotes(settled, "k1").get(0)).toEqual({
@@ -1370,38 +1404,88 @@ describe("conversation/2", () => {
     const settled = after(state, ALPHABET.heard1!, ALPHABET.green1!)
     expect(heardMs(settled)).toBe(60_000)
     // The signature's approvals, each preview once.
-    const approved = after(settled, ALPHABET.approveA!)
+    const approved = after(settled, ALPHABET.offerA!, ALPHABET.approveA!)
     expect(refusal(approved, ALPHABET.approveA!)).toEqual({
       why: "preview-again",
       preview: "close-up-on-verdict",
     })
     expect(approvedRules(approved)).toEqual(["verdict-close-up"])
     // "Something else", in the owner's words, sets no rule.
-    const elsewise = after(settled, {
+    const offered = after(settled, ALPHABET.offerA!)
+    const elsewise = after(offered, {
       event: "approve",
       by: "owner",
       at: AT,
-      preview: "transitions",
-      offered: ["crossfade", "slow-crossfade", "cut"],
-      recommended: "crossfade",
+      preview: "close-up-on-verdict",
       chose: { kind: "else", said: "Softer, like a page turning." },
     })
     expect(approvedRules(elsewise)).toEqual([])
     expect(
-      refusal(settled, {
-        event: "approve",
-        by: "owner",
-        at: AT,
-        preview: "transitions",
-        offered: ["crossfade", "cut"],
-        recommended: "crossfade",
-        chose: { kind: "variant", variant: "wipe", rule: "joins" },
+      refusal(offered, {
+        ...eventOf("approveA", "approve"),
+        chose: { kind: "variant", variant: "wipe" },
       })
     ).toEqual({
       why: "preview-variant",
-      preview: "transitions",
+      preview: "close-up-on-verdict",
       variant: "wipe",
     })
+  })
+
+  it("takes a pick only on a preview the agent offered, and each offer once (C1582)", () => {
+    const settled = after(opened(), v1, ALPHABET.heard1!, ALPHABET.green1!)
+    // Nothing offered: the owner has nothing to pick.
+    expect(refusal(settled, ALPHABET.approveA!)).toEqual({
+      why: "preview-unknown",
+      preview: "close-up-on-verdict",
+    })
+    // The agent offers; the owner doesn't; and before the green light no
+    // preview is offered.
+    expect(refusal(settled, { ...ALPHABET.offerA!, by: "owner" })).toEqual({
+      why: "author",
+      event: "offer",
+      by: "owner",
+    })
+    expect(refusal(after(opened(), v1), ALPHABET.offerA!)).toMatchObject({
+      why: "out-of-phase",
+    })
+    const offered = after(settled, ALPHABET.offerA!)
+    expect(refusal(offered, ALPHABET.offerA!)).toEqual({
+      why: "offer-again",
+      preview: "close-up-on-verdict",
+    })
+    // The rule the pick sets is the offer's, never the owner's to write.
+    const picked = after(offered, {
+      ...eventOf("approveA", "approve"),
+      chose: { kind: "variant", variant: "corner" },
+    })
+    expect(approvedRules(picked)).toEqual(["verdict-corner"])
+    expect(
+      ConversationEventSchema.safeParse({
+        ...ALPHABET.approveA,
+        chose: { kind: "variant", variant: "corner", rule: "anything" },
+      }).success
+    ).toBe(false)
+  })
+
+  it.each([
+    ["one variant", { variants: OFFER_A.variants.slice(0, 1) }],
+    [
+      "two variants with one id",
+      {
+        variants: OFFER_A.variants.map((v) => ({ ...v, variant: "close-up" })),
+      },
+    ],
+    [
+      "two variants setting one rule",
+      { variants: OFFER_A.variants.map((v) => ({ ...v, rule: "same" })) },
+    ],
+    ["a recommended variant it doesn't offer", { recommended: "wipe" }],
+    ["an id that can't name a folder", { preview: "Close Up" }],
+  ])("refuses an offer of %s", (_, change) => {
+    expect(
+      PreviewOfferSchema.safeParse({ ...OFFER_A, ...change }).success
+    ).toBe(false)
   })
 
   it("takes the owner's long spoken notes, free flag ids and a line's evidence", () => {
@@ -1509,7 +1593,7 @@ describe("conversation/2", () => {
       by: "owner",
     })
     expect(
-      refusal(after(green, ALPHABET.approveA!), {
+      refusal(after(green, ALPHABET.offerA!, ALPHABET.approveA!), {
         ...ALPHABET.notesAgent!,
         by: "owner",
       })
@@ -1522,6 +1606,7 @@ describe("conversation/2", () => {
       v1,
       ALPHABET.heard1!,
       ALPHABET.green1!,
+      ALPHABET.offerA!,
       ALPHABET.approveA!
     )
     // o1 is a span of the owner's take, with no transcript kept here.
@@ -1540,18 +1625,26 @@ describe("conversation/2", () => {
       v1,
       ALPHABET.heard1!,
       ALPHABET.green1!,
+      ALPHABET.offerA!,
       ALPHABET.approveA!
     )
     const again = {
       ...eventOf("approveA", "approve"),
       preview: "close-up-on-verdict-2",
     }
-    expect(refusal(signed, again)).toEqual({
+    // A second preview whose variant sets the rule the first already did.
+    const reoffered = after(signed, {
+      event: "offer",
+      by: "agent",
+      at: AT,
+      offer: { ...OFFER_A, preview: "close-up-on-verdict-2" },
+    })
+    expect(refusal(reoffered, again)).toEqual({
       why: "rule-again",
       rule: "verdict-close-up",
     })
     expect(
-      stepConversation(signed, { ...again, moves: "close-up-on-verdict" }).ok
+      stepConversation(reoffered, { ...again, moves: "close-up-on-verdict" }).ok
     ).toBe(true)
   })
 
@@ -1561,15 +1654,12 @@ describe("conversation/2", () => {
       v1,
       ALPHABET.heard1!,
       ALPHABET.green1!,
+      ALPHABET.offerA!,
       ALPHABET.approveA!
     )
     const corner = {
       ...eventOf("approveA", "approve"),
-      chose: {
-        kind: "variant" as const,
-        variant: "corner",
-        rule: "verdict-corner",
-      },
+      chose: { kind: "variant" as const, variant: "corner" },
     }
     // Picked over, unnamed: refused, so one tap never replaces a rule.
     expect(refusal(signed, corner)).toEqual({
@@ -1684,13 +1774,27 @@ describe("conversation/2", () => {
       ok: false,
       problems: ["events.3: it is marked lifted from /1, and /1 never kept it"],
     })
+    // A boundary past its events, every event one a lift makes: only the
+    // bound refuses it.
+    const liftable = ["topic", "pointA"].map((n) => ALPHABET[n]!)
+    expect(
+      parseConversationRecord({
+        schema: CONVERSATION_RECORD_SCHEMA,
+        id: "week-12",
+        lifted: { from: CONVERSATION_RECORD_SCHEMA_V1, through: 2 },
+        events: liftable,
+      }).ok
+    ).toBe(true)
     expect(
       parseConversationRecord({
         schema: CONVERSATION_RECORD_SCHEMA,
         id: "week-12",
         lifted: { from: CONVERSATION_RECORD_SCHEMA_V1, through: 9 },
-        events,
-      }).ok
-    ).toBe(false)
+        events: liftable,
+      })
+    ).toEqual({
+      ok: false,
+      problems: ["lifted: it claims 9 events were lifted, and it holds 2"],
+    })
   })
 })
