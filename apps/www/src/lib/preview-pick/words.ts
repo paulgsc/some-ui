@@ -46,6 +46,6 @@ export const PICK_WORDS = {
     "This phone couldn't tell whether home kept that pick: what home holds is shown again.",
   unpaired:
     "Picks are kept on home, and this phone isn't paired with home, so nothing was kept.",
-  away: "Picks are kept on home, and home can't be reached right now, so nothing was kept. Try again.",
+  away: "Home didn't answer, so this phone can't say whether it kept that pick: what home holds is shown again once it answers.",
   busy: "This phone was busy with home, so nothing was kept. Try again.",
 } as const

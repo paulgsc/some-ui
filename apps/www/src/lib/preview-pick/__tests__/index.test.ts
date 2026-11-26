@@ -223,7 +223,7 @@ describe("previewsRuntime (HOST16)", () => {
   })
 
   it.each(["refused", "unpaired", "away", "busy"] as const)(
-    "says a pick home didn't keep: %s",
+    "says a pick home didn't keep, or may not have: %s",
     async (kind) => {
       const s = scripted()
       const runtime = previewsRuntime(s.source, () => AT)
@@ -239,6 +239,11 @@ describe("previewsRuntime (HOST16)", () => {
       const state = runtime.state.getSnapshot()
       expect(state.phase === "shown" && state.said?.outcome).toBe(kind)
       expect(state.phase === "shown" && state.keeping).toBeNull()
+      // Only an answer that may have been kept is read again: busy and
+      // unpaired sent nothing.
+      expect(s.rereads).toHaveLength(
+        kind === "busy" || kind === "unpaired" ? 0 : 1
+      )
     }
   )
 
@@ -270,7 +275,7 @@ describe("previewsRuntime (HOST16)", () => {
     expect(s.sent[1]?.moves).toBe(OFFER.preview)
   })
 
-  it.each(["refused", "unreadable"] as const)(
+  it.each(["refused", "unreadable", "away"] as const)(
     "reads the conversation again after a pick %s, keeping its words and topic",
     async (kind) => {
       const s = scripted()

@@ -47,6 +47,7 @@ export type PickOutcome =
   /** Its answer couldn't be read: whether it was kept is read again. */
   | "unreadable"
   | "unpaired"
+  /** No answer: whether it was kept is read again. */
   | "away"
   | "busy"
 

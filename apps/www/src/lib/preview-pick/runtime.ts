@@ -104,9 +104,14 @@ export function previewsRuntime(
             ? { kind: "picked", outcome: "kept" }
             : { kind: "picked", outcome: "kept", now: written.value }
       )
-      // Refused, or not read: read again, so the screen and the next pick
-      // follow what is kept now.
-      if (written.kind === "refused" || written.kind === "unreadable")
+      // Refused, not read, or not answered (home may have kept it before
+      // the answer was lost): read again, so the screen and the next pick
+      // follow what is kept now. Busy and unpaired sent nothing.
+      if (
+        written.kind === "refused" ||
+        written.kind === "unreadable" ||
+        written.kind === "away"
+      )
         void source.reread(conversation).then((again) => {
           if (again.kind === "read")
             dispatch({ kind: "refreshed", now: again.value })
