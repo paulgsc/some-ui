@@ -29,15 +29,7 @@ export const PreviewVariantSchema = z.strictObject({
   /** The clip, as home keeps it beside the preview. */
   clip: z.string().trim().min(1).max(200),
   /** Each moment the clip shows, as its on-screen callout says it. */
-  callouts: z
-    .array(
-      z.strictObject({
-        atMs: z.number().int().nonnegative(),
-        says: words.max(80),
-      })
-    )
-    .min(1)
-    .max(12),
+  callouts: z.array(words.max(80)).min(1).max(12),
   /** The rule this variant sets once picked. */
   rule: Name,
 })
@@ -117,20 +109,14 @@ export const sampleTransitionsOffer = (): PreviewOffer => ({
       id: "crossfade",
       title: "Crossfade",
       clip: "transitions-1/crossfade.mp4",
-      callouts: [
-        { atMs: 1_500, says: "Transition: crossfade" },
-        { atMs: 4_500, says: "New chapter: slow crossfade" },
-      ],
+      callouts: ["Transition: crossfade", "New chapter: slow crossfade"],
       rule: "joins-crossfade",
     },
     {
       id: "dip-to-black",
       title: "Dip to black",
       clip: "transitions-1/dip-to-black.mp4",
-      callouts: [
-        { atMs: 1_500, says: "Transition: crossfade" },
-        { atMs: 4_500, says: "New chapter: dip to black" },
-      ],
+      callouts: ["Transition: crossfade", "New chapter: dip to black"],
       rule: "joins-dip-at-chapters",
     },
   ],

@@ -47,7 +47,7 @@ const VariantCard = ({
     </span>
     <span className="flex flex-col gap-0.5 text-xs">
       {variant.callouts.map((c) => (
-        <span key={`${String(c.atMs)}-${c.says}`}>{c.says}</span>
+        <span key={c}>{c}</span>
       ))}
     </span>
     <span className="text-brand self-end text-sm font-bold">{W.use}</span>
