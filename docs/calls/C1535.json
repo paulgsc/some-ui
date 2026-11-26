@@ -1,0 +1,19 @@
+{
+  "id": "C1535",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/conversation.ts",
+    "some-ui:apps/mailbox"
+  ],
+  "chose": "A conversation essay's record (some-ui.conversation/1) is kept on home, one record per conversation, as an append-only log of events whose state is the log replayed: every version, flag and withdrawal stays, and nothing in it is ever rewritten (CLAUDE.md, \"Never lose the record\"). The owner's takes never leave home: the record names each by home's id, and the audio and its transcript stay where home keeps them. The agent, which writes versions from a cloud session, reaches the record the way Rust Rounds' essays already travel: it puts each version as a file in a Jobs mailbox folder named for the record and the version's number, so a put never overwrites one, and home appends it to the log; home hands the agent the record's text (the topic, the agent's lines, the flags and their notes, the take ids, never audio) through the same mailbox, as it hands the routines transcripts today. Studio writes the owner's events (points, flags, withdrawals, the green light) to home over the lan. The folder and home's store are server and mailbox work, owed by the stories that wire them (HOST14, HOST15), not by the schema.",
+  "options": [
+    "Home keeps the log; the mailbox carries only text between home and the agent, each version a file of its own (chosen)",
+    "The mailbox keeps the record, and home and Studio read it there",
+    "The repository keeps it, as the calls are kept",
+    "Drive keeps it"
+  ],
+  "gray": "The topic, the flags and their notes are the owner's own words about their work, so the mandates put them on home, but the agent that writes each version runs in the cloud and reaches home only through a third party. The mailbox already carries the text of the owner's takes (transcripts) and the Rust essays' scripts, so this follows that path rather than opening a new one; the repository would publish the owner's flags before the video exists, and Drive is a third party no record of this kind uses.",
+  "undo": "Record a call that moves this one. The schema does not depend on where it is kept, so only the transport moves: the mailbox folder and home's store.",
+  "refs": ["#3553", "#3521"]
+}
