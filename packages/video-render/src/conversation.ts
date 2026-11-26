@@ -537,35 +537,54 @@ export type PreviewChoice = z.infer<typeof PreviewChoiceSchema>
 
 const at = z.iso.datetime()
 
+/**
+ * When and against what an event was written. `at` is the writer's clock,
+ * kept as information and never compared: a phone or an agent whose clock
+ * runs behind is never refused for it. The record's order is the log's own,
+ * each event's place in it (C1580; paulgsc/server's docs/conveyor.md,
+ * invariant 2: moves are ordered by their number, never by a clock).
+ * `basis`, where a writer names it, is how many events the log held when
+ * it wrote; an event written against an older log is refused by that
+ * number (`stale`), never by its time.
+ */
+const stamp = {
+  at,
+  basis: z.number().int().nonnegative().optional(),
+}
+
 /** One event of the record, in the order it was kept. */
 export const ConversationEventSchema = z.discriminatedUnion("event", [
   z.strictObject({
     event: z.literal("topic"),
-    at,
+    ...stamp,
     topic: ConversationTopicSchema,
   }),
-  z.strictObject({ event: z.literal("point"), at, take: TakeSchema }),
+  z.strictObject({ event: z.literal("point"), ...stamp, take: TakeSchema }),
   z.strictObject({
     event: z.literal("version"),
-    at,
+    ...stamp,
     version: PodcastVersionSchema,
   }),
   z.strictObject({
     event: z.literal("flag"),
-    at,
+    ...stamp,
     flag: ConversationFlagSchema,
   }),
-  z.strictObject({ event: z.literal("withdraw"), at, flag: FlagIdSchema }),
+  z.strictObject({
+    event: z.literal("withdraw"),
+    ...stamp,
+    flag: FlagIdSchema,
+  }),
   /** Home measured the version's podcast audio (HOST13): how long it runs. */
   z.strictObject({
     event: z.literal("heard"),
-    at,
+    ...stamp,
     version: z.number().int().min(1),
     ms: z.number().int().positive(),
   }),
   z.strictObject({
     event: z.literal("green-light"),
-    at,
+    ...stamp,
     version: z.number().int().min(1),
   }),
   /**
@@ -575,7 +594,7 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
    */
   z.strictObject({
     event: z.literal("notes"),
-    at,
+    ...stamp,
     turn: IdSchema,
     words: z.array(WordNoteSchema).min(1),
     rules: z.array(NameSchema).optional(),
@@ -587,7 +606,7 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
    */
   z.strictObject({
     event: z.literal("approve"),
-    at,
+    ...stamp,
     preview: NameSchema,
     offered: z
       .array(NameSchema)
@@ -668,8 +687,8 @@ type Kept = {
   }>
   readonly notes: ReadonlyArray<KeptNotes>
   readonly approvals: ReadonlyArray<KeptApproval>
-  /** When the newest event was kept: no later event is dated before it. */
-  readonly since: string
+  /** How many events the log holds: the next one's place in it. */
+  readonly seq: number
 }
 
 /**
@@ -714,7 +733,7 @@ export type ConversationRefusal =
       readonly phase: ConversationPhase
       readonly event: ConversationEventKind
     }
-  | { readonly why: "out-of-time"; readonly since: string; readonly at: string }
+  | { readonly why: "stale"; readonly basis: number; readonly seq: number }
   | { readonly why: "too-many-points" }
   | { readonly why: "point-again"; readonly take: string }
   | {
@@ -1346,6 +1365,9 @@ export function stepConversation(
     phase: state.phase,
     event: event.event,
   })
+  const seq = state.phase === "new" ? 0 : state.seq
+  if (event.basis !== undefined && event.basis !== seq)
+    return refused({ why: "stale", basis: event.basis, seq })
   if (!accepted.includes(event.event)) return outOfPhase
   if (event.event === "topic")
     return ok({
@@ -1358,12 +1380,10 @@ export function stepConversation(
       heard: [],
       notes: [],
       approvals: [],
-      since: event.at,
+      seq: 1,
     })
   // `new` accepts only a topic, so this only narrows the type.
   if (state.phase === "new") return outOfPhase
-  if (Date.parse(event.at) < Date.parse(state.since))
-    return refused({ why: "out-of-time", since: state.since, at: event.at })
   const kept: Kept = {
     schema: state.schema,
     topic: state.topic,
@@ -1373,7 +1393,7 @@ export function stepConversation(
     heard: state.heard,
     notes: state.notes,
     approvals: state.approvals,
-    since: event.at,
+    seq: state.seq + 1,
   }
   const latest = latestVersion(state)
   switch (event.event) {
@@ -1489,7 +1509,7 @@ export function stepConversation(
           preview: event.preview,
           variant: named,
         })
-      const { event: _event, at: _at, ...approval } = event
+      const { event: _event, at: _at, basis: _basis, ...approval } = event
       return ok({
         ...state,
         ...kept,
@@ -1540,8 +1560,8 @@ export function refusalLine(refusal: ConversationRefusal): string {
     case "out-of-phase": {
       return `a ${refusal.event} event can't come while the conversation is ${refusal.phase}`
     }
-    case "out-of-time": {
-      return `an event dated ${refusal.at} can't follow one dated ${refusal.since}`
+    case "stale": {
+      return `an event written against ${String(refusal.basis)} events can't follow the ${String(refusal.seq)} the log holds; read it again`
     }
     case "take-twice": {
       return `take ${refusal.take} is played twice over the same stretch in the version`

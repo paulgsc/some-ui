@@ -7,7 +7,8 @@
  * step is pure, so an order's future depends only on the state it reached:
  * the walk visits every distinct state those orders reach and tries every
  * event of the alphabet at each one short of `DEPTH`; the
- * order of events' dates is held by its own refusal below. Proof: the walk
+ * events' order is the log's own, its clocks never compared (C1580), held
+ * by its own tests below. Proof: the walk
  * in "every event order" holds that nothing kept is lost, that the phase
  * matches the open flags, that a version answers exactly the open flags,
  * that notes follow only rules the owner approved, and that the log of accepted events
@@ -537,21 +538,43 @@ describe("a flag never edits a turn; the next version answers it", () => {
     ).toEqual({ ok: false, refusal: { why: "take-twice", take: "take-a" } })
   })
 
-  it("refuses an event dated before the one kept before it", () => {
-    expect(
-      stepConversation(start("topic"), {
-        event: "point",
-        at: "2026-11-25T10:00:00Z",
-        take: "take-a",
-      })
-    ).toEqual({
-      ok: false,
-      refusal: {
-        why: "out-of-time",
-        since: AT,
-        at: "2026-11-25T10:00:00Z",
-      },
+  // C1580: the log's order is its own, never the writers' clocks. Family:
+  // a writer an hour behind the log's newest event, one ahead, a writer
+  // naming the log it wrote against (current or stale), and one naming none.
+  it("orders events by their place in the log: a writer an hour behind is kept", () => {
+    const behind = "2026-11-26T09:00:00.000Z"
+    const state = start("topic", "pointA", "v1")
+    const flagged = stepConversation(state, {
+      ...ALPHABET.flagAgent!,
+      at: behind,
     })
+    expect(flagged.ok).toBe(true)
+    if (!flagged.ok) return
+    // And an event written before it, by a clock ahead, follows it too.
+    expect(
+      stepConversation(flagged.state, {
+        event: "withdraw",
+        at: "2026-11-26T11:00:00.000Z",
+        flag: "f1",
+      }).ok
+    ).toBe(true)
+  })
+
+  it("refuses an event written against an older log, by its number", () => {
+    const state = start("topic", "pointA", "v1")
+    // topic, a point and a version: the log holds three events.
+    expect(
+      stepConversation(state, {
+        ...ALPHABET.flagAgent!,
+        basis: 3,
+      }).ok
+    ).toBe(true)
+    expect(
+      stepConversation(state, {
+        ...ALPHABET.flagAgent!,
+        basis: 2,
+      })
+    ).toEqual({ ok: false, refusal: { why: "stale", basis: 2, seq: 3 } })
   })
 
   it("refuses a flag on the other voice's turn", () => {
