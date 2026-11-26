@@ -50,6 +50,7 @@
     "check:workflow-security": "bash scripts/check-workflow-security.sh",
     "dump:activity-catalog": "tsx scripts/dump-activity-catalog.ts",
     "dump:rust-week-sample": "tsx scripts/dump-rust-week-sample.ts",
+    "dump:conversation-refusals": "tsx scripts/dump-conversation-refusals.ts",
     "dump:session-duration-policy": "tsx scripts/dump-session-duration-policy.ts",
     "prepare": "husky",
     "test": "turbo test",
