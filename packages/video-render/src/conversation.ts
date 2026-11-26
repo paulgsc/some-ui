@@ -24,9 +24,11 @@
  *    owner's word); a change no flag asked for is named too (`unasked`).
  *    Back to 4, until home has measured the version's audio (`heard`) and
  *    the owner green-lights (`green-light`) it with no open flag.
- * 6. **The signature**: the agent proposes each line's emotion notes
- *    (`notes`, by the agent), the owner overrides them (`notes`, by the
- *    owner), and approves a preview's rule (`approve`, #3558).
+ * 6. **The signature**: the owner never sets a value (the owner's guard on
+ *    #3521: no video editor). The agent proposes each line's emotion notes
+ *    (`notes`) under the rules the owner approved, and where a rule is new
+ *    or in doubt renders a preview of two or three variants; the owner picks
+ *    one, which sets a rule, or says what else they want (`approve`, #3558).
  *
  * The family. A turn is the spoken card's turn (`SpokenTurnSchema` in
  * `cut-list.ts`: a line home's Kokoro says, or the owner's take by its id),
@@ -41,7 +43,7 @@
  *
  * The record is an append-only log of events (`ConversationRecord`), and its
  * state is the log replayed through `stepConversation`, a pure function. A
- * flag never edits a turn, an override never edits a note, and nothing edits
+ * flag never edits a turn, a later note never edits an earlier one, and nothing edits
  * a version: each version, flag, withdrawal, note and approval stays in the
  * log (CLAUDE.md, "Never lose the record"). Where the log is kept is C1535.
  * A record kept as `some-ui.conversation/1` is read by its own frozen schema
@@ -53,7 +55,7 @@
  * `__tests__/conversation.test.ts` (CR1).
  */
 
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, canonicalJson } from "@some-ui/core-utils"
 import { CHARACTERS } from "@some-ui/styles/brand/cast"
 import {
   EMOTIONS,
@@ -510,9 +512,28 @@ export const WordNoteSchema = z
 
 export type WordNote = z.infer<typeof WordNoteSchema>
 
-/** Who wrote a note: the agent proposes, the owner overrides, and the owner's stands. */
-export const NOTE_AUTHORS = ["agent", "owner"] as const
-export type NoteAuthor = (typeof NOTE_AUTHORS)[number]
+/** A preview's variant's id, or a rule's: a short name the agent gives it. */
+const NameSchema = FlagIdSchema
+
+/** The most variants one preview offers the owner (HOST16: two or three). */
+export const PREVIEW_VARIANTS_MOST = 3
+
+/**
+ * What the owner chose on a preview (#3558, the owner's guard on #3521: the
+ * owner never sets a value, only approves a preview, which becomes a rule):
+ * a variant, and the rule it set; or something else, in the owner's own
+ * words, which sets none and asks the agent for another preview.
+ */
+export const PreviewChoiceSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("variant"),
+    variant: NameSchema,
+    rule: NameSchema,
+  }),
+  z.strictObject({ kind: z.literal("else"), said: NoteSchema }),
+])
+
+export type PreviewChoice = z.infer<typeof PreviewChoiceSchema>
 
 const at = z.iso.datetime()
 
@@ -547,24 +568,37 @@ export const ConversationEventSchema = z.discriminatedUnion("event", [
     at,
     version: z.number().int().min(1),
   }),
-  /** Emotion notes on a turn of the newest version's words. */
+  /**
+   * Emotion notes the agent proposes on a turn of the newest version's
+   * words, under the rules the owner approved that it names. A later notes
+   * event on a word replaces the earlier one; the owner never types one.
+   */
   z.strictObject({
     event: z.literal("notes"),
     at,
-    by: z.enum(NOTE_AUTHORS),
     turn: IdSchema,
     words: z.array(WordNoteSchema).min(1),
+    rules: z.array(NameSchema).optional(),
   }),
   /**
-   * The owner chose A or B on a signature's preview, and so set a rule
-   * (#3558: "preview approvals as events").
+   * The owner's pick on a preview (HOST16): the variants it offered, the one
+   * the agent recommended, and what the owner chose ("preview approvals as
+   * events", #3558).
    */
   z.strictObject({
     event: z.literal("approve"),
     at,
-    preview: FlagIdSchema,
-    chose: z.enum(["a", "b"]),
-    rule: FlagIdSchema,
+    preview: NameSchema,
+    offered: z
+      .array(NameSchema)
+      .min(2)
+      .max(PREVIEW_VARIANTS_MOST)
+      .refine(
+        (v) => new Set(v).size === v.length,
+        "a variant is offered twice"
+      ),
+    recommended: NameSchema,
+    chose: PreviewChoiceSchema,
   }),
 ])
 
@@ -575,6 +609,11 @@ export type ConversationEventKind = ConversationEvent["event"]
 export const ConversationRecordSchema = z.strictObject({
   schema: z.literal(CONVERSATION_RECORD_SCHEMA),
   id: IdSchema,
+  /**
+   * A record first kept in /1 and lifted (`liftV1`): its events replay
+   * under /1's rules, so a lifted record saved again reads as it did.
+   */
+  lifted: z.literal(CONVERSATION_RECORD_SCHEMA_V1).optional(),
   events: z.array(ConversationEventSchema),
 })
 
@@ -589,10 +628,27 @@ export type KeptFlag = ConversationFlag & {
 /** A notes event as the state keeps it: the version its turn is in. */
 export type KeptNotes = {
   readonly version: number
-  readonly by: NoteAuthor
   readonly turn: string
   readonly words: ReadonlyArray<WordNote>
 }
+
+/** An approval as the state keeps it. */
+export type KeptApproval = {
+  readonly preview: string
+  readonly offered: ReadonlyArray<string>
+  readonly recommended: string
+  readonly chose: PreviewChoice
+}
+
+/** The rules the owner's approvals set, in the order set. */
+export const approvedRules = (
+  state: ConversationState
+): ReadonlyArray<string> =>
+  state.phase === "new"
+    ? []
+    : state.approvals.flatMap((a) =>
+        a.chose.kind === "variant" ? [a.chose.rule] : []
+      )
 
 /** Which schema's rules a record replays under: /1 knew no measured length. */
 export type ConversationSchemaVersion = 1 | 2
@@ -611,11 +667,7 @@ type Kept = {
     readonly ms: number
   }>
   readonly notes: ReadonlyArray<KeptNotes>
-  readonly approvals: ReadonlyArray<{
-    readonly preview: string
-    readonly chose: "a" | "b"
-    readonly rule: string
-  }>
+  readonly approvals: ReadonlyArray<KeptApproval>
   /** When the newest event was kept: no later event is dated before it. */
   readonly since: string
 }
@@ -774,12 +826,13 @@ export type ConversationRefusal =
       readonly turn: string
       readonly emotion: string
     }
-  | {
-      readonly why: "notes-owner-set"
-      readonly turn: string
-      readonly at: number
-    }
+  | { readonly why: "notes-rule"; readonly rule: string }
   | { readonly why: "preview-again"; readonly preview: string }
+  | {
+      readonly why: "preview-variant"
+      readonly preview: string
+      readonly variant: string
+    }
 
 export type ConversationStepped =
   | { readonly ok: true; readonly state: ConversationState }
@@ -850,35 +903,21 @@ export const heardMs = (state: ConversationState): number | null => {
 }
 
 /**
- * The newest version's emotion notes on `turn`, word by word: the owner's
- * where the owner set one, else the agent's latest.
+ * The newest version's emotion notes on `turn`, word by word: each word's
+ * latest. Every earlier note stays in the record.
  */
 export function lineNotes(
   state: ConversationState,
   turn: string
-): ReadonlyMap<number, WordNote & { readonly by: NoteAuthor }> {
+): ReadonlyMap<number, WordNote> {
   const latest = latestVersion(state)
-  const out = new Map<number, WordNote & { readonly by: NoteAuthor }>()
+  const out = new Map<number, WordNote>()
   if (state.phase === "new" || latest === null) return out
   for (const kept of state.notes) {
     if (kept.version !== latest.n || kept.turn !== turn) continue
-    for (const word of kept.words) {
-      if (out.get(word.at)?.by === "owner" && kept.by === "agent") continue
-      out.set(word.at, { ...word, by: kept.by })
-    }
+    for (const word of kept.words) out.set(word.at, word)
   }
   return out
-}
-
-/** `value` as JSON with its keys sorted: equal content, equal text. */
-function canon(value: unknown): string {
-  return JSON.stringify(value, (_key, v: unknown) =>
-    v !== null && typeof v === "object" && !Array.isArray(v)
-      ? Object.fromEntries(
-          Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-        )
-      : v
-  )
 }
 
 /** The speaker of `turn` in `version`, but its id. */
@@ -906,8 +945,9 @@ const sameTurn = (
   const { id: _a, ...ca } = a
   const { id: _b, ...cb } = b
   return (
-    canon(ca) === canon(cb) &&
-    canon(speakerOf(va, a.speaker)) === canon(speakerOf(vb, b.speaker))
+    canonicalJson(ca) === canonicalJson(cb) &&
+    canonicalJson(speakerOf(va, a.speaker)) ===
+      canonicalJson(speakerOf(vb, b.speaker))
   )
 }
 
@@ -1055,7 +1095,7 @@ const sameSpan = (
   now?.voice === "owner" &&
   was.take === now.take &&
   was.speaker === now.speaker &&
-  canon(was.span) === canon(now.span)
+  canonicalJson(was.span) === canonicalJson(now.span)
 
 /** The first thing wrong with how `version` answers the open flags of `before`. */
 function answersRefusal(
@@ -1113,12 +1153,12 @@ function answersRefusal(
               t.take === answer.take &&
               (answer.span === undefined
                 ? true
-                : canon(t.span) === canon(answer.span))
+                : canonicalJson(t.span) === canonicalJson(answer.span))
           ) === true
         if (
           placed?.voice !== "owner" ||
           placed.take !== answer.take ||
-          canon(placed.span) !== canon(answer.span) ||
+          canonicalJson(placed.span) !== canonicalJson(answer.span) ||
           placed.speaker !== was?.speaker ||
           playedBefore
         )
@@ -1126,19 +1166,30 @@ function answersRefusal(
         named.add(flag.on.turn)
         break
       }
-      case "conditioned":
-      case "corrected": {
+      case "conditioned": {
         if (
           scoped.length === 0 ||
           scoped.some((t) => !sameSpan(t, turnIn(version, t.id)))
         )
-          return {
-            why:
-              answer.how === "conditioned"
-                ? "conditioned-unplaced"
-                : "corrected-unplaced",
-            flag: flag.id,
-          }
+          return { why: "conditioned-unplaced", flag: flag.id }
+        for (const t of scoped) named.add(t.id)
+        break
+      }
+      case "corrected": {
+        // The words shown change, and the audio stays as it was played.
+        const fixed = (t: ConversationTurn): boolean => {
+          const now = turnIn(version, t.id)
+          return (
+            sameSpan(t, now) &&
+            t.voice === "owner" &&
+            now?.voice === "owner" &&
+            canonicalJson(t.conditioning) === canonicalJson(now.conditioning) &&
+            now.transcript !== undefined &&
+            now.transcript !== t.transcript
+          )
+        }
+        if (scoped.length === 0 || !scoped.every(fixed))
+          return { why: "corrected-unplaced", flag: flag.id }
         for (const t of scoped) named.add(t.id)
         break
       }
@@ -1151,7 +1202,7 @@ function answersRefusal(
         if (
           now === undefined ||
           was?.character !== now.character ||
-          canon(was.voice) === canon(now.voice)
+          canonicalJson(was.voice) === canonicalJson(now.voice)
         )
           return { why: "recast-unchanged", flag: flag.id }
         for (const t of version.turns) if (t.speaker === id) named.add(t.id)
@@ -1162,8 +1213,8 @@ function answersRefusal(
         const speakerSame =
           flag.on.scope !== "speaker" ||
           (before !== null &&
-            canon(speakerOf(before, flag.on.speaker)) ===
-              canon(speakerOf(version, flag.on.speaker)))
+            canonicalJson(speakerOf(before, flag.on.speaker)) ===
+              canonicalJson(speakerOf(version, flag.on.speaker)))
         if (
           before === null ||
           !speakerSame ||
@@ -1246,8 +1297,10 @@ const wordsOf = (turn: ConversationTurn): number | null => {
 function notesRefusal(
   event: Extract<ConversationEvent, { event: "notes" }>,
   latest: PodcastVersion,
-  kept: ReadonlyArray<KeptNotes>
+  rules: ReadonlyArray<string>
 ): ConversationRefusal | null {
+  const unknownRule = (event.rules ?? []).find((r) => !rules.includes(r))
+  if (unknownRule !== undefined) return { why: "notes-rule", rule: unknownRule }
   const turn = latest.turns.find((t) => t.id === event.turn)
   const character = latest.speakers.find(
     (s) => s.id === turn?.speaker
@@ -1257,14 +1310,6 @@ function notesRefusal(
   const count = wordsOf(turn)
   const own = emotionsOf(character)
   const seen = new Set<number>()
-  const ownerSet = new Set(
-    kept
-      .filter(
-        (k) =>
-          k.version === latest.n && k.turn === event.turn && k.by === "owner"
-      )
-      .flatMap((k) => k.words.map((w) => w.at))
-  )
   for (const word of event.words) {
     if (seen.has(word.at) || (count !== null && word.at >= count))
       return { why: "notes-word", turn: event.turn, at: word.at }
@@ -1276,9 +1321,6 @@ function notesRefusal(
         turn: event.turn,
         emotion: foreign.emotion,
       }
-    // The owner's reconciliation is the final one (#3558).
-    if (event.by === "agent" && ownerSet.has(word.at))
-      return { why: "notes-owner-set", turn: event.turn, at: word.at }
   }
   return null
 }
@@ -1426,29 +1468,32 @@ export function stepConversation(
     }
     case "notes": {
       if (latest === null) return outOfPhase
-      const wrong = notesRefusal(event, latest, state.notes)
+      const wrong = notesRefusal(event, latest, approvedRules(state))
       if (wrong !== null) return refused(wrong)
       const notes: ReadonlyArray<KeptNotes> = [
         ...state.notes,
-        {
-          version: latest.n,
-          by: event.by,
-          turn: event.turn,
-          words: event.words,
-        },
+        { version: latest.n, turn: event.turn, words: event.words },
       ]
       return ok({ ...state, ...kept, notes })
     }
     case "approve": {
       if (state.approvals.some((a) => a.preview === event.preview))
         return refused({ why: "preview-again", preview: event.preview })
+      const named = [
+        event.recommended,
+        ...(event.chose.kind === "variant" ? [event.chose.variant] : []),
+      ].find((v) => !event.offered.includes(v))
+      if (named !== undefined)
+        return refused({
+          why: "preview-variant",
+          preview: event.preview,
+          variant: named,
+        })
+      const { event: _event, at: _at, ...approval } = event
       return ok({
         ...state,
         ...kept,
-        approvals: [
-          ...state.approvals,
-          { preview: event.preview, chose: event.chose, rule: event.rule },
-        ],
+        approvals: [...state.approvals, approval],
       })
     }
     default: {
@@ -1621,8 +1666,11 @@ export function refusalLine(refusal: ConversationRefusal): string {
     case "notes-emotion": {
       return `turn ${refusal.turn}'s speaker has no ${refusal.emotion} emotion`
     }
-    case "notes-owner-set": {
-      return `the owner set word ${refusal.at} of turn ${refusal.turn}, and the owner's note stands`
+    case "notes-rule": {
+      return `the notes follow rule ${refusal.rule}, which no approval of the owner's set`
+    }
+    case "preview-variant": {
+      return `preview ${refusal.preview} offered no variant ${refusal.variant}`
     }
     case "preview-again": {
       return `preview ${refusal.preview} is already approved`
@@ -1805,6 +1853,7 @@ export function parseConversationRecord(raw: unknown): Parsed<{
               record: {
                 schema: CONVERSATION_RECORD_SCHEMA,
                 id: v1.data.id,
+                lifted: CONVERSATION_RECORD_SCHEMA_V1,
                 events: v1.data.events.map(liftV1),
               },
               version: 1,
@@ -1814,7 +1863,13 @@ export function parseConversationRecord(raw: unknown): Parsed<{
     }
     const v2 = ConversationRecordSchema.safeParse(raw)
     return v2.success
-      ? { ok: true, value: { record: v2.data, version: 2 } }
+      ? {
+          ok: true,
+          value: {
+            record: v2.data,
+            version: v2.data.lifted === undefined ? 2 : 1,
+          },
+        }
       : { ok: false, problems: problemsOf(v2.error, "conversation") }
   })()
   if (!read.ok) return read

@@ -3,20 +3,21 @@
  * whole. Family: every interleaving, up to `DEPTH` accepted events, of the
  * alphabet below (a topic, points and a retake, versions answering flags by
  * each kind of answer, flags of each voice, withdrawals, measured lengths,
- * green lights, the agent's and the owner's notes, an approval). The
+ * green lights, the agent's notes, with and without a rule, an approval). The
  * step is pure, so an order's future depends only on the state it reached:
  * the walk visits every distinct state those orders reach and tries every
  * event of the alphabet at each one short of `DEPTH`; the
  * order of events' dates is held by its own refusal below. Proof: the walk
  * in "every event order" holds that nothing kept is lost, that the phase
  * matches the open flags, that a version answers exactly the open flags,
- * that no owner's note is overridden, and that the log of accepted events
+ * that notes follow only rules the owner approved, and that the log of accepted events
  * replays to the same state. What each
  * answer must show of the two versions is held by the refusals below.
  */
 import {
   ANSWER_KINDS,
   ANSWERS_OF,
+  approvedRules,
   changedTurns,
   CONVERSATION_ACCEPTS,
   CONVERSATION_POLICY,
@@ -194,23 +195,23 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   notesAgent: {
     event: "notes",
     at: AT,
-    by: "agent",
     turn: "k1",
     words: [{ at: 0, stress: 0.6, notes: [{ emotion: "curious", weight: 1 }] }],
   },
-  notesOwner: {
+  notesRuled: {
     event: "notes",
     at: AT,
-    by: "owner",
     turn: "k1",
     words: [{ at: 0, notes: [{ emotion: "perplexed", weight: 0.5 }] }],
+    rules: ["verdict-close-up"],
   },
   approveA: {
     event: "approve",
     at: AT,
     preview: "close-up-on-verdict",
-    chose: "a",
-    rule: "verdict-close-up",
+    offered: ["close-up", "corner"],
+    recommended: "close-up",
+    chose: { kind: "variant", variant: "close-up", rule: "verdict-close-up" },
   },
   green1: { event: "green-light", at: AT, version: 1 },
   green2: { event: "green-light", at: AT, version: 2 },
@@ -249,13 +250,12 @@ function stepProblems(
           text(before[field]),
         `the ${field} kept were lost or changed`
       )
-    // The owner's note on a word stands: no later step takes it back.
-    if (latestVersion(after)?.n === latestVersion(before)?.n) {
-      const now = lineNotes(after, "k1")
-      for (const [word, note] of lineNotes(before, "k1"))
-        if (note.by === "owner")
-          law(now.get(word)?.by === "owner", "an owner's note was overridden")
-    }
+    // Notes follow only the rules the owner's approvals set.
+    if (event.event === "notes")
+      law(
+        (event.rules ?? []).every((r) => approvedRules(before).includes(r)),
+        "notes follow a rule nobody approved"
+      )
     for (const [i, flag] of before.flags.entries()) {
       const now = after.flags[i]
       law(
@@ -360,11 +360,7 @@ describe("every event order (CR1)", () => {
     const after = Object.entries(ALPHABET).filter(
       ([, event]) => stepConversation(replayed.state, event).ok
     )
-    expect(after.map(([name]) => name)).toEqual([
-      "notesAgent",
-      "notesOwner",
-      "approveA",
-    ])
+    expect(after.map(([name]) => name)).toEqual(["notesAgent", "approveA"])
   })
 })
 
@@ -1060,6 +1056,23 @@ describe("conversation/2", () => {
         )
       ).ok
     ).toBe(true)
+    // A correction changes the words shown, never the audio, and changes them.
+    const louder = { tempo: 1.2, loudnessLufs: -16, gapMostMs: 280 }
+    for (const unfixed of [
+      second,
+      { ...second, conditioning: louder },
+      { ...second, transcript: "Runners, not rummers.", conditioning: louder },
+    ])
+      expect(
+        refusal(
+          state,
+          version(
+            2,
+            [ask, first, unfixed, close],
+            [{ flag: "f1", how: "corrected" }]
+          )
+        )
+      ).toEqual({ why: "corrected-unplaced", flag: "f1" })
   })
 
   it("names a change no flag asked for, and refuses naming one that didn't change", () => {
@@ -1210,29 +1223,33 @@ describe("conversation/2", () => {
     ).toEqual({ why: "unused-unknown", take: "take-z" })
   })
 
-  it("keeps the agent's notes until the owner sets a word, and the owner's after", () => {
+  it("keeps every note the agent proposes, each word's latest standing, under approved rules only", () => {
     const state = after(opened(), v1, ALPHABET.notesAgent!)
-    expect(lineNotes(state, "k1").get(0)?.by).toBe("agent")
-    const overridden = after(state, ALPHABET.notesOwner!)
-    expect(lineNotes(overridden, "k1").get(0)).toEqual({
+    expect(lineNotes(state, "k1").get(0)?.stress).toBe(0.6)
+    // A rule nobody approved can't be followed.
+    expect(refusal(state, ALPHABET.notesRuled!)).toEqual({
+      why: "notes-rule",
+      rule: "verdict-close-up",
+    })
+    const settled = after(
+      state,
+      ALPHABET.heard1!,
+      ALPHABET.green1!,
+      ALPHABET.approveA!,
+      ALPHABET.notesRuled!
+    )
+    expect(lineNotes(settled, "k1").get(0)).toEqual({
       at: 0,
       notes: [{ emotion: "perplexed", weight: 0.5 }],
-      by: "owner",
     })
-    expect(refusal(overridden, ALPHABET.notesAgent!)).toEqual({
-      why: "notes-owner-set",
-      turn: "k1",
-      at: 0,
-    })
-    if (overridden.phase === "new") throw new Error("no record")
-    expect(overridden.notes).toHaveLength(2)
+    if (settled.phase === "new") throw new Error("no record")
+    expect(settled.notes).toHaveLength(2)
     const note = (
       turn: string,
       words: Extract<ConversationEvent, { event: "notes" }>["words"]
     ): ConversationEvent => ({
       event: "notes",
       at: AT,
-      by: "agent",
       turn,
       words,
     })
@@ -1287,6 +1304,31 @@ describe("conversation/2", () => {
     expect(refusal(approved, ALPHABET.approveA!)).toEqual({
       why: "preview-again",
       preview: "close-up-on-verdict",
+    })
+    expect(approvedRules(approved)).toEqual(["verdict-close-up"])
+    // "Something else", in the owner's words, sets no rule.
+    const elsewise = after(settled, {
+      event: "approve",
+      at: AT,
+      preview: "transitions",
+      offered: ["crossfade", "slow-crossfade", "cut"],
+      recommended: "crossfade",
+      chose: { kind: "else", said: "Softer, like a page turning." },
+    })
+    expect(approvedRules(elsewise)).toEqual([])
+    expect(
+      refusal(settled, {
+        event: "approve",
+        at: AT,
+        preview: "transitions",
+        offered: ["crossfade", "cut"],
+        recommended: "crossfade",
+        chose: { kind: "variant", variant: "wipe", rule: "joins" },
+      })
+    ).toEqual({
+      why: "preview-variant",
+      preview: "transitions",
+      variant: "wipe",
     })
   })
 
@@ -1354,6 +1396,12 @@ describe("conversation/2", () => {
         kinds: ["assumes-context"],
       },
     })
+    // Saved again as it was read, it still reads, under /1's rules.
+    const again = parseConversationRecord(
+      JSON.parse(JSON.stringify(parsed.value.record))
+    )
+    if (!again.ok) throw new Error(again.problems.join("\n"))
+    expect(again.value.state).toEqual(parsed.value.state)
     // /1 is frozen: a field only /2 has is refused in it.
     expect(
       parseConversationRecord({
