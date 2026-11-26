@@ -105,4 +105,18 @@ describe("a loop's own time", () => {
       /data-part="figure" transform="([^"]+)"/.exec(svg)?.[1] ?? ""
     expect(figure(at(0, 300))).toBe(figure(at(5000, 5300)))
   })
+
+  it("carries on through a beat that keeps the emotion, and restarts at one that changes it", () => {
+    const figure = (svg: string | undefined): string =>
+      /data-part="figure" transform="([^"]+)"/.exec(svg ?? "")?.[1] ?? ""
+    const at = (beats: ReadonlyArray<Beat>, t: number): string =>
+      figure(hostAt(beats, 7, t, AREA)?.svg)
+    const happy = beat("happy")
+    const moved = beat("happy", { atMs: 1700, placement: "top-left" })
+    const angry = beat("angry", { atMs: 1700 })
+    expect(at([happy, moved], 2000)).toBe(at([happy], 2000))
+    expect(at([happy, angry, beat("happy", { atMs: 3000 })], 3300)).toBe(
+      at([happy], 300)
+    )
+  })
 })

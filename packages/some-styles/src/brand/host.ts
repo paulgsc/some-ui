@@ -437,6 +437,27 @@ function placedAt(
 }
 
 /**
+ * When beat `i`'s loop began: the start of the unbroken run of beats with
+ * its character, emotion and ceremony, so a beat that only moves the host
+ * or has it speak carries the loop on rather than restarting it.
+ */
+function loopStartOf(beats: ReadonlyArray<Beat>, i: number): number {
+  const beat = beats[i]
+  let start = beat?.atMs ?? 0
+  for (let j = i - 1; j >= 0; j--) {
+    const before = beats[j]
+    if (
+      before?.character !== beat?.character ||
+      before?.emotion !== beat?.emotion ||
+      before?.animation !== beat?.animation
+    )
+      break
+    start = before?.atMs ?? start
+  }
+  return start
+}
+
+/**
  * What the host shows `tMs` into its run, over `area` (the frame's safe
  * area, or a preview's card): the latest beat at or before `tMs`, arriving
  * from what was on screen over `BEAT_BLEND_MS` when the character stays and
@@ -460,6 +481,12 @@ export function hostAt(
     beat,
     box,
     opacity: clamp(opacity, 0, 1),
-    svg: hostSvg(beat, tMs, seed, box.width, aim),
+    svg: hostSvg(
+      { ...beat, atMs: loopStartOf(beats, i) },
+      tMs,
+      seed,
+      box.width,
+      aim
+    ),
   }
 }

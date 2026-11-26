@@ -432,7 +432,8 @@ function posed(
     // Further than the idle's glance and blink, never in place of them.
     out = changed(out, "eyes", (attrs) => ({
       ...attrs,
-      transform: `translate(${num(pose.lookX)} ${num(pose.lookY)}) ${String(attrs.transform ?? "")}`,
+      transform:
+        `translate(${num(pose.lookX)} ${num(pose.lookY)}) ${String(attrs.transform ?? "")}`.trimEnd(),
     }))
   out = moved(
     out,
