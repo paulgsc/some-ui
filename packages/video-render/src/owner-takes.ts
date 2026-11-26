@@ -45,7 +45,7 @@ import { samplesOf } from "./wav"
 
 /**
  * How the owner's takes are conditioned: policy, moved with the story
- * (C771; C1549).
+ * (C771; C1564).
  */
 export const TAKE_POLICY = {
   /** The analysis frame. */
