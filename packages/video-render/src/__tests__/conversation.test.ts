@@ -1,0 +1,714 @@
+/**
+ * CR1 (HOST11, #3553): every order of events keeps a conversation's record
+ * whole. Family: every interleaving, up to `DEPTH` accepted events, of the
+ * alphabet below (a topic, points and a retake, versions answering flags by
+ * each kind of answer, flags of each voice, withdrawals, green lights). The
+ * step is pure, so an order's future depends only on the state it reached:
+ * the walk visits every distinct state those orders reach and tries every
+ * event of the alphabet at each one short of `DEPTH`; the
+ * order of events' dates is held by its own refusal below. Proof: the walk
+ * in "every event order" holds that nothing kept is lost, that the phase
+ * matches the open flags, that a version answers exactly the open flags, and
+ * that the log of accepted events replays to the same state. What each
+ * answer must show of the two versions is held by the refusals below.
+ */
+import {
+  ANSWER_KINDS,
+  ANSWERS_OF,
+  changedTurns,
+  CONVERSATION_ACCEPTS,
+  CONVERSATION_RECORD_SCHEMA,
+  FLAG_KINDS,
+  FLAG_VOICE,
+  greenLitVersion,
+  latestVersion,
+  NEW_CONVERSATION,
+  openFlags,
+  ownerTakes,
+  parseConversationRecord,
+  refusalLine,
+  replayConversation,
+  stepConversation,
+} from "@video-render/conversation"
+import type {
+  ConversationEvent,
+  ConversationSpeaker,
+  ConversationState,
+  ConversationTurn,
+  FlagAnswer,
+  PodcastVersion,
+} from "@video-render/conversation"
+import { describe, expect, it } from "vitest"
+
+const AT = "2026-11-26T10:00:00.000Z"
+
+type Line = Extract<ConversationTurn, { voice: "kokoro" }>
+type Take = Extract<ConversationTurn, { voice: "owner" }>
+
+/** An essay's two speakers: Tin Bird in Kokoro's voice, Mochi in the owner's. */
+const ESSAY: ReadonlyArray<ConversationSpeaker> = [
+  { id: "tin", character: "tin-owlet", voice: "kokoro" },
+  { id: "mochi", character: "mochi", voice: "owner" },
+]
+
+const ask: Line = {
+  id: "k1",
+  speaker: "tin",
+  voice: "kokoro",
+  said: "What changed in week twelve?",
+}
+const take: Take = {
+  id: "o1",
+  speaker: "mochi",
+  voice: "owner",
+  take: "take-a",
+}
+const close: Line = {
+  id: "k2",
+  speaker: "tin",
+  voice: "kokoro",
+  said: "So the line moved because of the injury.",
+}
+
+const version = (
+  n: number,
+  turns: ReadonlyArray<ConversationTurn>,
+  answers: ReadonlyArray<FlagAnswer> = [],
+  speakers: ReadonlyArray<ConversationSpeaker> = ESSAY
+): ConversationEvent => ({
+  event: "version",
+  at: AT,
+  version: {
+    n,
+    speakers: [...speakers],
+    turns: [...turns],
+    answers: [...answers],
+  },
+})
+
+const reworded: Line = {
+  ...ask,
+  said: "Week twelve: what moved the line?",
+}
+const retaken: Take = { ...take, take: "take-b" }
+
+/** The alphabet every order is drawn from. */
+const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
+  topic: {
+    event: "topic",
+    at: AT,
+    topic: { said: "Why the line moved in week twelve" },
+  },
+  pointA: { event: "point", at: AT, take: "take-a" },
+  pointB: { event: "point", at: AT, take: "take-b" },
+  v1: version(1, [ask, take, close]),
+  v2rewrote: version(
+    2,
+    [reworded, take, close],
+    [{ flag: "f1", how: "rewrote", turns: ["k1"] }]
+  ),
+  v2both: version(
+    2,
+    [reworded, retaken, close],
+    [
+      { flag: "f1", how: "rewrote", turns: ["k1"] },
+      { flag: "f2", how: "retook", take: "take-b" },
+    ]
+  ),
+  v2kept: version(
+    2,
+    [ask, take, close],
+    [
+      { flag: "f1", how: "kept", note: "The question is the week's own." },
+      { flag: "f2", how: "kept", note: "The take is clear." },
+    ]
+  ),
+  v2covariant: version(
+    2,
+    [take, reworded],
+    [{ flag: "f1", how: "rewrote", turns: ["o1", "k1", "k2"] }]
+  ),
+  v2conditioned: version(
+    2,
+    [ask, take, close],
+    [{ flag: "f5", how: "conditioned" }]
+  ),
+  v3: version(
+    3,
+    [ask, take, close],
+    [{ flag: "f3", how: "rewrote", turns: ["k1"] }]
+  ),
+  flagAgent: {
+    event: "flag",
+    at: AT,
+    flag: {
+      id: "f1",
+      turn: "k1",
+      kind: "assumes-context",
+      note: "Which line?",
+    },
+  },
+  flagOwner: {
+    event: "flag",
+    at: AT,
+    flag: { id: "f2", turn: "o1", kind: "say-again" },
+  },
+  flagWrongVoice: {
+    event: "flag",
+    at: AT,
+    flag: { id: "f9", turn: "o1", kind: "unhuman" },
+  },
+  flagLater: {
+    event: "flag",
+    at: AT,
+    flag: { id: "f3", turn: "k1", kind: "off-taste" },
+  },
+  flagClose: {
+    event: "flag",
+    at: AT,
+    flag: { id: "f4", turn: "k2", kind: "misses-point" },
+  },
+  flagQuiet: {
+    event: "flag",
+    at: AT,
+    flag: { id: "f5", turn: "o1", kind: "too-quiet" },
+  },
+  withdrawAgent: { event: "withdraw", at: AT, flag: "f1" },
+  withdrawOwner: { event: "withdraw", at: AT, flag: "f2" },
+  green1: { event: "green-light", at: AT, version: 1 },
+  green2: { event: "green-light", at: AT, version: 2 },
+}
+
+/** Every law a single step keeps, from `before` by `event`. */
+/** JSON's text of `value`: a cheap equality over the walk's thousands of steps. */
+const text = (value: unknown): string => JSON.stringify(value)
+
+/** Every law a step from `before` by `event` to `after` breaks, as lines. */
+function stepProblems(
+  before: ConversationState,
+  event: ConversationEvent,
+  after: ConversationState
+): Array<string> {
+  const problems: Array<string> = []
+  const law = (holds: boolean, what: string): void => {
+    if (!holds) problems.push(`${event.event} from ${before.phase}: ${what}`)
+  }
+  // Nothing kept is lost: every version and flag before is still there,
+  // unchanged but for a withdrawal.
+  if (before.phase !== "new" && after.phase !== "new") {
+    law(
+      text(after.versions.slice(0, before.versions.length)) ===
+        text(before.versions),
+      "a version was lost or changed"
+    )
+    law(
+      text(after.points.slice(0, before.points.length)) === text(before.points),
+      "a point was lost"
+    )
+    law(text(after.topic) === text(before.topic), "the topic changed")
+    for (const [i, flag] of before.flags.entries()) {
+      const now = after.flags[i]
+      law(
+        now !== undefined &&
+          text({ ...now, withdrawn: flag.withdrawn }) === text(flag) &&
+          (!flag.withdrawn || now.withdrawn),
+        `flag ${flag.id} was lost or changed`
+      )
+    }
+  }
+  // The phase is what the record says it is.
+  if (after.phase === "drafting")
+    law(after.versions.length === 0, "drafting with a version")
+  if (after.phase === "podcast")
+    law(openFlags(after).length === 0, "podcast with an open flag")
+  if (after.phase === "flagged")
+    law(openFlags(after).length > 0, "flagged with no open flag")
+  if (after.phase === "green-lit")
+    law(
+      greenLitVersion(after)?.n === latestVersion(after)?.n,
+      "green-lit an older version"
+    )
+  if (event.event === "version")
+    law(
+      text(event.version.answers.map((a) => a.flag).sort()) ===
+        text(
+          openFlags(before)
+            .map((f) => f.id)
+            .sort()
+        ),
+      "the version doesn't answer exactly the open flags"
+    )
+  return problems
+}
+
+const DEPTH = 9
+
+describe("every event order (CR1)", () => {
+  it("keeps the record whole, and a replay of what was kept is the same state", () => {
+    const reached = new Set<string>()
+    const acceptedOnce = new Set<string>()
+    const seen = new Set<string>()
+    const problems: Array<string> = []
+    // The step is pure, so what follows an order depends only on the state
+    // it reached. The walk is breadth first, so each state is met first by
+    // its shortest order, walked once from there, and its log must replay
+    // to it.
+    let frontier: ReadonlyArray<{
+      readonly state: ConversationState
+      readonly kept: ReadonlyArray<ConversationEvent>
+    }> = [{ state: NEW_CONVERSATION, kept: [] }]
+    for (let depth = 0; frontier.length > 0; depth += 1) {
+      const next: Array<(typeof frontier)[number]> = []
+      for (const { state, kept } of frontier) {
+        const key = text(state)
+        if (seen.has(key)) continue
+        seen.add(key)
+        reached.add(state.phase)
+        const replayed = replayConversation(kept)
+        if (!replayed.ok || text(replayed.state) !== key)
+          problems.push(`${kept.length} events don't replay to their state`)
+        if (depth === DEPTH) continue
+        for (const [name, event] of Object.entries(ALPHABET)) {
+          const stepped = stepConversation(state, event)
+          if (!stepped.ok) continue
+          problems.push(...stepProblems(state, event, stepped.state))
+          acceptedOnce.add(name)
+          next.push({ state: stepped.state, kept: [...kept, event] })
+        }
+      }
+      frontier = next
+    }
+    expect([...reached].sort()).toEqual(
+      Object.keys(CONVERSATION_ACCEPTS).sort()
+    )
+    // Every event but the misplaced flag is accepted somewhere, so the walk
+    // reaches v3, every kind of answer and each withdrawal.
+    expect(Object.keys(ALPHABET).filter((n) => !acceptedOnce.has(n))).toEqual([
+      "flagWrongVoice",
+    ])
+    expect(problems).toEqual([])
+    expect(seen.size).toBeGreaterThan(1000)
+  })
+
+  it("closes on a green light: nothing is accepted after it", () => {
+    const { topic, pointA, v1, green1 } = ALPHABET
+    const replayed = replayConversation([topic!, pointA!, v1!, green1!])
+    expect(replayed.ok).toBe(true)
+    if (!replayed.ok) return
+    for (const event of Object.values(ALPHABET))
+      expect(stepConversation(replayed.state, event).ok).toBe(false)
+  })
+})
+
+describe("a flag never edits a turn; the next version answers it", () => {
+  const start = (...names: ReadonlyArray<string>): ConversationState => {
+    const replayed = replayConversation(names.map((n) => ALPHABET[n]!))
+    if (!replayed.ok) throw new Error(refusalLine(replayed.refusal))
+    return replayed.state
+  }
+
+  it("keeps v1 as written after a flag, a withdrawal and v2", () => {
+    const state = start(
+      "topic",
+      "pointA",
+      "pointB",
+      "v1",
+      "flagAgent",
+      "flagOwner",
+      "v2both"
+    )
+    expect(state.phase).toBe("podcast")
+    if (state.phase === "new") return
+    expect(state.versions.map((v) => v.n)).toEqual([1, 2])
+    expect(state.versions[0]?.turns).toEqual([ask, take, close])
+    expect(ownerTakes(state.versions[1]!)).toEqual(["take-b"])
+  })
+
+  it("refuses a version that leaves an open flag unanswered", () => {
+    const state = start("topic", "pointA", "v1", "flagAgent", "flagOwner")
+    expect(stepConversation(state, ALPHABET.v2rewrote!)).toEqual({
+      ok: false,
+      refusal: { why: "unanswered", flag: "f2" },
+    })
+  })
+
+  it("lets a withdrawn flag go unanswered", () => {
+    const state = start("topic", "pointA", "v1", "flagAgent", "withdrawAgent")
+    expect(state.phase).toBe("podcast")
+    expect(stepConversation(state, ALPHABET.green1!).ok).toBe(true)
+  })
+
+  it("refuses an answer that names a turn it didn't change", () => {
+    const state = start("topic", "pointA", "v1", "flagAgent")
+    const stepped = stepConversation(
+      state,
+      version(
+        2,
+        [ask, take, close],
+        [{ flag: "f1", how: "rewrote", turns: ["k1"] }]
+      )
+    )
+    expect(stepped).toEqual({
+      ok: false,
+      refusal: { why: "rewrote-unchanged", flag: "f1", turn: "k1" },
+    })
+  })
+
+  it("refuses a retake that isn't one of the owner's points", () => {
+    const state = start("topic", "pointA", "v1", "flagOwner")
+    const stepped = stepConversation(
+      state,
+      version(
+        2,
+        [ask, retaken, close],
+        [{ flag: "f2", how: "retook", take: "take-b" }]
+      )
+    )
+    expect(stepped).toEqual({
+      ok: false,
+      refusal: { why: "take-unknown", turn: "o1", take: "take-b" },
+    })
+  })
+
+  const refusedBy = (
+    names: ReadonlyArray<string>,
+    turns: ReadonlyArray<ConversationTurn>,
+    answers: ReadonlyArray<FlagAnswer>
+  ): unknown => {
+    const stepped = stepConversation(
+      start(...names),
+      version(2, turns, answers)
+    )
+    return stepped.ok ? null : stepped.refusal
+  }
+
+  it("refuses keeping a flag whose turn changed", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagOwner"],
+        [ask, close],
+        [{ flag: "f2", how: "kept", note: "Fine as it is." }]
+      )
+    ).toEqual({ why: "kept-changed", flag: "f2" })
+  })
+
+  it("refuses conditioning that swaps the take", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "pointB", "v1", "flagQuiet"],
+        [ask, retaken, close],
+        [{ flag: "f5", how: "conditioned" }]
+      )
+    ).toEqual({ why: "conditioned-unplaced", flag: "f5" })
+  })
+
+  it("refuses a retake of a take the version before already played", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagOwner"],
+        [ask, take, close],
+        [{ flag: "f2", how: "retook", take: "take-a" }]
+      )
+    ).toEqual({ why: "retook-unplaced", flag: "f2" })
+  })
+
+  it("keeps a turn that only moved, when a rewrite names the move", () => {
+    const state = start("topic", "pointA", "v1", "flagAgent", "flagOwner")
+    const stepped = stepConversation(
+      state,
+      version(
+        2,
+        [take, close],
+        [
+          { flag: "f1", how: "rewrote", turns: ["k1", "o1"] },
+          { flag: "f2", how: "kept", note: "The take is clear." },
+        ]
+      )
+    )
+    expect(stepped.ok).toBe(true)
+  })
+
+  it("refuses a change no answer names", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagAgent"],
+        [reworded, take, { ...close, said: "And that is the week." }],
+        [{ flag: "f1", how: "rewrote", turns: ["k1"] }]
+      )
+    ).toEqual({ why: "change-unnamed", turn: "k2" })
+  })
+
+  it("refuses a turn id that changes voice", () => {
+    expect(
+      refusedBy(
+        ["topic", "pointA", "v1", "flagQuiet"],
+        [
+          ask,
+          {
+            id: "o1",
+            speaker: "tin",
+            voice: "kokoro",
+            said: "I'll say it for you.",
+          },
+          close,
+        ],
+        [{ flag: "f5", how: "kept", note: "Kept." }]
+      )
+    ).toEqual({ why: "turn-voice", turn: "o1", voice: "owner" })
+  })
+
+  it("refuses a take played twice in one version", () => {
+    expect(
+      stepConversation(
+        start("topic", "pointA"),
+        version(1, [take, ask, { ...take, id: "o2" }])
+      )
+    ).toEqual({ ok: false, refusal: { why: "take-twice", take: "take-a" } })
+  })
+
+  it("refuses an event dated before the one kept before it", () => {
+    expect(
+      stepConversation(start("topic"), {
+        event: "point",
+        at: "2026-11-25T10:00:00Z",
+        take: "take-a",
+      })
+    ).toEqual({
+      ok: false,
+      refusal: {
+        why: "out-of-time",
+        since: AT,
+        at: "2026-11-25T10:00:00Z",
+      },
+    })
+  })
+
+  it("refuses a flag on the other voice's turn", () => {
+    const state = start("topic", "pointA", "v1")
+    expect(stepConversation(state, ALPHABET.flagWrongVoice!)).toEqual({
+      ok: false,
+      refusal: {
+        why: "flag-voice",
+        flag: "f9",
+        kind: "unhuman",
+        voice: "owner",
+      },
+    })
+  })
+})
+
+describe("speakers", () => {
+  const drama: ReadonlyArray<ConversationSpeaker> = [
+    { id: "owlet", character: "tin-owlet", voice: "kokoro" },
+    { id: "sparrow", character: "tin-sparrow", voice: "kokoro" },
+    { id: "mochi", character: "mochi", voice: "owner" },
+  ]
+  const drafting = replayConversation([
+    { event: "topic", at: AT, topic: { said: "A panel at the bus stop" } },
+    { event: "point", at: AT, take: "take-a" },
+  ])
+
+  it("takes a drama's ensemble as the same record: three speakers, two in Kokoro", () => {
+    if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
+    const stepped = stepConversation(
+      drafting.state,
+      version(
+        1,
+        [
+          { id: "s1", speaker: "owlet", voice: "kokoro", said: "Late again." },
+          { id: "s2", speaker: "sparrow", voice: "kokoro", said: "Always." },
+          { id: "s3", speaker: "mochi", voice: "owner", take: "take-a" },
+        ],
+        [],
+        drama
+      )
+    )
+    expect(stepped.ok).toBe(true)
+  })
+
+  it("names a recast speaker's turns as changed, and refuses one cast member as two speakers", () => {
+    const v = (
+      speakers: ReadonlyArray<ConversationSpeaker>
+    ): PodcastVersion => ({
+      n: 1,
+      speakers: [...speakers],
+      turns: [ask, take, close],
+      answers: [],
+    })
+    const recast = ESSAY.map((s) =>
+      s.id === "tin" ? { ...s, character: "tin-sparrow" as const } : s
+    )
+    expect(changedTurns(v(ESSAY), v(recast))).toEqual(["k1", "k2"])
+    if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
+    expect(
+      stepConversation(
+        drafting.state,
+        version(
+          1,
+          [ask],
+          [],
+          [...ESSAY, { id: "tin2", character: "tin-owlet", voice: "kokoro" }]
+        )
+      )
+    ).toEqual({
+      ok: false,
+      refusal: { why: "character-twice", character: "tin-owlet" },
+    })
+  })
+
+  it("refuses a turn by a speaker the version doesn't have, or in another voice", () => {
+    if (!drafting.ok) throw new Error(refusalLine(drafting.refusal))
+    expect(
+      stepConversation(
+        drafting.state,
+        version(1, [{ ...ask, speaker: "sparrow" }])
+      )
+    ).toEqual({
+      ok: false,
+      refusal: { why: "speaker-unknown", turn: "k1", speaker: "sparrow" },
+    })
+    expect(
+      stepConversation(
+        drafting.state,
+        version(1, [{ ...ask, speaker: "mochi" }])
+      )
+    ).toEqual({
+      ok: false,
+      refusal: { why: "speaker-voice", turn: "k1", speaker: "mochi" },
+    })
+  })
+})
+
+describe("the closed sets", () => {
+  it("lets every flag be kept, with a reason", () => {
+    for (const kind of FLAG_KINDS) expect(ANSWERS_OF[kind]).toContain("kept")
+  })
+
+  it("answers an owner's flag only by the owner's take, and an agent's only by a rewrite", () => {
+    for (const kind of FLAG_KINDS) {
+      const answers: ReadonlyArray<string> = ANSWERS_OF[kind]
+      expect(answers.includes("rewrote")).toBe(FLAG_VOICE[kind] === "kokoro")
+    }
+  })
+
+  it("refuses, for every flag kind, each answer its table doesn't give", () => {
+    for (const kind of FLAG_KINDS) {
+      const turn = FLAG_VOICE[kind] === "owner" ? "o1" : "k1"
+      const flagged = replayConversation([
+        ALPHABET.topic!,
+        ALPHABET.pointA!,
+        ALPHABET.pointB!,
+        ALPHABET.v1!,
+        { event: "flag", at: AT, flag: { id: "f1", turn, kind } },
+      ])
+      if (!flagged.ok) throw new Error(refusalLine(flagged.refusal))
+      const answers: ReadonlyArray<string> = ANSWERS_OF[kind]
+      for (const how of ANSWER_KINDS.filter((h) => !answers.includes(h))) {
+        const answer: FlagAnswer =
+          how === "rewrote"
+            ? { flag: "f1", how, turns: ["k1"] }
+            : how === "retook"
+              ? { flag: "f1", how, take: "take-b" }
+              : how === "kept"
+                ? { flag: "f1", how, note: "Kept." }
+                : { flag: "f1", how }
+        const turns =
+          turn === "k1" ? [reworded, take, close] : [ask, retaken, close]
+        expect(
+          stepConversation(flagged.state, version(2, turns, [answer]))
+        ).toEqual({
+          ok: false,
+          refusal: { why: "answer-kind", flag: "f1", kind, how },
+        })
+      }
+    }
+  })
+})
+
+describe("changedTurns", () => {
+  const v = (turns: ReadonlyArray<ConversationTurn>): PodcastVersion => ({
+    n: 1,
+    speakers: [...ESSAY],
+    turns: [...turns],
+    answers: [],
+  })
+
+  it("names reworded, retaken, moved, added and removed turns", () => {
+    expect(changedTurns(v([ask, take, close]), v([ask, take, close]))).toEqual(
+      []
+    )
+    expect(
+      changedTurns(v([ask, take, close]), v([reworded, retaken, close]))
+    ).toEqual(["k1", "o1"])
+    expect(changedTurns(v([ask, take, close]), v([take, ask, close]))).toEqual([
+      "o1",
+      "k1",
+      "k2",
+    ])
+    expect(changedTurns(v([ask, take, close]), v([ask, take]))).toEqual(["k2"])
+    expect(
+      changedTurns(
+        v([ask, take, close]),
+        v([{ ...ask, speaker: "mochi" }, take, close])
+      )
+    ).toEqual(["k1"])
+  })
+})
+
+describe("parseConversationRecord", () => {
+  const events = [
+    "topic",
+    "pointA",
+    "v1",
+    "flagAgent",
+    "v2rewrote",
+    "green2",
+  ].map((n) => ALPHABET[n]!)
+
+  it("reads a kept record into its state", () => {
+    const parsed = parseConversationRecord({
+      schema: CONVERSATION_RECORD_SCHEMA,
+      id: "week-12",
+      events,
+    })
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.state.phase).toBe("green-lit")
+    expect(greenLitVersion(parsed.value.state)?.turns[0]).toEqual(reworded)
+  })
+
+  it("refuses a record whose log holds an event the machine refuses, naming where", () => {
+    const parsed = parseConversationRecord({
+      schema: CONVERSATION_RECORD_SCHEMA,
+      id: "week-12",
+      events: [...events.slice(0, 3), ALPHABET.green2!],
+    })
+    expect(parsed).toEqual({
+      ok: false,
+      problems: [
+        "events.3: only the newest version, 1, can be green-lit, not 2",
+      ],
+    })
+  })
+
+  it("refuses a turn with a field the spoken card's turn doesn't have", () => {
+    const parsed = parseConversationRecord({
+      schema: CONVERSATION_RECORD_SCHEMA,
+      id: "week-12",
+      events: [
+        ...events.slice(0, 2),
+        {
+          event: "version",
+          at: AT,
+          version: {
+            n: 1,
+            speakers: ESSAY,
+            turns: [{ ...ask, segue: "Anyway." }],
+            answers: [],
+          },
+        },
+      ],
+    })
+    expect(parsed.ok).toBe(false)
+  })
+})
