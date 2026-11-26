@@ -21,6 +21,7 @@ import {
   joinsOf,
   keptStretches,
   retimed,
+  samePath,
   screenEdges,
   spanOf,
   spanProblems,
@@ -51,6 +52,8 @@ type Piece =
       readonly fromMs: number
       readonly toMs: number
     }
+  /** A breath: quiet broadband noise, well under the voice and over the hiss. */
+  | { readonly kind: "breath"; readonly fromMs: number; readonly toMs: number }
 
 const at = (ms: number): number => Math.round((ms * RATE) / 1000)
 
@@ -64,7 +67,11 @@ function takeOf(
   for (const p of pieces) {
     const from = at(p.fromMs)
     const to = at(p.toMs)
-    const burst = hiss(to - from, 0.6, p.fromMs + 1)
+    const burst = hiss(
+      to - from,
+      p.kind === "breath" ? 0.008 : 0.6,
+      p.fromMs + 1
+    )
     for (let i = from; i < to && i < out.length; i++) {
       const t = (i - from) / RATE
       const ramp = Math.min(1, (i - from) / at(5), (to - i) / at(5))
@@ -238,6 +245,65 @@ describe("keptStretches (HOST12)", () => {
       { text: "two.", startMs: 550, endMs: 700 },
     ])
   })
+
+  it("never drops a word: an edge in cut silence is drawn to the nearest kept edge", () => {
+    // The review's probe: a transcript's padded start before the first
+    // voiced frame, and a sentence's end padded into a long pause.
+    const kept: ReadonlyArray<Stretch> = [
+      { fromMs: 340, toMs: 1_540 },
+      { fromMs: 2_400, toMs: 3_000 },
+    ]
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "Well,", startMs: 200, endMs: 700 },
+      { text: "done.", startMs: 1_200, endMs: 1_900 },
+      { text: "ok", startMs: 2_500, endMs: 2_800 },
+    ]
+    expect(retimed(words, kept, 1)).toEqual([
+      { text: "Well,", startMs: 0, endMs: 360 },
+      { text: "done.", startMs: 860, endMs: 1_200 },
+      { text: "ok", startMs: 1_300, endMs: 1_600 },
+    ])
+  })
+})
+
+describe("breaths (HOST12)", () => {
+  const f = TAKE_POLICY.frameMs
+  /** Whether the breath's frames are all kept, or all cut, never split. */
+  const whole = (
+    kept: ReadonlyArray<Stretch>,
+    breath: Stretch
+  ): "kept" | "cut" | "split" => {
+    const ins: Array<boolean> = []
+    for (let ms = breath.fromMs + f; ms < breath.toMs - f; ms += f)
+      ins.push(kept.some((k) => ms >= k.fromMs && ms < k.toMs))
+    return ins.every(Boolean) ? "kept" : ins.some(Boolean) ? "split" : "cut"
+  }
+
+  it.each([
+    // In the pause, across where the cut would end: dropped whole.
+    {
+      name: "inside a long pause",
+      breath: { fromMs: 1_700, toMs: 1_980 },
+      is: "cut",
+    },
+    // The inhale right before the next word: kept whole.
+    {
+      name: "just before the voice",
+      breath: { fromMs: 1_850, toMs: 2_090 },
+      is: "kept",
+    },
+  ] as const)("keeps or drops a breath whole: $name", ({ breath, is }) => {
+    const pieces: ReadonlyArray<Piece> = [
+      { kind: "word", fromMs: 300, toMs: 900 },
+      { kind: "breath", ...breath },
+      { kind: "word", fromMs: 2_100, toMs: 2_700 },
+    ]
+    const s = screened(takeOf(3_000, pieces))
+    // The breath is read as one: quiet, over the floor, under the voice.
+    const frames = s.breath.slice(breath.fromMs / f + 2, breath.toMs / f - 2)
+    expect(frames.every(Boolean)).toBe(true)
+    expect(whole(keptStretches(s), breath)).toBe(is)
+  })
 })
 
 describe("spanProblems (HOST12)", () => {
@@ -347,6 +413,24 @@ describe("conditionTake (HOST12)", () => {
   })
   afterAll(async () => {
     if (root) await rm(root, { recursive: true, force: true })
+  })
+
+  it("never writes over the take it conditions", async () => {
+    const wav = wavOf(takeOf(1_000, [{ kind: "word", fromMs: 100, toMs: 900 }]))
+    const ports = nodePorts(root)
+    for (const out of ["take.wav", "./take.wav", "work/../take.wav"]) {
+      const done = await conditionTake(
+        ports,
+        { file: "take.wav", wav },
+        DEFAULT_CONDITIONING,
+        "work",
+        out
+      )
+      expect(done.ok ? [] : done.problems).toEqual([
+        "take.wav: conditioning would write over the take itself",
+      ])
+    }
+    expect(samePath("a/./b.wav", "a//c/../b.wav")).toBe(true)
   })
 
   it("cuts, speeds and levels a take, the same bytes each time", async () => {

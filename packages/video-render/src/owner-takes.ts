@@ -82,6 +82,10 @@ export const TAKE_POLICY = {
   clickGuardMs: 50,
   /** How broadband a transient is: its sample-to-sample energy over its energy (a voice's is far lower). */
   clickBroadband: 0.3,
+  /** How far over a take's floor a quiet run is a breath, which a cut never splits. */
+  breathOverFloorDb: 12,
+  /** How near the voice a breath is the inhale before it, which a cut keeps. */
+  breathBeforeVoiceMs: 30,
   /** The loudest a take's silences may be before it is flagged. */
   noiseFloorMostDb: -50,
 } as const
@@ -170,6 +174,12 @@ export type Screened = {
   readonly noisy: boolean
   /** Each frame of the take: voiced or not. */
   readonly voiced: ReadonlyArray<boolean>
+  /**
+   * Each frame of the take: a breath or not, a quiet run under the voice
+   * and `breathOverFloorDb` over the floor, which a cut keeps or drops
+   * whole (`keptStretches`).
+   */
+  readonly breath: ReadonlyArray<boolean>
 }
 
 /** Runs of consecutive true values, as frame index ranges [from, to). */
@@ -266,6 +276,9 @@ export function screenEdges(
     floorDb,
     noisy: floorDb > policy.noiseFloorMostDb,
     voiced,
+    breath: frames.map(
+      (fr, i) => !loud[i] && fr.db >= floorDb + policy.breathOverFloorDb
+    ),
   }
 }
 
@@ -287,8 +300,26 @@ export function keptStretches(
     const to = Math.min(run.to * f, within.toMs)
     // A silence at the stretch's own edge is the lead or the tail.
     if (from <= within.fromMs || to >= within.toMs) continue
-    if (to - from > policy.gapMostMs)
-      cuts.push({ fromMs: from + half, toMs: to - half })
+    if (to - from <= policy.gapMostMs) continue
+    let cut: Stretch = { fromMs: from + half, toMs: to - half }
+    // A breath the cut would split is kept whole where it is the inhale
+    // before the voice, else dropped whole.
+    for (const b of runsOf(screened.breath)) {
+      const bFrom = b.from * f
+      const bTo = b.to * f
+      if (bTo <= from || bFrom >= to) continue
+      if (bTo <= cut.fromMs || bFrom >= cut.toMs) continue
+      if (to - bTo <= policy.breathBeforeVoiceMs)
+        cut = { fromMs: cut.fromMs, toMs: Math.min(cut.toMs, bFrom) }
+      else if (bFrom - from <= policy.breathBeforeVoiceMs)
+        cut = { fromMs: Math.max(cut.fromMs, bTo), toMs: cut.toMs }
+      else
+        cut = {
+          fromMs: Math.min(cut.fromMs, bFrom),
+          toMs: Math.max(cut.toMs, bTo),
+        }
+    }
+    if (cut.toMs > cut.fromMs) cuts.push(cut)
   }
   const kept: Array<Stretch> = []
   let at = within.fromMs
@@ -306,44 +337,40 @@ export const joinsOf = (kept: ReadonlyArray<Stretch>): ReadonlyArray<Stretch> =>
 
 /**
  * Where moment `ms` of the take plays in the conditioned audio: its place
- * in the kept stretches, sped up by `tempo`; null where it was cut.
+ * in the kept stretches, sped up by `tempo`. A moment that was cut plays
+ * at the join that cut it, one before the first stretch at the start, and
+ * one after the last at the end: every moment has a place.
  */
 export function playedAt(
   ms: number,
   kept: ReadonlyArray<Stretch>,
   tempo: number
-): number | null {
+): number {
   let before = 0
   for (const s of kept) {
-    if (ms < s.fromMs) return null
+    if (ms < s.fromMs) return before / tempo
     if (ms <= s.toMs) return (before + ms - s.fromMs) / tempo
     before += s.toMs - s.fromMs
   }
-  return null
+  return before / tempo
 }
 
 /**
  * The transcript's words on the conditioned audio: each placed through the
- * same cut and tempo, so captions follow the voice. A word that was cut,
- * which only a word in a cut silence could be, is dropped.
+ * same cut and tempo, so captions follow the voice. Never one dropped: a
+ * word's edge that falls where the cut took silence away (a transcript's
+ * padded start before the first voiced frame, a sentence's end padded into
+ * a long pause) is drawn in to the nearest kept edge.
  */
 export function retimed(
   words: ReadonlyArray<TimedWord>,
   kept: ReadonlyArray<Stretch>,
   tempo: number
 ): ReadonlyArray<TimedWord> {
-  return words.flatMap((w) => {
-    const startMs = playedAt(w.startMs, kept, tempo)
-    const endMs = playedAt(w.endMs, kept, tempo)
-    return startMs === null || endMs === null
-      ? []
-      : [
-          {
-            text: w.text,
-            startMs: Math.round(startMs),
-            endMs: Math.round(endMs),
-          },
-        ]
+  return words.map((w) => {
+    const startMs = Math.round(playedAt(w.startMs, kept, tempo))
+    const endMs = Math.round(playedAt(w.endMs, kept, tempo))
+    return { text: w.text, startMs, endMs: Math.max(startMs, endMs) }
   })
 }
 
@@ -451,6 +478,21 @@ export function boundedTo(
   }
 }
 
+/** A path as written, its `.` and `..` parts and repeated slashes resolved. */
+function plainPath(path: string): string {
+  const parts: Array<string> = []
+  for (const part of path.split("/")) {
+    if (part === "" || part === ".") continue
+    if (part === ".." && parts.length > 0 && parts.at(-1) !== "..") parts.pop()
+    else parts.push(part)
+  }
+  return (path.startsWith("/") ? "/" : "") + parts.join("/")
+}
+
+/** Whether two paths, relative to one folder, name the same file. */
+export const samePath = (a: string, b: string): boolean =>
+  plainPath(a) === plainPath(b)
+
 /** How one turn's take is played (conversation/2's conditioning): its tempo, loudness and longest gap. */
 export type TakeConditioning = {
   readonly tempo: number
@@ -491,6 +533,13 @@ export async function conditionTake(
   work: string,
   out: string
 ): Promise<Parsed<ConditionedTake>> {
+  const raw = `${work}/conditioned.wav`
+  // The owner's take is the record: nothing this step writes lands on it.
+  if ([out, raw].some((file) => samePath(file, take.file)))
+    return {
+      ok: false,
+      problems: [`${take.file}: conditioning would write over the take itself`],
+    }
   const read = samplesOf(take.wav)
   if (read === null)
     return { ok: false, problems: [`${take.file}: it isn't a 16-bit PCM WAV`] }
@@ -500,7 +549,6 @@ export async function conditionTake(
   if (within.toMs <= within.fromMs)
     return { ok: false, problems: [`${take.file}: nothing in it is voiced`] }
   const kept = keptStretches(screened, within, policy)
-  const raw = `${work}/conditioned.wav`
   const target = loudnessAt(conditioning.loudnessLufs)
   const cut = await ports.ffmpeg(
     planCondition(
