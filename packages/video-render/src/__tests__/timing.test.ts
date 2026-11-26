@@ -63,4 +63,43 @@ describe("place", () => {
       "A: its take runs into B's",
     ])
   })
+
+  // HOST18 (#3571): joined by `hold`, every scene starts where a cut would
+  // start it, and the scene before each join runs on through it.
+  it("holds the scene before a join on through it, so no scene moves", () => {
+    const scenes = (into: "cut" | "crossfade" | "dip-to-black") =>
+      [
+        { id: "A", durationMs: 2000, transitionIn: "cut" as const },
+        { id: "B", durationMs: 2000, transitionIn: into },
+        { id: "C", durationMs: 1000, transitionIn: "dip-to-black" as const },
+      ] as const
+    const cut = place(scenes("cut"), 30, "hold")
+    const held = place(scenes("crossfade"), 30, "hold")
+    if (!cut.ok || !held.ok) throw new Error("not placed")
+    expect(
+      held.value.shots.map((s) => [s.startFrame, s.frames, s.overlapFrames])
+    ).toEqual([
+      [0, 72, 0],
+      [60, 75, 12],
+      [120, 30, 15],
+    ])
+    expect(held.value.shots.map((s) => s.startFrame)).toEqual(
+      cut.value.shots.map((s) => s.startFrame)
+    )
+    expect(held.value.totalFrames).toBe(cut.value.totalFrames)
+    expect(shotTimes(held.value.shots, 30).map((t) => t.startMs)).toEqual([
+      0, 2000, 4000,
+    ])
+    // Its half-scene bound is on the scenes as written, not as held.
+    expect(
+      place(
+        [
+          { id: "A", durationMs: 800, transitionIn: "cut" },
+          { id: "B", durationMs: 2000, transitionIn: "dip-to-black" },
+        ],
+        30,
+        "hold"
+      ).ok
+    ).toBe(false)
+  })
 })

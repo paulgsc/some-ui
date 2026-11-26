@@ -113,6 +113,7 @@ export const PUNCH_MS = 150
 /** ffmpeg's `xfade` name for each transition; a cut is a join instead. */
 const XFADE: Readonly<Record<Exclude<Transition, "cut">, string>> = {
   crossfade: "fade",
+  "slow-crossfade": "fade",
   "dip-to-black": "fadeblack",
   "slide-up": "slideup",
   wipe: "wipeleft",

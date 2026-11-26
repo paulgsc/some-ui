@@ -8,7 +8,7 @@
 
 import type { Parsed } from "./cut-list"
 import { TRANSITION_MS } from "./vocabulary"
-import type { Transition } from "./vocabulary"
+import type { Join, Transition } from "./vocabulary"
 
 /** A scene long enough for its take: the take, a breath before and after. */
 export function fitToTake(fit: {
@@ -46,8 +46,11 @@ export type Placement = {
 
 /**
  * Each scene's start and length in frames. A transition takes its overlap
- * from both scenes, so it must fit in half of each, and it brings the next
- * scene's take in early, so two takes must not meet across it.
+ * from both scenes, so it must fit in half of each. Joined by `overlap`, it
+ * brings the next scene's take in early, so two takes must not meet across
+ * it. Joined by `hold` (HOST18), it brings nothing in early: the scene before
+ * it runs on by the overlap, its picture held through the join, and every
+ * scene starts on the frame a cut would start it on.
  */
 export function place(
   shots: ReadonlyArray<{
@@ -58,17 +61,22 @@ export function place(
     /** When the scene's take starts, and how long it runs, in ms. */
     readonly take?: { readonly atMs: number; readonly lengthMs: number }
   }>,
-  fps: number
+  fps: number,
+  joins: Join = "overlap"
 ): Parsed<Placement> {
+  const own = shots.map((s) => toFrames(s.durationMs, fps))
+  const overlaps = shots.map((s, i) =>
+    i === 0 ? 0 : toFrames(TRANSITION_MS[s.transitionIn], fps)
+  )
   const placed: Array<Placed> = []
   const problems: Array<string> = []
   let start = 0
   shots.forEach((s, i) => {
-    const frames = toFrames(s.durationMs, fps)
-    const overlapFrames =
-      i === 0 ? 0 : toFrames(TRANSITION_MS[s.transitionIn], fps)
+    const frames = own[i] ?? 0
+    const overlapFrames = overlaps[i] ?? 0
     const before = placed[i - 1]
-    if (before && 2 * overlapFrames > Math.min(before.frames, frames)) {
+    const beforeOwn = own[i - 1] ?? 0
+    if (before && 2 * overlapFrames > Math.min(beforeOwn, frames)) {
       problems.push(
         `${s.id}: the ${s.transitionIn} into it is longer than half a scene`
       )
@@ -86,7 +94,8 @@ export function place(
       id: s.id,
       cut: s.cut,
       startFrame: start,
-      frames,
+      // Held, it runs on through the join into the next scene.
+      frames: joins === "hold" ? frames + (overlaps[i + 1] ?? 0) : frames,
       overlapFrames,
     })
   })

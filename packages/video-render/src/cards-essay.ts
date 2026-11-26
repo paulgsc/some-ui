@@ -29,7 +29,7 @@ import { withoutStop } from "./chapters"
 import type { ReadFile, SourceCheck } from "./claims"
 import { sourceProblems, unpinnedSources } from "./claims"
 import type { CutList, Parsed, Shot, SpokenTurn, TimedWord } from "./cut-list"
-import { isCaptions, parseCutList, problemsOf } from "./cut-list"
+import { isCaptions, isComposition, parseCutList, problemsOf } from "./cut-list"
 import { ESSAY_VOICES } from "./essay"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
@@ -43,6 +43,8 @@ import {
 } from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
+import { TRANSITION_MS } from "./vocabulary"
+import type { Transition } from "./vocabulary"
 import { chapterIndexes, voicePolicyOf, voicesInChapters } from "./voices"
 import type { KokoroVoice, VoiceRole, VoicesId } from "./voices"
 
@@ -588,42 +590,95 @@ export const sceneTakeFile = (scene: CardsScene): string =>
   scene.lines.length === 1 ? (scene.lines[0]?.file ?? scene.file) : scene.file
 
 /**
+ * How a spoken essay's scenes join (HOST18, #3571; C1545): policy, moved
+ * with the story (C771). The owner: "When we go from scene to scene, it's
+ * like a very sharp cut. It's kind of jarring." So a scene comes in by a
+ * crossfade, and a scene that opens a chapter by one twice as long, so a new
+ * chapter reads as one without the screen going dark at every card (most of
+ * a cards essay's scenes open one). Either is drawn over the scene before it
+ * held on (`hold`), so the sound is the cut version's.
+ */
+export const CARDS_JOINS = {
+  within: "crossfade",
+  chapter: "slow-crossfade",
+} as const satisfies Readonly<Record<"within" | "chapter", Transition>>
+
+/** How much longer than both of its transition's halves a scene must run to take it. */
+const JOIN_ROOM_MS = 100
+
+/**
+ * The transition into the `i`th of `shots`: the scene's own, where it names
+ * one; none into the first, or into or out of a composition, which draws its
+ * own way in and out; a cut where either scene is too short to hold the join;
+ * else `CARDS_JOINS`'s, by whether it opens a chapter (`mark`).
+ */
+function joinInto(
+  shots: ReadonlyArray<Shot>,
+  i: number,
+  mark: string | undefined
+): Transition | undefined {
+  const shot = shots[i]
+  const before = shots[i - 1]
+  if (!shot || !before) return undefined
+  if (shot.overrides.transitionIn !== undefined)
+    return shot.overrides.transitionIn
+  if (isComposition(shot) || isComposition(before)) return undefined
+  const join = mark === undefined ? CARDS_JOINS.within : CARDS_JOINS.chapter
+  const room = 2 * TRANSITION_MS[join] + JOIN_ROOM_MS
+  return Math.min(shot.durationMs, before.durationMs) < room ? "cut" : join
+}
+
+/**
  * The spoken essay as the cut list the renderer draws: a scene per card
  * (`cardsScenes`), held for its take, `takes[i]` (`heldFor`), and
- * captioned from the take's words.
+ * captioned from the take's words. Its scenes join by `CARDS_JOINS`, each
+ * drawn over the scene before it held on, so every take plays where a cut
+ * would play it (HOST18).
  */
 export function voicedCardsCutList(
   cut: CutList,
   scenes: ReadonlyArray<CardsScene>,
   takes: ReadonlyArray<StillTake | null>
 ): CutList {
+  const shots: ReadonlyArray<Shot> = scenes.map((scene, i) => {
+    const { spoken: _spoken, ...shot } = scene.shot
+    const held = heldFor(
+      { ...scene, file: sceneTakeFile(scene) },
+      takes[i] ?? null
+    )
+    if (scene.spoken === undefined) return { ...shot, ...held }
+    // A spoken card's scene is its stage's still, held still as a voiced
+    // feed's are (CV1); the owner's answer cites the take it plays.
+    const take = scene.spoken.scene.take
+    return {
+      ...shot,
+      id: scene.id,
+      picture: { kind: "still" as const, source: `${scene.file}.png` },
+      ...held,
+      overrides: {
+        motion: { kind: "still" as const },
+        ...(shot.overrides.transitionIn === undefined
+          ? {}
+          : { transitionIn: shot.overrides.transitionIn }),
+      },
+      burnIns: [],
+      idea:
+        take === undefined
+          ? { origin: "agent" as const }
+          : {
+              origin: "you" as const,
+              from: { kind: "take" as const, id: take },
+            },
+    }
+  })
   return {
     ...cut,
-    shots: scenes.map((scene, i) => {
-      const { spoken: _spoken, ...shot } = scene.shot
-      const held = heldFor(
-        { ...scene, file: sceneTakeFile(scene) },
-        takes[i] ?? null
-      )
-      if (scene.spoken === undefined) return { ...shot, ...held }
-      // A spoken card's scene is its stage's still, held still as a voiced
-      // feed's are (CV1); the owner's answer cites the take it plays.
-      const take = scene.spoken.scene.take
-      return {
-        ...shot,
-        id: scene.id,
-        picture: { kind: "still" as const, source: `${scene.file}.png` },
-        ...held,
-        overrides: { motion: { kind: "still" as const } },
-        burnIns: [],
-        idea:
-          take === undefined
-            ? { origin: "agent" as const }
-            : {
-                origin: "you" as const,
-                from: { kind: "take" as const, id: take },
-              },
-      }
+    joins: "hold",
+    shots: shots.map((shot, i) => {
+      const transitionIn = joinInto(shots, i, scenes[i]?.mark)
+      return transitionIn === undefined
+        ? shot
+        : { ...shot, overrides: { ...shot.overrides, transitionIn } }
     }),
     burnIns: [
       ...cut.burnIns.filter((b) => !isCaptions(b)),

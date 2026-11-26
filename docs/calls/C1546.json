@@ -1,0 +1,17 @@
+{
+  "id": "C1546",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/render.ts",
+    "some-ui:packages/video-render/src/cards-essay.ts"
+  ],
+  "chose": "The cast is not hidden over a join's overlap while HOST5 is unmerged. Every burn-in, the host among them, is recorded on its own and laid over the joined picture (`burnInRequests`, `planAssembly`), never into a scene's segment, so the crossfade never fades the host with itself: a scene's host gives way on the frame the next scene's starts, and no frame shows two. Hiding it for each join's 400 to 800 ms would make the cast blink out at every card, which the owner's tiebreaker on #3521 (natural, cohesive, lifelike, never jarring) rules out. Easing the cast between its two shots across a join stays HOST5's (#3526).",
+  "options": [
+    "Leave the host drawn over the join, one copy at a time, as the burn-ins already lay it",
+    "Hide the host over each join's overlap until HOST5's camera layer lands"
+  ],
+  "gray": "The issue asked for the host hidden over the join until HOST5 lands, to prevent ghosting; the renderer already prevents it another way, and hiding has a visible cost of its own.",
+  "undo": "Give each host burn-in a beat at opacity 0 over each join's overlap frames.",
+  "refs": ["#3571", "#3526", "#3521"]
+}

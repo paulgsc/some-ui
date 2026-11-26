@@ -1,6 +1,7 @@
 import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
+  CARDS_JOINS,
   CARDS_VOICES,
   cardsChapterMarks,
   cardsFolderProblems,
@@ -551,5 +552,73 @@ describe("a spoken essay (EXPLAIN6)", () => {
       scenes.map(() => null)
     )
     expect(silent.shots.every((shot) => shot.take === undefined)).toBe(true)
+  })
+
+  // HOST18 (#3571): no hard cut, and nothing moved. Family: a scene inside
+  // a chapter and one opening a chapter, each long enough or too short for
+  // its join; a scene naming its own transition; the first scene.
+  it("joins its scenes without a hard cut, each held where a cut puts it (HOST18)", async () => {
+    const cut = await showcase("rust-scratchpad")
+    const [intro, first, second, ...rest] = cut.shots
+    if (second?.spoken?.role !== "scene")
+      throw new Error("the showcase opens with two scenes")
+    const { chapter: _dropped, ...goesOn } = second.spoken
+    const parsed = parseCardsEssay(RUST, {
+      ...cut,
+      shots: [intro, first, { ...second, spoken: goesOn }, ...rest],
+    })
+    if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
+    const scenes = cardsScenes(parsed.value)
+    const voiced = voicedCardsCutList(
+      parsed.value,
+      scenes,
+      scenes.map(() => ({ ms: 2_000 }))
+    )
+    expect(voiced.joins).toBe("hold")
+    const into = voiced.shots.map((s) => s.overrides.transitionIn)
+    expect(into[0]).toBeUndefined()
+    expect(into.slice(1)).toEqual(
+      scenes
+        .slice(1)
+        .map((s) =>
+          s.mark === undefined ? CARDS_JOINS.within : CARDS_JOINS.chapter
+        )
+    )
+    expect(new Set(into.slice(1))).toEqual(
+      new Set([CARDS_JOINS.within, CARDS_JOINS.chapter])
+    )
+    // A take too short to hold its join on both sides: a cut, both sides.
+    const short = voicedCardsCutList(
+      parsed.value,
+      scenes,
+      scenes.map((_, i) => ({ ms: i === 3 ? 500 : 2_000 }))
+    )
+    const shortInto = short.shots.map((s) => s.overrides.transitionIn)
+    expect([shortInto[3], shortInto[4]]).toEqual(["cut", "cut"])
+    expect(shortInto[2]).toBe(CARDS_JOINS.within)
+    // A scene's own pick stands.
+    const picked = voicedCardsCutList(
+      {
+        ...parsed.value,
+        shots: parsed.value.shots.map((s, i) =>
+          i === 1
+            ? { ...s, overrides: { ...s.overrides, transitionIn: "cut" } }
+            : s
+        ),
+      },
+      scenes.map((s, i) =>
+        i === 1
+          ? {
+              ...s,
+              shot: {
+                ...s.shot,
+                overrides: { ...s.shot.overrides, transitionIn: "cut" },
+              },
+            }
+          : s
+      ),
+      scenes.map(() => ({ ms: 2_000 }))
+    )
+    expect(picked.shots[1]?.overrides.transitionIn).toBe("cut")
   })
 })
