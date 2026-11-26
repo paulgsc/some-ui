@@ -22,6 +22,7 @@
  */
 
 import type { TimedWord } from "./cut-list"
+import { pcmOf } from "./wav"
 
 /** The most characters asked of the speaker at once. */
 export const SPEAKER_CHUNK_CHARS = 400
@@ -104,34 +105,6 @@ export type AskSpeaker = (
 export type SceneSpoken =
   | { readonly ok: true; readonly take: SpeakerTake }
   | { readonly ok: false; readonly problem: string }
-
-type Pcm = {
-  readonly format: Uint8Array
-  readonly data: Uint8Array
-  readonly byteRate: number
-}
-
-/** A WAV's format and samples, or null for anything not a PCM WAV. */
-function pcmOf(wav: Uint8Array): Pcm | null {
-  const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength)
-  const tag = (at: number): string =>
-    String.fromCharCode(...wav.subarray(at, at + 4))
-  if (wav.byteLength < 12 || tag(0) !== "RIFF" || tag(8) !== "WAVE") return null
-  let format: Uint8Array | null = null
-  for (let at = 12; at + 8 <= wav.byteLength; ) {
-    const size = view.getUint32(at + 4, true)
-    const body = wav.subarray(at + 8, Math.min(at + 8 + size, wav.byteLength))
-    if (tag(at) === "fmt ") format = body
-    else if (tag(at) === "data") {
-      if (format === null || format.byteLength < 16) return null
-      const fmt = new DataView(format.buffer, format.byteOffset, 16)
-      if (fmt.getUint16(0, true) !== 1) return null
-      return { format, data: body, byteRate: fmt.getUint32(8, true) }
-    }
-    at += 8 + size + (size % 2)
-  }
-  return null
-}
 
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
   a.byteLength === b.byteLength && a.every((x, i) => x === b[i])

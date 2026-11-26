@@ -41,6 +41,10 @@ export const KIND_WORDS = {
     name: "Intuitions",
     line: "What you fed in: each feed's question and every idea",
   },
+  previews: {
+    name: "Previews",
+    line: "Ways the videos could look, for you to approve",
+  },
   spoken: {
     name: "Spoken",
     line: "Spoken cards you read aloud, part by part, and every take",
