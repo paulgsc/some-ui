@@ -31,15 +31,37 @@
  * same SVG bytes (`__tests__/host-role.test.ts`).
  */
 
-import { el, INK, type CastNode } from "./cast"
+import { el, INK, type CastNode, type Character } from "./cast"
 import { clamp, num, smooth, TAU } from "./host-draw"
 
+/** A table of named colours, keyed only by the cast's characters. */
+type ColoursOf<T extends Partial<Record<Character, string>>> = T
+
 /**
- * The characters this module dresses. It mirrors `./host`'s
- * `HOST_CHARACTERS`, which `./host` checks is the same set (it imports this
- * module, so this one can't import it back).
+ * Each character that plays roles, and the names of its colours as
+ * `./cast` draws them. Nothing below assumes how many there are: a
+ * character joins by an entry here and one in each table keyed by it (its
+ * colours, themes, anchors, hand and roles), which the compiler asks for,
+ * with no new code path. Today that is the essays' two.
  */
-type Who = "tin-owlet" | "mochi"
+type NamedColours = ColoursOf<{
+  readonly mochi: "light" | "body" | "shade" | "feet" | "arm" | "glow" | "rim"
+  readonly "tin-owlet":
+    | "light"
+    | "mid"
+    | "sheen"
+    | "dark"
+    | "tuft"
+    | "rivet"
+    | "lens"
+    | "rim"
+}>
+
+/** The characters this module dresses. */
+type Who = keyof NamedColours
+
+/** The names of `C`'s colours, which a theme gives a colour each. */
+type SlotOf<C extends Who> = NamedColours[C]
 
 // ---- The closed sets ----
 
@@ -125,22 +147,6 @@ export const roleLookOf = <C extends Who>(
 }
 
 // ---- Themes: a palette swap over each character's named colours ----
-
-/** The mochi's named colours, as `./cast` draws them. */
-type MochiSlot = "light" | "body" | "shade" | "feet" | "arm" | "glow" | "rim"
-
-/** The tin owlet's named colours, as `./cast` draws them. */
-type TinSlot =
-  | "light"
-  | "mid"
-  | "sheen"
-  | "dark"
-  | "tuft"
-  | "rivet"
-  | "lens"
-  | "rim"
-
-type SlotOf<C extends Who> = C extends "mochi" ? MochiSlot : TinSlot
 
 /** A theme: a colour for each named colour, and a cloth and trim its costume is cut from. */
 type Palette<S extends string> = {
