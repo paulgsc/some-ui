@@ -1,0 +1,16 @@
+{
+  "id": "C1536",
+  "made": "2026-11-26",
+  "by": "owner",
+  "paths": ["CLAUDE.md", "some-ui:packages/video-render/src/conversation.ts"],
+  "chose": "The owner (2026-11-25, on #3521, relayed by the coordinator), verbatim excerpts: \"It's not that I decide what the emotions are ... because that means it's blocked on me. On the emotion layer, I approve or push back ... you're not seeing the video, you're seeing basically the signature of the video ... my reconciliation is the final one.\" And: \"I actually see who's speaking at what particular moment, and I hear what they're saying, and I can basically flag that.\" And: \"the editorial task of how the part the AI speaks, how it segues to my part where I speak, that is not on my end. That remains an editorial task by the AI.\" And: \"we're not doing editorial of deciding what the scene looks like ... That remains the same.\" So the owner now reviews a conversation essay at two points: its podcast versions, as audio, where they flag turns, speak their own again and green-light a version; and its signature, each scene's emotion, ceremony, shot, placement and voice, which the agent proposes and the owner may override from previews, their pick final and nothing waiting on them. Reviewing is not editing: the owner still writes none of the agent's lines, orders no turns, writes no segue, edits no audio or video and designs no thumbnail or scene, and what is rendered is still drawn by code from the green-lit record and the reconciled signature, the same bytes for the same inputs.",
+  "options": [
+    "The owner reviews the conversation and the signature, and still edits and designs nothing (chosen)",
+    "The owner does no review either, as C1028 read before",
+    "The owner edits the conversation's turns and order themselves"
+  ],
+  "gray": "C1028 says the owner does no editorial work on a video; whether flagging a turn, green-lighting a podcast or overriding a proposed emotion counts as editorial work is the owner's to say, and they said it on #3521.",
+  "undo": "Only the owner can move this call.",
+  "refs": ["#3521", "#3553"],
+  "moves": "C1028"
+}
