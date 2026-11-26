@@ -1,7 +1,7 @@
 /**
  * Every word the preview card says (HOST16), in the person's terms: what
- * each preview shows, what using one does, and where the pick is kept.
- * Held by its test to no machinery.
+ * each preview shows, what using one does, where a pick is kept, and why
+ * there is nothing to pick. Held by its test to no machinery.
  */
 export const PICK_WORDS = {
   intro:
@@ -15,13 +15,33 @@ export const PICK_WORDS = {
   none: "Nothing picked yet.",
   ownPrompt: "What would you like instead?",
   ownSend: "Ask for new previews",
-  noClip: "The clip plays here once home has made it.",
-  kept: {
-    phone:
-      "Kept on this phone. Once home takes picks, every video after it follows the one you chose.",
+  noClip: "The clip plays here once this phone has it.",
+  reading: "Reading home's previews.",
+  again: "Try again",
+  /** Home answered, and offers nothing to pick yet. */
+  empty: "Home has no previews for you to pick yet.",
+  unshown: (n: number): string =>
+    n === 1
+      ? "One preview can't be shown: its clips are gone from home."
+      : `${String(n)} previews can't be shown: their clips are gone from home.`,
+  /** Why home's previews aren't shown. */
+  nothing: {
+    unpaired:
+      "Previews and picks are kept on home, and this phone isn't paired with home.",
+    away: "Previews and picks are kept on home, and home can't be reached right now.",
+    busy: "This phone was busy with home.",
+    older: "This home keeps no previews yet.",
+    unreadable: "This phone couldn't read home's previews.",
+  },
+  /** What a pick came to. */
+  picked: {
     home: "Kept on home. Every video after it follows the one you chose.",
     sample: "Picked on the sample. Nothing here is kept.",
   },
   already: "That's the one you use already.",
-  refused: "This phone couldn't keep your pick. Try again.",
+  refused: "That pick wasn't kept. Try again.",
+  unpaired:
+    "Picks are kept on home, and this phone isn't paired with home, so nothing was kept.",
+  away: "Picks are kept on home, and home can't be reached right now, so nothing was kept. Try again.",
+  busy: "This phone was busy with home, so nothing was kept. Try again.",
 } as const

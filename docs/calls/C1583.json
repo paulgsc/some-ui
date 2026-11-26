@@ -1,0 +1,25 @@
+{
+  "id": "C1583",
+  "made": "2026-11-26",
+  "by": "claude",
+  "moves": "C1565",
+  "paths": [
+    "some-ui:apps/www/src/lib/preview-pick/index.ts",
+    "some-ui:apps/www/src/lib/preview-pick/model.ts",
+    "some-ui:apps/www/src/lib/preview-pick/runtime.ts",
+    "some-ui:apps/www/src/lib/preview-home/index.ts",
+    "some-ui:apps/www/src/lib/home-link/preview-reads.ts",
+    "some-ui:apps/www/src/components/studio/preview-pick.tsx",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/previews.tsx"
+  ],
+  "chose": "The owner's picks on previews are kept on home, the default store (#2182), and nowhere else: the phone's own store of picks is gone, since no real pick was ever kept on a phone (the sample's never were, and home had offered none). Studio's Previews reads the conversations home lists (GET /conversations, newest first, at most ten with offers) and each one's previews, and sends each pick as the record's approve event, one at a time, a change naming the pick it moves. The screen runs on a state with a pure step and one runtime that owns every wait (R1); home and the sample are two cases of one source port, so the screen has one path. While this phone is unpaired or home is out of reach, the screen says that previews and picks are kept on home and home can't be reached, and asks again on Try again. The sample stays below home's previews, labelled, its picks held in memory and never kept. A variant's clip shows once this phone has it; fetching home's clips is the next story, on the feed videos' fetch made general.",
+  "options": [
+    "Home keeps every pick, a list route names the conversations, one source port for home and the sample (chosen)",
+    "Picks kept on the phone and copied to home",
+    "The phone's own list of conversations it knows",
+    "A screen of its own for the sample"
+  ],
+  "gray": "Where the owner's picks live, which conversations the screen shows and what it says while home can't be reached are what the owner meets on the phone; #2182 makes home the default store, not this shape.",
+  "undo": "Bring back a phone store behind PreviewSource; picks home keeps stay in its record.",
+  "refs": ["#3558", "#3521", "#2182", "server#1245"]
+}

@@ -1,119 +1,310 @@
 /**
- * HOST16 (#3558): a pick on a preview is kept whole, once, and the screen
- * says it without the machinery. Family: a variant used, something else
- * said, a second pick on the same preview, another conversation's picks,
- * and a store that can't be read.
+ * HOST16 (#3558): Studio's Previews as a state and its runtime (R1). Family:
+ * a read that answers, or says why not (each `NotShown`); a pick, its
+ * outcome (kept, already, refused, unpaired, away, busy), a second pick
+ * while one is on its way, a change of a standing pick (sent as a move),
+ * and a read overtaken by a newer one; the sample's own rules; the words.
  */
-import { inMemoryStorage } from "@some-ui/core-utils"
-import { approveEvent, sampleTransitionsOffer } from "@some-ui/video-render"
+import type { HomeRead, HomeWrite } from "@some-ui/soundbites"
+import type { ConversationEvent } from "@some-ui/video-render"
+import { sampleTransitionsOffer } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import {
-  phonePicks,
   PICK_WORDS,
-  pickOn,
-  PICKS_KEY,
-  samplePicks,
+  previewsRuntime,
+  SAMPLE_CONVERSATION,
+  sampleSource,
+  stepPreviews,
 } from "@/lib/preview-pick"
-import type { KeptPick } from "@/lib/preview-pick"
+import type {
+  ConversationPreviews,
+  PreviewSource,
+  PreviewsState,
+} from "@/lib/preview-pick"
 
 const AT = "2026-11-26T10:00:00.000Z"
+const OFFER = sampleTransitionsOffer()
 
-/** Every value `storage` holds, under any key. */
-const valuesIn = (storage: Storage): ReadonlyArray<string> =>
-  Array.from({ length: storage.length }, (_, i) => storage.key(i))
-    .map((k) => (k === null ? null : storage.getItem(k)))
-    .filter((v): v is string => v !== null)
+const conversation = (
+  standing: ConversationPreviews["previews"][number]["standing"] = null
+): ConversationPreviews => ({
+  id: "runners",
+  topic: "The runners",
+  previews: [{ ...OFFER, clips: {}, standing }],
+  unshown: 0,
+})
 
-const pick = (conversation: string, variant: string): KeptPick => {
-  const event = approveEvent(
-    sampleTransitionsOffer(),
-    { kind: "variant", variant },
-    AT
+const shown = (c: ConversationPreviews = conversation()): PreviewsState =>
+  stepPreviews(
+    { phase: "reading" },
+    { kind: "read", result: { kind: "read", value: [c] } }
   )
-  if (event === null) throw new Error("no event")
-  return { conversation, event }
+
+/** A promise and its resolve, to answer when the test says. */
+function later<T>(): {
+  readonly promise: Promise<T>
+  readonly resolve: (value: T) => void
+} {
+  let resolve: (value: T) => void = () => undefined
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
 }
 
-/** A pick that changes the standing one on the sample's preview. */
-const move = (conversation: string, variant: string): KeptPick => {
-  const event = approveEvent(
-    sampleTransitionsOffer(),
-    { kind: "variant", variant },
-    AT,
-    { moves: "transitions-1" }
-  )
-  if (event === null) throw new Error("no event")
-  return { conversation, event }
-}
+const settled = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 
-describe("samplePicks (HOST16)", () => {
-  it("holds picks in memory as the phone's store would, and says they aren't kept", () => {
-    const picks = samplePicks()
-    expect(picks.where).toBe("sample")
-    expect(picks.keep(pick("sample", "crossfade"))).toBe("kept")
-    expect(picks.keep(pick("sample", "dip-to-black"))).toBe("already")
-    expect(picks.keep(move("sample", "dip-to-black"))).toBe("kept")
-    expect(picks.list("sample")).toHaveLength(2)
-    expect(samplePicks().list("sample")).toEqual([])
+describe("stepPreviews (HOST16)", () => {
+  it.each(["unpaired", "away", "busy", "older", "unreadable"] as const)(
+    "says why nothing is shown: %s",
+    (why) => {
+      expect(
+        stepPreviews(
+          { phase: "reading" },
+          { kind: "read", result: { kind: why } }
+        )
+      ).toEqual({ phase: "nothing", why })
+    }
+  )
+
+  it("takes one pick at a time, and says the outcome afresh each time", () => {
+    const picking = stepPreviews(shown(), {
+      kind: "pick",
+      conversation: "runners",
+      preview: OFFER.preview,
+      pick: { kind: "variant", variant: "crossfade" },
+    })
+    expect(picking.phase === "shown" && picking.keeping?.preview).toBe(
+      OFFER.preview
+    )
+    // A second pick while one is on its way is ignored.
+    expect(
+      stepPreviews(picking, {
+        kind: "pick",
+        conversation: "runners",
+        preview: OFFER.preview,
+        pick: { kind: "variant", variant: "dip-to-black" },
+      })
+    ).toBe(picking)
+    const kept = stepPreviews(picking, {
+      kind: "picked",
+      outcome: "kept",
+      now: conversation({
+        kind: "variant",
+        variant: "crossfade",
+        rule: "joins-crossfade",
+      }),
+    })
+    if (kept.phase !== "shown") throw new Error("not shown")
+    expect(kept.keeping).toBeNull()
+    expect(kept.said).toEqual({ n: 1, outcome: "kept" })
+    expect(kept.conversations[0]?.previews[0]?.standing).toMatchObject({
+      variant: "crossfade",
+    })
+    // Using the standing variant again asks nothing.
+    const again = stepPreviews(kept, {
+      kind: "pick",
+      conversation: "runners",
+      preview: OFFER.preview,
+      pick: { kind: "variant", variant: "crossfade" },
+    })
+    expect(again.phase === "shown" && again.keeping).toBeNull()
+    expect(again.phase === "shown" && again.said).toEqual({
+      n: 2,
+      outcome: "already",
+    })
+  })
+
+  it("ignores a pick on a preview it doesn't show, and an answer to no pick", () => {
+    const state = shown()
+    expect(
+      stepPreviews(state, {
+        kind: "pick",
+        conversation: "elsewhere",
+        preview: OFFER.preview,
+        pick: { kind: "variant", variant: "crossfade" },
+      })
+    ).toBe(state)
+    expect(stepPreviews(state, { kind: "picked", outcome: "kept" })).toBe(state)
   })
 })
 
-describe("phonePicks (HOST16)", () => {
-  it("keeps a pick per preview and conversation, a change only as a move, and lists them back", () => {
-    const storage = inMemoryStorage()
-    const picks = phonePicks(() => storage)
-    expect(picks.keep(pick("runners", "crossfade"))).toBe("kept")
-    expect(picks.keep(pick("runners", "dip-to-black"))).toBe("already")
-    expect(picks.keep(move("runners", "crossfade"))).toBe("already")
-    expect(picks.keep(move("slow", "crossfade"))).toBe("refused")
-    expect(picks.keep(pick("slow", "dip-to-black"))).toBe("kept")
-    expect(picks.keep(move("runners", "dip-to-black"))).toBe("kept")
-    const kept = picks.list("runners")
-    expect(kept?.map((p) => p.event.chose)).toEqual([
-      { kind: "variant", variant: "crossfade" },
-      {
-        kind: "variant",
-        variant: "dip-to-black",
+/** A source that answers when the test says, and records what it was sent. */
+function scripted(): {
+  readonly source: PreviewSource
+  readonly reads: Array<
+    (value: HomeRead<ReadonlyArray<ConversationPreviews>>) => void
+  >
+  readonly sent: Array<Extract<ConversationEvent, { event: "approve" }>>
+  readonly answer: Array<
+    (value: HomeWrite<ConversationPreviews | null>) => void
+  >
+} {
+  const reads: Array<
+    (value: HomeRead<ReadonlyArray<ConversationPreviews>>) => void
+  > = []
+  const sent: Array<Extract<ConversationEvent, { event: "approve" }>> = []
+  const answer: Array<(value: HomeWrite<ConversationPreviews | null>) => void> =
+    []
+  return {
+    reads,
+    sent,
+    answer,
+    source: {
+      where: "home",
+      read: (): Promise<HomeRead<ReadonlyArray<ConversationPreviews>>> => {
+        const l = later<HomeRead<ReadonlyArray<ConversationPreviews>>>()
+        reads.push(l.resolve)
+        return l.promise
       },
-    ])
-    expect(pickOn(kept ?? [], "transitions-1")?.event.chose).toMatchObject({
+      approve: (
+        _conversation,
+        event
+      ): Promise<HomeWrite<ConversationPreviews | null>> => {
+        sent.push(event)
+        const l = later<HomeWrite<ConversationPreviews | null>>()
+        answer.push(l.resolve)
+        return l.promise
+      },
+    },
+  }
+}
+
+describe("previewsRuntime (HOST16)", () => {
+  it("drops a read a newer one overtook", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    runtime.open()
+    runtime.open()
+    expect(s.reads).toHaveLength(2)
+    s.reads[1]?.({ kind: "read", value: [conversation()] })
+    await settled()
+    s.reads[0]?.({ kind: "away" })
+    await settled()
+    expect(runtime.state.getSnapshot().phase).toBe("shown")
+  })
+
+  it("sends a first pick as an approval, and a change as one that moves it", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    runtime.open()
+    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    await settled()
+    runtime.pick("runners", OFFER.preview, {
+      kind: "variant",
+      variant: "crossfade",
+    })
+    expect(s.sent[0]).toMatchObject({
+      event: "approve",
+      by: "owner",
+      preview: OFFER.preview,
+      chose: { kind: "variant", variant: "crossfade" },
+    })
+    expect(s.sent[0]?.moves).toBeUndefined()
+    s.answer[0]?.({
+      kind: "written",
+      value: conversation({
+        kind: "variant",
+        variant: "crossfade",
+        rule: "joins-crossfade",
+      }),
+    })
+    await settled()
+    runtime.pick("runners", OFFER.preview, {
+      kind: "variant",
       variant: "dip-to-black",
     })
-    expect(pickOn(kept ?? [], "transitions-1")?.conversation).toBe("runners")
-    // A fresh store over the same storage reads the same picks.
-    expect(phonePicks(() => storage).list("slow")).toHaveLength(1)
+    expect(s.sent[1]?.moves).toBe(OFFER.preview)
   })
 
-  it("keeps something else in the owner's words", () => {
-    const storage = inMemoryStorage()
-    const event = approveEvent(
-      sampleTransitionsOffer(),
-      { kind: "else", said: "Softer, like a page turning." },
-      AT
-    )
-    if (event === null) throw new Error("no event")
-    expect(phonePicks(() => storage).keep({ conversation: "c", event })).toBe(
-      "kept"
-    )
+  it.each(["refused", "unpaired", "away", "busy"] as const)(
+    "says a pick home didn't keep: %s",
+    async (kind) => {
+      const s = scripted()
+      const runtime = previewsRuntime(s.source, () => AT)
+      runtime.open()
+      s.reads[0]?.({ kind: "read", value: [conversation()] })
+      await settled()
+      runtime.pick("runners", OFFER.preview, {
+        kind: "variant",
+        variant: "crossfade",
+      })
+      s.answer[0]?.({ kind })
+      await settled()
+      const state = runtime.state.getSnapshot()
+      expect(state.phase === "shown" && state.said?.outcome).toBe(kind)
+      expect(state.phase === "shown" && state.keeping).toBeNull()
+    }
+  )
+
+  it("sends nothing for something else said in no words", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    runtime.open()
+    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    await settled()
+    runtime.pick("runners", OFFER.preview, { kind: "else", said: "   " })
+    expect(s.sent).toEqual([])
+    const state = runtime.state.getSnapshot()
+    expect(state.phase === "shown" && state.said?.outcome).toBe("refused")
+  })
+})
+
+describe("sampleSource (HOST16)", () => {
+  it("holds a pick in memory, a change only as a move, and keeps nothing else", async () => {
+    const sample = sampleSource()
+    const runtime = previewsRuntime(sample, () => AT)
+    runtime.open()
+    await settled()
+    runtime.pick(SAMPLE_CONVERSATION, OFFER.preview, {
+      kind: "variant",
+      variant: "dip-to-black",
+    })
+    await settled()
+    runtime.pick(SAMPLE_CONVERSATION, OFFER.preview, {
+      kind: "variant",
+      variant: "crossfade",
+    })
+    await settled()
+    const state = runtime.state.getSnapshot()
+    expect(state.phase === "shown" && state.said?.outcome).toBe("kept")
+    expect(
+      state.phase === "shown" && state.conversations[0]?.previews[0]?.standing
+    ).toEqual({
+      kind: "variant",
+      variant: "crossfade",
+      rule: "joins-crossfade",
+    })
+    // A second sample starts over: nothing was kept.
+    const fresh = await sampleSource().read()
+    expect(
+      fresh.kind === "read" && fresh.value[0]?.previews[0]?.standing
+    ).toBeNull()
   })
 
-  it("reads back only the owner's approvals", () => {
-    const storage = inMemoryStorage()
-    const forged = pick("runners", "crossfade")
-    storage.setItem(
-      PICKS_KEY,
-      JSON.stringify([{ ...forged, event: { ...forged.event, by: "agent" } }])
+  it("refuses a change that doesn't name the pick it moves", async () => {
+    const sample = sampleSource()
+    const pick = (
+      moves?: string
+    ): Extract<ConversationEvent, { event: "approve" }> => ({
+      event: "approve",
+      by: "owner",
+      at: AT,
+      preview: OFFER.preview,
+      chose: { kind: "variant", variant: "crossfade" },
+      ...(moves === undefined ? {} : { moves }),
+    })
+    expect((await sample.approve(SAMPLE_CONVERSATION, pick())).kind).toBe(
+      "written"
     )
-    expect(phonePicks(() => storage).list("runners")).toEqual([])
-  })
-
-  it("never writes over picks it can't read: they are moved aside first", () => {
-    const storage = inMemoryStorage()
-    storage.setItem(PICKS_KEY, "{not json")
-    phonePicks(() => storage).keep(pick("runners", "crossfade"))
-    expect(valuesIn(storage)).toContain("{not json")
+    expect((await sample.approve(SAMPLE_CONVERSATION, pick())).kind).toBe(
+      "refused"
+    )
+    expect(
+      (await sample.approve(SAMPLE_CONVERSATION, pick(OFFER.preview))).kind
+    ).toBe("written")
   })
 })
 
@@ -121,6 +312,7 @@ describe("the preview card's words", () => {
   it("says every line without the machinery", () => {
     const lines = [
       PICK_WORDS.intro,
+      PICK_WORDS.sample,
       PICK_WORDS.label("How one scene gives way to the next"),
       PICK_WORDS.recommended,
       PICK_WORDS.inIt,
@@ -130,12 +322,18 @@ describe("the preview card's words", () => {
       PICK_WORDS.ownPrompt,
       PICK_WORDS.ownSend,
       PICK_WORDS.noClip,
-      PICK_WORDS.kept.phone,
-      PICK_WORDS.kept.home,
-      PICK_WORDS.kept.sample,
-      PICK_WORDS.sample,
+      PICK_WORDS.reading,
+      PICK_WORDS.again,
+      PICK_WORDS.empty,
+      PICK_WORDS.unshown(1),
+      PICK_WORDS.unshown(2),
+      ...Object.values(PICK_WORDS.nothing),
+      ...Object.values(PICK_WORDS.picked),
       PICK_WORDS.already,
       PICK_WORDS.refused,
+      PICK_WORDS.unpaired,
+      PICK_WORDS.away,
+      PICK_WORDS.busy,
     ]
     expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
   })

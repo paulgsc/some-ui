@@ -2,53 +2,91 @@
  * @vitest-environment jsdom
  *
  * HOST16 (#3558): only a variant's "Use this" picks, never its clip; the
- * pick is kept as the record's approval, saying where; using another later
- * is a new pick that moves the earlier one, both kept; something else takes
- * the owner's words; a sample's picks are held in memory and never kept.
+ * pick goes where picks are kept and the screen says what it came to; using
+ * another later is a new pick that moves the earlier one; something else
+ * takes the owner's words; the sample says it keeps nothing; and when home
+ * can't be read, the screen says why and asks again.
  */
-import type { KeyedStorage } from "@some-ui/core-utils"
-import { inMemoryStorage } from "@some-ui/core-utils"
+import type { HomeWrite } from "@some-ui/soundbites"
+import type { ConversationEvent } from "@some-ui/video-render"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
-import {
-  phonePicks,
-  PICK_WORDS,
-  PICKS_KEY,
-  samplePicks,
-} from "@/lib/preview-pick"
-import type { PreviewPicks } from "@/lib/preview-pick"
-import { PreviewPick } from "@/components/studio/preview-pick"
+import { PICK_WORDS, previewsRuntime, sampleSource } from "@/lib/preview-pick"
+import type { ConversationPreviews, PreviewSource } from "@/lib/preview-pick"
+import { Previews } from "@/components/studio/preview-pick"
 
 afterEach(cleanup)
 
 const AT = "2026-11-26T10:00:00.000Z"
+const OFFER = sampleTransitionsOffer()
+
+/** A home that keeps every pick it is sent, as its record would. */
+function keepingHome(): {
+  readonly source: PreviewSource
+  readonly sent: Array<Extract<ConversationEvent, { event: "approve" }>>
+} {
+  const sent: Array<Extract<ConversationEvent, { event: "approve" }>> = []
+  let standing: ConversationPreviews["previews"][number]["standing"] = null
+  const now = (): ConversationPreviews => ({
+    id: "runners",
+    topic: "The runners",
+    previews: [
+      {
+        ...OFFER,
+        clips: { [OFFER.recommended]: "/clip.mp4" },
+        standing,
+      },
+    ],
+    unshown: 0,
+  })
+  return {
+    sent,
+    source: {
+      where: "home",
+      read: () => Promise.resolve({ kind: "read", value: [now()] }),
+      approve: (_c, event): Promise<HomeWrite<ConversationPreviews | null>> => {
+        sent.push(event)
+        const { chose } = event
+        standing =
+          chose.kind === "else"
+            ? chose
+            : {
+                kind: "variant",
+                variant: chose.variant,
+                rule:
+                  OFFER.variants.find((v) => v.variant === chose.variant)
+                    ?.rule ?? "",
+              }
+        return Promise.resolve({ kind: "written", value: now() })
+      },
+    },
+  }
+}
+
+async function drawn(source: PreviewSource): Promise<void> {
+  const runtime = previewsRuntime(source, () => AT)
+  render(<Previews previews={runtime} />)
+  await act(async () => {
+    runtime.open()
+    await Promise.resolve()
+  })
+}
 
 /** Each variant's Use this, in the order offered. */
 const useButtons = (): Array<HTMLElement> =>
   screen.getAllByRole("button", { name: new RegExp(PICK_WORDS.use) })
 
-const drawn = (
-  storage: KeyedStorage,
-  picks: PreviewPicks = phonePicks(() => storage)
-): PreviewPicks => {
-  render(
-    <PreviewPick
-      offer={sampleTransitionsOffer()}
-      conversation="runners"
-      picks={picks}
-      clipSrc={(v) => (v.variant === "crossfade" ? "/clip.mp4" : null)}
-      now={() => AT}
-    />
-  )
-  return picks
-}
+const settle = (): Promise<void> =>
+  act(async () => {
+    await new Promise((r) => setTimeout(r, 0))
+  })
 
-describe("PreviewPick (HOST16)", () => {
-  it("shows each variant with what's in it, one recommended, its clip muted and looping", () => {
-    drawn(inMemoryStorage())
-    expect(screen.getAllByText(PICK_WORDS.use)).toHaveLength(2)
+describe("Previews (HOST16)", () => {
+  it("shows each variant with what's in it, one recommended, its clip muted and looping", async () => {
+    await drawn(keepingHome().source)
+    expect(useButtons()).toHaveLength(2)
     expect(screen.getByText("New chapter: dip to black")).toBeTruthy()
     expect(screen.getByText(PICK_WORDS.recommended)).toBeTruthy()
     const video = document.querySelector("video")
@@ -57,69 +95,84 @@ describe("PreviewPick (HOST16)", () => {
     expect(screen.getByText(PICK_WORDS.noClip)).toBeTruthy()
   })
 
-  it("picks nothing on a tap of the clip or its card: only Use this picks", () => {
-    const picks = drawn(inMemoryStorage())
-    fireEvent.click(document.querySelector("video")!)
+  it("picks nothing on a tap of the clip or its card: only Use this picks", async () => {
+    const home = keepingHome()
+    await drawn(home.source)
+    const video = document.querySelector("video")
+    if (video === null) throw new Error("no clip")
+    fireEvent.click(video)
     fireEvent.click(screen.getByText("Dip to black"))
     fireEvent.click(screen.getByText("New chapter: dip to black"))
-    expect(picks.list("runners")).toEqual([])
+    expect(home.sent).toEqual([])
     expect(screen.getByText(PICK_WORDS.none)).toBeTruthy()
   })
 
-  it("keeps a pick as the record's approval, says where, and keeps a change as a move", () => {
-    const storage = inMemoryStorage()
-    const picks = drawn(storage)
-    const [crossfade, dip] = useButtons()
-    fireEvent.click(dip)
-    expect(screen.getByText(PICK_WORDS.kept.phone)).toBeTruthy()
-    expect(dip.getAttribute("aria-pressed")).toBe("true")
-    fireEvent.click(dip)
-    expect(screen.getByText(PICK_WORDS.already)).toBeTruthy()
-    fireEvent.click(crossfade)
-    const kept = picks.list("runners") ?? []
-    expect(kept.map((p) => [p.event.chose, p.event.moves])).toEqual([
-      [
-        {
-          kind: "variant",
-          variant: "dip-to-black",
-        },
-        undefined,
-      ],
-      [{ kind: "variant", variant: "crossfade" }, "transitions-1"],
-    ])
-    expect(crossfade.getAttribute("aria-pressed")).toBe("true")
-  })
-
-  it("says the same words again when they are earned again", () => {
-    drawn(inMemoryStorage())
+  it("keeps a pick on home and says so, and sends a change as a move", async () => {
+    const home = keepingHome()
+    await drawn(home.source)
     const [, dip] = useButtons()
     fireEvent.click(dip)
-    fireEvent.click(dip)
+    await settle()
+    expect(screen.getByText(PICK_WORDS.picked.home)).toBeTruthy()
+    expect(useButtons()[1]?.getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(useButtons()[1])
+    expect(screen.getByText(PICK_WORDS.already)).toBeTruthy()
+    fireEvent.click(useButtons()[0])
+    await settle()
+    expect(home.sent.map((e) => [e.chose, e.moves])).toEqual([
+      [{ kind: "variant", variant: "dip-to-black" }, undefined],
+      [{ kind: "variant", variant: "crossfade" }, OFFER.preview],
+    ])
+    expect(useButtons()[0]?.getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("says the same words again when they are earned again", async () => {
+    await drawn(keepingHome().source)
+    fireEvent.click(useButtons()[1])
+    await settle()
+    fireEvent.click(useButtons()[1])
     const first = screen.getByText(PICK_WORDS.already)
-    fireEvent.click(dip)
+    fireEvent.click(useButtons()[1])
     expect(screen.getByText(PICK_WORDS.already)).not.toBe(first)
   })
 
-  it("holds a sample's picks in memory, says so, and keeps nothing", () => {
-    const storage = inMemoryStorage()
-    const picks = drawn(storage, samplePicks())
-    expect(screen.getByText(PICK_WORDS.sample)).toBeTruthy()
-    fireEvent.click(useButtons()[1])
-    expect(screen.getByText(PICK_WORDS.kept.sample)).toBeTruthy()
-    expect(picks.list("runners")).toHaveLength(1)
-    expect(storage.getItem(PICKS_KEY)).toBeNull()
-  })
-
-  it("asks for something else in the owner's words, and keeps them", () => {
-    const picks = drawn(inMemoryStorage())
+  it("asks for something else in the owner's words, and sends them", async () => {
+    const home = keepingHome()
+    await drawn(home.source)
     fireEvent.click(screen.getByText(PICK_WORDS.own))
     fireEvent.change(screen.getByLabelText(PICK_WORDS.ownPrompt), {
       target: { value: "Softer, like a page turning." },
     })
     fireEvent.click(screen.getByText(PICK_WORDS.ownSend))
-    expect(picks.list("runners")?.[0]?.event.chose).toEqual({
+    await settle()
+    expect(home.sent[0]?.chose).toEqual({
       kind: "else",
       said: "Softer, like a page turning.",
     })
+  })
+
+  it("says the sample keeps nothing", async () => {
+    await drawn(sampleSource())
+    expect(screen.getByText(PICK_WORDS.sample)).toBeTruthy()
+    fireEvent.click(useButtons()[1])
+    await settle()
+    expect(screen.getByText(PICK_WORDS.picked.sample)).toBeTruthy()
+  })
+
+  it("says why home's previews aren't shown, and asks again on Try again", async () => {
+    let reads = 0
+    const away: PreviewSource = {
+      where: "home",
+      read: () => {
+        reads += 1
+        return Promise.resolve({ kind: "away" })
+      },
+      approve: () => Promise.resolve({ kind: "away" }),
+    }
+    await drawn(away)
+    expect(screen.getByText(PICK_WORDS.nothing.away)).toBeTruthy()
+    fireEvent.click(screen.getByText(PICK_WORDS.again))
+    await settle()
+    expect(reads).toBe(2)
   })
 })
