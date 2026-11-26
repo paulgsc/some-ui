@@ -110,7 +110,6 @@ const reworded: Line = {
 }
 const retaken: Take = { ...take, take: "take-b" }
 
-/** The alphabet every order is drawn from. */
 /** The agent's preview of the verdict's framing: two variants, each its rule. */
 const OFFER_A: PreviewOffer = {
   preview: "close-up-on-verdict",
@@ -132,6 +131,7 @@ const OFFER_A: PreviewOffer = {
   ],
 }
 
+/** The alphabet every order is drawn from. */
 const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   topic: {
     event: "topic",
@@ -1471,6 +1471,17 @@ describe("conversation/2", () => {
   it.each([
     ["one variant", { variants: OFFER_A.variants.slice(0, 1) }],
     [
+      "four variants, more than three",
+      {
+        variants: ["a", "b", "c", "d"].map((id) => ({
+          ...OFFER_A.variants[0]!,
+          variant: `v-${id}`,
+          rule: `r-${id}`,
+        })),
+        recommended: "v-a",
+      },
+    ],
+    [
       "two variants with one id",
       {
         variants: OFFER_A.variants.map((v) => ({ ...v, variant: "close-up" })),
@@ -1486,6 +1497,20 @@ describe("conversation/2", () => {
     expect(
       PreviewOfferSchema.safeParse({ ...OFFER_A, ...change }).success
     ).toBe(false)
+  })
+
+  it("reads an offer of three variants", () => {
+    const third = {
+      ...OFFER_A.variants[1]!,
+      variant: "wide",
+      rule: "verdict-wide",
+    }
+    expect(
+      PreviewOfferSchema.safeParse({
+        ...OFFER_A,
+        variants: [...OFFER_A.variants, third],
+      }).success
+    ).toBe(true)
   })
 
   it("takes the owner's long spoken notes, free flag ids and a line's evidence", () => {
