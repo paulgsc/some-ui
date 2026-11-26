@@ -26,6 +26,7 @@ import { z } from "zod"
 
 import { defineContract } from "../src/contract"
 
+const LIST = "/conversations"
 const RECORD = "/conversations/:id"
 const PREVIEWS = "/conversations/:id/previews"
 const VIDEO = "/conversations/:id/previews/:preview/:variant/video"
@@ -64,6 +65,19 @@ const PreviewsSchema = z.strictObject({
   unreadable: z.array(z.string()),
 })
 
+const ListSchema = z.strictObject({
+  conversations: z.array(
+    z.strictObject({
+      id: z.string(),
+      topic: z.string().max(80),
+      phase: z.enum(["new", "drafting", "podcast", "flagged", "green-lit"]),
+      offers: z.number().int().nonnegative(),
+      standing: z.number().int().nonnegative(),
+    })
+  ),
+  unreadable: z.array(z.string()),
+})
+
 const RefusedSchema = z.strictObject({
   refused: z.strictObject({
     why: z.literal("out-of-phase"),
@@ -74,6 +88,31 @@ const RefusedSchema = z.strictObject({
 })
 
 export const contracts = [
+  defineContract({
+    id: "conversations.list_signed_out",
+    module: "conversations",
+    method: "GET",
+    path: LIST,
+    summary:
+      "the list of conversations is a subject's: without a session it is a 401",
+    expect: { status: 401 },
+  }),
+
+  defineContract({
+    id: "conversations.list",
+    module: "conversations",
+    session: true,
+    method: "GET",
+    path: LIST,
+    summary:
+      "a subject's conversations, newest first, each with its topic, phase, offers and standing picks, and those that do not replay named apart",
+    expect: {
+      status: 200,
+      schema: ListSchema,
+      unknownFields: "reject",
+    },
+  }),
+
   defineContract({
     id: "conversations.record_signed_out",
     module: "conversations",
