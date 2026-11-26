@@ -487,6 +487,18 @@ export const MOCHI_EMOTIONS: Readonly<Record<EmotionOf<"mochi">, Redraw>> = {
     antennaLeft: -8,
     antennaRight: -8,
   })),
+  // Hungry (C1542): sagging, eyes down, mouth open, antennas drooping and
+  // swaying slowly. Its colour, wan, is `./host-role`'s tint.
+  hungry: posedBy((s) => ({
+    stretch: 0.95,
+    tilt: 2 * wave(s, 3.4),
+    eyeH: 0.86,
+    eyeY: 1.2,
+    mouth: OH,
+    blush: 0.3,
+    antennaLeft: -14 + 3 * wave(s, 3.4),
+    antennaRight: -14 + 3 * wave(s, 3.4, 0.5),
+  })),
   // Hopping: squash at the floor, stretch in the air, eyes shut in a smile.
   happy: posedBy((s) => {
     const h = Math.abs(Math.sin((Math.PI * s) / 0.9))

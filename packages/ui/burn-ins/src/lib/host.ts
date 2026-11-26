@@ -23,6 +23,7 @@ import {
   type Beat,
   type HostFrame as CastHostFrame,
 } from "@some-ui/styles/brand/host"
+import { ROLES } from "@some-ui/styles/brand/host-role"
 import { z } from "zod"
 
 import type { Box, Geometry } from "./geometry"
@@ -46,8 +47,9 @@ const common = {
 }
 
 /**
- * A beat in the cut list: its `character` decides which emotions and
- * ceremonies it may name. Strict, so a ceremony on a character that has none
+ * A beat in the cut list: its `character` decides which emotions,
+ * ceremonies and roles it may name (a beat with no role is the character's
+ * everyday self, HOST7). Strict, so a ceremony on a character that has none
  * is refused rather than dropped.
  */
 const BeatSchema = z.discriminatedUnion("character", [
@@ -55,11 +57,13 @@ const BeatSchema = z.discriminatedUnion("character", [
     ...common,
     character: z.literal("tin-owlet"),
     emotion: z.enum(EMOTIONS["tin-owlet"]),
+    role: z.enum(ROLES["tin-owlet"]).optional(),
   }),
   z.strictObject({
     ...common,
     character: z.literal("mochi"),
     emotion: z.enum(EMOTIONS.mochi),
+    role: z.enum(ROLES.mochi).optional(),
     animation: z.enum(CEREMONIES.mochi).optional(),
   }),
 ])

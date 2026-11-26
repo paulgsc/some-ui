@@ -1,0 +1,19 @@
+{
+  "id": "C1542",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/some-styles/src/brand/host-mochi.ts",
+    "some-ui:packages/some-styles/src/brand/host-tin-owlet.ts"
+  ],
+  "chose": "Hungry joins the shared emotions, for both characters, from the owner's words \"when they're hungry, they can actually change color\". Its colour is wan (C1541). Mochi gets a pose of its own (sagging, eyes down, mouth open, antennas drooping and swaying); Tin Bird moves as it does when taciturn until a rig pass draws its own motion, its colour telling the two apart.",
+  "options": [
+    "Add hungry as a shared emotion, with its tint",
+    "Keep hungry out of the union and show colour by feeling only on the existing emotions",
+    "Add hungry for Mochi alone"
+  ],
+  "gray": "The owner gave hungry as an example of colour by feeling; whether it is a feeling a conversation's beat should name is theirs to say, and adding it puts a new member in the cut list's schema and the Cast wing's grid.",
+  "undo": "Remove hungry from SHARED_EMOTIONS, its drawings in host-mochi.ts and host-tin-owlet.ts, its tint in host-role.ts, its pin in host-tin-owlet.test.ts and its words in apps/www/src/lib/cast/words.ts.",
+  "refs": ["#3531", "#3521"]
+}

@@ -15,6 +15,7 @@ const FIXTURES: ReadonlyArray<CastId> = [
   "cast-mochi",
   "cast-tin-bird",
   "cast-mochi-last",
+  "cast-tin-bird-analyst",
   "cast-look-close-up",
   "cast-look-long",
 ]

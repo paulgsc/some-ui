@@ -2,25 +2,25 @@
 
 exports[`the mochi's loops > draws angry to the same bytes at each moment 1`] = `
 [
-  "e327e561a2aa174d",
-  "1c610b22c01b6186",
-  "05c356c81e416033",
+  "d75a3c8ba3f7fe9b",
+  "febed28b2b6057ca",
+  "755c4b1d4e3991be",
 ]
 `;
 
 exports[`the mochi's loops > draws anxious to the same bytes at each moment 1`] = `
 [
-  "401fffc4a41a23e8",
-  "8debf43e51192d0f",
-  "93766afad625f033",
+  "a8fff524816dc2e3",
+  "475d7b1d87db55ae",
+  "a8ddc72b3f9cdf2d",
 ]
 `;
 
 exports[`the mochi's loops > draws ceremonious to the same bytes at each moment 1`] = `
 [
-  "f491a8c890f235c8",
-  "8b5fb9703af0668a",
-  "4827d44fa449fc7e",
+  "dd0428b09436f2c5",
+  "20ee7db572b56ae1",
+  "1f31e5f79cd3eee9",
 ]
 `;
 
@@ -42,17 +42,17 @@ exports[`the mochi's loops > draws curious to the same bytes at each moment 1`] 
 
 exports[`the mochi's loops > draws frustrated to the same bytes at each moment 1`] = `
 [
-  "cbc60d85516b7f00",
-  "3146056e0fb931c4",
-  "f6a9e15a9dbd0927",
+  "96222f36f0f2c83e",
+  "adeb7e34a33f0ba3",
+  "b1ff20cd0f269232",
 ]
 `;
 
 exports[`the mochi's loops > draws happy to the same bytes at each moment 1`] = `
 [
-  "6a13c1c0e6f05969",
-  "fce39b2538ce630c",
-  "e1834e76a5daeb1d",
+  "a43007cc6921f233",
+  "be3e00c0bdbd5e9e",
+  "92886e2d5a90994c",
 ]
 `;
 
@@ -61,6 +61,14 @@ exports[`the mochi's loops > draws hesitation to the same bytes at each moment 1
   "d40ea2d9fdf71268",
   "32fe1a168c588ce7",
   "9231e8b3113a595d",
+]
+`;
+
+exports[`the mochi's loops > draws hungry to the same bytes at each moment 1`] = `
+[
+  "2c1430cea683559f",
+  "57d9a8c4ffddf824",
+  "cf24719874716c03",
 ]
 `;
 
@@ -90,9 +98,9 @@ exports[`the mochi's loops > draws neutral to the same bytes at each moment 1`] 
 
 exports[`the mochi's loops > draws nfl-celebration to the same bytes at each moment 1`] = `
 [
-  "1c587985a5e0d2f8",
-  "b89af6ad54e0498f",
-  "f52fab24a615c1b7",
+  "f60b68d498a43764",
+  "8a9ace4dc46472dc",
+  "3ab8cf0afddf7419",
 ]
 `;
 

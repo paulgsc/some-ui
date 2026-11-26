@@ -1,0 +1,19 @@
+{
+  "id": "C1543",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/cast/index.ts",
+    "some-ui:apps/www/src/components/cast/index.tsx",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/cast"
+  ],
+  "chose": "The Cast wing shows roles as chips on both screens, under the character chips on Home (every look in the grid drawn in the role chosen) and under the picture on a look's page, with a line saying what the role looks like (its colours, what it wears and holds). The role lives in the page's address with the rest (C1532): nothing is kept.",
+  "options": [
+    "Role chips on both screens, the role in the address",
+    "A third screen listing roles, separate from the feelings",
+    "Keep the owner's last role per character on home"
+  ],
+  "gray": "Where roles sit in the wing and whether a chosen role is remembered are choices the owner sees every time the wing opens.",
+  "undo": "Drop RoleChips from apps/www/src/components/cast/index.tsx and the role search param from the two cast routes.",
+  "refs": ["#3531", "#3521"]
+}

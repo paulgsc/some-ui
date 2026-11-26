@@ -24,6 +24,7 @@ import {
   PLACEMENTS,
   SHOTS,
 } from "@some-ui/styles/brand/host"
+import { ROLES } from "@some-ui/styles/brand/host-role"
 import { describe, expect, it } from "vitest"
 
 const beat = {
@@ -72,6 +73,21 @@ describe("the host's params", () => {
           animation
         ).toEqual([])
       }
+    }
+  )
+
+  it.each(HOST_CHARACTERS)(
+    "take every role of %s, and refuse one it hasn't",
+    (character) => {
+      for (const role of ROLES[character]) {
+        expect(
+          problems({ seed: 1, beats: [{ ...beat, character, role }] }),
+          role
+        ).toEqual([])
+      }
+      expect(
+        problems({ seed: 1, beats: [{ ...beat, character, role: "goalie" }] })
+      ).toHaveLength(1)
     }
   )
 

@@ -5,6 +5,7 @@
  * of its own.
  */
 import type { JSX } from "react"
+import type { Role } from "@some-ui/styles/brand/host-role"
 
 import type { Look } from "@/lib/cast"
 import { lookOf } from "@/lib/cast"
@@ -21,9 +22,20 @@ const look = (who: Look["character"], id: string): Look => {
   return found
 }
 
-const home = (who: Look["character"], page: number): (() => JSX.Element) => {
+const home = (
+  who: Look["character"],
+  page: number,
+  role: Role = "default"
+): (() => JSX.Element) => {
   const Home = (): JSX.Element => (
-    <CastHome who={who} page={page} onWho={noop} onPage={noop} />
+    <CastHome
+      who={who}
+      playing={role}
+      page={page}
+      onWho={noop}
+      onPlaying={noop}
+      onPage={noop}
+    />
   )
   return Home
 }
@@ -32,13 +44,16 @@ export const CAST_FIXTURES = {
   "cast-mochi": routed(home("mochi", 0), "/cast"),
   "cast-tin-bird": routed(home("tin-owlet", 0), "/cast"),
   "cast-mochi-last": routed(home("mochi", 99), "/cast"),
+  "cast-tin-bird-analyst": routed(home("tin-owlet", 0, "analyst"), "/cast"),
   "cast-look-close-up": routed(
     () => (
       <CastLook
         look={look("mochi", "hesitation")}
+        playing="default"
         page={2}
         shot="close-up"
         placement="center"
+        onPlaying={noop}
         onShot={noop}
         onPlacement={noop}
       />
@@ -49,9 +64,11 @@ export const CAST_FIXTURES = {
     () => (
       <CastLook
         look={look("mochi", "nfl-celebration")}
+        playing="fan"
         page={2}
         shot="long"
         placement="bottom-left"
+        onPlaying={noop}
         onShot={noop}
         onPlacement={noop}
       />

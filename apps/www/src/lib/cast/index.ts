@@ -11,8 +11,12 @@
  * for). Each loop is the host's own drawing: until HOST3 and HOST4 fill a
  * character's loops, each look shows that character's idle.
  *
+ * Each look can be seen in each of the character's roles (HOST7, #3531):
+ * a role's theme, costume and prop are `@some-ui/styles/brand/host-role`'s
+ * closed sets, and the feeling's colour lies over the role's theme.
+ *
  * Nothing here is kept: the wing previews, and a choice made in it lives in
- * the page's address alone (C1532).
+ * the page's address alone (C1532, C1543).
  */
 import type {
   Beat,
@@ -29,6 +33,8 @@ import {
   PLACEMENTS,
   SHOTS,
 } from "@some-ui/styles/brand/host"
+import type { Role } from "@some-ui/styles/brand/host-role"
+import { roleOf as castRoleOf, rolesOf } from "@some-ui/styles/brand/host-role"
 
 /** One look a character can take: an emotion, or a ceremony over the ceremonious one. */
 type LookOf<C extends HostCharacter> =
@@ -99,25 +105,49 @@ export const shotOf = (raw: unknown): Shot =>
 export const placementOf = (raw: unknown): Placement =>
   PLACEMENTS.find((placement) => placement === raw) ?? "bottom-right"
 
-/** The look as a scene's one beat, from the start: what a scene with it would draw. */
-export function beatOf(look: Look, shot: Shot, placement: Placement): Beat {
+/** Every role `who` can play, its everyday self first. */
+export const rolesFor = (who: HostCharacter): ReadonlyArray<Role> =>
+  rolesOf(who)
+
+/** `who`'s role named `raw`, or its everyday self. */
+export const roleOf = (who: HostCharacter, raw: unknown): Role =>
+  castRoleOf(who, raw) ?? "default"
+
+/**
+ * The look in `role` as a scene's one beat, from the start: what a scene
+ * with it would draw. A role the character doesn't play is its everyday self.
+ */
+export function beatOf(
+  look: Look,
+  shot: Shot,
+  placement: Placement,
+  role: Role = "default"
+): Beat {
   const frame = { atMs: 0, shot, placement, speaking: false } as const
   switch (look.character) {
     case "tin-owlet": {
+      const inRole = {
+        ...frame,
+        role: castRoleOf("tin-owlet", role) ?? "default",
+      } as const
       return look.kind === "emotion"
-        ? { ...frame, character: "tin-owlet", emotion: look.emotion }
+        ? { ...inRole, character: "tin-owlet", emotion: look.emotion }
         : {
-            ...frame,
+            ...inRole,
             character: "tin-owlet",
             emotion: "ceremonious",
             animation: look.ceremony,
           }
     }
     case "mochi": {
+      const inRole = {
+        ...frame,
+        role: castRoleOf("mochi", role) ?? "default",
+      } as const
       return look.kind === "emotion"
-        ? { ...frame, character: "mochi", emotion: look.emotion }
+        ? { ...inRole, character: "mochi", emotion: look.emotion }
         : {
-            ...frame,
+            ...inRole,
             character: "mochi",
             emotion: "ceremonious",
             animation: look.ceremony,
