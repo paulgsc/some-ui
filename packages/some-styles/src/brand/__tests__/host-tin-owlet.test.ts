@@ -45,12 +45,13 @@ const PINNED: Readonly<Record<EmotionOf<"tin-owlet">, string>> = {
   neutral: "3404a6f8b19491c2",
   curious: "c829eab1835e2f6d",
   taciturn: "c38e590a918c9762",
-  happy: "c12f5b56e48c01c8",
+  happy: "b121ec2f02ce325e",
   perplexed: "ca304da289f003e1",
-  anxious: "4bde04057b6ae288",
-  frustrated: "273a8341fd4566aa",
-  angry: "5988aa676839e148",
-  ceremonious: "cdb880ee485722ae",
+  anxious: "4e24619e52bb73ed",
+  frustrated: "10a6516e452a8c9b",
+  angry: "b15e10b2d89fd43c",
+  ceremonious: "9d7d0453840f73cf",
+  hungry: "1949f24b38429e03",
 }
 
 describe("Tin Bird's loops", () => {

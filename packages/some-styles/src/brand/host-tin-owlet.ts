@@ -457,6 +457,9 @@ export const TIN_OWLET_EMOTIONS: Readonly<
   neutral: drawn(neutral),
   curious: drawn(curious),
   taciturn: drawn(taciturn),
+  // Hungry moves as taciturn does until a rig pass gives it motion of its
+  // own; its colour is what tells it apart (`./host-role`, C1542).
+  hungry: drawn(taciturn),
   happy: drawn(happy),
   perplexed: drawn(perplexed),
   anxious: drawn(anxious),

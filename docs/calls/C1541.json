@@ -1,0 +1,18 @@
+{
+  "id": "C1541",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host-role.ts",
+    "some-ui:packages/some-styles/src/brand/host.ts"
+  ],
+  "chose": "Colour by feeling is a tint over the role's theme, not a theme: each emotion has a tint or none (flushed when angry and throbbing, warming when frustrated, pale when anxious, a glow when happy, gilded when ceremonious, wan when hungry; the quiet and thinking ones none). The role's theme is applied first, then each of its colours is mixed toward the feeling's tint, rising over the loop's first 600 ms. Only the figure and the drawing's own gradients are repainted: the signs a loop shows beside the character and a costume's cloth keep their colours. The beat's role and emotion stay independent choices.",
+  "options": [
+    "A tint mixed over the role's colours, eased in, per emotion",
+    "A theme per emotion, replacing the role's colours",
+    "Tint only the cheeks and eyes, leaving the body its colour"
+  ],
+  "gray": "The owner asked for a colour change when hungry and in a different role, without saying how the two meet; a tint over the theme keeps both readable at once, and changes what every tinted emotion already looked like in the Cast wing.",
+  "undo": "Set an emotion's entry in EMOTION_TINTS to null, or drop the inRole call's tint argument in host.ts (pass null) to remove colour by feeling altogether.",
+  "refs": ["#3531", "#3521"]
+}

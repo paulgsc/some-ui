@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`each character's roles > draws each role as a picture of its own, the same bytes every time 1`] = `
+{
+  "mochi analyst angry": "aacd13b7a609551e",
+  "mochi analyst hungry": "c6a16b47a2450610",
+  "mochi analyst neutral": "9110a6e4247dd742",
+  "mochi coach angry": "6bdc41bcb6f8395e",
+  "mochi coach hungry": "92677558548d19aa",
+  "mochi coach neutral": "2da096789ceb450b",
+  "mochi default angry": "424b2bea358b509a",
+  "mochi default hungry": "26dc97627cdd1e92",
+  "mochi default neutral": "9d8833057f84e4cf",
+  "mochi fan angry": "75e0adb6890e3cf4",
+  "mochi fan hungry": "64149e3b1dbade7b",
+  "mochi fan neutral": "2289025c7997cef5",
+  "mochi presenter angry": "38c760bbcab96d42",
+  "mochi presenter hungry": "76669d7ec2df09db",
+  "mochi presenter neutral": "8fb424d5d2ef580a",
+  "tin-owlet analyst angry": "4d034bb94e01d498",
+  "tin-owlet analyst hungry": "605cd27af1e10976",
+  "tin-owlet analyst neutral": "9b4785aa55787c9e",
+  "tin-owlet coach angry": "df71f6d614ff1942",
+  "tin-owlet coach hungry": "4675bfbc9b66c02e",
+  "tin-owlet coach neutral": "f2f85b327ac1ca2a",
+  "tin-owlet default angry": "059daef00a66abc4",
+  "tin-owlet default hungry": "599a11e02020e617",
+  "tin-owlet default neutral": "946c70684e7178b7",
+  "tin-owlet fan angry": "99bab0d2d41cd6c9",
+  "tin-owlet fan hungry": "7f8d61bd2d8ec797",
+  "tin-owlet fan neutral": "d0294a5da7a688c5",
+  "tin-owlet presenter angry": "d23af06b657f3c9d",
+  "tin-owlet presenter hungry": "589bad75f97397f2",
+  "tin-owlet presenter neutral": "6b2ccaa9e9361b98",
+}
+`;

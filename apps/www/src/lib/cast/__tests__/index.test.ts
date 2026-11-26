@@ -17,6 +17,8 @@ import {
   pageOf,
   pageOfLooks,
   placementOf,
+  roleOf,
+  rolesFor,
   seedOf,
   shotOf,
 } from "@/lib/cast"
@@ -60,6 +62,24 @@ describe("the Cast wing's looks", () => {
         }
       }
     }
+  })
+
+  it("shows each look in each role the character plays, its everyday self when none", () => {
+    for (const who of HOST_CHARACTERS) {
+      const [look] = looksOf(who)
+      expect(beatOf(look, "medium", "center").role).toBe("default")
+      for (const role of rolesFor(who)) {
+        expect(beatOf(look, "medium", "center", role).role).toBe(role)
+        expect(roleOf(who, role)).toBe(role)
+      }
+    }
+    expect(roleOf("mochi", "goalie")).toBe("default")
+    expect(CAST_WORDS.wears("mochi", "analyst")).toBe(
+      "Slate colours, a tie and holding a clipboard"
+    )
+    expect(CAST_WORDS.wears("tin-owlet", "default")).toBe(
+      "Tin colours, nothing worn"
+    )
   })
 
   it("gives each look of a character its own seed", () => {
@@ -119,9 +139,14 @@ describe("the Cast wing's words", () => {
         CAST_WORDS.looks(who),
         ...looksOf(who).flatMap((look) => [
           lookName(look),
-          CAST_WORDS.pictured(look, "long", "top-left"),
+          CAST_WORDS.pictured(look, "coach", "long", "top-left"),
+        ]),
+        ...rolesFor(who).flatMap((role) => [
+          CAST_WORDS.roles[role],
+          CAST_WORDS.wears(who, role),
         ]),
       ]),
+      CAST_WORDS.role,
     ]
     expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
     expect(lines.filter((line) => line.trim() === "")).toEqual([])
@@ -131,6 +156,8 @@ describe("the Cast wing's words", () => {
     for (const who of HOST_CHARACTERS) {
       expect(CAST_WORDS.characters[who].name).not.toContain("-")
       for (const look of looksOf(who)) expect(lookName(look)).not.toContain("-")
+      for (const role of rolesFor(who))
+        expect(CAST_WORDS.wears(who, role)).not.toContain("-")
     }
   })
 })

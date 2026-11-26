@@ -15,6 +15,10 @@
  *   table it is keyed by, which the compiler asks for; never a module of its
  *   own. The cut list's schema (`@some-ui/burn-ins`) is held to the same
  *   lists by its tests, member by member.
+ * - A beat may name the role the character plays (HOST7, `./host-role`):
+ *   a role's theme, costume and prop are closed sets keyed by character,
+ *   and some emotions add a colour of their own over the role's theme. A
+ *   beat with no role is the character's everyday self.
  * - Placement follows C1485: the host is a layer of its own over the card,
  *   in a corner or the center of the area it is given, and reserves no room
  *   in it. Its translucency and fade are its own (`opacity`), and where it
@@ -36,7 +40,13 @@
 
 import { unitIntervalsBySeed } from "@some-ui/core-utils"
 
-import { CAST_VIEW_BOX, castNodes, nodesText, type Character } from "./cast"
+import {
+  CAST_VIEW_BOX,
+  castNodes,
+  nodesText,
+  type CastNode,
+  type Character,
+} from "./cast"
 import {
   clamp,
   lerp,
@@ -49,6 +59,7 @@ import {
   type Spot,
 } from "./host-draw"
 import { MOCHI_CEREMONIES, MOCHI_EMOTIONS } from "./host-mochi"
+import { dressed, roleLookOf, tintAt, type RoleOf } from "./host-role"
 import { TIN_OWLET_EMOTIONS } from "./host-tin-owlet"
 
 /** The host's characters: Tin Bird and Mochi, and no other. */
@@ -74,6 +85,9 @@ export const SHARED_EMOTIONS = [
   "frustrated",
   "angry",
   "ceremonious",
+  // The owner, 2026-11-26: "when they're hungry, they can actually change
+  // color" (C1542). Its colour is `./host-role`'s tint.
+  "hungry",
 ] as const
 
 /** Each character's emotions: the shared ones, then its own beats. */
@@ -131,6 +145,8 @@ export type BeatOf<C extends HostCharacter> = {
   readonly shot: Shot
   readonly placement: Placement
   readonly speaking: boolean
+  /** The role it plays, which gives it a look (`./host-role`); its everyday self when none. */
+  readonly role?: RoleOf<C>
   /** How solid the host is, 0 (gone) to 1, the default: a fade gives the content the stage. */
   readonly opacity?: number
   /** Where the host looks; its idle glances when it is given nowhere. */
@@ -198,6 +214,33 @@ function redrawsOf(beat: Beat): ReadonlyArray<Redraw> {
         EMOTION_DRAWINGS.mochi[beat.emotion],
         ...ceremonyOf("mochi", beat.animation),
       ]
+    }
+    default: {
+      const never: never = beat
+      throw new Error(`no such character: ${JSON.stringify(never)}`)
+    }
+  }
+}
+
+/**
+ * The drawing in the beat's role, coloured by its feeling `loopMs` into its
+ * loop (`./host-role`, HOST7): drawn after the loop, so the costume moves
+ * with the posed figure and the tint lies over the role's theme.
+ */
+function inRole(
+  beat: Beat,
+  nodes: ReadonlyArray<CastNode>,
+  loopMs: number
+): ReadonlyArray<CastNode> {
+  const tint = tintAt(beat.emotion, loopMs)
+  switch (beat.character) {
+    case "tin-owlet": {
+      const look = roleLookOf("tin-owlet", beat.role ?? "default")
+      return dressed("tin-owlet", nodes, look, tint)
+    }
+    case "mochi": {
+      const look = roleLookOf("mochi", beat.role ?? "default")
+      return dressed("mochi", nodes, look, tint)
     }
     default: {
       const never: never = beat
@@ -374,6 +417,7 @@ export function hostSvg(
   // A loop runs on its beat's own time (`hostAt` gives the start of its run).
   for (const redraw of redrawsOf(beat))
     nodes = redraw(nodes, tMs - beat.atMs, moment)
+  nodes = inRole(beat, nodes, tMs - beat.atMs)
   const breath = `translate(48 84) scale(${num(1 - 0.006 * idle.breath)} ${num(1 + 0.013 * idle.breath)}) translate(-48 -84)`
   const body = nodesText(nodes, { ground: "none", glow: false })
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}"><g transform="${breath}">${body}</g></svg>`

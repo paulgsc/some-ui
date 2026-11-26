@@ -1,0 +1,15 @@
+{
+  "id": "C1540",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": ["some-ui:packages/some-styles/src/brand/host-role.ts"],
+  "chose": "A role is a closed union per character, and its look is composed from three closed sets: a theme (a palette swap over the character's named colours), costume pieces worn on named anchors (crown, neck), and an optional prop held at the side. The first members, the same for Mochi and Tin Bird: default (its own colours, nothing worn), analyst (slate colours, a tie, a clipboard), coach (field green, a cap and a whistle), fan (team red, a scarf, a pennant) and presenter (its own colours, a bow tie, a microphone). Themes: honey or tin (each character's own), slate, field, team. Pieces: tie, bow tie, cap, whistle, scarf. Props: clipboard, microphone, pennant. A new role, piece or prop is a new member and its drawing, never a module.",
+  "options": [
+    "Roles composed from closed theme, costume and prop sets, five per character (default, analyst, coach, fan, presenter)",
+    "Themes and costumes as separate choices on the beat, with no role between them",
+    "One fixed costume per character, as the epic's minimal sizing had it"
+  ],
+  "gray": "The owner named the idea (a role has a look: a colour theme, a tie, a tool) but not the members; which roles exist, what each wears and which colours it takes are choices the owner will see on every look in the Cast wing.",
+  "undo": "Edit ROLES, ROLE_LOOKS, PALETTES, PIECES and PROP_DRAWINGS in host-role.ts; the wing's words for each member are in apps/www/src/lib/cast/words.ts.",
+  "refs": ["#3531", "#3521"]
+}
