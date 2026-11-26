@@ -5,7 +5,7 @@
  * while one is on its way, a change of a standing pick (sent as a move),
  * and a read overtaken by a newer one; the sample's own rules; the words.
  */
-import type { HomeRead, HomeWrite } from "@some-ui/soundbites"
+import type { HomeRead } from "@some-ui/soundbites"
 import type { ConversationEvent } from "@some-ui/video-render"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
@@ -22,6 +22,7 @@ import type {
   ConversationPreviews,
   PreviewSource,
   PreviewsState,
+  PreviewWrite,
 } from "@/lib/preview-pick"
 
 const AT = "2026-11-26T10:00:00.000Z"
@@ -138,33 +139,35 @@ function scripted(): {
     (value: HomeRead<ReadonlyArray<ConversationPreviews>>) => void
   >
   readonly sent: Array<Extract<ConversationEvent, { event: "approve" }>>
-  readonly answer: Array<
-    (value: HomeWrite<ConversationPreviews | null>) => void
-  >
+  readonly rereads: Array<(value: HomeRead<ConversationPreviews>) => void>
+  readonly answer: Array<(value: PreviewWrite) => void>
 } {
   const reads: Array<
     (value: HomeRead<ReadonlyArray<ConversationPreviews>>) => void
   > = []
   const sent: Array<Extract<ConversationEvent, { event: "approve" }>> = []
-  const answer: Array<(value: HomeWrite<ConversationPreviews | null>) => void> =
-    []
+  const answer: Array<(value: PreviewWrite) => void> = []
+  const rereads: Array<(value: HomeRead<ConversationPreviews>) => void> = []
   return {
     reads,
     sent,
+    rereads,
     answer,
     source: {
       where: "home",
+      reread: (): Promise<HomeRead<ConversationPreviews>> => {
+        const l = later<HomeRead<ConversationPreviews>>()
+        rereads.push(l.resolve)
+        return l.promise
+      },
       read: (): Promise<HomeRead<ReadonlyArray<ConversationPreviews>>> => {
         const l = later<HomeRead<ReadonlyArray<ConversationPreviews>>>()
         reads.push(l.resolve)
         return l.promise
       },
-      approve: (
-        _conversation,
-        event
-      ): Promise<HomeWrite<ConversationPreviews | null>> => {
+      approve: (_conversation, event): Promise<PreviewWrite> => {
         sent.push(event)
-        const l = later<HomeWrite<ConversationPreviews | null>>()
+        const l = later<PreviewWrite>()
         answer.push(l.resolve)
         return l.promise
       },
@@ -238,6 +241,111 @@ describe("previewsRuntime (HOST16)", () => {
       expect(state.phase === "shown" && state.keeping).toBeNull()
     }
   )
+
+  it("lets a pick kept and not read back stand, so the next follows it", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    runtime.open()
+    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    await settled()
+    runtime.pick("runners", OFFER.preview, {
+      kind: "variant",
+      variant: "dip-to-black",
+    })
+    s.answer[0]?.({ kind: "written", value: null })
+    await settled()
+    const state = runtime.state.getSnapshot()
+    expect(
+      state.phase === "shown" && state.conversations[0]?.previews[0]?.standing
+    ).toEqual({
+      kind: "variant",
+      variant: "dip-to-black",
+      rule: "joins-dip-at-chapters",
+    })
+    // Back to crossfade: sent, as a move.
+    runtime.pick("runners", OFFER.preview, {
+      kind: "variant",
+      variant: "crossfade",
+    })
+    expect(s.sent[1]?.moves).toBe(OFFER.preview)
+  })
+
+  it.each(["refused", "unreadable"] as const)(
+    "reads the conversation again after a pick %s, keeping its words and topic",
+    async (kind) => {
+      const s = scripted()
+      const runtime = previewsRuntime(s.source, () => AT)
+      runtime.open()
+      s.reads[0]?.({ kind: "read", value: [conversation()] })
+      await settled()
+      runtime.pick("runners", OFFER.preview, {
+        kind: "variant",
+        variant: "crossfade",
+      })
+      s.answer[0]?.({ kind })
+      await settled()
+      expect(s.rereads).toHaveLength(1)
+      s.rereads[0]?.({
+        kind: "read",
+        value: {
+          ...conversation({
+            kind: "variant",
+            variant: "dip-to-black",
+            rule: "joins-dip-at-chapters",
+          }),
+          topic: "",
+        },
+      })
+      await settled()
+      const state = runtime.state.getSnapshot()
+      if (state.phase !== "shown") throw new Error("not shown")
+      expect(state.said?.outcome).toBe(kind)
+      expect(state.conversations[0]?.topic).toBe("The runners")
+      expect(state.conversations[0]?.previews[0]?.standing).toMatchObject({
+        variant: "dip-to-black",
+      })
+    }
+  )
+
+  it("names the preview whose rule a pick would set again as the one it moves", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    const again = { ...OFFER, preview: "transitions-2" }
+    runtime.open()
+    s.reads[0]?.({
+      kind: "read",
+      value: [
+        {
+          ...conversation({
+            kind: "variant",
+            variant: "crossfade",
+            rule: "joins-crossfade",
+          }),
+          previews: [
+            {
+              ...OFFER,
+              clips: {},
+              standing: {
+                kind: "variant",
+                variant: "crossfade",
+                rule: "joins-crossfade",
+              },
+            },
+            { ...again, clips: {}, standing: null },
+          ],
+        },
+      ],
+    })
+    await settled()
+    runtime.pick("runners", again.preview, {
+      kind: "variant",
+      variant: "crossfade",
+    })
+    expect(s.sent[0]?.moves).toBe(OFFER.preview)
+    // A rule no other preview sets moves nothing.
+    s.answer[0]?.({ kind: "refused" })
+    await settled()
+  })
 
   it("sends nothing for something else said in no words", async () => {
     const s = scripted()
@@ -332,6 +440,7 @@ describe("the preview card's words", () => {
       ...Object.values(PICK_WORDS.picked),
       PICK_WORDS.already,
       PICK_WORDS.refused,
+      PICK_WORDS.unreadable,
       PICK_WORDS.unpaired,
       PICK_WORDS.away,
       PICK_WORDS.busy,

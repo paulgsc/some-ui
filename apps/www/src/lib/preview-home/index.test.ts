@@ -132,25 +132,28 @@ describe("homePreviews (HOST16)", () => {
     ["a failing answer", [answered(500)], "unreadable"],
     ["home out of reach", [{ kind: "unreachable" } as const], "away"],
     ["an unpaired phone", [{ kind: "unpaired" } as const], "unpaired"],
-    [
-      "an offer outside the record's bounds",
-      [
-        answered(200, list({ id: "runners", offers: 1 })),
-        answered(200, {
-          previews: [
-            {
-              ...servedPreview(),
-              recommended: "wipe",
-            },
-          ],
-          unreadable: [],
-        }),
-      ],
-      "unreadable",
-    ],
   ] as const)("says why it shows nothing: %s", async (_, answers, kind) => {
     start(answers)
     expect((await homePreviews.read()).kind).toBe(kind)
+  })
+
+  it("drops only an offer outside the record's bounds, and counts it unshown", async () => {
+    start([
+      answered(200, list({ id: "runners", offers: 2 })),
+      answered(200, {
+        previews: [
+          servedPreview(),
+          { ...servedPreview(), preview: "bad", recommended: "wipe" },
+        ],
+        unreadable: [],
+      }),
+    ])
+    const read = await homePreviews.read()
+    if (read.kind !== "read") throw new Error(read.kind)
+    expect(read.value[0]?.previews.map((p) => p.preview)).toEqual([
+      OFFER.preview,
+    ])
+    expect(read.value[0]?.unshown).toBe(1)
   })
 
   const pick: Extract<ConversationEvent, { event: "approve" }> = {
@@ -166,7 +169,6 @@ describe("homePreviews (HOST16)", () => {
     async (status) => {
       start([
         answered(status, { kept: {}, events: 7 }),
-        answered(200, list({ id: "runners", offers: 1 })),
         answered(
           200,
           served({
@@ -194,12 +196,30 @@ describe("homePreviews (HOST16)", () => {
     }
   )
 
+  it("says an answer it can't read as such, never as refused", async () => {
+    start([answered(409, "{not json")])
+    expect(await homePreviews.approve("runners", pick)).toEqual({
+      kind: "unreadable",
+    })
+    start([answered(422, {})])
+    expect(await homePreviews.approve("runners", pick)).toEqual({
+      kind: "unreadable",
+    })
+  })
+
+  it("reads one conversation again", async () => {
+    start([answered(200, served())])
+    const again = await homePreviews.reread("runners")
+    expect(asked.asks).toEqual([{ kind: "previews", conversation: "runners" }])
+    expect(again.kind === "read" && again.value.previews).toHaveLength(1)
+  })
+
   it("says a pick home refused, and one kept that couldn't be read back", async () => {
     start([answered(409, { refused: { why: "preview-again" }, at: 7 })])
     expect(await homePreviews.approve("runners", pick)).toEqual({
       kind: "refused",
     })
-    start([answered(201, {}), answered(500), answered(500)])
+    start([answered(201, {}), answered(500)])
     expect(await homePreviews.approve("runners", pick)).toEqual({
       kind: "written",
       value: null,

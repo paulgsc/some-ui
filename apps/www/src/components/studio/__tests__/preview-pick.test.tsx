@@ -7,14 +7,17 @@
  * takes the owner's words; the sample says it keeps nothing; and when home
  * can't be read, the screen says why and asks again.
  */
-import type { HomeWrite } from "@some-ui/soundbites"
 import type { ConversationEvent } from "@some-ui/video-render"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { PICK_WORDS, previewsRuntime, sampleSource } from "@/lib/preview-pick"
-import type { ConversationPreviews, PreviewSource } from "@/lib/preview-pick"
+import type {
+  ConversationPreviews,
+  PreviewSource,
+  PreviewWrite,
+} from "@/lib/preview-pick"
 import { Previews } from "@/components/studio/preview-pick"
 
 afterEach(cleanup)
@@ -48,7 +51,8 @@ function keepingHome(
     source: {
       where: "home",
       read: () => Promise.resolve({ kind: "read", value: [now()] }),
-      approve: (_c, event): Promise<HomeWrite<ConversationPreviews | null>> => {
+      reread: () => Promise.resolve({ kind: "read", value: now() }),
+      approve: (_c, event): Promise<PreviewWrite> => {
         sent.push(event)
         const { chose } = event
         standing =
@@ -189,6 +193,7 @@ describe("Previews (HOST16)", () => {
         reads += 1
         return Promise.resolve({ kind: "away" })
       },
+      reread: () => Promise.resolve({ kind: "away" }),
       approve: () => Promise.resolve({ kind: "away" }),
     }
     await drawn(away)
@@ -196,5 +201,26 @@ describe("Previews (HOST16)", () => {
     fireEvent.click(screen.getByText(PICK_WORDS.again))
     await settle()
     expect(reads).toBe(2)
+  })
+
+  it("gives each card's something else its own field", async () => {
+    const home = keepingHome()
+    const runtime = previewsRuntime(home.source, () => AT)
+    const sample = previewsRuntime(sampleSource(), () => AT)
+    render(
+      <>
+        <Previews previews={runtime} />
+        <Previews previews={sample} />
+      </>
+    )
+    await act(async () => {
+      runtime.open()
+      sample.open()
+      await Promise.resolve()
+    })
+    for (const own of screen.getAllByText(PICK_WORDS.own)) fireEvent.click(own)
+    const fields = screen.getAllByLabelText(PICK_WORDS.ownPrompt)
+    expect(fields).toHaveLength(2)
+    expect(new Set(fields.map((f) => f.id)).size).toBe(2)
   })
 })

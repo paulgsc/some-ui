@@ -12,7 +12,7 @@
  * preview and hands its picks back. Phone build only.
  */
 import type { JSX } from "react"
-import { useState, useSyncExternalStore } from "react"
+import { useId, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button, DecisionPick, Notice, Textarea } from "@some-ui/shared"
 import type { DecisionPicked } from "@some-ui/shared"
@@ -91,6 +91,8 @@ const PreviewPick = ({
 }: PreviewPickProps): JSX.Element => {
   const [asking, setAsking] = useState(false)
   const [words, setWords] = useState("")
+  // Each card's own: several are shown together.
+  const elseId = useId()
   const { standing } = offered
   const picked: DecisionPicked | null = asking
     ? { kind: "own" }
@@ -148,11 +150,11 @@ const PreviewPick = ({
             onPick({ kind: "else", said: words })
           }}
         >
-          <label className="text-sm font-semibold" htmlFor="preview-else">
+          <label className="text-sm font-semibold" htmlFor={elseId}>
             {W.ownPrompt}
           </label>
           <Textarea
-            id="preview-else"
+            id={elseId}
             value={words}
             maxLength={CONVERSATION_POLICY.noteMost}
             onChange={(e) => {
@@ -179,6 +181,9 @@ function pickedWords(outcome: PickOutcome, where: "home" | "sample"): string {
     }
     case "refused": {
       return W.refused
+    }
+    case "unreadable": {
+      return W.unreadable
     }
     case "unpaired":
     case "away":

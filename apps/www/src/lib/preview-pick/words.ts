@@ -41,7 +41,9 @@ export const PICK_WORDS = {
     sample: "Picked on the sample. Nothing here is kept.",
   },
   already: "That's the one you use already.",
-  refused: "That pick wasn't kept. Try again.",
+  refused: "That pick wasn't kept: what home holds is shown again.",
+  unreadable:
+    "This phone couldn't tell whether home kept that pick: what home holds is shown again.",
   unpaired:
     "Picks are kept on home, and this phone isn't paired with home, so nothing was kept.",
   away: "Picks are kept on home, and home can't be reached right now, so nothing was kept. Try again.",

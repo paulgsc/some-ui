@@ -13,7 +13,7 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { jsonOf } from "@some-ui/core-utils"
-import type { HomeRead, HomeWrite } from "@some-ui/soundbites"
+import type { HomeRead } from "@some-ui/soundbites"
 import type { KeptChoice } from "@some-ui/video-render"
 import { PreviewOfferSchema } from "@some-ui/video-render"
 import { z } from "zod"
@@ -21,7 +21,11 @@ import { z } from "zod"
 import type { PreviewsAsk } from "@/lib/home-link/preview-reads"
 import { askPreviews } from "@/lib/home-link/preview-reads"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
-import type { ConversationPreviews, PreviewSource } from "@/lib/preview-pick"
+import type {
+  ConversationPreviews,
+  PreviewSource,
+  PreviewWrite,
+} from "@/lib/preview-pick"
 
 /** The most conversations the screen reads previews for, newest first. */
 export const CONVERSATIONS_MOST = 10
@@ -108,7 +112,7 @@ function shown(
   id: string,
   topic: string,
   served: z.infer<typeof PreviewsSchema>
-): ConversationPreviews | null {
+): ConversationPreviews {
   const previews = served.previews.map((p) => {
     const offer = PreviewOfferSchema.safeParse({
       preview: p.preview,
@@ -133,14 +137,15 @@ function shown(
             }
     return { ...offer.data, clips: {}, standing }
   })
-  return previews.includes(null)
-    ? null
-    : {
-        id,
-        topic,
-        previews: previews.filter((p) => p !== null),
-        unshown: served.unreadable.length,
-      }
+  // An offer outside the record's bounds is one not shown, never the
+  // whole conversation.
+  const readable = previews.filter((p) => p !== null)
+  return {
+    id,
+    topic,
+    previews: readable,
+    unshown: served.unreadable.length + previews.length - readable.length,
+  }
 }
 
 async function conversation(
@@ -151,10 +156,16 @@ async function conversation(
     { kind: "previews", conversation: id },
     PreviewsSchema
   )
-  if (served.kind !== "read") return served
-  const value = shown(id, topic, served.value)
-  return value === null ? { kind: "unreadable" } : { kind: "read", value }
+  return served.kind === "read"
+    ? { kind: "read", value: shown(id, topic, served.value) }
+    : served
 }
+
+/** `POST /conversations/:id/events` refused: the record's why, and where it would have been kept. */
+const RefusedSchema = z.object({
+  refused: z.object({ why: z.string().min(1) }),
+  at: z.number().int().nonnegative(),
+})
 
 export const homePreviews: PreviewSource = {
   where: "home",
@@ -173,18 +184,20 @@ export const homePreviews: PreviewSource = {
     }
     return { kind: "read", value: out }
   },
-  async approve(id, event): Promise<HomeWrite<ConversationPreviews | null>> {
+  reread: (id) => conversation(id, ""),
+  async approve(id, event): Promise<PreviewWrite> {
     const asked = await ask({ kind: "event", conversation: id, event })
     if (asked.kind !== "answered") return asked
+    const { status, body } = asked.answer
+    // 409: the record refused it (or home's clips aren't made), as it says.
+    if (status === 409)
+      return bodyAs(RefusedSchema, body) === null
+        ? { kind: "unreadable" }
+        : { kind: "refused" }
     // 201 kept; 200 the log's last already (a retried send).
-    if (asked.answer.status !== 201 && asked.answer.status !== 200)
-      return { kind: "refused" }
-    const list = await read({ kind: "conversations" }, ListSchema)
-    const topic =
-      list.kind === "read"
-        ? (list.value.conversations.find((c) => c.id === id)?.topic ?? "")
-        : ""
-    const now = await conversation(id, topic)
+    if (status !== 201 && status !== 200) return { kind: "unreadable" }
+    // The topic is the screen's own: the read back keeps it.
+    const now = await conversation(id, "")
     return { kind: "written", value: now.kind === "read" ? now.value : null }
   },
 }

@@ -13,21 +13,30 @@ import type { Readable } from "@/lib/cell"
 import { cell } from "@/lib/cell"
 
 import type { ConversationPreviews, PreviewsState } from "./model"
-import { previewIn, READING, stepPreviews } from "./model"
+import { movesFor, previewIn, READING, stepPreviews } from "./model"
+
+/**
+ * How keeping a pick went: what is kept now (null when it was kept and
+ * couldn't be read back), why not, or an answer this phone can't read.
+ */
+export type PreviewWrite =
+  | HomeWrite<ConversationPreviews | null>
+  | { readonly kind: "unreadable" }
 
 /** Where previews are read from and picks are kept. */
 export type PreviewSource = {
   /** Home, or a sample whose picks are held in memory and never kept. */
   readonly where: "home" | "sample"
   readonly read: () => Promise<HomeRead<ReadonlyArray<ConversationPreviews>>>
-  /**
-   * Keeps `event` on `conversation`: the conversation as it stands after
-   * (null when it was kept and couldn't be read back), or why not.
-   */
+  /** One conversation read again, as where picks are kept now holds it. */
+  readonly reread: (
+    conversation: string
+  ) => Promise<HomeRead<ConversationPreviews>>
+  /** Keeps `event` on `conversation`. */
   readonly approve: (
     conversation: string,
     event: Extract<ConversationEvent, { event: "approve" }>
-  ) => Promise<HomeWrite<ConversationPreviews | null>>
+  ) => Promise<PreviewWrite>
 }
 
 export type PreviewsRuntime = {
@@ -66,16 +75,22 @@ export function previewsRuntime(
     preview: string,
     choice: PreviewPick
   ): void => {
-    const offered = previewIn(state.getSnapshot(), conversation, preview)
+    const before = state.getSnapshot()
+    const offered = previewIn(before, conversation, preview)
+    const held =
+      before.phase === "shown"
+        ? before.conversations.find((c) => c.id === conversation)
+        : undefined
     dispatch({ kind: "pick", conversation, preview, pick: choice })
     const current = state.getSnapshot()
-    if (offered === undefined || current.phase !== "shown") return
-    if (current.keeping === null) return
+    if (offered === undefined || held === undefined) return
+    if (current.phase !== "shown" || current.keeping === null) return
+    const moves = movesFor(held, preview, choice)
     const event = approveEvent(
       offered,
       choice,
       now(),
-      offered.standing === null ? {} : { moves: preview }
+      moves === undefined ? {} : { moves }
     )
     if (event === null) {
       dispatch({ kind: "picked", outcome: "refused" })
@@ -89,6 +104,13 @@ export function previewsRuntime(
             ? { kind: "picked", outcome: "kept" }
             : { kind: "picked", outcome: "kept", now: written.value }
       )
+      // Refused, or not read: read again, so the screen and the next pick
+      // follow what is kept now.
+      if (written.kind === "refused" || written.kind === "unreadable")
+        void source.reread(conversation).then((again) => {
+          if (again.kind === "read")
+            dispatch({ kind: "refreshed", now: again.value })
+        })
     })
   }
   return { where: source.where, state, open, pick }

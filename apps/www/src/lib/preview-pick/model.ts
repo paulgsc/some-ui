@@ -44,6 +44,8 @@ export type PickOutcome =
   | "already"
   /** Where picks are kept didn't take it. */
   | "refused"
+  /** Its answer couldn't be read: whether it was kept is read again. */
+  | "unreadable"
   | "unpaired"
   | "away"
   | "busy"
@@ -88,6 +90,8 @@ export type PreviewsEvent =
       /** The conversation as it stands now, when where picks are kept said. */
       readonly now?: ConversationPreviews
     }
+  /** A conversation read again, as where picks are kept now holds it. */
+  | { readonly kind: "refreshed"; readonly now: ConversationPreviews }
 
 export const READING: PreviewsState = { phase: "reading" }
 
@@ -102,6 +106,55 @@ const said = (
   state: Extract<PreviewsState, { phase: "shown" }>,
   outcome: PickOutcome
 ): PickSaid => ({ n: (state.said?.n ?? 0) + 1, outcome })
+
+/**
+ * `conversations` with `now` in its place; the topic the screen holds
+ * kept, since a read back may not carry it.
+ */
+const withNow = (
+  conversations: ReadonlyArray<ConversationPreviews>,
+  now: ConversationPreviews
+): ReadonlyArray<ConversationPreviews> =>
+  conversations.map((c) =>
+    c.id === now.id
+      ? { ...now, topic: c.topic === "" ? now.topic : c.topic }
+      : c
+  )
+
+/** `pick` as the choice that stands, its rule its variant's. */
+const keptOf = (
+  offered: OfferedPreview,
+  pick: PreviewPick
+): KeptChoice | null => {
+  if (pick.kind === "else") return { kind: "else", said: pick.said.trim() }
+  const variant = offered.variants.find((v) => v.variant === pick.variant)
+  return variant === undefined
+    ? offered.standing
+    : { kind: "variant", variant: variant.variant, rule: variant.rule }
+}
+
+/**
+ * The approval a pick on `preview` moves, if any (C1581): its own standing
+ * pick, else another standing preview of `conversation` that sets the rule
+ * this pick would, since the record refuses a rule set twice unnamed.
+ */
+export function movesFor(
+  conversation: ConversationPreviews,
+  preview: string,
+  pick: PreviewPick
+): string | undefined {
+  const offered = conversation.previews.find((p) => p.preview === preview)
+  if (offered === undefined) return undefined
+  if (offered.standing !== null) return preview
+  if (pick.kind !== "variant") return undefined
+  const rule = offered.variants.find((v) => v.variant === pick.variant)?.rule
+  return conversation.previews.find(
+    (p) =>
+      p.preview !== preview &&
+      p.standing?.kind === "variant" &&
+      p.standing.rule === rule
+  )?.preview
+}
 
 /** The preview `preview` of conversation `conversation`, where it is shown. */
 export function previewIn(
@@ -152,16 +205,38 @@ export function stepPreviews(
     }
     case "picked": {
       if (state.phase !== "shown" || state.keeping === null) return state
+      const { keeping } = state
       const { now } = event
+      // Kept, and not read back: the pick stands as sent, so the next pick
+      // follows it (its move, or "already").
+      const conversations =
+        now !== undefined
+          ? withNow(state.conversations, now)
+          : event.outcome === "kept"
+            ? state.conversations.map((c) =>
+                c.id !== keeping.conversation
+                  ? c
+                  : {
+                      ...c,
+                      previews: c.previews.map((p) =>
+                        p.preview === keeping.preview
+                          ? { ...p, standing: keptOf(p, keeping.pick) }
+                          : p
+                      ),
+                    }
+              )
+            : state.conversations
       return {
         phase: "shown",
-        conversations:
-          now === undefined
-            ? state.conversations
-            : state.conversations.map((c) => (c.id === now.id ? now : c)),
+        conversations,
         keeping: null,
         said: said(state, event.outcome),
       }
+    }
+    case "refreshed": {
+      return state.phase === "shown"
+        ? { ...state, conversations: withNow(state.conversations, event.now) }
+        : state
     }
     default: {
       return assertNever(event)

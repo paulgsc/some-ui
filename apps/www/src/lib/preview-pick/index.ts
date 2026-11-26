@@ -10,12 +10,11 @@
  * transitions preview, its picks held in memory for as long as the screen
  * is open and never kept, since a pick on a fixture is no approval.
  */
-import type { HomeWrite } from "@some-ui/soundbites"
 import type { KeptChoice, PreviewOffer } from "@some-ui/video-render"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
 
 import type { ConversationPreviews } from "./model"
-import type { PreviewSource } from "./runtime"
+import type { PreviewSource, PreviewWrite } from "./runtime"
 
 export { PICK_WORDS } from "./words"
 export type {
@@ -25,7 +24,7 @@ export type {
   PreviewsState,
 } from "./model"
 export { stepPreviews } from "./model"
-export type { PreviewSource, PreviewsRuntime } from "./runtime"
+export type { PreviewSource, PreviewsRuntime, PreviewWrite } from "./runtime"
 export { previewsRuntime } from "./runtime"
 
 /** The sample's one conversation. */
@@ -49,10 +48,8 @@ export function sampleSource(
   return {
     where: "sample",
     read: () => Promise.resolve({ kind: "read", value: [now()] }),
-    approve: (
-      conversation,
-      event
-    ): Promise<HomeWrite<ConversationPreviews | null>> => {
+    reread: () => Promise.resolve({ kind: "read", value: now() }),
+    approve: (conversation, event): Promise<PreviewWrite> => {
       const refused = { kind: "refused" } as const
       if (
         conversation !== SAMPLE_CONVERSATION ||

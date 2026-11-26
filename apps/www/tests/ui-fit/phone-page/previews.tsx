@@ -47,6 +47,7 @@ const sampled = (standing: KeptChoice | null): PreviewSource => ({
 const away: PreviewSource = {
   where: "home",
   read: () => Promise.resolve({ kind: "away" }),
+  reread: () => Promise.resolve({ kind: "away" }),
   approve: () => Promise.resolve({ kind: "away" }),
 }
 
