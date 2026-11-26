@@ -419,19 +419,22 @@ describe("one drawing from two poses (#3564)", () => {
 })
 
 describe("a note in flight survives a move (HN1, #3580)", () => {
-  const PLACES = ["bottom-left", "top-right", "center", "bottom-right"] as const
-
-  /** `words` said by one Mochi beat, or split at `cuts` into beats that keep its emotion but move. */
+  /**
+   * `words` said by one Mochi beat, or split at `cuts` into beats that keep
+   * its emotion but move: each beat takes its shot and placement from
+   * `SHOTS` × `PLACEMENTS` by `seed`, so the splits change both.
+   */
   const split = (
     words: ReadonlyArray<SpokenWordOf<"mochi">>,
-    cuts: ReadonlyArray<number>
+    cuts: ReadonlyArray<number>,
+    seed = 0
   ): ReadonlyArray<Beat> =>
     [0, ...cuts].map((atMs, k) => ({
       atMs,
       character: "mochi",
       emotion: "curious",
-      shot: "medium",
-      placement: PLACES[k % PLACES.length] ?? "center",
+      shot: SHOTS[(seed + k) % SHOTS.length] ?? "medium",
+      placement: PLACEMENTS[(seed + 2 * k) % PLACEMENTS.length] ?? "center",
       speaking: true,
       words: words.filter(
         (w) => w.startMs >= atMs && w.startMs < (cuts[k] ?? Infinity)
@@ -453,15 +456,16 @@ describe("a note in flight survives a move (HN1, #3580)", () => {
       )
     )
     expect(words[57]?.startMs).toBe(17_970)
-    for (let t = 19_000; t <= 20_000; t += 50)
-      expect(noteAt(split(words, [19_000]), t)).toBe(
-        noteAt(split(words, []), t)
-      )
-    expect(noteAt(split(words, [19_000]), 19_100)).toBe("happy 1.000000")
+    for (let seed = 0; seed < SHOTS.length * PLACEMENTS.length; seed++) {
+      const moved = split(words, [19_000], seed)
+      for (let t = 19_000; t <= 20_000; t += 50)
+        expect(noteAt(moved, t)).toBe(noteAt(split(words, []), t))
+      expect(noteAt(moved, 19_100)).toBe("happy 1.000000")
+    }
   })
 
-  it("shows the same note moved or not, over seeded streams and seeded moves", () => {
-    for (let seed = 0; seed < 40; seed++) {
+  it("shows the same note moved or not, over seeded streams, moves, shots and placements", () => {
+    for (let seed = 0; seed < 60; seed++) {
       const words =
         seed % 2 === 0
           ? wordsBy(seed, 90, 0, (i, r) =>
@@ -485,7 +489,7 @@ describe("a note in flight survives a move (HN1, #3580)", () => {
         .sort((a, b) => a - b)
         .filter((c, k, all) => k === 0 || c - (all[k - 1] ?? 0) > 500)
       const alone = split(words, [])
-      const moved = split(words, cuts)
+      const moved = split(words, cuts, seed)
       for (let t = 0; t < end; t += 100)
         expect(noteAt(moved, t), `seed ${String(seed)} at ${String(t)}`).toBe(
           noteAt(alone, t)
