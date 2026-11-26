@@ -175,11 +175,11 @@ describe("colour by feeling", () => {
     expect(tin).not.toContain('stop-color="#4ff0d8"')
   })
 
-  it("throbs in step with the Cast wing's loop, so its wrap meets its start", () => {
-    expect(tintAmountAt("angry", 6800 + 900)).toBeCloseTo(
-      tintAmountAt("angry", 900 + 8 * 850)
-    )
-    expect((6800 / (1000 * EMOTION_TINTS.angry.pulse.beatS)) % 1).toBeCloseTo(0)
+  it("throbs a whole number of times in the Cast wing's 6.8 s loop", () => {
+    // The loop starts every feeling again, rise included; the throb's own
+    // phase just never jumps at the seam.
+    const beats = 6800 / (1000 * EMOTION_TINTS.angry.pulse.beatS)
+    expect(beats).toBeCloseTo(Math.round(beats))
   })
 
   it("mixes colours channel by channel, rounded", () => {

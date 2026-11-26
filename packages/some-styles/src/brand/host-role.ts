@@ -35,14 +35,18 @@ import { el, INK, type CastNode, type Character } from "./cast"
 import { clamp, num, smooth, TAU } from "./host-draw"
 
 /** A table of named colours, keyed only by the cast's characters. */
-type ColoursOf<T extends Partial<Record<Character, string>>> = T
+type ColoursOf<
+  T extends { readonly [K in keyof T]: K extends Character ? string : never },
+> = T
 
 /**
  * Each character that plays roles, and the names of its colours as
  * `./cast` draws them. Nothing below assumes how many there are: a
  * character joins by an entry here and one in each table keyed by it (its
- * colours, themes, anchors, hand and roles), which the compiler asks for,
- * with no new code path. Today that is the essays' two.
+ * colours, themes, anchors, hand and roles), which the compiler asks for.
+ * The one code it touches is `./host`'s `inRole`, a case per character that
+ * narrows the beat (its `never` default asks for it). Today that is the
+ * essays' two.
  */
 type NamedColours = ColoursOf<{
   readonly mochi: "light" | "body" | "shade" | "feet" | "arm" | "glow" | "rim"
