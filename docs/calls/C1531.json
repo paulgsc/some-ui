@@ -1,0 +1,15 @@
+{
+  "id": "C1531",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/cast/words.ts",
+    "some-ui:apps/www/src/lib/wings/index.ts",
+    "some-ui:apps/mobile/android/app/src/main/res/values/wings.xml"
+  ],
+  "chose": "The two characters' wing is called \"Cast\": its launcher label, the foyer's name for it, and the header's. It is a wing of its own beside Practice, Self, Studio and Jobs, with its own launcher icon (.WingCast, opening /cast) on a plate of its own colour, never folded into Studio or Settings (the owner, 2026-11-24). The name is the working name the epic used, and the owner said they did not know what to call it, so it is theirs to move: the label lives in wings.xml and the words table, and the path and alias are not said on screen. A rename keeps the alias .WingCast and the path /cast, since a launcher keys its icons by the alias's name.",
+  "options": ["Cast", "Characters", "Wardrobe", "Mochi & Tin Bird"],
+  "gray": "The owner sees the name on the launcher and in the foyer, and left it open (\"I don't know what we'd call it, but whatever\"); no check or earlier decision names it.",
+  "undo": "Change wing_cast in apps/mobile/android/app/src/main/res/values/wings.xml and CAST_WORDS.wing.name in apps/www/src/lib/cast/words.ts; keep .WingCast and /cast.",
+  "refs": ["#3532", "#3521"]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "C1534",
+  "made": "2026-11-25",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/components/cast/index.tsx",
+    "some-ui:apps/www/src/lib/cast/index.ts",
+    "some-ui:apps/www/src/lib/cast/words.ts"
+  ],
+  "chose": "The wing's two screens. Home: a choice of Mochi or Tin Bird (Tin Bird first, as the host's list orders them), then every look of that character as a live close-up loop, six to a page (two across, three across held sideways), turned by the phone's one pager beside its Previous and Next; a look is each emotion, then each ceremony played over the ceremonious emotion (Mochi's NFL celebration, called \"Touchdown celebration\"). A look's page: that look over a sample card from a video, with the shot (close-up, medium, long) and the corner (each corner, the center) chosen by chips, opening at medium, bottom right. Each look has its own fixed seed, so it always moves the same way and the grid does not blink as one. Mochi's own beats read as Asking, Confused, Taking issue, A hunch and Hesitant.",
+  "options": [
+    "A paged grid of looks, and a look page with shot and corner chips",
+    "Every look in one long scroll",
+    "A look page paging through all fifteen shot and corner pairs"
+  ],
+  "gray": "The layout, the defaults and the words for each emotion are what the owner sees each time they open the wing; none is the owner's yet.",
+  "undo": "Edit LOOKS_PER_PAGE, shotOf's and placementOf's defaults in apps/www/src/lib/cast/index.ts, or the words in apps/www/src/lib/cast/words.ts.",
+  "refs": ["#3532"]
+}

@@ -118,7 +118,7 @@ if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
   }
   # Every entry cold (the app stopped first), then every entry warm (the
   # app running on the update page): OWV1's whole entry x start family.
-  entries=(plain WingPractice WingSelf WingStudio WingJobs shortcut)
+  entries=(plain WingPractice WingSelf WingStudio WingJobs WingCast shortcut)
   for entry in "${entries[@]}"; do
     adb shell am force-stop "$pkg"
     enter "$entry"

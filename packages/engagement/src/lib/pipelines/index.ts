@@ -1,5 +1,6 @@
 import type { Pipeline, Unmeasured } from "@engagement/lib/registry"
 
+import { CAST } from "./cast"
 import { JOBS } from "./jobs"
 import { OPERATE } from "./operate"
 import { PRACTICE } from "./practice"
@@ -12,6 +13,7 @@ export const PIPELINES: ReadonlyArray<Pipeline> = [
   ...SELF,
   ...STUDIO,
   ...JOBS,
+  ...CAST,
   ...OPERATE,
 ]
 

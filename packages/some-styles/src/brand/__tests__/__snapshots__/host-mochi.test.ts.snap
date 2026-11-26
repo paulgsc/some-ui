@@ -1,0 +1,121 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the mochi's loops > draws angry to the same bytes at each moment 1`] = `
+[
+  "e327e561a2aa174d",
+  "1c610b22c01b6186",
+  "05c356c81e416033",
+]
+`;
+
+exports[`the mochi's loops > draws anxious to the same bytes at each moment 1`] = `
+[
+  "401fffc4a41a23e8",
+  "8debf43e51192d0f",
+  "93766afad625f033",
+]
+`;
+
+exports[`the mochi's loops > draws ceremonious to the same bytes at each moment 1`] = `
+[
+  "f491a8c890f235c8",
+  "8b5fb9703af0668a",
+  "4827d44fa449fc7e",
+]
+`;
+
+exports[`the mochi's loops > draws confusion to the same bytes at each moment 1`] = `
+[
+  "14376086282a6288",
+  "32ded9acedce76c9",
+  "bddb9810cb23aa3e",
+]
+`;
+
+exports[`the mochi's loops > draws curious to the same bytes at each moment 1`] = `
+[
+  "2774d975ee19ba68",
+  "d4fde29da0209e27",
+  "fe598fdc1a06d9f0",
+]
+`;
+
+exports[`the mochi's loops > draws frustrated to the same bytes at each moment 1`] = `
+[
+  "cbc60d85516b7f00",
+  "3146056e0fb931c4",
+  "f6a9e15a9dbd0927",
+]
+`;
+
+exports[`the mochi's loops > draws happy to the same bytes at each moment 1`] = `
+[
+  "6a13c1c0e6f05969",
+  "fce39b2538ce630c",
+  "e1834e76a5daeb1d",
+]
+`;
+
+exports[`the mochi's loops > draws hesitation to the same bytes at each moment 1`] = `
+[
+  "d40ea2d9fdf71268",
+  "32fe1a168c588ce7",
+  "9231e8b3113a595d",
+]
+`;
+
+exports[`the mochi's loops > draws intuition to the same bytes at each moment 1`] = `
+[
+  "a11e74a98862e650",
+  "d7029caa892767bb",
+  "8dc55042f9f6a7ef",
+]
+`;
+
+exports[`the mochi's loops > draws issue to the same bytes at each moment 1`] = `
+[
+  "8778ccb9f596506a",
+  "4bd3a62b8dedcce4",
+  "4227072ea68cfcc4",
+]
+`;
+
+exports[`the mochi's loops > draws neutral to the same bytes at each moment 1`] = `
+[
+  "7d0196189cd53142",
+  "b4fe88b5891465f4",
+  "94f77b16f03b86d6",
+]
+`;
+
+exports[`the mochi's loops > draws nfl-celebration to the same bytes at each moment 1`] = `
+[
+  "1c587985a5e0d2f8",
+  "b89af6ad54e0498f",
+  "f52fab24a615c1b7",
+]
+`;
+
+exports[`the mochi's loops > draws perplexed to the same bytes at each moment 1`] = `
+[
+  "ae8075ecfb92bff2",
+  "3e654287805232ce",
+  "daa2ae23c21e05a8",
+]
+`;
+
+exports[`the mochi's loops > draws question to the same bytes at each moment 1`] = `
+[
+  "dcb7a7034ebfdb2b",
+  "b9351205aef4f1eb",
+  "825d625b82a75175",
+]
+`;
+
+exports[`the mochi's loops > draws taciturn to the same bytes at each moment 1`] = `
+[
+  "90b6a6a68beb9e80",
+  "fa97aa4ddc2ae144",
+  "10d11bfd28a97251",
+]
+`;

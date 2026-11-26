@@ -1,0 +1,18 @@
+{
+  "id": "C1525",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host-tin-owlet.ts",
+    "some-ui:packages/some-styles/src/brand/host-draw.ts"
+  ],
+  "chose": "Tin Bird points with the wing on the side of the point whenever its beat names `lookAt`, over whatever that emotion does with that wing; the beat gains no field of its own for pointing. HOST1's beat carries one point, where the host looks, and a loop now receives it as a Moment (`aim`, `pointing`) beside the time.",
+  "options": [
+    "Point the near wing at the beat's lookAt, whatever the emotion (no new field)",
+    "Add a separate `pointAt` to the beat, so looking and pointing are two choices",
+    "Leave pointing out until a pose union exists, as the prototype had (idle, look, point, …)"
+  ],
+  "gray": "Looking and pointing are separate poses in the prototype, and a beat that only looks at the content now also points at it; the owner will see that in every preview that names a point. A separate field would add a member to the burn-ins' cut-list schema, which its tests hold member by member.",
+  "undo": "In host-tin-owlet.ts, drop the `pointWith` override in `posed` (or key it on a new beat field), and remove `pointing` from Moment in host-draw.ts.",
+  "refs": ["#3521", "#3524"]
+}

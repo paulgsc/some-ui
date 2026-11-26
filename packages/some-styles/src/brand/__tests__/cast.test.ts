@@ -50,6 +50,104 @@ describe("the cast", () => {
     const parts = walk(castNodes("mochi", (name) => name)).flatMap((n) =>
       typeof n.attrs["data-part"] === "string" ? [n.attrs["data-part"]] : []
     )
-    expect(parts).toEqual(["antenna-left", "antenna-right", "eyes"])
+    expect(parts).toEqual([
+      "shadow",
+      "figure",
+      "antenna-left",
+      "antenna-right",
+      "arm-left",
+      "arm-right",
+      "face",
+      "cheeks",
+      "eyes",
+      "eyes-happy",
+      "brow-left",
+      "brow-right",
+      "mouth",
+      "football",
+      "question",
+      "bang",
+      "bulb",
+      "swirl",
+      "dot-1",
+      "dot-2",
+      "dot-3",
+      "sweat",
+      "vein",
+      "puff",
+      "spark-1",
+      "spark-2",
+      "spark-3",
+    ])
+  })
+
+  it("names the tin owlet's moving parts, tucked in the still drawing", () => {
+    const parts = walk(castNodes("tin-owlet", (name) => name)).flatMap((n) =>
+      typeof n.attrs["data-part"] === "string" ? [n.attrs["data-part"]] : []
+    )
+    expect(parts).toEqual([
+      "figure",
+      "wing-left",
+      "wing-right",
+      "key",
+      "tuft-left",
+      "tuft-right",
+      "eyes",
+      "lid-left",
+      "low-lid-left",
+      "lid-right",
+      "low-lid-right",
+      "mouth",
+      "beak-low",
+    ])
+  })
+
+  it("draws the tin owlet's moving parts tucked: wings folded, lids, mouth and lower beak unmoved", () => {
+    const moves = walk(castNodes("tin-owlet", (name) => name)).flatMap((n) =>
+      typeof n.attrs["data-part"] === "string"
+        ? [[n.attrs["data-part"], n.attrs.transform ?? null]]
+        : []
+    )
+    expect(Object.fromEntries(moves)).toEqual({
+      figure: null,
+      "wing-left": "rotate(0)",
+      "wing-right": "rotate(180)",
+      key: null,
+      "tuft-left": null,
+      "tuft-right": null,
+      eyes: null,
+      "lid-left": null,
+      "low-lid-left": null,
+      "lid-right": null,
+      "low-lid-right": null,
+      mouth: null,
+      "beak-low": null,
+    })
+  })
+
+  it("draws the still mochi as it was: its loops' parts are clear until a loop shows them", () => {
+    // The shapes a still mochi shows, each with the opacity it shows at,
+    // groups that only name a part looked through.
+    const visible = (
+      nodes: ReadonlyArray<CastNode>,
+      opacity = 1
+    ): ReadonlyArray<unknown> =>
+      nodes.flatMap((node) => {
+        const { opacity: own, "data-part": _part, ...rest } = node.attrs
+        const shown = opacity * (own === undefined ? 1 : Number(own))
+        if (shown === 0) return []
+        if (node.tag === "g" && Object.keys(rest).length === 0)
+          return visible(node.children ?? [], shown)
+        return [
+          {
+            tag: node.tag,
+            ...rest,
+            ...(shown === 1 ? {} : { opacity: shown }),
+            children: visible(node.children ?? []),
+          },
+        ]
+      })
+    // Pinned to the drawing before the mochi's loops (HOST4) gave it parts.
+    expect(visible(castNodes("mochi", (name) => name))).toMatchSnapshot()
   })
 })
