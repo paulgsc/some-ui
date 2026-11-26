@@ -1,0 +1,19 @@
+{
+  "id": "C1547",
+  "made": "2026-11-26",
+  "by": "claude",
+  "moves": "C1537",
+  "paths": ["some-ui:packages/video-render/src/conversation.ts"],
+  "chose": "some-ui.conversation/2, one state machine with /1 records read by their own frozen schema and lifted into /2's events (`liftV1`), replayed under /1's rules (no measured length). An owner turn plays a span of a take, in ms (cut on silences, HOST12), with its conditioning (tempo, loudness, longest gap), the words the agent wrote for the owner to read (the abstract, or to the audience) and a corrected transcript; one take may be played by many turns whose spans don't meet. An agent turn names its evidence (code at a commit's lines, or a page). A persona is a speaker who is a cast member in one of its HOST7 roles, with a stance (verdict, build, challenge) and a voice: the owner's takes or a named Kokoro voice; each cast member in each role is one speaker, so Tin Bird can be analyst, presenter and coach (the coordinator's reading on #3567; whether the skeptic is a character of its own is still the owner's). A flag covers a turn, a speaker or the whole conversation, is of one kind or several, and has a free-text id; the new kinds are echo, too-thin, pedantry, choppy, mis-transcribed and voice, answered by rewriting, a recut (a new span of the same take), a corrected transcript, or a recast. A version still comes only to answer flags, and beside its answers may name a change of its own with a reason (`unasked`, the \"outro\" answer). A version may close on an outro (the agent's question, then the owner's unscripted answer) and lists the stretches of the owner's takes it leaves out, with why. Home's measure of a version's audio is an event (`heard`), and a green light needs it. After the green light only the signature goes on: emotion notes per word (stress, and feelings from the speaker's character's closed Emotion union), proposed by the agent and overridden by the owner as events, the owner's note on a word final; and the owner's approvals of a preview's rule (#3558), each preview once.",
+  "options": [
+    "One machine, /1 lifted into /2's events (chosen)",
+    "Two machines, /1's kept beside /2's",
+    "Persona as a new character per stance",
+    "Spans as word indices from home's transcript",
+    "The signature as a record of its own, keyed by the green-lit version's turn ids (C1537)",
+    "Unprompted versions, any change named with a reason"
+  ],
+  "gray": "#3567 and its comments name what /2 must hold but not its shape: how a persona relates to the two-character rule, whether spans are words or time, how scoped and multi-kind flags are answered, whether the signature lives in this record, and how the agent may change what no flag asked for. The owner meets each in Studio's podcast player and the signature.",
+  "undo": "Set CONVERSATION_RECORD_SCHEMA back to /1 and parse only ConversationRecordV1Schema; /2 records then need a lift down, which loses spans and notes, so keep them read-only instead.",
+  "refs": ["#3567", "#3558", "#3555", "#3554", "#3521"]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "C1548",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/conversation.ts"],
+  "chose": "Two policy limits move with the story (C771). noteMost goes from 600 to 4000 characters: the owner's spoken notes on the first real podcast loop ran to about 3,000 and 600 refused them (#3567). A conversation gets its own length bound, CONVERSATION_POLICY.mostMs, 20 minutes (the forty-turn cap at thirty seconds a turn), held against the version's audio as home measured it (the `heard` event), never estimated from words: word count put the green-lit 14:25 conversation at about 19 minutes (#3555). The cards essays' CARDS_MOST_MS is left as it is; the renderer's maxVideoMs for a conversation essay waits on HOST13's cut list.",
+  "options": [
+    "noteMost 4000, and a measured 20-minute bound on the green light (chosen)",
+    "noteMost unlimited",
+    "Reuse CARDS_MOST_MS (720 s) for conversations",
+    "A bound estimated from the turns' words"
+  ],
+  "gray": "How long a note or a conversation may run is a preference about content; the owner's real use exceeded the old note bound, and no limit for a conversation's length was set.",
+  "undo": "Edit noteMost or mostMs in CONVERSATION_POLICY; a record green-lit under a looser bound still replays only if the bound is not tightened below it.",
+  "refs": ["#3567", "#3555", "#3521"]
+}
