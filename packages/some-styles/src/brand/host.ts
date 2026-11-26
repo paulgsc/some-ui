@@ -177,10 +177,11 @@ export type BeatOf<C extends HostCharacter> = {
   /** Where the host looks; its idle glances when it is given nowhere. */
   readonly lookAt?: Spot
   /**
-   * What it says, on the beat's clock (`./host-live`): a beat that names its
-   * words is alive beyond the floor; a speaking beat in a cut list must
-   * (`@some-ui/burn-ins`). Without them it is the floor alone, as a gallery
-   * shows an emotion.
+   * What it says, each word's times on the video's clock (milliseconds from
+   * the video's start, as `atMs` is; `./host-live`): its mouth moves with
+   * them and its notes ride on them. A speaking beat in a cut list must name
+   * them (`@some-ui/burn-ins`). A beat without them still lives: it breathes,
+   * sways, bobs and plays in its silence, and its emotion pulses and fades.
    */
   readonly words?: ReadonlyArray<SpokenWordOf<C>>
   /** What it may point at, a point in its area (0 to 1 each way): a cue word raises the point. */
@@ -362,7 +363,8 @@ export function idleAt(seed: number, tMs: number): Idle {
 /**
  * Each shot's size, a share of its area's shorter side. A host's area stops
  * above the captions (`@some-ui/burn-ins`'s `drawHost` gives it the safe
- * area less the lower third), so no shot covers them.
+ * area less the lower third), so no shot covers them. The sizes, and a
+ * bubble's 1.2× growth, are C1566's.
  */
 export const SHOT_SIZE: Readonly<Record<Shot, number>> = {
   "close-up": 0.9,
@@ -418,13 +420,13 @@ export type HostFrame = {
   readonly opacity: number
   /** How much of its bubble shows, 0 to 1: it grows in at a corner and dissolves away from one. */
   readonly bubble: number
-  /** What the living layer gave it, when its beat names its words. */
-  readonly live: Liveness | null
-  /** The emotion showing beyond the floor, and how strongly; null when calm or the floor alone. */
+  /** What the living layer gave it: every beat lives, speaking or not. */
+  readonly live: Liveness
+  /** The emotion showing over the calm self, and how strongly (`emotion` null when calm). */
   readonly note: {
     readonly emotion: Emotion | null
     readonly weight: number
-  } | null
+  }
   /** The drawing, a standalone `<svg>` the size of `box`. */
   readonly svg: string
 }
@@ -826,7 +828,9 @@ function svgOf(
   const clip = `${idPrefix}-bubble`
   const grow = 1 + 0.2 * bubble
   const placed = `<g transform="translate(48 ${num(48 + 9.6 * bubble)}) scale(${num(grow)}) translate(-48 -48)">${inner}</g>`
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}"><defs><clipPath id="${clip}"><path d="${d}"/></clipPath></defs><path d="${d}" fill="#141e45" opacity="${num(bubble)}"/><g${bubble > 0.5 ? ` clip-path="url(#${clip})"` : ""}>${placed}</g><path d="${d}" fill="none" stroke="${ringOf(beat)}" stroke-width="${num(3 * bubble)}" opacity="${num(bubble)}"/></svg>`
+  // the clip tightens as the bubble grows: 2.5× its shape (past the whole box) at none, its shape at full, so nothing pops
+  const reach = 1 + 1.5 * (1 - bubble)
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}"><defs><clipPath id="${clip}"><path d="${d}" transform="translate(48 48) scale(${num(reach)}) translate(-48 -48)"/></clipPath></defs><path d="${d}" fill="#141e45" opacity="${num(bubble)}"/><g clip-path="url(#${clip})">${placed}</g><path d="${d}" fill="none" stroke="${ringOf(beat)}" stroke-width="${num(3 * bubble)}" opacity="${num(bubble)}"/></svg>`
 }
 
 /** Where the host is drawn, how solid, and how much of its bubble shows. */
@@ -906,7 +910,7 @@ function runStartsOf(
   }
 }
 
-/** A beat's scene for the notes: from its start to the next beat, or its last word plus a hold. */
+/** A beat's scene for the notes: from its emotion's run start (so a beat that keeps the emotion doesn't pulse it again) to the next beat, or its last word plus a hold. */
 function sceneEnd(beats: ReadonlyArray<Beat>, i: number): number {
   const beat = beats[i]
   const next = beats[i + 1]
@@ -915,9 +919,9 @@ function sceneEnd(beats: ReadonlyArray<Beat>, i: number): number {
 }
 
 /**
- * Beat `i`'s pose at `tMs`, beyond the floor when it names its words: the
- * note showing (`./host-live`'s pulses) blended over its calm self in one
- * drawing; the floor's emotion as it is otherwise.
+ * Beat `i`'s pose at `tMs`: the note showing (`./host-live`'s pulses, its
+ * intro and, when it names words, theirs) blended over its calm self in one
+ * drawing, so no beat holds its sign the whole time, speaking or not.
  */
 function poseOf(
   beats: ReadonlyArray<Beat>,
@@ -933,19 +937,6 @@ function poseOf(
   if (beat === undefined) throw new Error(`no beat ${String(i)}`)
   const starts = runStartsOf(beats, i)
   const idPrefix = `host-${beat.character}`
-  if (beat.words === undefined)
-    return {
-      nodes: floorNodes(
-        beat,
-        tMs,
-        seed,
-        aim,
-        idPrefix,
-        starts.emotion,
-        starts.ceremony
-      ),
-      note: null,
-    }
   const calm = floorNodes(
     { ...beat, emotion: "neutral" },
     tMs,
@@ -955,7 +946,7 @@ function poseOf(
     starts.emotion,
     starts.ceremony
   )
-  const pulses = pulseList(beat, beat.atMs, sceneEnd(beats, i))
+  const pulses = pulseList(beat, starts.emotion, sceneEnd(beats, i))
   const note = notesAt(pulses, tMs)
   const pulse = [...pulses].reverse().find((p) => p.atMs <= tMs)
   if (note.emotion === null || pulse === undefined) return { nodes: calm, note }
@@ -1053,19 +1044,13 @@ export function hostAt(
     before?.character === beat.character && e < 1
       ? blendNodes(poseOf(beats, i - 1, seed, tMs, aim).nodes, pose.nodes, e)
       : pose.nodes
-  const words = beat.words
-  const live =
-    words === undefined ? null : livenessAt(beat.character, words, seed, tMs)
+  const words = beat.words ?? []
+  const live = livenessAt(beat.character, words, seed, tMs)
   const toward =
     beat.target === undefined ? { x: 0, y: 0 } : towards(beat.target, box, area)
-  const point =
-    words === undefined ? 0 : pointAt(words, beat.target !== undefined, tMs)
-  const drawn =
-    live === null ? nodes : livened(beat.character, nodes, live, point, toward)
-  const motion =
-    live === null
-      ? ""
-      : `${playTransform(live.play)} translate(${num(live.body.dx)} ${num(live.body.dy)}) translate(48 88) rotate(${num(live.body.rot)}) scale(${num(live.body.sx)} ${num(live.body.sy)}) translate(-48 -88)`
+  const point = pointAt(words, beat.target !== undefined, tMs)
+  const drawn = livened(beat.character, nodes, live, point, toward)
+  const motion = `${playTransform(live.play)} translate(${num(live.body.dx)} ${num(live.body.dy)}) translate(48 88) rotate(${num(live.body.rot)}) scale(${num(live.body.sx)} ${num(live.body.sy)}) translate(-48 -88)`
   return {
     beat,
     box,

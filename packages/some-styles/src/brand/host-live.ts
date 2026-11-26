@@ -41,7 +41,8 @@ export type NoteOf<C extends HostCharacter> = {
 }
 
 /**
- * A word as said, on the beat's clock: when, how stressed (0 to 1, from the
+ * A word as said, on the video's clock (milliseconds from the video's start,
+ * the same clock as a beat's `atMs`, not from the beat's own start): when, how stressed (0 to 1, from the
  * take's prosody; a synthetic line's from its punctuation and emphasis),
  * the notes it carries, and whether it refers to the beat's target (`cue`).
  */
@@ -81,6 +82,8 @@ export const LIVENESS_POLICY = {
   playPauseMs: 800,
   playShare: 0.65,
   playMostMs: 1200,
+  /** In silence no word bounds (a listener, or before the first word or after the last): a chance to play each this long (C1567). */
+  quietPlayEveryMs: 4000,
   /** A point: how long it lasts, and the least time between two. */
   pointMs: 1430,
   pointEveryMs: 5000,
@@ -209,7 +212,7 @@ export function livenessAt(
   }
 }
 
-/** The act played in the pause around `tMs`, if this pause is one played in. */
+/** The act played in the silence around `tMs`, if it is one played in: a pause between two words, or open silence. */
 function playAt(
   who: HostCharacter,
   words: ReadonlyArray<SpokenWord>,
@@ -221,16 +224,27 @@ function playAt(
   if (words.some((w) => w.startMs <= tMs && tMs < w.endMs)) return null
   const before = [...words].reverse().find((w) => w.endMs <= tMs)
   const after = words.find((w) => w.startMs > tMs)
-  if (before === undefined || after === undefined) return null
-  const pause = after.startMs - before.endMs
-  if (pause < P.playPauseMs || draw(before.endMs, seed) >= P.playShare)
-    return null
-  const span = Math.min(pause - 200, P.playMostMs)
-  const u = (tMs - before.endMs - 100) / span
+  const lo = before?.endMs ?? -Infinity
+  const hi = after?.startMs ?? Infinity
+  let from: number
+  let span: number
+  if (Number.isFinite(lo) && Number.isFinite(hi)) {
+    // a pause between two words: one act, in some of them
+    const pause = hi - lo
+    if (pause < P.playPauseMs || draw(lo, seed) >= P.playShare) return null
+    from = lo
+    span = Math.min(pause - 200, P.playMostMs)
+  } else {
+    // open silence: a chance each `quietPlayEveryMs`, never running into a word
+    const slot = Math.floor(tMs / P.quietPlayEveryMs) * P.quietPlayEveryMs
+    from = Math.max(lo, slot)
+    span = P.playMostMs
+    if (from + span + 200 > hi || draw(slot, seed) >= P.playShare) return null
+  }
+  const u = (tMs - from - 100) / span
   if (u <= 0 || u >= 1) return null
   const acts: ReadonlyArray<PlayAct> = PLAY_ACTS[who]
-  const act =
-    acts[Math.floor(draw(before.endMs, seed + 3) * acts.length)] ?? acts[0]
+  const act = acts[Math.floor(draw(from, seed + 3) * acts.length)] ?? acts[0]
   return act === undefined ? null : { act, u }
 }
 
@@ -333,8 +347,34 @@ export function pulsesOf<C extends HostCharacter>(
         emotion: n.emotion,
         weight: clamp(n.weight * (0.6 + 0.4 * (w.stress ?? 0.5)), 0, 1),
       })
-  // the floor: a long scene with a stress peak and no note of its own gets one, of its intro, at its strongest word mid-scene
-  if (candidates.length === 0 && dur >= N.floorSceneMs) {
+  const fired: Array<Pulse<E>> = [
+    { atMs: scene.startMs, emotion: scene.intro, weight: 1 },
+  ]
+  const lastOf = new Map<E, number>([[scene.intro, scene.startMs]])
+  // when what shows last changed: a pulse of another emotion, or of any once the last has faded
+  let lastChange = scene.startMs
+  for (const c of candidates.sort(
+    (a, b) => a.atMs - b.atMs || b.weight - a.weight
+  )) {
+    if (c.weight < N.fireFrom || c.emotion === "neutral") continue
+    const showing = fired.at(-1)
+    if (showing === undefined) continue
+    if (c.atMs - (lastOf.get(c.emotion) ?? -Infinity) < refractoryOf(c.emotion))
+      continue
+    const still =
+      showing.weight * pulseEnvelope(c.atMs - showing.atMs, N.holdMs)
+    const changes = c.emotion !== showing.emotion || still <= 0
+    if (c.emotion !== showing.emotion && still > 0) {
+      if (c.atMs - lastChange < N.dwellMs || c.weight < still + N.margin)
+        continue
+    }
+    if (changes) lastChange = c.atMs
+    fired.push(c)
+    lastOf.set(c.emotion, c.atMs)
+  }
+  // the floor: a long scene where no note fired gets one, of its intro, at its strongest word
+  // mid-scene; the intro's own refractory does not hold it back, since it is the scene's one note
+  if (fired.length === 1 && dur >= N.floorSceneMs) {
     const mid = scene.words.filter(
       (w) =>
         w.startMs >= scene.startMs + 0.35 * dur &&
@@ -347,30 +387,7 @@ export function pulsesOf<C extends HostCharacter>(
       undefined
     )
     if (peak !== undefined)
-      candidates.push({ atMs: peak.startMs, emotion: scene.intro, weight: 0.8 })
-  }
-  const fired: Array<Pulse<E>> = [
-    { atMs: scene.startMs, emotion: scene.intro, weight: 1 },
-  ]
-  const lastOf = new Map<E, number>([[scene.intro, scene.startMs]])
-  let lastChange = scene.startMs
-  for (const c of candidates.sort(
-    (a, b) => a.atMs - b.atMs || b.weight - a.weight
-  )) {
-    if (c.weight < N.fireFrom || c.emotion === "neutral") continue
-    const showing = fired.at(-1)
-    if (showing === undefined) continue
-    const rest = refractoryOf(c.emotion)
-    if (c.atMs - (lastOf.get(c.emotion) ?? -Infinity) < rest) continue
-    if (c.emotion !== showing.emotion) {
-      const still =
-        showing.weight * pulseEnvelope(c.atMs - showing.atMs, N.holdMs)
-      if (c.atMs - lastChange < N.dwellMs || c.weight < still + N.margin)
-        continue
-      lastChange = c.atMs
-    }
-    fired.push(c)
-    lastOf.set(c.emotion, c.atMs)
+      fired.push({ atMs: peak.startMs, emotion: scene.intro, weight: 0.8 })
   }
   // the ceiling: the intro, then the strongest notes the scene's length allows, kept in order
   const most = Math.floor((dur / 60_000) * N.perMinute)

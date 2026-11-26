@@ -45,16 +45,16 @@ const sha = (svgs: ReadonlyArray<string>): string =>
  * the contact sheet in the same PR.
  */
 const PINNED: Readonly<Record<EmotionOf<"tin-owlet">, string>> = {
-  neutral: "34a86b1a780b3ee0",
-  curious: "3969ceca766552e3",
-  taciturn: "c6f00252388ed2c9",
-  happy: "73668acb05f7c85d",
-  perplexed: "d9e4a76d4b3df350",
-  anxious: "7e02a19729289857",
-  frustrated: "876a7ec86b18a73e",
-  angry: "cfa4e0fb2c7273f2",
-  ceremonious: "70ceeeb0228e1c74",
-  hungry: "5d9a7ab7e47a5587",
+  neutral: "cb90bdce768296ce",
+  curious: "3a3e6aba7cdba240",
+  taciturn: "4366f015bd550cd4",
+  happy: "4144a50318e0d878",
+  perplexed: "0607b7c3634aed17",
+  anxious: "e7f45d8662d69dc2",
+  frustrated: "857e3281d48fd873",
+  angry: "eae3c25f673cd2b2",
+  ceremonious: "481fe7e380df3847",
+  hungry: "68cb63dd21ef0810",
 }
 
 describe("Tin Bird's loops", () => {

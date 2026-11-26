@@ -1,0 +1,16 @@
+{
+  "id": "C1566",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": ["some-ui:packages/some-styles/src/brand/host.ts"],
+  "chose": "Shots grow, and a corner shot sits in a bubble that grows with it: medium from 0.5 to 0.56 and long from 0.26 to 0.37 of the shorter side of the host's area (close-up stays 0.9). The area itself shrank to the safe area above the lower third (C1548). In pixels, against C1522's sizes over the old area: at 1920×1080 a medium host goes from 432 to 344 and a long one from 225 to 227, so the long shot keeps its size and the medium one leaves room above the captions; at 1080×1920 a medium host goes from 427 to 478 and a long one from 222 to 316. In a bubble the character is drawn 1.2× larger and lowered 9.6 units of 96, so it fills the bubble down to its rim, as the picture-in-picture design the owner asked for on the essay did; the bubble's clip tightens from 2.5× its shape to its shape as the bubble grows, so nothing outside it pops away mid-grow. Weighed by C1545: natural and not distracting.",
+  "options": [
+    "the sizes above, and the 1.2× growth in a bubble (taken)",
+    "C1522's 0.5 and 0.26 over the smaller area, which at 1920×1080 would draw a long host 160 px tall instead of 225",
+    "no growth in a bubble, which left the character floating small inside its ring"
+  ],
+  "gray": "How big a host should read beside the cards is taste; no check can settle it, and the owner judges it on the rendered preview.",
+  "undo": "Move SHOT_SIZE and the bubble's grow and lower in host.ts; record the move as a call that moves this one.",
+  "refs": ["#3526", "#3521"],
+  "moves": "C1522"
+}

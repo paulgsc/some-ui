@@ -11,7 +11,8 @@
  * which keeps its whole room, so it may cover part of what any other burn-in
  * draws, except the captions: its area is the safe area above the lower
  * third (HOST5, #3526), so no shot covers what is said. A speaking beat
- * names its words (`words`), from which it lives beyond the floor. `boxesOf` gives it no box, and so `clash` and the placement tests
+ * names its words (`words`, on the video's clock), which its mouth and notes
+ * ride on; every beat lives, speaking or not (C1567). `boxesOf` gives it no box, and so `clash` and the placement tests
  * never weigh it against another kind; `hostBox` gives where it is drawn, for
  * its own tests and the stage.
  */

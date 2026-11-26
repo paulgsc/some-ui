@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { unitIntervalsBySeed } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
@@ -12,6 +13,7 @@ import {
   type BeatOf,
   type EmotionOf,
   type HostCharacter,
+  type HostFrame,
 } from "../host"
 import {
   EMOTION_REFRACTORY_MS,
@@ -66,19 +68,53 @@ const sceneOf = (
   words,
 })
 
-describe("emotion as notes (HOST5, #3526), over generated word streams", () => {
-  const streams = Array.from({ length: 120 }, (_, seed) =>
-    wordsBy(seed, 40 + (seed % 7) * 30, 0, (i, r) =>
-      r() < 0.12
-        ? [
-            {
-              emotion: MOCHI[Math.floor(r() * MOCHI.length)] ?? "happy",
-              weight: 0.4 + 0.6 * r(),
-            },
-          ]
-        : undefined
-    )
+/** Words at the given times, each stressed fully, with the notes named. */
+const at = (
+  ...marks: ReadonlyArray<readonly [number, EmotionOf<"mochi"> | null, number?]>
+): ReadonlyArray<SpokenWordOf<"mochi">> =>
+  marks.map(([t, emotion, weight]) => ({
+    startMs: t,
+    endMs: t + 250,
+    stress: 1,
+    ...(emotion === null ? {} : { notes: [{ emotion, weight: weight ?? 1 }] }),
+  }))
+
+/** One emotion fired, faded and fired again past its rest, then another a beat later: seeded times. */
+function refiredThenChanged(
+  seed: number
+): ReadonlyArray<SpokenWordOf<"mochi">> {
+  const r = unitIntervalsBySeed(seed + 1000)
+  const first = MOCHI[1 + Math.floor(r() * (MOCHI.length - 1))] ?? "happy"
+  const other = MOCHI.find((e) => e !== first && e !== "neutral") ?? "curious"
+  const a = 4500 + 2000 * r()
+  const b = a + EMOTION_REFRACTORY_MS[first] + 50 + 400 * r()
+  const c = b + 300 + 1500 * r()
+  return at(
+    [a, first, 0.6],
+    [b, first, 0.5 + 0.2 * r()],
+    [c, other, 1],
+    [60_000, null]
   )
+}
+
+describe("emotion as notes (HOST5, #3526), over generated word streams", () => {
+  const streams = [
+    ...Array.from({ length: 120 }, (_, seed) =>
+      wordsBy(seed, 40 + (seed % 7) * 30, 0, (i, r) =>
+        r() < 0.12
+          ? [
+              {
+                emotion: MOCHI[Math.floor(r() * MOCHI.length)] ?? "happy",
+                weight: 0.4 + 0.6 * r(),
+              },
+            ]
+          : undefined
+      )
+    ),
+    // biased toward the state a uniform stream rarely reaches: an emotion fired
+    // again after it faded, then another a moment later (the review's probe)
+    ...Array.from({ length: 60 }, (_, seed) => refiredThenChanged(seed)),
+  ]
 
   it("never changes the emotion showing inside the dwell", () => {
     for (const words of streams) {
@@ -129,6 +165,64 @@ describe("emotion as notes (HOST5, #3526), over generated word streams", () => {
     const pulses = pulsesOf(scene)
     expect(pulses).toHaveLength(2)
     expect(pulses[1]?.atMs).toBe(words[60]?.startMs)
+  })
+
+  it("measures the dwell from the pulse that last changed what shows (the review's stream)", () => {
+    const words = at(
+      [5000, "happy", 0.6],
+      [11_100, "happy", 0.5],
+      [12_200, "curious", 1],
+      [60_000, null]
+    )
+    const pulses = pulsesOf(sceneOf(words))
+    expect(pulses.map((p) => [p.atMs, p.emotion])).toEqual([
+      [0, "curious"],
+      [5000, "happy"],
+      [11_100, "happy"],
+    ])
+  })
+
+  it("owes the floor when the only note is too weak to fire", () => {
+    const words = wordsBy(8, 80, 0).map((w) => ({ ...w, stress: 0.2 }))
+    const peakAt = 15_000
+    const weak: SpokenWordOf<"mochi"> = {
+      startMs: 2000,
+      endMs: 2300,
+      stress: 1,
+      notes: [{ emotion: "happy", weight: 0.3 }],
+    }
+    const scene: NoteScene<"mochi"> = {
+      startMs: 0,
+      endMs: 31_000,
+      intro: "curious",
+      words: [
+        weak,
+        ...words.filter(
+          (w) =>
+            w.startMs > 2300 &&
+            w.startMs < 30_000 &&
+            Math.abs(w.startMs - peakAt) > 400
+        ),
+        { startMs: peakAt, endMs: peakAt + 300, stress: 1 },
+      ].sort((a, b) => a.startMs - b.startMs),
+    }
+    expect(pulsesOf(scene).map((p) => p.atMs)).toEqual([0, peakAt])
+  })
+
+  it("owes the floor even when it is the intro's own emotion inside its rest", () => {
+    const scene: NoteScene<"mochi"> = {
+      startMs: 0,
+      endMs: 20_000,
+      intro: "angry",
+      words: at([3000, null], [8200, null], [12_000, null]).map((w, i) => ({
+        ...w,
+        stress: i === 1 ? 1 : 0.2,
+      })),
+    }
+    expect(pulsesOf(scene).map((p) => [p.atMs, p.emotion])).toEqual([
+      [0, "angry"],
+      [8200, "angry"],
+    ])
   })
 
   it("shows only its intro when it has no notes and no stress peak", () => {
@@ -239,7 +333,7 @@ describe("the living cast, over every shot × placement × frame (HOST5)", () =>
             for (let t = 0; t < end; t += 100) {
               const f = hostAt([beat], 7, t, area)
               if (f === null) throw new Error("no frame")
-              mouths.push(f.live?.mouth ?? 0)
+              mouths.push(f.live.mouth)
               // no bubble away from a corner, and none on a close-up (C1548)
               if (shot === "close-up" || placement === "center")
                 expect(f.bubble).toBe(0)
@@ -324,6 +418,103 @@ describe("one drawing from two poses (#3564)", () => {
   })
 })
 
+describe("a silent listener is never a still sticker (HOST5 review)", () => {
+  const listener = (
+    who: "mochi" | "tin-owlet",
+    shot: (typeof SHOTS)[number],
+    placement: (typeof PLACEMENTS)[number]
+  ): Beat =>
+    who === "mochi"
+      ? {
+          atMs: 0,
+          character: "mochi",
+          emotion: "angry",
+          shot,
+          placement,
+          speaking: false,
+        }
+      : {
+          atMs: 0,
+          character: "tin-owlet",
+          emotion: "perplexed",
+          role: "analyst",
+          shot,
+          placement,
+          speaking: false,
+        }
+
+  for (const who of ["mochi", "tin-owlet"] as const)
+    for (const shot of SHOTS)
+      for (const placement of PLACEMENTS)
+        it(`${who} ${shot} at ${placement}, saying nothing, never holds a pose for a second`, () => {
+          const beat = listener(who, shot, placement)
+          const area = AREAS.landscape
+          // the body's own motion, under the breath: breathing alone is not living
+          const motion = (t: number): string =>
+            /transform="([^"]*translate\(48 88\) rotate[^"]*)"/.exec(
+              hostAt([beat], 7, t, area)?.svg ?? ""
+            )?.[1] ?? ""
+          for (let t = 1000; t < 30_000; t += 250) {
+            expect(motion(t)).not.toBe("")
+            expect(motion(t)).not.toBe(motion(t - 1000))
+          }
+        })
+
+  it("pulses its sign and lets it fade, rather than holding it the whole beat", () => {
+    const f = (t: number): HostFrame | null =>
+      hostAt([listener("mochi", "medium", "center")], 7, t, AREAS.landscape)
+    expect(f(1500)?.note.emotion).toBe("angry")
+    expect(f(1500)?.note.weight).toBe(1)
+    expect(f(6000)?.note.emotion).toBeNull()
+  })
+
+  it("plays in its silence, now and then, and never while another beat's words run", () => {
+    const beat = listener("tin-owlet", "medium", "bottom-right")
+    const acts = Array.from(
+      { length: 300 },
+      (_, k) => hostAt([beat], 7, k * 100, AREAS.landscape)?.live.play
+    )
+    expect(acts.some((a) => a !== null)).toBe(true)
+    expect(acts.filter((a) => a !== null).length).toBeLessThan(acts.length / 2)
+  })
+})
+
+describe("the bubble's clip (HOST5 review)", () => {
+  it("clips every frame the bubble shows in, tightening as it grows, so nothing pops", () => {
+    const area = AREAS.landscape
+    const beats: ReadonlyArray<Beat> = [
+      {
+        atMs: 0,
+        character: "mochi",
+        emotion: "happy",
+        shot: "medium",
+        placement: "center",
+        speaking: false,
+      },
+      {
+        atMs: 2000,
+        character: "mochi",
+        emotion: "happy",
+        shot: "medium",
+        placement: "bottom-left",
+        speaking: false,
+      },
+    ]
+    let last = Infinity
+    for (let t = 2000; t <= 2000 + BEAT_BLEND_MS; t += 10) {
+      const f = hostAt(beats, 7, t, area)
+      if (f === null || f.bubble <= 0.01) continue
+      expect(f.svg).toContain('clip-path="url(#')
+      const reach = Number(
+        /clipPath[^>]*><path[^>]*scale\(([\d.]+)\)/.exec(f.svg)?.[1]
+      )
+      expect(reach).toBeLessThanOrEqual(last)
+      last = reach
+    }
+    expect(last).toBe(1)
+  })
+})
+
 describe("the same bytes for the same inputs (HOST5)", () => {
   it("draws every moment of a living beat the same, twice", () => {
     const area = AREAS.landscape
@@ -331,9 +522,15 @@ describe("the same bytes for the same inputs (HOST5)", () => {
       speaker(),
       tinSpeaker({ atMs: 25_000, target: { x: 0.5, y: 0.3 } }),
     ]
-    for (let t = 0; t < 40_000; t += 333)
-      expect(hostAt(beats, 9, t, area)?.svg).toBe(
-        hostAt(beats, 9, t, area)?.svg
-      )
+    const frames = Array.from(
+      { length: 121 },
+      (_, k) => hostAt(beats, 9, k * 333, area)?.svg ?? ""
+    )
+    for (const [k, svg] of frames.entries())
+      expect(hostAt(beats, 9, k * 333, area)?.svg).toBe(svg)
+    // pinned: a new value means the living cast's drawing changed; show it in a preview in the same PR
+    expect(
+      createHash("sha256").update(frames.join("\n")).digest("hex").slice(0, 16)
+    ).toBe("d68c9eb6293cf784")
   })
 })
