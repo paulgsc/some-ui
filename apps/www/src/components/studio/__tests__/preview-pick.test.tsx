@@ -7,6 +7,7 @@
  * the owner's words; a sample's picks are held in memory and never kept.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
@@ -21,19 +22,6 @@ import type { PreviewPicks } from "@/lib/preview-pick"
 import { PreviewPick } from "@/components/studio/preview-pick"
 
 afterEach(cleanup)
-
-const memory = (): KeyedStorage => {
-  const held = new Map<string, string>()
-  return {
-    getItem: (k) => held.get(k) ?? null,
-    setItem: (k, v): void => {
-      held.set(k, v)
-    },
-    removeItem: (k): void => {
-      held.delete(k)
-    },
-  }
-}
 
 const AT = "2026-11-26T10:00:00.000Z"
 
@@ -59,7 +47,7 @@ const drawn = (
 
 describe("PreviewPick (HOST16)", () => {
   it("shows each variant with what's in it, one recommended, its clip muted and looping", () => {
-    drawn(memory())
+    drawn(inMemoryStorage())
     expect(screen.getAllByText(PICK_WORDS.use)).toHaveLength(2)
     expect(screen.getByText("New chapter: dip to black")).toBeTruthy()
     expect(screen.getByText(PICK_WORDS.recommended)).toBeTruthy()
@@ -70,7 +58,7 @@ describe("PreviewPick (HOST16)", () => {
   })
 
   it("picks nothing on a tap of the clip or its card: only Use this picks", () => {
-    const picks = drawn(memory())
+    const picks = drawn(inMemoryStorage())
     fireEvent.click(document.querySelector("video")!)
     fireEvent.click(screen.getByText("Dip to black"))
     fireEvent.click(screen.getByText("New chapter: dip to black"))
@@ -79,7 +67,7 @@ describe("PreviewPick (HOST16)", () => {
   })
 
   it("keeps a pick as the record's approval, says where, and keeps a change as a move", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     const picks = drawn(storage)
     const [crossfade, dip] = useButtons()
     fireEvent.click(dip)
@@ -103,7 +91,7 @@ describe("PreviewPick (HOST16)", () => {
   })
 
   it("says the same words again when they are earned again", () => {
-    drawn(memory())
+    drawn(inMemoryStorage())
     const [, dip] = useButtons()
     fireEvent.click(dip)
     fireEvent.click(dip)
@@ -113,7 +101,7 @@ describe("PreviewPick (HOST16)", () => {
   })
 
   it("holds a sample's picks in memory, says so, and keeps nothing", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     const picks = drawn(storage, samplePicks())
     expect(screen.getByText(PICK_WORDS.sample)).toBeTruthy()
     fireEvent.click(useButtons()[1])
@@ -123,7 +111,7 @@ describe("PreviewPick (HOST16)", () => {
   })
 
   it("asks for something else in the owner's words, and keeps them", () => {
-    const picks = drawn(memory())
+    const picks = drawn(inMemoryStorage())
     fireEvent.click(screen.getByText(PICK_WORDS.own))
     fireEvent.change(screen.getByLabelText(PICK_WORDS.ownPrompt), {
       target: { value: "Softer, like a page turning." },

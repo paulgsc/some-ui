@@ -4,7 +4,7 @@
  * said, a second pick on the same preview, another conversation's picks,
  * and a store that can't be read.
  */
-import type { KeyedStorage } from "@some-ui/core-utils"
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { approveEvent, sampleTransitionsOffer } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
@@ -20,19 +20,11 @@ import type { KeptPick } from "@/lib/preview-pick"
 
 const AT = "2026-11-26T10:00:00.000Z"
 
-const memory = (): KeyedStorage & { readonly held: Map<string, string> } => {
-  const held = new Map<string, string>()
-  return {
-    held,
-    getItem: (k) => held.get(k) ?? null,
-    setItem: (k, v): void => {
-      held.set(k, v)
-    },
-    removeItem: (k): void => {
-      held.delete(k)
-    },
-  }
-}
+/** Every value `storage` holds, under any key. */
+const valuesIn = (storage: Storage): ReadonlyArray<string> =>
+  Array.from({ length: storage.length }, (_, i) => storage.key(i))
+    .map((k) => (k === null ? null : storage.getItem(k)))
+    .filter((v): v is string => v !== null)
 
 const pick = (conversation: string, variant: string): KeptPick => {
   const event = approveEvent(
@@ -70,7 +62,7 @@ describe("samplePicks (HOST16)", () => {
 
 describe("phonePicks (HOST16)", () => {
   it("keeps a pick per preview and conversation, a change only as a move, and lists them back", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     const picks = phonePicks(() => storage)
     expect(picks.keep(pick("runners", "crossfade"))).toBe("kept")
     expect(picks.keep(pick("runners", "dip-to-black"))).toBe("already")
@@ -95,7 +87,7 @@ describe("phonePicks (HOST16)", () => {
   })
 
   it("keeps something else in the owner's words", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     const event = approveEvent(
       sampleTransitionsOffer(),
       { kind: "else", said: "Softer, like a page turning." },
@@ -108,7 +100,7 @@ describe("phonePicks (HOST16)", () => {
   })
 
   it("reads back only the owner's approvals", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     const forged = pick("runners", "crossfade")
     storage.setItem(
       PICKS_KEY,
@@ -118,10 +110,10 @@ describe("phonePicks (HOST16)", () => {
   })
 
   it("never writes over picks it can't read: they are moved aside first", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     storage.setItem(PICKS_KEY, "{not json")
     phonePicks(() => storage).keep(pick("runners", "crossfade"))
-    expect([...storage.held.values()]).toContain("{not json")
+    expect(valuesIn(storage)).toContain("{not json")
   })
 })
 
