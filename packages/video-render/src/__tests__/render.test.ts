@@ -135,7 +135,8 @@ function everyMember(): CutList {
         i === 3
           ? { kind: "still", source: "captures/still.png" }
           : fixtures.capture(i * 600, { taps: [400] }),
-      durationMs: 1200,
+      // Long enough on both sides for the slow crossfade (800 ms) into S7.
+      durationMs: i >= 5 ? 1700 : 1200,
       voiceInMs: 100,
       ...(i === 0
         ? { take: { file: "voice/a.wav", inMs: 0, outMs: 1000 } }
@@ -157,7 +158,7 @@ function everyMember(): CutList {
     })
   })
   shots.push(
-    fixtures.shot("S7", { picture: { kind: "card" }, durationMs: 900 })
+    fixtures.shot("S8", { picture: { kind: "card" }, durationMs: 900 })
   )
   return fixtures.cutList(shots)
 }
@@ -825,4 +826,103 @@ describe("a composition scene (HYPER2)", () => {
       "nothing here can draw a composition",
     ])
   })
+})
+
+// HOST18 (#3571): a join held on (`hold`) moves no sound. Family: each
+// transition a spoken essay takes (a crossfade, a slow one at a chapter),
+// against the cut version; the host over the joins.
+describe("joins held on (HOST18)", () => {
+  const host = {
+    kind: "host" as const,
+    design: "cast-v1",
+    params: { seed: 1 },
+  }
+  const essay = (
+    into: ReadonlyArray<"cut" | "crossfade" | "slow-crossfade">,
+    joins: CutList["joins"]
+  ): CutList =>
+    fixtures.cutList(
+      ["voice/a.wav", "voice/b.wav", "voice/a.wav"].map((file, i) =>
+        fixtures.shot(`J${i + 1}`, {
+          picture: { kind: "still", source: "captures/still.png" },
+          durationMs: 2000,
+          voiceInMs: 300,
+          take: { file, inMs: 0, outMs: 800 },
+          overrides: {
+            motion: { kind: "still" },
+            ...(i === 0 ? {} : { transitionIn: into[i - 1] }),
+          },
+          burnIns: [host],
+        })
+      ),
+      joins === undefined ? {} : { joins }
+    )
+
+  /** The mix, the finished sound decoded, its frames, and each host's frames. */
+  type Heard = {
+    readonly mix: string
+    readonly sound: string
+    readonly frames: number
+    readonly hosts: ReadonlyArray<string>
+  }
+
+  async function heard(cut: CutList, name: string): Promise<Heard> {
+    const hosts: Array<string> = []
+    const done = await render(
+      cut,
+      series(),
+      {
+        ...ports,
+        recordBurnIn: async (r) => {
+          if (r.kind === "host") hosts.push(`${r.startFrame}+${r.frames}`)
+          return tint(r)
+        },
+      },
+      { workDir: `work-${name}`, out: `out-${name}/video.mp4` }
+    )
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    await make([
+      "-i",
+      `out-${name}/video.mp4`,
+      "-map",
+      "0:a",
+      "-f",
+      "md5",
+      `out-${name}/sound.md5`,
+    ])
+    return {
+      mix: await sha(`work-${name}/mix.wav`),
+      sound: await sha(`out-${name}/sound.md5`),
+      frames: await frames(`out-${name}/video.mp4`),
+      hosts,
+    }
+  }
+
+  it("plays the cut version's sound, sample for sample, and one host at a time", async () => {
+    const cut = await heard(essay(["cut", "cut"], "hold"), "j-cut")
+    const held = await heard(
+      essay(["crossfade", "slow-crossfade"], "hold"),
+      "j-held"
+    )
+    expect(held).toEqual(cut)
+    // Held joins are drawn the same way every time: the same bytes.
+    const again = await heard(
+      essay(["crossfade", "slow-crossfade"], "hold"),
+      "j-held-2"
+    )
+    expect(
+      (await sha("out-j-held/video.mp4")) ===
+        (await sha("out-j-held-2/video.mp4"))
+    ).toBe(true)
+    expect(again).toEqual(held)
+    // Each scene's host gives way on the frame the next one's starts.
+    expect(cut.hosts).toEqual(["0+60", "60+60", "120+60"])
+    // The same joins overlapped would bring the takes in early.
+    const overlapped = await heard(
+      essay(["crossfade", "slow-crossfade"], undefined),
+      "j-overlap"
+    )
+    expect(overlapped.mix).not.toBe(cut.mix)
+    expect(overlapped.frames).toBeLessThan(cut.frames)
+  }, 180_000)
 })

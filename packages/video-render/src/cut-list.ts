@@ -27,6 +27,7 @@ import {
   BackgroundSchema,
   CueSchema,
   increasing,
+  JOINS,
   MotionSchema,
   ms,
   MUSIC_MODES,
@@ -394,6 +395,8 @@ export const CutListSchema = z.object({
   shots: z.array(ShotSchema).min(1),
   /** Burn-ins over the whole video, such as captions. */
   burnIns: z.array(BurnInSchema).default([]),
+  /** Where each transition takes its time from (`JOINS`): `overlap` unless set. */
+  joins: z.enum(JOINS).optional(),
   /**
    * What every card is stamped with (CARDS4, `stamp.ts`): the commits its
    * cards were checked against, `owner/repo@sha`, and the day.
