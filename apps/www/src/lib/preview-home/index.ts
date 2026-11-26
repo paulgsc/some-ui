@@ -12,7 +12,7 @@
  * shows its callouts and says where the clip will play.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
-import { jsonOf } from "@some-ui/core-utils"
+import { readAs } from "@some-ui/core-utils"
 import type { HomeRead } from "@some-ui/soundbites"
 import type { KeptChoice } from "@some-ui/video-render"
 import { PreviewOfferSchema } from "@some-ui/video-render"
@@ -84,12 +84,6 @@ async function ask(what: PreviewsAsk): Promise<Answered> {
   return asked.kind === "unreachable" ? { kind: "away" } : asked
 }
 
-/** `body` as `schema` reads it, or null. */
-function bodyAs<T>(schema: z.ZodType<T>, body: string): T | null {
-  const read = schema.safeParse(jsonOf(body))
-  return read.success ? read.data : null
-}
-
 async function read<T>(
   what: PreviewsAsk,
   schema: z.ZodType<T>
@@ -100,7 +94,7 @@ async function read<T>(
   // A home without paulgsc/server#1245 serves no such route.
   if (status === 404) return { kind: "older" }
   if (status !== 200) return { kind: "unreadable" }
-  const value = bodyAs(schema, body)
+  const value = readAs(schema, body)
   return value === null ? { kind: "unreadable" } : { kind: "read", value }
 }
 
@@ -191,7 +185,7 @@ export const homePreviews: PreviewSource = {
     const { status, body } = asked.answer
     // 409: the record refused it (or home's clips aren't made), as it says.
     if (status === 409)
-      return bodyAs(RefusedSchema, body) === null
+      return readAs(RefusedSchema, body) === null
         ? { kind: "unreadable" }
         : { kind: "refused" }
     // 201 kept; 200 the log's last already (a retried send).
