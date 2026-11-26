@@ -48,7 +48,7 @@ describe("approveEvent (HOST16)", () => {
     expect(parsePreviewOffer(offer)).toEqual({ ok: true, value: offer })
   })
 
-  it.each(offer.variants.map((v) => v.id))(
+  it.each(offer.variants.map((v) => v.variant))(
     "turns using %s into an approval the record accepts, setting its rule",
     (variant) => {
       const start = greenLit()
@@ -58,7 +58,7 @@ describe("approveEvent (HOST16)", () => {
       const stepped = stepConversation(start.state, event)
       if (!stepped.ok) throw new Error(stepped.refusal.why)
       expect(approvedRules(stepped.state)).toEqual([
-        offer.variants.find((v) => v.id === variant)?.rule,
+        offer.variants.find((v) => v.variant === variant)?.rule,
       ])
     }
   )

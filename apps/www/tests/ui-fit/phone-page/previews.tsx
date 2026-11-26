@@ -56,7 +56,7 @@ const screen = (picked: string | null): (() => JSX.Element) => {
           conversation="sample"
           picks={phonePicks(() => storage)}
           clipSrc={(v) =>
-            v.id === OFFER.recommended ? "/sample-clip.mp4" : null
+            v.variant === OFFER.recommended ? "/sample-clip.mp4" : null
           }
           now={() => "2026-11-26T10:00:00.000Z"}
         />

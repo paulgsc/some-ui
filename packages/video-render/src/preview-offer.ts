@@ -21,13 +21,11 @@ import { words } from "./format"
 
 const Name = z.string().trim().min(1).max(64)
 
-/** One variant of a preview: its clip, what it shows, and the rule picking it sets. */
+/** One variant of a preview: what it is, what its clip shows, and the rule picking it sets. Its clip is home's `<variant>.mp4` beside the preview. */
 export const PreviewVariantSchema = z.strictObject({
-  id: Name,
+  variant: Name,
   /** What it is, in a few words: "Crossfade". */
   title: words.max(60),
-  /** The clip, as home keeps it beside the preview. */
-  clip: z.string().trim().min(1).max(200),
   /** Each moment the clip shows, as its on-screen callout says it. */
   callouts: z.array(words.max(80)).min(1).max(12),
   /** The rule this variant sets once picked. */
@@ -37,20 +35,24 @@ export const PreviewVariantSchema = z.strictObject({
 export type PreviewVariant = z.infer<typeof PreviewVariantSchema>
 
 /** A preview offered on a conversation: what it bundles, its variants, and the one recommended. */
+/** The schema a preview's manifest names, as home keeps it beside its clips. */
+export const PREVIEW_OFFER_SCHEMA = "some-ui.conversation-preview/1"
+
 export const PreviewOfferSchema = z
   .strictObject({
-    id: Name,
+    schema: z.literal(PREVIEW_OFFER_SCHEMA),
+    preview: Name,
     /** The family of choices it bundles, as the card's heading says it. */
     about: words.max(80),
     variants: z.array(PreviewVariantSchema).min(2).max(PREVIEW_VARIANTS_MOST),
     recommended: Name,
   })
   .refine(
-    (o) => new Set(o.variants.map((v) => v.id)).size === o.variants.length,
+    (o) => new Set(o.variants.map((v) => v.variant)).size === o.variants.length,
     "two variants share an id"
   )
   .refine(
-    (o) => o.variants.some((v) => v.id === o.recommended),
+    (o) => o.variants.some((v) => v.variant === o.recommended),
     "the recommended variant isn't one offered"
   )
 
@@ -82,40 +84,43 @@ export function approveEvent(
   const base = {
     event: "approve" as const,
     at,
-    preview: offer.id,
-    offered: offer.variants.map((v) => v.id),
+    preview: offer.preview,
+    offered: offer.variants.map((v) => v.variant),
     recommended: offer.recommended,
   }
   if (pick.kind === "else") {
     const said = pick.said.trim()
     return said === "" ? null : { ...base, chose: { kind: "else", said } }
   }
-  const variant = offer.variants.find((v) => v.id === pick.variant)
+  const variant = offer.variants.find((v) => v.variant === pick.variant)
   return variant === undefined
     ? null
     : {
         ...base,
-        chose: { kind: "variant", variant: variant.id, rule: variant.rule },
+        chose: {
+          kind: "variant",
+          variant: variant.variant,
+          rule: variant.rule,
+        },
       }
 }
 
 /** A preview of the scene joins (HOST18, #3571): the first offer, and the fixture until home makes the clips. */
 export const sampleTransitionsOffer = (): PreviewOffer => ({
-  id: "transitions-1",
+  schema: PREVIEW_OFFER_SCHEMA,
+  preview: "transitions-1",
   about: "How one scene gives way to the next",
   recommended: "crossfade",
   variants: [
     {
-      id: "crossfade",
+      variant: "crossfade",
       title: "Crossfade",
-      clip: "transitions-1/crossfade.mp4",
       callouts: ["Transition: crossfade", "New chapter: slow crossfade"],
       rule: "joins-crossfade",
     },
     {
-      id: "dip-to-black",
+      variant: "dip-to-black",
       title: "Dip to black",
-      clip: "transitions-1/dip-to-black.mp4",
       callouts: ["Transition: crossfade", "New chapter: dip to black"],
       rule: "joins-dip-at-chapters",
     },

@@ -37,7 +37,7 @@ const drawn = (storage: KeyedStorage): ReturnType<typeof phonePicks> => {
       offer={sampleTransitionsOffer()}
       conversation="runners"
       picks={picks}
-      clipSrc={(v) => (v.id === "crossfade" ? "/clip.mp4" : null)}
+      clipSrc={(v) => (v.variant === "crossfade" ? "/clip.mp4" : null)}
       now={() => AT}
     />
   )

@@ -78,7 +78,7 @@ export const PreviewPick = ({
   const [said, setSaid] = useState<Keeping | null>(null)
   const [asking, setAsking] = useState(false)
   const [words, setWords] = useState("")
-  const kept = pickOn(picks.list(conversation) ?? [], offer.id)
+  const kept = pickOn(picks.list(conversation) ?? [], offer.preview)
   const keep = (pick: Parameters<typeof approveEvent>[1]): void => {
     const event = approveEvent(offer, pick, now())
     if (event === null) return
@@ -100,14 +100,15 @@ export const PreviewPick = ({
         options={offer.variants.map((variant) => ({
           id: String.fromCharCode(65 + offer.variants.indexOf(variant)),
           decision: <VariantCard variant={variant} src={clipSrc(variant)} />,
-          recommended: variant.id === offer.recommended,
+          recommended: variant.variant === offer.recommended,
         }))}
         picked={
           picked?.kind === "option"
             ? {
                 kind: "option",
                 option: String.fromCharCode(
-                  65 + offer.variants.findIndex((v) => v.id === picked.option)
+                  65 +
+                    offer.variants.findIndex((v) => v.variant === picked.option)
                 ),
               }
             : picked
@@ -123,7 +124,7 @@ export const PreviewPick = ({
           }
           const variant = offer.variants.at(pick.option.charCodeAt(0) - 65)
           if (variant !== undefined)
-            keep({ kind: "variant", variant: variant.id })
+            keep({ kind: "variant", variant: variant.variant })
         }}
         words={{
           label: W.label(offer.about),
