@@ -3,7 +3,9 @@
   "made": "2026-11-23",
   "by": "claude",
   "agreed": "2026-11-23",
-  "paths": ["prototypes/essay-merge-queue/full/merge-queue-2026-11-21.json"],
+  "paths": [
+    "prototypes/essay-merge-queue/full/merge-queue-2026-11-21.json"
+  ],
   "chose": "Before publishing the open-question essay, five corrections to the approved draft and nothing more: P8 shows #3386's own runs (actions?query=event:pull_request+branch:claude/coord-fast-track-store), since the unfiltered list is live and a re-capture would show other runs; W1's filter step reads as landed (CD1 #3388, #3394); W1 and H1 say buckets of one to seven settled branches, as they ran, not three to five; the intro's \"as of\" is the publish day; the close card and line point to the audit in paulgsc/testing@a5ec27e recon/2026-11-21-ci-audit/. Put to the owner by the coordinator as its recommendation; the owner agreed (2026-11-23): \"Yeah, go with your recommendations.\" and \"We just need the essay done. We can do another essay revision some other time.\"",
   "options": [
     "Make the five corrections and publish (taken)",
@@ -12,5 +14,8 @@
   ],
   "gray": "The owner had approved the draft as it was, and the pages capture (#3395) cannot remake P8's picture, while two lines of what we chose no longer matched C1021's real use or main; the coordinator recommended correcting them, and the owner agreed.",
   "undo": "Restore the draft's P8 address, W1, H1, intro and close lines from claude/essay-merge-queue before 9408ba8c, and publish a new essay naming them.",
-  "refs": ["#3387", "#3395"]
+  "refs": [
+    "#3387",
+    "#3395"
+  ]
 }
