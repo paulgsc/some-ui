@@ -35,6 +35,7 @@ import {
   withSeries,
 } from "@some-ui/video-render"
 import type {
+  CastLayout,
   ChapterMark,
   CutList,
   Overflowing,
@@ -243,6 +244,25 @@ export async function shownFrame(page: Page, frame: string): Promise<Locator> {
   return page.locator(frame)
 }
 
+/** Each cast bubble the shown frame draws, and its box on the page, in whole pixels. */
+async function castLayoutOf(shown: Locator): Promise<CastLayout> {
+  const bubbles = shown.locator("[data-speaker]")
+  const layout: Array<CastLayout[number]> = []
+  for (const bubble of await bubbles.all()) {
+    const box = await bubble.boundingBox()
+    const who = await bubble.getAttribute("data-speaker")
+    if (box === null || who === null) continue
+    layout.push({
+      who,
+      x: Math.round(box.x),
+      y: Math.round(box.y),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    })
+  }
+  return layout
+}
+
 export async function recordStills({
   page,
   root,
@@ -252,6 +272,7 @@ export async function recordStills({
   timed,
   policy,
   announce = true,
+  casts,
 }: {
   readonly page: Page
   readonly root: string
@@ -266,6 +287,11 @@ export async function recordStills({
    * shots with others it records (a cards essay's cards and spoken scenes).
    */
   readonly announce?: boolean
+  /**
+   * Where each still draws its cast, by shot id, filled in when given: each
+   * `[data-speaker]` bubble's box in the still's pixels (HOST18, C1546).
+   */
+  readonly casts?: Map<string, CastLayout>
 }): Promise<ReadonlyArray<StillTake | null>> {
   await mkdir(root, { recursive: true })
   const ports = nodePorts(root)
@@ -295,6 +321,7 @@ export async function recordStills({
       animations: "disabled",
       caret: "hide",
     })
+    if (casts !== undefined) casts.set(shot.id, await castLayoutOf(shown))
     takes.push(
       shot.own !== undefined
         ? await ownTake({

@@ -20,6 +20,7 @@
  * it names beside it.
  */
 
+import { canonicalJson } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import { bookendProblems, bookendsOf, isSeriesId } from "./bookends"
@@ -603,22 +604,65 @@ export const CARDS_JOINS = {
   chapter: "slow-crossfade",
 } as const satisfies Readonly<Record<"within" | "chapter", Transition>>
 
+/**
+ * Where a spoken card's still draws its cast: each bubble's box, in the
+ * still's pixels, as its stage laid it out (`[data-speaker]`), measured when
+ * the still is recorded.
+ */
+export type CastLayout = ReadonlyArray<{
+  readonly who: string
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}>
+
 /** How much longer than both of its transition's halves a scene must run to take it. */
 const JOIN_ROOM_MS = 100
 
 /**
+ * Whether a crossfade between two scenes could show a character twice: both
+ * are spoken cards' scenes, whose stills draw the cast inside the picture,
+ * and their casts' bubbles aren't drawn in the same boxes, or weren't
+ * measured. Where they are, the crossfade only softens which bubble is lit,
+ * or who sits in one (C1546). One
+ * spoken card beside a card that draws no cast fades the cast in or out,
+ * one copy.
+ */
+const castMoves = (
+  a: CardsScene | undefined,
+  b: CardsScene | undefined,
+  casts: ReadonlyMap<string, CastLayout>
+): boolean => {
+  if (a?.spoken === undefined || b?.spoken === undefined) return false
+  const was = casts.get(a.id)
+  const now = casts.get(b.id)
+  if (was === undefined || now === undefined) return true
+  // Where the bubbles stand, not who is in them: the asker and the tutor
+  // take turns in the same place, and a dissolve between them there shows
+  // each once.
+  const boxes = (layout: CastLayout): string =>
+    canonicalJson(
+      layout
+        .map(({ x, y, width, height }) => [x, y, width, height])
+        .sort((p, q) => (p[1] ?? 0) - (q[1] ?? 0) || (p[0] ?? 0) - (q[0] ?? 0))
+    )
+  return boxes(was) !== boxes(now)
+}
+
+/**
  * The transition into the `i`th of `shots`: the scene's own, where it names
  * one; none into the first, or into or out of a composition, which draws its
- * own way in and out; a cut into or out of a spoken card's scene, whose
- * still draws the cast inside the picture, so a crossfade would blend two
- * pictures of it and show a character twice (C1546); a cut where either
- * scene is too short to hold the join; else `CARDS_JOINS`'s, by whether it
- * opens a chapter (`mark`).
+ * own way in and out; a cut between two spoken cards' scenes whose casts
+ * stand in different places (`castMoves`); a cut where either scene is too
+ * short to hold the join; else `CARDS_JOINS`'s, by whether it opens a
+ * chapter (`mark`).
  */
 function joinInto(
   shots: ReadonlyArray<Shot>,
   scenes: ReadonlyArray<CardsScene>,
-  i: number
+  i: number,
+  casts: ReadonlyMap<string, CastLayout>
 ): Transition | undefined {
   const shot = shots[i]
   const before = shots[i - 1]
@@ -626,8 +670,7 @@ function joinInto(
   if (shot.overrides.transitionIn !== undefined)
     return shot.overrides.transitionIn
   if (isComposition(shot) || isComposition(before)) return undefined
-  if (scenes[i]?.spoken !== undefined || scenes[i - 1]?.spoken !== undefined)
-    return "cut"
+  if (castMoves(scenes[i - 1], scenes[i], casts)) return "cut"
   const mark = scenes[i]?.mark
   const join = mark === undefined ? CARDS_JOINS.within : CARDS_JOINS.chapter
   const room = 2 * TRANSITION_MS[join] + JOIN_ROOM_MS
@@ -644,7 +687,9 @@ function joinInto(
 export function voicedCardsCutList(
   cut: CutList,
   scenes: ReadonlyArray<CardsScene>,
-  takes: ReadonlyArray<StillTake | null>
+  takes: ReadonlyArray<StillTake | null>,
+  /** Where each spoken card's still draws its cast, by scene id (`CastLayout`). */
+  casts: ReadonlyMap<string, CastLayout> = new Map()
 ): CutList {
   const shots: ReadonlyArray<Shot> = scenes.map((scene, i) => {
     const { spoken: _spoken, ...shot } = scene.shot
@@ -681,7 +726,7 @@ export function voicedCardsCutList(
     ...cut,
     joins: "hold",
     shots: shots.map((shot, i) => {
-      const transitionIn = joinInto(shots, scenes, i)
+      const transitionIn = joinInto(shots, scenes, i, casts)
       return transitionIn === undefined
         ? shot
         : { ...shot, overrides: { ...shot.overrides, transitionIn } }

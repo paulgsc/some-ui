@@ -16,6 +16,7 @@ import {
   PUBLISH_SINCE,
   voicedCardsCutList,
 } from "@video-render/cards-essay"
+import type { CastLayout } from "@video-render/cards-essay"
 import type { CutList } from "@video-render/cut-list"
 import { readSeries } from "@video-render/node"
 import type { Series } from "@video-render/series"
@@ -630,26 +631,56 @@ describe("a spoken essay (EXPLAIN6)", () => {
       scenes.map(() => ({ ms: 2_000 }))
     )
     expect(picked.shots[1]?.overrides.transitionIn).toBe("cut")
-    // A spoken card's still draws the cast inside the picture: a crossfade
-    // into or out of one would show a character twice, so it is cut (C1546).
+    // A spoken card's still draws the cast inside the picture (C1546): two
+    // of them crossfade only where the cast stands in the same boxes, so
+    // the fade softens which bubble is lit and never shows one twice.
     const asked = scenes.map((s, i) =>
-      i === 3
-        ? {
-            ...s,
-            spoken: {
-              card: "card-1",
-              scene: sampleScene,
-            },
-          }
+      i === 3 || i === 4
+        ? { ...s, spoken: { card: "card-1", scene: sampleScene } }
         : s
     )
-    const spoken = voicedCardsCutList(
-      parsed.value,
-      asked,
-      asked.map(() => ({ ms: 2_000 }))
+    const bubbles = (y: number): CastLayout => [
+      { who: "tutor", x: 40, y, width: 112, height: 140 },
+      { who: "you", x: 40, y: y + 172, width: 112, height: 140 },
+    ]
+    const joined = (
+      casts: ReadonlyMap<string, CastLayout>
+    ): ReadonlyArray<string | undefined> =>
+      voicedCardsCutList(
+        parsed.value,
+        asked,
+        asked.map(() => ({ ms: 2_000 })),
+        casts
+      ).shots.map((s) => s.overrides.transitionIn)
+    const ids = (k: number): string => asked[k]?.id ?? ""
+    const still = joined(
+      new Map([
+        [ids(3), bubbles(400)],
+        // The same boxes, listed in another order, the asker where the
+        // tutor sat: as the stage's sample card measures.
+        [
+          ids(4),
+          [...bubbles(400)]
+            .reverse()
+            .map((b) => (b.who === "tutor" ? { ...b, who: "asker" } : b)),
+        ],
+      ])
     )
-    const spokenInto = spoken.shots.map((s) => s.overrides.transitionIn)
-    expect([spokenInto[3], spokenInto[4]]).toEqual(["cut", "cut"])
-    expect(spokenInto[2]).not.toBe("cut")
+    // Beside a card that draws no cast, the cast fades in or out, one copy.
+    expect([still[3], still[4], still[5]]).toEqual(
+      [3, 4, 5].map((k) =>
+        asked[k]?.mark === undefined ? CARDS_JOINS.within : CARDS_JOINS.chapter
+      )
+    )
+    expect(
+      joined(
+        new Map([
+          [ids(3), bubbles(400)],
+          [ids(4), bubbles(380)],
+        ])
+      )[4]
+    ).toBe("cut")
+    // Unmeasured, it can't be known to stand still: a cut.
+    expect(joined(new Map([[ids(3), bubbles(400)]]))[4]).toBe("cut")
   })
 })
