@@ -1499,6 +1499,32 @@ describe("conversation/2", () => {
     ).toBe(false)
   })
 
+  it("changes something else to a variant by a move: the latest sets the rule", () => {
+    const offered = after(
+      opened(),
+      v1,
+      ALPHABET.heard1!,
+      ALPHABET.green1!,
+      ALPHABET.offerA!
+    )
+    const elsewise = after(offered, {
+      ...eventOf("approveA", "approve"),
+      chose: { kind: "else", said: "Closer still." },
+    })
+    expect(approvedRules(elsewise)).toEqual([])
+    const changed = after(elsewise, {
+      ...eventOf("approveA", "approve"),
+      chose: { kind: "variant", variant: "corner" },
+      moves: "close-up-on-verdict",
+    })
+    if (changed.phase === "new") throw new Error("no record")
+    expect(changed.approvals.map((a) => a.chose.kind)).toEqual([
+      "else",
+      "variant",
+    ])
+    expect(approvedRules(changed)).toEqual(["verdict-corner"])
+  })
+
   it("reads an offer of three variants", () => {
     const third = {
       ...OFFER_A.variants[1]!,
