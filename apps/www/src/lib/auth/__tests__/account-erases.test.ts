@@ -39,6 +39,7 @@ describe("what deleting the account says", () => {
       "Written reflections",
       "Asks for the next scene",
       "Notes on the feeds' episodes",
+      "Conversation essays' records",
       "Voice notes, recordings from a game included",
       "What the phone noted beside a soundbite or a LeetType answer",
       "Rust Rounds' rounds",
