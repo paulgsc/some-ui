@@ -256,7 +256,7 @@ const perplexed: Loop = (s) => ({
     lookX: -0.6,
     lookY: -1,
   },
-  effects: [question(20, 16 + 1.5 * wave(s, 1.4), 1)],
+  effects: [question(80, 14 + 1.5 * wave(s, 1.4), 1)],
 })
 
 /** Anxious: trembling, worried lids, wings fluttering low, eyes darting, a drop of sweat. */
@@ -305,8 +305,8 @@ const frustrated: Loop = (s) => {
     },
     effects: [
       puff(
-        48 + 6 * sigh,
-        58 - 22 * sigh,
+        50 + 18 * sigh,
+        57 - 10 * sigh,
         0.5 + 0.6 * sigh,
         0.85 * Math.sin(Math.PI * sigh)
       ),
@@ -414,7 +414,8 @@ function posed(
     )
     const angle =
       pointWith === side
-        ? (Math.atan2(moment.aim.y, moment.aim.x) * 180) / Math.PI +
+        ? (Math.atan2(moment.aim.y, moment.aim.x) * 180) / Math.PI -
+          pose.tilt +
           2.5 * Math.sin(TAU * (s / 1.3))
         : wingAngle(side, side === "left" ? pose.wingLeft : pose.wingRight)
     out = moved(out, `wing-${side}`, `rotate(${num(angle)})`)
@@ -424,9 +425,10 @@ function posed(
   out = moved(
     out,
     "mouth",
-    `translate(48 52.4) scale(${num(1 + 0.9 * open)} ${num(1 + 3.8 * open)}) translate(-48 -52.4)`
+    `translate(48 51.3) scale(${num(1 + 0.9 * open)} ${num(1 + 3.8 * open)}) translate(-48 -51.3)`
   )
-  if (pose.lookX !== 0 || pose.lookY !== 0)
+  // A beat's own point to look at wins over the emotion's wandering eyes.
+  if (!moment.pointing && (pose.lookX !== 0 || pose.lookY !== 0))
     // Further than the idle's glance and blink, never in place of them.
     out = changed(out, "eyes", (attrs) => ({
       ...attrs,

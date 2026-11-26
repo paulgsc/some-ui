@@ -38,18 +38,19 @@ const sha = (svgs: ReadonlyArray<string>): string =>
 
 /**
  * Each emotion's four seconds, hashed. A new value here means the loop's
- * drawing changed: update it with the contact sheet in the same PR.
+ * drawing, or the idle or placement it rides on, changed: update it with
+ * the contact sheet in the same PR.
  */
 const PINNED: Readonly<Record<EmotionOf<"tin-owlet">, string>> = {
-  neutral: "06f5e84d0714aa15",
-  curious: "ebb2878aeca659e3",
-  taciturn: "0ea69db7bd7910c4",
-  happy: "3673c39de2058c73",
-  perplexed: "b073ef20e56d8193",
-  anxious: "1e9c12ed876f7fb7",
-  frustrated: "a145bba03b81db98",
-  angry: "63157596e1821596",
-  ceremonious: "e221c4bf8b64908f",
+  neutral: "3404a6f8b19491c2",
+  curious: "c829eab1835e2f6d",
+  taciturn: "c38e590a918c9762",
+  happy: "c12f5b56e48c01c8",
+  perplexed: "ca304da289f003e1",
+  anxious: "4bde04057b6ae288",
+  frustrated: "273a8341fd4566aa",
+  angry: "5988aa676839e148",
+  ceremonious: "cdb880ee485722ae",
 }
 
 describe("Tin Bird's loops", () => {
