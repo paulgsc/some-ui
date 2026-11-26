@@ -94,6 +94,7 @@ import {
 } from "@some-ui/video-render"
 import type {
   CardsScene,
+  CastLayout,
   CutList,
   Handed,
   HeardSpokenCard,
@@ -272,6 +273,7 @@ async function spokenStills({
   owned,
   speaker,
   policy,
+  casts,
 }: {
   readonly page: Page
   readonly origin: string
@@ -281,6 +283,8 @@ async function spokenStills({
   readonly owned: Readonly<Partial<Record<string, SpokenTakeFiles>>>
   readonly speaker: string | null
   readonly policy: ReturnType<typeof policyOf>
+  /** Filled with where each still draws its cast (C1561). */
+  readonly casts: Map<string, CastLayout>
 }): Promise<ReadonlyMap<string, StillTake | null>> {
   await page.route(/\/spoken-cards\/[^/?#]+\.json$/, (route) => {
     const name = new URL(route.request().url()).pathname.split("/").at(-1)
@@ -336,6 +340,7 @@ async function spokenStills({
     timed: true,
     policy,
     announce: false,
+    casts,
   })
   return new Map(spoken.map(({ scene }, i) => [scene.id, takes[i] ?? null]))
 }
@@ -612,6 +617,7 @@ async function main(): Promise<void> {
         })
       : []
     let recorded: ReadonlyMap<string, StillTake | null> = new Map()
+    const casts = new Map<string, CastLayout>()
     if (spokenCount > 0) {
       const page = await browser.newPage({
         viewport: FRAME,
@@ -627,6 +633,7 @@ async function main(): Promise<void> {
           owned,
           speaker,
           policy,
+          casts,
         })
       } finally {
         await page.close()
@@ -637,7 +644,9 @@ async function main(): Promise<void> {
       root,
       series,
       await withScreens(
-        spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
+        spoken
+          ? voicedCardsCutList(essay.value, scenes, takes, casts)
+          : essay.value,
         screens,
         read.value,
         spoken,

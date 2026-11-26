@@ -298,7 +298,8 @@ export async function render(
           }
         : {}),
     })),
-    fps
+    fps,
+    cutList.joins
   )
   if (!placement.ok) return refused(placement.problems)
   const { totalFrames } = placement.value

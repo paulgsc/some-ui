@@ -12,6 +12,7 @@ import type { MusicMode, Sound, Transition } from "./vocabulary"
 export const TRANSITION_WORDS: Readonly<Record<Transition, string>> = {
   cut: "Cut",
   crossfade: "Crossfade",
+  "slow-crossfade": "Slow crossfade",
   "dip-to-black": "Dip to black",
   "slide-up": "Slide up",
   wipe: "Wipe",
