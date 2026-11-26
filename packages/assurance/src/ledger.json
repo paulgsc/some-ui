@@ -4499,6 +4499,10 @@
       "why": "Pairing, passkeys and the account: each step answers at once, or the ceremony starts again."
     },
     {
+      "module": "conversations",
+      "why": "A conversation essay's record and its previews (paulgsc/server#1243, HOST16-S): each read answers with the record or the previews home holds now, and each write with where the event was kept, or why the record's step refused it, in which case nothing is kept."
+    },
+    {
       "module": "curriculum",
       "why": "Reads lessons; the answer is the outcome."
     },
@@ -5506,6 +5510,13 @@
       "class": "record",
       "growth": "Per note the phone leaves on a feed's episode (SFEED6, paulgsc/some-ui#2745; paulgsc/server invariant 38): its feed, episode, moment, one to fourteen categories from the fixed set, the take's voice-note id or null, when written and when it reached home; one row per id, append-only, body <= BODY_CEILING = 16 KiB; each is filed once for the mailbox's feedback folder as it arrives.",
       "horizon": "kept for good: no delete and no switch (the owner's ruling on ask paulgsc/some-ui#2749); it goes only with the account",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:conversation_event",
+      "class": "record",
+      "growth": "Per event of a conversation essay's record (HOST16-S, paulgsc/server#1243; some-ui.conversation/2, #3573; paulgsc/server invariant 40): one row per topic, point, podcast version, flag, withdrawal, measure, green light, notes or preview approval, the event as sent, numbered without a gap per conversation; body <= BODY_CEILING = 1 MiB, and a version of at most 40 turns is the largest; append-only (UPDATE aborts), and a refused event is never written.",
+      "horizon": "kept for good: the record is the owner's (CLAUDE.md, \"Never lose the record\"); it goes only with the account",
       "family": "what-is-kept"
     },
     {

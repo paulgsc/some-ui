@@ -214,7 +214,7 @@ export const SAMPLES: Readonly<
     sources: ["make help", "the README"],
     wins: "the README",
   },
-  // Mochi asks, Tin Bird answers from the corner, then comes in close.
+  // Mochi asks, Tin Bird answers from the corner, pointing at the card, then comes in close.
   host: {
     seed: 7,
     beats: [
@@ -225,6 +225,13 @@ export const SAMPLES: Readonly<
         shot: "medium",
         placement: "bottom-left",
         speaking: true,
+        words: [
+          { startMs: 200, endMs: 460, stress: 0.8 },
+          { startMs: 530, endMs: 790 },
+          { startMs: 860, endMs: 1120 },
+          { startMs: 1190, endMs: 1450 },
+          { startMs: 1520, endMs: 1780, stress: 0.8 },
+        ],
       },
       {
         atMs: 2000,
@@ -234,6 +241,14 @@ export const SAMPLES: Readonly<
         placement: "bottom-right",
         speaking: true,
         lookAt: { x: 0.3, y: 0.3 },
+        target: { x: 0.3, y: 0.3 },
+        words: [
+          { startMs: 2200, endMs: 2460, stress: 0.8 },
+          { startMs: 2530, endMs: 2790, cue: true },
+          { startMs: 2860, endMs: 3120 },
+          { startMs: 3190, endMs: 3450 },
+          { startMs: 3520, endMs: 3780, stress: 0.8 },
+        ],
       },
       {
         atMs: 4000,
@@ -243,6 +258,17 @@ export const SAMPLES: Readonly<
         placement: "center",
         speaking: true,
         opacity: 0.85,
+        words: [
+          { startMs: 4200, endMs: 4460, stress: 0.8 },
+          { startMs: 4530, endMs: 4790 },
+          {
+            startMs: 4860,
+            endMs: 5120,
+            notes: [{ emotion: "curious", weight: 0.9 }],
+          },
+          { startMs: 5190, endMs: 5450 },
+          { startMs: 5520, endMs: 5780, stress: 0.8 },
+        ],
       },
     ],
   },

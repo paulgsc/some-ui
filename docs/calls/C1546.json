@@ -1,0 +1,19 @@
+{
+  "id": "C1546",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/some-styles/src/brand/host-live.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/host.ts"
+  ],
+  "chose": "The living layer's and the notes layer's numbers, as policy in host-live.ts: the mouth opens at least 0.6 on a word; a stressed word (stress 0.5 and up) springs the body 2.7 units, decaying at 4/s at 2.2 Hz; sway 1.6° at 0.22 Hz; bob 1 unit at 0.37 Hz, an open mouth lowering it 1.4; a sweat bead each 20 s of talk, rested 0.5 ms per ms of silence; play in a pause of 0.8 s or more, in 65% of them, at most 1.2 s, in each character's acts (Mochi squash and wobble; Tin Bird hop, spin and swing); a point lasts 1.43 s, at most one per 5 s, only toward a target on a cue word. A note fires from weight 0.5; a different emotion takes over only by a 0.15 margin and 1.2 s after the last change; a pulse shows 4 s, easing 0.45 s in and out; each emotion rests 6-10 s before it pulses again (EMOTION_REFRACTORY_MS, the louder ones longer); a scene of 20 s or more with a word stressed 0.6 or more and no note gets one mid-scene; no scene gets more than its intro plus 4 notes a minute. They are tuned on 'More hands, one door' (2026-11-26), whose session layer used them, lowered toward the A/B prototype's 1.3° sway after the owner's \"shake a little, not too much\". Every choice here rests on the owner's tiebreaker (C1545): natural, cohesive, lifelike emulation first; not jarring, not distracting.",
+  "options": [
+    "these numbers (taken)",
+    "the session layer's first, larger motion (sway up to 4°, scaled by the emotion's energy), which the owner found too much and, at the centre, too little",
+    "no debounce: every noted word pulses, which the owner ruled jarring"
+  ],
+  "gray": "No check can say what reads as alive and calm at once; the owner judges it on the rendered preview, and the A/B clip on #3526 is that preview.",
+  "undo": "Move the consts in host-live.ts; record the move as a call that moves this one.",
+  "refs": ["#3526", "#3564", "#3521"]
+}
