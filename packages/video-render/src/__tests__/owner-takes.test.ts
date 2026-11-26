@@ -359,61 +359,353 @@ describe("breaths (HOST12)", () => {
   })
 })
 
-describe("spanProblems (HOST12)", () => {
-  const words: ReadonlyArray<TimedWord> = [
-    { text: "The", startMs: 0, endMs: 200 },
-    { text: "third.", startMs: 200, endMs: 600 },
-    { text: "The", startMs: 1_000, endMs: 1_200 },
-    { text: "fourth.", startMs: 1_200, endMs: 1_700 },
+describe("a turn's span in a long take (TAKE1, #3582)", () => {
+  // The take's real words, each with silence after it; the transcript's
+  // times for them are loose, as a transcriber's are.
+  const REAL: ReadonlyArray<Stretch> = [
+    { fromMs: 300, toMs: 700 },
+    { fromMs: 900, toMs: 1_300 },
+    { fromMs: 1_500, toMs: 1_900 },
+    { fromMs: 2_100, toMs: 2_500 },
   ]
+  const TEXTS = ["The", "third.", "The", "fourth."]
+  /**
+   * The transcript's times for the real words, their boundaries related as
+   * a transcriber emits them: abutting inside the first word's audio (the
+   * owner's m4: the boundary is the next word's start, and the audio runs
+   * past it), overlapping, or with a gap.
+   */
+  const RELATIONS = {
+    abut: (a: Stretch, _b: Stretch) => ({
+      end: a.toMs - 50,
+      start: a.toMs - 50,
+    }),
+    overlap: (a: Stretch, _b: Stretch) => ({
+      end: a.toMs - 20,
+      start: a.toMs - 80,
+    }),
+    gap: (a: Stretch, b: Stretch) => ({
+      end: a.toMs - 100,
+      start: b.fromMs + 100,
+    }),
+  } as const
+  const wordsOf = (
+    relation: keyof typeof RELATIONS
+  ): ReadonlyArray<TimedWord> =>
+    REAL.map((w, i) => {
+      const before = REAL[i - 1]
+      const after = REAL[i + 1]
+      return {
+        text: TEXTS[i] ?? "",
+        startMs:
+          before === undefined
+            ? w.fromMs
+            : RELATIONS[relation](before, w).start,
+        endMs: after === undefined ? w.toMs : RELATIONS[relation](w, after).end,
+      }
+    })
+  const pieces: ReadonlyArray<Piece> = REAL.map((w) => ({ kind: "word", ...w }))
+  /** Whether `ms` is in the waveform's silence: neither voice nor breath. */
+  const silentAt = (s: ReturnType<typeof screened>, ms: number): boolean => {
+    const i = Math.floor(ms / TAKE_POLICY.frameMs)
+    return s.voiced[i] === false && s.breath[i] === false
+  }
 
-  it("agrees when the turn says what its span's words say, and its edges fall between words", () => {
-    expect(
-      spanProblems({ id: "o3", text: "The third." }, words, {
-        fromMs: 0,
-        toMs: 800,
-      })
-    ).toEqual([])
-  })
+  const family = (["abut", "overlap", "gap"] as const).flatMap((relation) =>
+    [1, 0.05].flatMap((scale) =>
+      [1, 2, 3].map((split) => ({ relation, scale, split }))
+    )
+  )
 
-  it("cuts a long take into turns whose spans agree with their words, every way it is split", () => {
-    const texts = ["The", "third.", "The", "fourth."]
-    for (let split = 1; split < words.length; split++) {
-      const a = spanOf(words, 0, split - 1)
-      const b = spanOf(words, split, words.length - 1)
-      if (a === null || b === null) throw new Error("no span")
-      expect(a.toMs).toBeLessThanOrEqual(b.fromMs)
+  it.each(family)(
+    "cuts every edge in the waveform's silence: $relation, at $scale, split after word $split",
+    ({ relation, scale, split }) => {
+      const s = screened(takeOf(2_800, pieces, { scale }))
+      const words = wordsOf(relation)
+      const a = spanOf(s, words, 0, split - 1)
+      const b = spanOf(s, words, split, words.length - 1)
+      if (!a.ok || !b.ok) throw new Error("no span")
+      expect(a.value.toMs).toBeLessThanOrEqual(b.value.fromMs)
+      expect(silentAt(s, a.value.toMs)).toBe(true)
+      expect(silentAt(s, b.value.fromMs)).toBe(true)
+      // Every real word wholly in one turn: none cut, none spilling over.
+      REAL.forEach((w, i) =>
+        expect(within(w, i < split ? a.value : b.value)).toBe(true)
+      )
       expect([
         ...spanProblems(
-          { id: "a", text: texts.slice(0, split).join(" ") },
+          { id: "a", text: TEXTS.slice(0, split).join(" ") },
+          s,
           words,
-          a
+          a.value
         ),
         ...spanProblems(
-          { id: "b", text: texts.slice(split).join(" ") },
+          { id: "b", text: TEXTS.slice(split).join(" ") },
+          s,
           words,
-          b
+          b.value
         ),
       ]).toEqual([])
     }
-    expect(spanOf(words, 2, 1)).toBeNull()
+  )
+
+  it("never cuts at the transcript's time: the old midpoint lands in the word", () => {
+    const s = screened(takeOf(2_800, pieces))
+    const [first, second] = wordsOf("abut")
+    if (first === undefined || second === undefined) throw new Error("no words")
+    // The owner's m4: the transcript's boundary is inside the first word.
+    expect(silentAt(s, (first.endMs + second.startMs) / 2)).toBe(false)
   })
 
-  it("names a sentence moved into the wrong turn, and an edge inside a word", () => {
+  // The transcript's error, independent of the words' length: every word
+  // of one length, its times shifted by one offset, all the same way or
+  // alternating, wherever its middle stays in its own voice (TAKE1).
+  const offsets = [200, 400, 800, 1_000].flatMap((length) =>
+    [-450, -200, 0, 200, 450].flatMap((shift) =>
+      (["same", "alternating"] as const).flatMap((pattern) =>
+        Math.abs(shift) < length / 2 ? [{ length, shift, pattern }] : []
+      )
+    )
+  )
+
+  it.each(offsets)(
+    "cuts in silence with the transcript off by $shift ms ($pattern) on words $length ms long",
+    ({ length, shift, pattern }) => {
+      const gap = 300
+      const real: ReadonlyArray<Stretch> = [0, 1, 2].map((i) => ({
+        fromMs: 600 + i * (length + gap),
+        toMs: 600 + i * (length + gap) + length,
+      }))
+      const end = (real.at(-1)?.toMs ?? 0) + 800
+      const s = screened(
+        takeOf(
+          end,
+          real.map((w) => ({ kind: "word" as const, ...w }))
+        )
+      )
+      const words: ReadonlyArray<TimedWord> = real.map((w, i) => {
+        const by = pattern === "same" || i % 2 === 0 ? shift : -shift
+        return {
+          text: TEXTS[i] ?? "",
+          startMs: w.fromMs + by,
+          endMs: w.toMs + by,
+        }
+      })
+      for (let split = 1; split < real.length; split++) {
+        const a = spanOf(s, words, 0, split - 1)
+        const b = spanOf(s, words, split, real.length - 1)
+        if (!a.ok || !b.ok) throw new Error([a, b].join(" "))
+        expect(silentAt(s, a.value.toMs)).toBe(true)
+        real.forEach((w, i) =>
+          expect(within(w, i < split ? a.value : b.value)).toBe(true)
+        )
+      }
+    }
+  )
+
+  // A word broken by its own silent closure (the hold of a stop) that can
+  // outlast the gap after it (Codex on #3583): wherever the transcript's
+  // boundary is nearer the gap than the closure, the edge is the gap.
+  const closures = [60, 100, 150].flatMap((closure) =>
+    (["middle", "before its release"] as const).flatMap((at) =>
+      [40, 80, 200].flatMap((gap) =>
+        [-30, 0, 30].map((shift) => ({ closure, at, gap, shift }))
+      )
+    )
+  )
+
+  it.each(closures)(
+    "cuts at the gap, not a $closure ms closure in its $at: gap $gap ms, transcript $shift ms",
+    ({ closure, at, gap, shift }) => {
+      const a: Stretch = { fromMs: 300, toMs: 1_000 }
+      const hold: Stretch =
+        at === "middle"
+          ? { fromMs: 650 - closure / 2, toMs: 650 + closure / 2 }
+          : { fromMs: 940 - closure, toMs: 940 }
+      const b: Stretch = { fromMs: a.toMs + gap, toMs: a.toMs + gap + 360 }
+      const s = screened(
+        takeOf(b.toMs + 600, [
+          { kind: "word", fromMs: a.fromMs, toMs: hold.fromMs },
+          { kind: "word", fromMs: hold.toMs, toMs: a.toMs },
+          { kind: "word", ...b },
+        ])
+      )
+      const words: ReadonlyArray<TimedWord> = [
+        { text: "Pocket", startMs: a.fromMs, endMs: a.toMs + shift },
+        { text: "watch.", startMs: b.fromMs + shift, endMs: b.toMs },
+      ]
+      const first = spanOf(s, words, 0, 0)
+      const second = spanOf(s, words, 1, 1)
+      if (!first.ok || !second.ok) throw new Error("no span")
+      expect(silentAt(s, first.value.toMs)).toBe(true)
+      expect(within(a, first.value)).toBe(true)
+      expect(within(b, second.value)).toBe(true)
+    }
+  )
+
+  it("names a span the transcript's times leave with no voice, beyond the family", () => {
+    // Codex's probe: words 200 ms long, the transcript 400 ms late, more
+    // than half a word: the edge is found after both, and the second turn
+    // would hold nothing.
+    const s = screened(
+      takeOf(1_600, [
+        { kind: "word", fromMs: 300, toMs: 500 },
+        { kind: "word", fromMs: 700, toMs: 900 },
+      ])
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "a", startMs: 700, endMs: 900 },
+      { text: "b", startMs: 1_100, endMs: 1_300 },
+    ]
+    expect(spanOf(s, words, 1, 1)).toEqual({
+      ok: false,
+      problems: [
+        '"b" to "b": the span the transcript\'s times give holds no voice; they are off by more than the words are long',
+      ],
+    })
+  })
+
+  it("lets a short turn leave out near words at either end", () => {
+    // Codex's probe: both edges' slack overlaps, and the turn says only
+    // its middle word.
+    const s = screened(
+      takeOf(1_600, [
+        { kind: "word", fromMs: 600, toMs: 700 },
+        { kind: "word", fromMs: 900, toMs: 1_000 },
+        { kind: "word", fromMs: 1_100, toMs: 1_200 },
+      ])
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "One", startMs: 600, endMs: 700 },
+      { text: "two", startMs: 900, endMs: 1_000 },
+      { text: "three", startMs: 1_100, endMs: 1_200 },
+    ]
+    const span: Stretch = { fromMs: 800, toMs: 1_050 }
+    expect(spanProblems({ id: "b", text: "two" }, s, words, span)).toEqual([])
     expect(
-      spanProblems({ id: "o3", text: "The third." }, words, {
+      spanProblems({ id: "b", text: "One three" }, s, words, span)
+    ).toHaveLength(1)
+  })
+
+  it("finds the silence 400 ms from the transcript's boundary", () => {
+    // The owner's m2: the transcript's times off the voice by about 0.4 s.
+    const real: ReadonlyArray<Stretch> = [
+      { fromMs: 300, toMs: 1_100 },
+      { fromMs: 1_300, toMs: 2_100 },
+    ]
+    const s = screened(
+      takeOf(
+        2_500,
+        real.map((w) => ({ kind: "word" as const, ...w }))
+      )
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "Late", startMs: 300, endMs: 1_600 },
+      { text: "boundary.", startMs: 1_600, endMs: 2_100 },
+    ]
+    const a = spanOf(s, words, 0, 0)
+    const b = spanOf(s, words, 1, 1)
+    if (!a.ok || !b.ok) throw new Error("no span")
+    expect(silentAt(s, a.value.toMs)).toBe(true)
+    expect(within(real[0]!, a.value)).toBe(true)
+    expect(within(real[1]!, b.value)).toBe(true)
+  })
+
+  it("holds a span cut in silence to its words, the transcript 0.45 s off at both edges", () => {
+    const real: ReadonlyArray<Stretch> = [
+      { fromMs: 300, toMs: 700 },
+      { fromMs: 1_000, toMs: 1_400 },
+      { fromMs: 1_500, toMs: 1_900 },
+      { fromMs: 2_200, toMs: 2_600 },
+    ]
+    const s = screened(
+      takeOf(
+        2_900,
+        real.map((w) => ({ kind: "word" as const, ...w }))
+      )
+    )
+    // Each edge of the middle turn in the silence before and after it; the
+    // transcript late by up to 0.45 s, so "two" has its middle past the
+    // turn's end.
+    const span: Stretch = { fromMs: 850, toMs: 2_050 }
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "Zero", startMs: 300, endMs: 1_150 },
+      { text: "one", startMs: 1_150, endMs: 2_000 },
+      { text: "two.", startMs: 2_000, endMs: 2_350 },
+      { text: "Three", startMs: 2_350, endMs: 2_600 },
+    ]
+    expect(silentAt(s, span.fromMs) && silentAt(s, span.toMs)).toBe(true)
+    expect(spanProblems({ id: "b", text: "One two." }, s, words, span)).toEqual(
+      []
+    )
+    // A turn's text is one run of its words: none skipped in its middle.
+    expect(
+      spanProblems({ id: "b", text: "Zero two." }, s, words, span)
+    ).toHaveLength(1)
+  })
+
+  it("keeps a breath between two words whole, on one side of the edge", () => {
+    const real: ReadonlyArray<Stretch> = [
+      { fromMs: 300, toMs: 900 },
+      { fromMs: 1_800, toMs: 2_200 },
+    ]
+    const breath: Stretch = { fromMs: 1_450, toMs: 1_600 }
+    const s = screened(
+      takeOf(2_600, [
+        { kind: "word", ...real[0]! },
+        { kind: "breath", ...breath },
+        { kind: "word", ...real[1]! },
+      ])
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "One", startMs: 300, endMs: 1_500 },
+      { text: "two.", startMs: 1_500, endMs: 2_200 },
+    ]
+    const a = spanOf(s, words, 0, 0)
+    if (!a.ok) throw new Error(a.problems.join("\n"))
+    expect(silentAt(s, a.value.toMs)).toBe(true)
+    expect(a.value.toMs <= breath.fromMs || a.value.toMs >= breath.toMs).toBe(
+      true
+    )
+  })
+
+  it("refuses words that run together, naming them, rather than cut one", () => {
+    const s = screened(
+      takeOf(2_000, [
+        { kind: "word", fromMs: 300, toMs: 900 },
+        { kind: "word", fromMs: 900, toMs: 1_500 },
+      ])
+    )
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "Run", startMs: 300, endMs: 900 },
+      { text: "together.", startMs: 900, endMs: 1_500 },
+    ]
+    expect(spanOf(s, words, 0, 0)).toEqual({
+      ok: false,
+      problems: [
+        '"Run" and "together." run together near 900 ms: no silence to cut the turn in',
+      ],
+    })
+    expect(spanOf(s, words, 1, 0).ok).toBe(false)
+  })
+
+  it("names a sentence moved into the wrong turn, and an edge in the voice", () => {
+    const s = screened(takeOf(2_800, pieces))
+    const words = wordsOf("gap")
+    expect(
+      spanProblems({ id: "o3", text: "The third." }, s, words, {
         fromMs: 0,
-        toMs: 1_800,
+        toMs: 2_700,
       })
     ).toEqual([
       'o3: its span says "the third the fourth", and the turn "the third"',
     ])
     expect(
-      spanProblems({ id: "o4", text: "The fourth." }, words, {
-        fromMs: 1_100,
-        toMs: 1_800,
+      spanProblems({ id: "o4", text: "The fourth." }, s, words, {
+        fromMs: 1_700,
+        toMs: 2_700,
       })
-    ).toEqual(['o4: its span cuts "The" at 1100 ms'])
+    ).toEqual(["o4: its span's edge at 1700 ms is in the voice or a breath"])
   })
 })
 
