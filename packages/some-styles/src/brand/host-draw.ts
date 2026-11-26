@@ -73,7 +73,7 @@ export const moved = (
  * already carries, so a loop moves a part the idle has moved without
  * undoing the idle.
  */
-export const movedFurther = (
+const movedFurther = (
   nodes: ReadonlyArray<CastNode>,
   part: string,
   transform: string
