@@ -1,0 +1,20 @@
+{
+  "id": "C1560",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:packages/video-render/src/timing.ts",
+    "some-ui:packages/video-render/src/vocabulary.ts"
+  ],
+  "chose": "A spoken essay's scenes join by a 400 ms crossfade, and a scene that opens a chapter by a new member of the transitions' closed union, slow-crossfade (800 ms, the same fade drawn twice as long), as the policy constant CARDS_JOINS. Every join is drawn over the outgoing scene held on (joins: \"hold\" in the cut list, placed by `place`), so each scene starts on the frame a cut would start it on and the sound is the cut version's, sample for sample. A scene's own transition stands; the first scene, a composition and the scene after one keep theirs; a scene too short to hold its join on both sides is cut. Under the owner's tiebreaker on #3521 (natural, cohesive, lifelike, never jarring): most of a cards essay's scenes open a chapter, so a dip to black there would darken the screen at nearly every card, and a longer crossfade marks the chapter without that.",
+  "options": [
+    "Crossfade within a chapter, a slow crossfade (a new union member, 800 ms) at a chapter, held on so no sound moves",
+    "Crossfade within a chapter, dip to black at a chapter (both already in the union)",
+    "Crossfade everywhere, no chapter distinction",
+    "Join by overlap as the looks do today, bringing each take in early"
+  ],
+  "gray": "How a scene join looks is what the owner sees in every essay; the issue offered a dip to black or a longer crossfade at a chapter, and nothing settles which, or how long.",
+  "undo": "Set CARDS_JOINS.chapter to another transition, or remove `joins: \"hold\"` and the transitions from voicedCardsCutList to cut every scene again.",
+  "refs": ["#3571", "#3521"]
+}
