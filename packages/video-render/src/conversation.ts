@@ -39,7 +39,7 @@
  * an essay is its case of Mochi in the owner's takes and Tin Bird
  * (`tin-owlet`) in Kokoro's lines, Tin Bird in as many roles as it has
  * stances (an analyst's verdict, a presenter's build, a coach's challenge,
- * C1547). The flags are keyed by a voice, not by who speaks it.
+ * C1562). The flags are keyed by a voice, not by who speaks it.
  *
  * The record is an append-only log of events (`ConversationRecord`), and its
  * state is the log replayed through `stepConversation`, a pure function. A
@@ -90,7 +90,7 @@ export const CONVERSATION_POLICY = {
   pointsMost: 40,
   /**
    * The most characters a topic, a note or a kept answer's reason runs: the
-   * owner's spoken notes run to about 3,000 (C1548, moving 600).
+   * owner's spoken notes run to about 3,000 (C1563, moving 600).
    */
   noteMost: 4000,
   /**
@@ -100,7 +100,7 @@ export const CONVERSATION_POLICY = {
   speakersMost: 8,
   /**
    * The longest podcast a version may be green-lit at, as home measured its
-   * audio (`heard`), never estimated from its words (C1548, #3555): the
+   * audio (`heard`), never estimated from its words (C1563, #3555): the
    * forty turns above at thirty seconds each.
    */
   mostMs: 20 * 60_000,
