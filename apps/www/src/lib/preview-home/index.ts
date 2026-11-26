@@ -11,16 +11,16 @@
  * Each variant's clip is home's; this phone doesn't fetch it yet, so a card
  * shows its callouts and says where the clip will play.
  */
-import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
 import type { HomeRead } from "@some-ui/soundbites"
 import type { KeptChoice } from "@some-ui/video-render"
 import { PreviewOfferSchema } from "@some-ui/video-render"
 import { z } from "zod"
 
+import type { HomeAnswered } from "@/lib/home-link/home-read"
+import { askHome, readHome } from "@/lib/home-link/home-read"
 import type { PreviewsAsk } from "@/lib/home-link/preview-reads"
 import { askPreviews } from "@/lib/home-link/preview-reads"
-import { askWhileBusy } from "@/lib/home-link/while-busy"
 import type {
   ConversationPreviews,
   PreviewSource,
@@ -75,31 +75,14 @@ const PreviewsSchema = z.object({
   unreadable: z.array(z.string()),
 })
 
-/** Home's answer, once the link was free, or why there is none. */
-type Answered =
-  | { readonly kind: "answered"; readonly answer: HomeAnswer }
-  | { readonly kind: "unpaired" }
-  | { readonly kind: "away" }
-  | { readonly kind: "busy" }
+const ask = (what: PreviewsAsk): Promise<HomeAnswered> =>
+  askHome(() => askPreviews(what))
 
-async function ask(what: PreviewsAsk): Promise<Answered> {
-  const asked = await askWhileBusy(() => askPreviews(what))
-  return asked.kind === "unreachable" ? { kind: "away" } : asked
-}
-
-async function read<T>(
+/** `what`'s answer as `schema` reads it; a home without paulgsc/server#1245 is `older`. */
+const read = <T>(
   what: PreviewsAsk,
   schema: z.ZodType<T>
-): Promise<HomeRead<T>> {
-  const asked = await ask(what)
-  if (asked.kind !== "answered") return asked
-  const { status, body } = asked.answer
-  // A home without paulgsc/server#1245 serves no such route.
-  if (status === 404) return { kind: "older" }
-  if (status !== 200) return { kind: "unreadable" }
-  const value = readAs(schema, body)
-  return value === null ? { kind: "unreadable" } : { kind: "read", value }
-}
+): Promise<HomeRead<T>> => readHome(() => askPreviews(what), schema)
 
 /**
  * A conversation's previews as the screen shows them, or null when one
