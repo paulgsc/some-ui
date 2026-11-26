@@ -233,7 +233,7 @@ export const Previews = ({
               key={offered.preview}
               offered={offered}
               watchFirst={previews.where === "home"}
-              disabled={state.keeping !== null}
+              disabled={state.keeping !== null || state.reconciling}
               onPick={(pick) => {
                 previews.pick(c.id, offered.preview, pick)
               }}

@@ -71,6 +71,12 @@ export type PreviewsState =
         readonly pick: PreviewPick
       } | null
       readonly said: PickSaid | null
+      /**
+       * Whether a pick's outcome is uncertain and the conversation is being
+       * read again: no pick is taken until it is, since one would follow
+       * what may no longer stand.
+       */
+      readonly reconciling: boolean
     }
 
 export type PreviewsEvent =
@@ -93,8 +99,17 @@ export type PreviewsEvent =
     }
   /** A conversation read again, as where picks are kept now holds it. */
   | { readonly kind: "refreshed"; readonly now: ConversationPreviews }
+  /** It couldn't be read again: why, and the screen asks again from the top. */
+  | { readonly kind: "unreconciled"; readonly why: NotShown }
 
 export const READING: PreviewsState = { phase: "reading" }
+
+/** The outcomes after which what is kept is read again before the next pick. */
+export const UNCERTAIN: ReadonlySet<PickOutcome> = new Set([
+  "refused",
+  "unreadable",
+  "away",
+])
 
 /** Whether `pick` is the choice that stands. */
 const stands = (standing: KeptChoice | null, pick: PreviewPick): boolean =>
@@ -183,6 +198,7 @@ export function stepPreviews(
             conversations: event.result.value,
             keeping: null,
             said: null,
+            reconciling: false,
           }
         : { phase: "nothing", why: event.result.kind }
     }
@@ -191,6 +207,7 @@ export function stepPreviews(
     }
     case "pick": {
       if (state.phase !== "shown" || state.keeping !== null) return state
+      if (state.reconciling) return state
       const offered = previewIn(state, event.conversation, event.preview)
       if (offered === undefined) return state
       if (stands(offered.standing, event.pick))
@@ -232,11 +249,21 @@ export function stepPreviews(
         conversations,
         keeping: null,
         said: said(state, event.outcome),
+        reconciling: UNCERTAIN.has(event.outcome),
       }
     }
     case "refreshed": {
       return state.phase === "shown"
-        ? { ...state, conversations: withNow(state.conversations, event.now) }
+        ? {
+            ...state,
+            conversations: withNow(state.conversations, event.now),
+            reconciling: false,
+          }
+        : state
+    }
+    case "unreconciled": {
+      return state.phase === "shown" && state.reconciling
+        ? { phase: "nothing", why: event.why }
         : state
     }
     default: {

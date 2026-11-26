@@ -312,6 +312,29 @@ describe("previewsRuntime (HOST16)", () => {
     }
   )
 
+  it("takes no pick while an uncertain one is read again, and asks again when it can't be", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    runtime.open()
+    s.reads[0]?.({ kind: "read", value: [conversation()] })
+    await settled()
+    runtime.pick("runners", OFFER.preview, { kind: "else", said: "Softer." })
+    s.answer[0]?.({ kind: "away" })
+    await settled()
+    // Reading again: another pick is not sent.
+    runtime.pick("runners", OFFER.preview, { kind: "else", said: "Slower." })
+    expect(s.sent).toHaveLength(1)
+    const waiting = runtime.state.getSnapshot()
+    expect(waiting.phase === "shown" && waiting.reconciling).toBe(true)
+    // It couldn't be read: the screen says why and asks again from the top.
+    s.rereads[0]?.({ kind: "away" })
+    await settled()
+    expect(runtime.state.getSnapshot()).toEqual({
+      phase: "nothing",
+      why: "away",
+    })
+  })
+
   it("names the preview whose rule a pick would set again as the one it moves", async () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)

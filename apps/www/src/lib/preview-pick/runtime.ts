@@ -13,7 +13,7 @@ import type { Readable } from "@/lib/cell"
 import { cell } from "@/lib/cell"
 
 import type { ConversationPreviews, PreviewsState } from "./model"
-import { movesFor, previewIn, READING, stepPreviews } from "./model"
+import { movesFor, previewIn, READING, stepPreviews, UNCERTAIN } from "./model"
 
 /**
  * How keeping a pick went: what is kept now (null when it was kept and
@@ -107,14 +107,13 @@ export function previewsRuntime(
       // Refused, not read, or not answered (home may have kept it before
       // the answer was lost): read again, so the screen and the next pick
       // follow what is kept now. Busy and unpaired sent nothing.
-      if (
-        written.kind === "refused" ||
-        written.kind === "unreadable" ||
-        written.kind === "away"
-      )
+      if (UNCERTAIN.has(written.kind === "written" ? "kept" : written.kind))
         void source.reread(conversation).then((again) => {
-          if (again.kind === "read")
-            dispatch({ kind: "refreshed", now: again.value })
+          dispatch(
+            again.kind === "read"
+              ? { kind: "refreshed", now: again.value }
+              : { kind: "unreconciled", why: again.kind }
+          )
         })
     })
   }
