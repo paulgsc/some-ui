@@ -1,0 +1,21 @@
+{
+  "id": "C1550",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/preview-offer.ts",
+    "some-ui:apps/www/src/components/studio/preview-pick.tsx",
+    "some-ui:apps/www/src/lib/preview-pick/index.ts",
+    "some-ui:apps/www/src/lib/studio-index/index.ts"
+  ],
+  "chose": "A preview to approve is a case of the shared DecisionPick (C693), not a component of its own: each of the two or three variants is an option whose decision node is its card (the clip muted and looping, \"what's in it\" from the clip's own callouts, \"Use this\"), one recommended, and DecisionPick's own option is \"something else\", said in the owner's words, which sets no rule and asks for new previews. No toggle, slider or build-your-own (the owner's guard on #3521). One tap keeps the pick at once as conversation/2's approve event, built by approveEvent from the offer, and a second pick on the same preview is refused, so the record only grows. Picks go through a port (PreviewPicks): today the phone's own store, the screen saying the pick is kept on this phone and not on home, until paulgsc/server#1243's routes take its place by one swap. The screen is a new member of Studio's kinds, Previews, A to Z between Intuitions and Spoken, and until home offers a conversation's previews it shows HOST18's transitions preview from a fixture, saying where a clip isn't made yet.",
+  "options": [
+    "A DecisionPick case, picked in one tap, kept on the phone until home's routes (chosen)",
+    "A component of its own for previews",
+    "A pick confirmed by a second tap before it is kept",
+    "Hold the screen back until home keeps conversations"
+  ],
+  "gray": "How the owner approves a preview, where the pick is kept before home can keep it, and where the screen sits in Studio are what the owner meets on the phone; the guard settles that there are no controls, not this shape.",
+  "undo": "Remove previews from STUDIO_KINDS and its route; picks kept on the phone stay under some-ui:studio:preview-picks.",
+  "refs": ["#3558", "#3521", "#3567"]
+}
