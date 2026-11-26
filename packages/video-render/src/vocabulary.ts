@@ -51,6 +51,8 @@ export const TRANSITIONS = [
   "slide-up",
   "wipe",
   "zoom",
+  /** A crossfade twice as long: where a new chapter begins (HOST18). */
+  "slow-crossfade",
 ] as const
 export type Transition = (typeof TRANSITIONS)[number]
 
@@ -58,11 +60,22 @@ export type Transition = (typeof TRANSITIONS)[number]
 export const TRANSITION_MS: Readonly<Record<Transition, number>> = {
   cut: 0,
   crossfade: 400,
+  "slow-crossfade": 800,
   "dip-to-black": 500,
   "slide-up": 350,
   wipe: 400,
   zoom: 400,
 }
+
+/**
+ * Where a transition takes its time from (HOST18, #3571). `overlap` brings
+ * the next scene in early, so the video is shorter by each join and every
+ * take after it comes in sooner. `hold` keeps every scene where a cut would
+ * put it: the scene before the join holds its picture on through it, so the
+ * sound is the cut version's, sample for sample, and only the pictures meet.
+ */
+export const JOINS = ["overlap", "hold"] as const
+export type Join = (typeof JOINS)[number]
 
 /** How the picture moves over a scene. Times are ms into the scene. */
 export const MotionSchema = z.discriminatedUnion("kind", [
