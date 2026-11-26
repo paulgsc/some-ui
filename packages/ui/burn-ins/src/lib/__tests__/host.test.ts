@@ -95,6 +95,20 @@ describe("the host's params", () => {
     expect(problems(SAMPLES.host)).toEqual([])
   })
 
+  it("refuse a speaking beat that names no words (HOST5)", () => {
+    expect(
+      problems({ seed: 1, beats: [{ ...beat, speaking: true }] }).join(" ")
+    ).toMatch(/a speaking beat names its words/)
+    expect(
+      problems({
+        seed: 1,
+        beats: [
+          { ...beat, speaking: true, words: [{ startMs: 0, endMs: 200 }] },
+        ],
+      })
+    ).toEqual([])
+  })
+
   it("refuse an emotion that isn't the character's, a ceremony Tin Bird hasn't, and beats out of order", () => {
     expect(
       problems({ seed: 1, beats: [{ ...beat, emotion: "hesitation" }] })
@@ -161,6 +175,23 @@ describe.each(FRAMES.map((frame) => ({ frame, name: frameName(frame) })))(
           )
           for (const box of boxAt(p, 0)) {
             expect(inside(box, g.safeArea), `${shot} ${placement}`).toBe(true)
+          }
+        }
+      }
+    })
+
+    it("never covers the captions, at any shot and placement (HOST5)", () => {
+      for (const shot of SHOTS) {
+        for (const placement of PLACEMENTS) {
+          const p = ready(
+            { seed: 3, beats: [{ ...beat, shot, placement }] },
+            frame
+          )
+          for (const box of boxAt(p, 0)) {
+            expect(
+              overlaps(box, g.regions["lower-third"]),
+              `${shot} ${placement}`
+            ).toBe(false)
           }
         }
       }

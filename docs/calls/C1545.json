@@ -1,0 +1,17 @@
+{
+  "id": "C1545",
+  "made": "2026-11-26",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/some-styles/src/brand/host-live.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/host.ts"
+  ],
+  "chose": "The tiebreaker for the living cast's gray areas. The owner, close paraphrase (on #3521, relayed by the coordinator): \"natural, cohesive, lifelike emulation takes the higher precedent… what's more important is making it not jarring and not distracting. That's how you evaluate those gray-area decision moments.\" Each number and rule HOST5 sets (C1546, C1547, C1548) is weighed by it.",
+  "options": [
+    "natural, cohesive, lifelike emulation first; not jarring, not distracting (taken)",
+    "each gray area decided on its own, with no standing tiebreaker"
+  ],
+  "undo": "A later owner call that moves this one; the calls that cite it are then re-weighed.",
+  "refs": ["#3521", "#3526"]
+}

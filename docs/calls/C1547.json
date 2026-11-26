@@ -1,0 +1,14 @@
+{
+  "id": "C1547",
+  "made": "2026-11-26",
+  "by": "claude",
+  "paths": ["some-ui:packages/some-styles/src/brand/host.ts"],
+  "chose": "A close-up is the main shot: it centers in its area above the captions, whatever its placement says. The owner kept o4 (signed close-up, top-left) centered in 'More hands, one door' (2026-11-26). Every choice here rests on the owner's tiebreaker (C1545): natural, cohesive, lifelike emulation first; not jarring, not distracting.",
+  "options": [
+    "a close-up centers (taken)",
+    "a close-up honors its placement, which put o4's face against the frame's corner"
+  ],
+  "gray": "The signature's placement and the shot disagree; only the owner's look settles which wins.",
+  "undo": "In placedBox, use at[placement] for every shot; signatures then place close-ups again.",
+  "refs": ["#3526", "#3521"]
+}
