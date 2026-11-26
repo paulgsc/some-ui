@@ -94,4 +94,22 @@ describe("DecisionPick", () => {
     expect(onPick).not.toHaveBeenCalled()
     expect(screen.getAllByRole("button")).toHaveLength(3)
   })
+
+  it("holds one option on its own, the rest and the own one still picking", () => {
+    const onPick = vi.fn<(pick: DecisionPicked) => void>()
+    render(
+      <DecisionPick
+        options={[{ ...OPTIONS[0]!, disabled: true }, OPTIONS[1]!]}
+        picked={null}
+        onPick={onPick}
+        words={WORDS}
+      />
+    )
+    const [a, b, own] = screen.getAllByRole("button")
+    expect(a).toBeDisabled()
+    expect(b).not.toBeDisabled()
+    expect(own).not.toBeDisabled()
+    fireEvent.click(b!)
+    expect(onPick).toHaveBeenCalledWith({ kind: "option", option: "B" })
+  })
 })

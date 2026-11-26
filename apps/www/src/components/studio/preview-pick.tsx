@@ -31,15 +31,19 @@ import { Part } from "@/components/studio/layout"
 const VariantCard = ({
   variant,
   src,
+  watchFirst,
 }: {
   variant: PreviewVariant
   src: string | undefined
+  /** Whether its Use this waits on its clip. */
+  watchFirst: boolean
 }): JSX.Element => (
   <div className="flex flex-col gap-2">
     <span className="font-semibold">{variant.title}</span>
     {src === undefined ? (
       <span className="bg-muted text-muted-foreground flex aspect-video w-full items-center justify-center rounded-lg px-3 text-center text-xs">
         {W.noClip}
+        {watchFirst && ` ${W.watchFirst}`}
       </span>
     ) : (
       <video
@@ -67,6 +71,12 @@ const idOf = (i: number): string => String.fromCharCode(65 + i)
 
 type PreviewPickProps = {
   readonly offered: OfferedPreview
+  /**
+   * Whether a variant's Use this waits until its clip plays here: on home's
+   * previews, where a pick is an approval of what the owner watched (the
+   * guard on #3521). The sample's picks are never kept, so they don't wait.
+   */
+  readonly watchFirst: boolean
   readonly onPick: (pick: Pick) => void
   /** Held, while a pick is on its way. */
   readonly disabled: boolean
@@ -75,6 +85,7 @@ type PreviewPickProps = {
 /** One preview's cards, the one standing shown so; each pick handed back. */
 const PreviewPick = ({
   offered,
+  watchFirst,
   onPick,
   disabled,
 }: PreviewPickProps): JSX.Element => {
@@ -103,9 +114,11 @@ const PreviewPick = ({
             <VariantCard
               variant={variant}
               src={offered.clips[variant.variant]}
+              watchFirst={watchFirst}
             />
           ),
           recommended: variant.variant === offered.recommended,
+          disabled: watchFirst && offered.clips[variant.variant] === undefined,
         }))}
         picked={picked}
         disabled={disabled}
@@ -214,6 +227,7 @@ export const Previews = ({
             <PreviewPick
               key={offered.preview}
               offered={offered}
+              watchFirst={previews.where === "home"}
               disabled={state.keeping !== null}
               onPick={(pick) => {
                 previews.pick(c.id, offered.preview, pick)

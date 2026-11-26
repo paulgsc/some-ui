@@ -322,6 +322,7 @@ describe("the preview card's words", () => {
       PICK_WORDS.ownPrompt,
       PICK_WORDS.ownSend,
       PICK_WORDS.noClip,
+      PICK_WORDS.watchFirst,
       PICK_WORDS.reading,
       PICK_WORDS.again,
       PICK_WORDS.empty,

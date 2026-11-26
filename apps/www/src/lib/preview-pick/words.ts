@@ -16,6 +16,8 @@ export const PICK_WORDS = {
   ownPrompt: "What would you like instead?",
   ownSend: "Ask for new previews",
   noClip: "The clip plays here once this phone has it.",
+  /** On home's previews: a pick is an approval of a clip the owner watched. */
+  watchFirst: "You can use this one once you've watched its clip here.",
   reading: "Reading home's previews.",
   again: "Try again",
   /** Home answered, and offers nothing to pick yet. */

@@ -23,7 +23,9 @@ const AT = "2026-11-26T10:00:00.000Z"
 const OFFER = sampleTransitionsOffer()
 
 /** A home that keeps every pick it is sent, as its record would. */
-function keepingHome(): {
+function keepingHome(
+  clipped: ReadonlyArray<string> = OFFER.variants.map((v) => v.variant)
+): {
   readonly source: PreviewSource
   readonly sent: Array<Extract<ConversationEvent, { event: "approve" }>>
 } {
@@ -35,7 +37,7 @@ function keepingHome(): {
     previews: [
       {
         ...OFFER,
-        clips: { [OFFER.recommended]: "/clip.mp4" },
+        clips: Object.fromEntries(clipped.map((v) => [v, `/${v}.mp4`])),
         standing,
       },
     ],
@@ -85,14 +87,34 @@ const settle = (): Promise<void> =>
 
 describe("Previews (HOST16)", () => {
   it("shows each variant with what's in it, one recommended, its clip muted and looping", async () => {
-    await drawn(keepingHome().source)
+    await drawn(keepingHome([OFFER.recommended]).source)
     expect(useButtons()).toHaveLength(2)
     expect(screen.getByText("New chapter: dip to black")).toBeTruthy()
     expect(screen.getByText(PICK_WORDS.recommended)).toBeTruthy()
     const video = document.querySelector("video")
     expect(video?.muted).toBe(true)
     expect(video?.loop).toBe(true)
-    expect(screen.getByText(PICK_WORDS.noClip)).toBeTruthy()
+    expect(screen.getByText(new RegExp(PICK_WORDS.noClip))).toBeTruthy()
+  })
+
+  it("holds a home variant's Use this until its clip plays here, and not the sample's", async () => {
+    const home = keepingHome([OFFER.recommended])
+    await drawn(home.source)
+    const [crossfade, dip] = useButtons()
+    expect(crossfade.hasAttribute("disabled")).toBe(false)
+    expect(dip.hasAttribute("disabled")).toBe(true)
+    expect(screen.getByText(new RegExp(PICK_WORDS.watchFirst))).toBeTruthy()
+    // Something else is still the owner's to say.
+    expect(
+      screen
+        .getByText(PICK_WORDS.own)
+        .closest("button")
+        ?.hasAttribute("disabled")
+    ).toBe(false)
+    cleanup()
+    await drawn(sampleSource())
+    expect(useButtons().every((b) => !b.hasAttribute("disabled"))).toBe(true)
+    expect(screen.queryByText(new RegExp(PICK_WORDS.watchFirst))).toBeNull()
   })
 
   it("picks nothing on a tap of the clip or its card: only Use this picks", async () => {
