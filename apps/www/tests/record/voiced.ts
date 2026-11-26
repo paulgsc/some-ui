@@ -289,7 +289,7 @@ export async function recordStills({
   readonly announce?: boolean
   /**
    * Where each still draws its cast, by shot id, filled in when given: each
-   * `[data-speaker]` bubble's box in the still's pixels (HOST18, C1546).
+   * `[data-speaker]` bubble's box in the still's pixels (HOST18, C1561).
    */
   readonly casts?: Map<string, CastLayout>
 }): Promise<ReadonlyArray<StillTake | null>> {

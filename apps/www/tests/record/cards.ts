@@ -283,7 +283,7 @@ async function spokenStills({
   readonly owned: Readonly<Partial<Record<string, SpokenTakeFiles>>>
   readonly speaker: string | null
   readonly policy: ReturnType<typeof policyOf>
-  /** Filled with where each still draws its cast (C1546). */
+  /** Filled with where each still draws its cast (C1561). */
   readonly casts: Map<string, CastLayout>
 }): Promise<ReadonlyMap<string, StillTake | null>> {
   await page.route(/\/spoken-cards\/[^/?#]+\.json$/, (route) => {

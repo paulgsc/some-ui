@@ -591,7 +591,7 @@ export const sceneTakeFile = (scene: CardsScene): string =>
   scene.lines.length === 1 ? (scene.lines[0]?.file ?? scene.file) : scene.file
 
 /**
- * How a spoken essay's scenes join (HOST18, #3571; C1545): policy, moved
+ * How a spoken essay's scenes join (HOST18, #3571; C1560): policy, moved
  * with the story (C771). The owner: "When we go from scene to scene, it's
  * like a very sharp cut. It's kind of jarring." So a scene comes in by a
  * crossfade, and a scene that opens a chapter by one twice as long, so a new
@@ -625,7 +625,7 @@ const JOIN_ROOM_MS = 100
  * are spoken cards' scenes, whose stills draw the cast inside the picture,
  * and their casts' bubbles aren't drawn in the same boxes, or weren't
  * measured. Where they are, the crossfade only softens which bubble is lit,
- * or who sits in one (C1546). One
+ * or who sits in one (C1561). One
  * spoken card beside a card that draws no cast fades the cast in or out,
  * one copy.
  */

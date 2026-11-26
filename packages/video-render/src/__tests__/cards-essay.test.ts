@@ -631,7 +631,7 @@ describe("a spoken essay (EXPLAIN6)", () => {
       scenes.map(() => ({ ms: 2_000 }))
     )
     expect(picked.shots[1]?.overrides.transitionIn).toBe("cut")
-    // A spoken card's still draws the cast inside the picture (C1546): two
+    // A spoken card's still draws the cast inside the picture (C1561): two
     // of them crossfade only where the cast stands in the same boxes, so
     // the fade softens which bubble is lit and never shows one twice.
     const asked = scenes.map((s, i) =>
