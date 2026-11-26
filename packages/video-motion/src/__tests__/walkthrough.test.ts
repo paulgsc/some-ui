@@ -222,7 +222,7 @@ describe("the walkthrough (WALK4)", () => {
     ])
     expect(extra(4)).toEqual([
       WALKTHROUGH_WORDS.nothingKept.said,
-      "Some of what I built, I haven't opened lately: aph, for 6 weeks. How I use 11 other modules isn't measured yet.",
+      "Some of what I built, I haven't opened lately: aph, for 6 weeks. How I use 12 other modules isn't measured yet.",
     ])
     const card = (id: string): unknown => {
       const picture = cut.shots.find((s) => s.id === id)?.picture
@@ -296,7 +296,7 @@ describe("the walkthrough (WALK4)", () => {
     const spoken = cut.shots.find((s) => s.id === "stop-4")?.spoken
     const said = (spoken?.role === "walk" ? spoken.lines : []).join(" ")
     expect(said).not.toContain("haven't opened")
-    expect(said).toContain("How I use 12 other modules isn't measured yet.")
+    expect(said).toContain("How I use 13 other modules isn't measured yet.")
   })
 
   it("says how long each silent module has gone unopened, never first, then the longest quiet (C937)", () => {
