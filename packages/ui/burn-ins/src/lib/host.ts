@@ -144,7 +144,7 @@ export type HostDrawing = {
 export type HostFrame = CastHostFrame | null
 
 /** The safe area above the lower third, where the captions are: the host never covers them (HOST5). */
-export const aboveCaptions = (g: Geometry): Box => {
+const aboveCaptions = (g: Geometry): Box => {
   const band = g.regions["lower-third"]
   return { ...g.safeArea, height: Math.max(0, band.y - g.safeArea.y) }
 }

@@ -363,7 +363,7 @@ export function idleAt(seed: number, tMs: number): Idle {
  * above the captions (`@some-ui/burn-ins`'s `drawHost` gives it the safe
  * area less the lower third), so no shot covers them.
  */
-const SHOT_SIZE: Readonly<Record<Shot, number>> = {
+export const SHOT_SIZE: Readonly<Record<Shot, number>> = {
   "close-up": 0.9,
   medium: 0.56,
   long: 0.37,
