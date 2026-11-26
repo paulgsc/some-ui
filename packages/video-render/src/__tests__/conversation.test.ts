@@ -15,6 +15,8 @@
  * replays to the same state. What each
  * answer must show of the two versions is held by the refusals below.
  */
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import {
   ANSWER_KINDS,
   ANSWERS_OF,
@@ -89,6 +91,7 @@ const version = (
   speakers: ReadonlyArray<ConversationSpeaker> = ESSAY
 ): ConversationEvent => ({
   event: "version",
+  by: "agent",
   at: AT,
   version: {
     n,
@@ -108,11 +111,12 @@ const retaken: Take = { ...take, take: "take-b" }
 const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   topic: {
     event: "topic",
+    by: "owner",
     at: AT,
     topic: { said: "Why the line moved in week twelve" },
   },
-  pointA: { event: "point", at: AT, take: "take-a" },
-  pointB: { event: "point", at: AT, take: "take-b" },
+  pointA: { event: "point", by: "owner", at: AT, take: "take-a" },
+  pointB: { event: "point", by: "owner", at: AT, take: "take-b" },
   v1: version(1, [ask, take, close]),
   v2rewrote: version(
     2,
@@ -152,6 +156,8 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   ),
   flagAgent: {
     event: "flag",
+    by: "owner",
+    version: 1,
     at: AT,
     flag: {
       id: "f1",
@@ -162,21 +168,29 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   },
   flagOwner: {
     event: "flag",
+    by: "owner",
+    version: 1,
     at: AT,
     flag: { id: "f2", on: { scope: "turn", turn: "o1" }, kinds: ["say-again"] },
   },
   flagWrongVoice: {
     event: "flag",
+    by: "owner",
+    version: 1,
     at: AT,
     flag: { id: "f9", on: { scope: "turn", turn: "o1" }, kinds: ["unhuman"] },
   },
   flagLater: {
     event: "flag",
+    by: "owner",
+    version: 2,
     at: AT,
     flag: { id: "f3", on: { scope: "turn", turn: "k1" }, kinds: ["off-taste"] },
   },
   flagClose: {
     event: "flag",
+    by: "owner",
+    version: 1,
     at: AT,
     flag: {
       id: "f4",
@@ -186,21 +200,26 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   },
   flagQuiet: {
     event: "flag",
+    by: "owner",
+    version: 1,
     at: AT,
     flag: { id: "f5", on: { scope: "turn", turn: "o1" }, kinds: ["too-quiet"] },
   },
-  withdrawAgent: { event: "withdraw", at: AT, flag: "f1" },
-  withdrawOwner: { event: "withdraw", at: AT, flag: "f2" },
-  heard1: { event: "heard", at: AT, version: 1, ms: 60_000 },
-  heard2: { event: "heard", at: AT, version: 2, ms: 60_000 },
+  withdrawAgent: { event: "withdraw", by: "owner", at: AT, flag: "f1" },
+  withdrawOwner: { event: "withdraw", by: "owner", at: AT, flag: "f2" },
+  heard1: { event: "heard", by: "home", at: AT, version: 1, ms: 60_000 },
+  heard2: { event: "heard", by: "home", at: AT, version: 2, ms: 60_000 },
   notesAgent: {
     event: "notes",
+    by: "agent",
     at: AT,
     turn: "k1",
     words: [{ at: 0, stress: 0.6, notes: [{ emotion: "curious", weight: 1 }] }],
+    rules: ["verdict-close-up"],
   },
   notesRuled: {
     event: "notes",
+    by: "agent",
     at: AT,
     turn: "k1",
     words: [{ at: 0, notes: [{ emotion: "perplexed", weight: 0.5 }] }],
@@ -208,14 +227,28 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
   },
   approveA: {
     event: "approve",
+    by: "owner",
     at: AT,
     preview: "close-up-on-verdict",
     offered: ["close-up", "corner"],
     recommended: "close-up",
     chose: { kind: "variant", variant: "close-up", rule: "verdict-close-up" },
   },
-  green1: { event: "green-light", at: AT, version: 1 },
-  green2: { event: "green-light", at: AT, version: 2 },
+  green1: { event: "green-light", by: "owner", at: AT, version: 1 },
+  green2: { event: "green-light", by: "owner", at: AT, version: 2 },
+}
+
+/** An alphabet's event as the kind it is, for a test that changes one field. */
+function eventOf<K extends ConversationEvent["event"]>(
+  name: string,
+  kind: K
+): Extract<ConversationEvent, { event: K }> {
+  const event = ALPHABET[name]
+  const isKind = (
+    e: ConversationEvent | undefined
+  ): e is Extract<ConversationEvent, { event: K }> => e?.event === kind
+  if (!isKind(event)) throw new Error(`${name} isn't a ${kind} event`)
+  return event
 }
 
 /** Every law a single step keeps, from `before` by `event`. */
@@ -254,7 +287,7 @@ function stepProblems(
     // Notes follow only the rules the owner's approvals set.
     if (event.event === "notes")
       law(
-        (event.rules ?? []).every((r) => approvedRules(before).includes(r)),
+        event.rules.every((r) => approvedRules(before).includes(r)),
         "notes follow a rule nobody approved"
       )
     for (const [i, flag] of before.flags.entries()) {
@@ -361,7 +394,7 @@ describe("every event order (CR1)", () => {
     const after = Object.entries(ALPHABET).filter(
       ([, event]) => stepConversation(replayed.state, event).ok
     )
-    expect(after.map(([name]) => name)).toEqual(["notesAgent", "approveA"])
+    expect(after.map(([name]) => name)).toEqual(["approveA"])
   })
 })
 
@@ -554,6 +587,7 @@ describe("a flag never edits a turn; the next version answers it", () => {
     expect(
       stepConversation(flagged.state, {
         event: "withdraw",
+        by: "owner",
         at: "2026-11-26T11:00:00.000Z",
         flag: "f1",
       }).ok
@@ -597,8 +631,13 @@ describe("speakers", () => {
     { id: "mochi", character: "mochi", voice: { kind: "owner" } },
   ]
   const drafting = replayConversation([
-    { event: "topic", at: AT, topic: { said: "A panel at the bus stop" } },
-    { event: "point", at: AT, take: "take-a" },
+    {
+      event: "topic",
+      by: "owner",
+      at: AT,
+      topic: { said: "A panel at the bus stop" },
+    },
+    { event: "point", by: "owner", at: AT, take: "take-a" },
   ])
 
   it("takes a drama's ensemble as the same record: three speakers, two in Kokoro", () => {
@@ -698,6 +737,8 @@ describe("the closed sets", () => {
         ALPHABET.v1!,
         {
           event: "flag",
+          by: "owner",
+          version: 1,
           at: AT,
           flag: {
             id: "f1",
@@ -807,6 +848,7 @@ describe("parseConversationRecord", () => {
         ...events.slice(0, 2),
         {
           event: "version",
+          by: "agent",
           at: AT,
           version: {
             n: 1,
@@ -843,7 +885,7 @@ describe("conversation/2", () => {
   const opened = (): ConversationState => {
     const replayed = replayConversation([
       ALPHABET.topic!,
-      { event: "point", at: AT, take: LONG },
+      { event: "point", by: "owner", at: AT, take: LONG },
       ALPHABET.pointA!,
     ])
     if (!replayed.ok) throw new Error(refusalLine(replayed.refusal))
@@ -872,7 +914,13 @@ describe("conversation/2", () => {
     id: string,
     on: ConversationFlag["on"],
     kinds: ConversationFlag["kinds"]
-  ): ConversationEvent => ({ event: "flag", at: AT, flag: { id, on, kinds } })
+  ): ConversationEvent => ({
+    event: "flag",
+    by: "owner",
+    version: 1,
+    at: AT,
+    flag: { id, on, kinds },
+  })
   const v1 = version(1, [ask, first, second, close])
 
   it("cuts one long take into turns, and refuses two that play the same stretch", () => {
@@ -1202,6 +1250,7 @@ describe("conversation/2", () => {
       extra: Partial<PodcastVersion>
     ): ConversationEvent => ({
       event: "version",
+      by: "agent",
       at: AT,
       version: {
         n,
@@ -1247,20 +1296,15 @@ describe("conversation/2", () => {
   })
 
   it("keeps every note the agent proposes, each word's latest standing, under approved rules only", () => {
-    const state = after(opened(), v1, ALPHABET.notesAgent!)
-    expect(lineNotes(state, "k1").get(0)?.stress).toBe(0.6)
-    // A rule nobody approved can't be followed.
-    expect(refusal(state, ALPHABET.notesRuled!)).toEqual({
+    const green = after(opened(), v1, ALPHABET.heard1!, ALPHABET.green1!)
+    // Before the owner approves a rule, no note can follow it.
+    expect(refusal(green, ALPHABET.notesAgent!)).toEqual({
       why: "notes-rule",
       rule: "verdict-close-up",
     })
-    const settled = after(
-      state,
-      ALPHABET.heard1!,
-      ALPHABET.green1!,
-      ALPHABET.approveA!,
-      ALPHABET.notesRuled!
-    )
+    const state = after(green, ALPHABET.approveA!, ALPHABET.notesAgent!)
+    expect(lineNotes(state, "k1").get(0)?.stress).toBe(0.6)
+    const settled = after(state, ALPHABET.notesRuled!)
     expect(lineNotes(settled, "k1").get(0)).toEqual({
       at: 0,
       notes: [{ emotion: "perplexed", weight: 0.5 }],
@@ -1272,9 +1316,11 @@ describe("conversation/2", () => {
       words: Extract<ConversationEvent, { event: "notes" }>["words"]
     ): ConversationEvent => ({
       event: "notes",
+      by: "agent",
       at: AT,
       turn,
       words,
+      rules: ["verdict-close-up"],
     })
     // Tin Bird has no mochi's own beats; "What changed in week twelve?" has
     // five words.
@@ -1303,6 +1349,7 @@ describe("conversation/2", () => {
     })
     const long = after(state, {
       event: "heard",
+      by: "home",
       at: AT,
       version: 1,
       ms: CONVERSATION_POLICY.mostMs + 1,
@@ -1332,6 +1379,7 @@ describe("conversation/2", () => {
     // "Something else", in the owner's words, sets no rule.
     const elsewise = after(settled, {
       event: "approve",
+      by: "owner",
       at: AT,
       preview: "transitions",
       offered: ["crossfade", "slow-crossfade", "cut"],
@@ -1342,6 +1390,7 @@ describe("conversation/2", () => {
     expect(
       refusal(settled, {
         event: "approve",
+        by: "owner",
         at: AT,
         preview: "transitions",
         offered: ["crossfade", "cut"],
@@ -1366,6 +1415,8 @@ describe("conversation/2", () => {
     expect(
       stepConversation(state, {
         event: "flag",
+        by: "owner",
+        version: 1,
         at: AT,
         flag: {
           id: "Too fast, v2",
@@ -1377,49 +1428,165 @@ describe("conversation/2", () => {
     ).toBe(true)
   })
 
-  it("reads a record kept in /1, lifted, and replays it under /1's rules", () => {
-    const parsed = parseConversationRecord({
-      schema: CONVERSATION_RECORD_SCHEMA_V1,
-      id: "week-12",
-      events: [
-        ALPHABET.topic,
-        ALPHABET.pointA,
-        {
-          event: "version",
-          at: AT,
-          version: {
-            n: 1,
-            speakers: [
-              { id: "tin", character: "tin-owlet", voice: "kokoro" },
-              { id: "mochi", character: "mochi", voice: "owner" },
-            ],
-            turns: [ask, take, close],
-            answers: [],
-          },
-        },
-        {
-          event: "flag",
-          at: AT,
-          flag: { id: "f1", turn: "k1", kind: "assumes-context" },
-        },
-        { event: "withdraw", at: AT, flag: "f1" },
-        // /1 measured nothing, so its green light needs no length.
-        ALPHABET.green1,
-      ],
+  it("answers a flag of several kinds kind by kind, and closes it once each is", () => {
+    // The owner's case: a whole conversation too quiet, and unhuman.
+    const state = after(
+      opened(),
+      v1,
+      flag("f1", { scope: "conversation" }, ["too-quiet", "unhuman"])
+    )
+    const louder = { tempo: 1.2, loudnessLufs: -16, gapMostMs: 280 }
+    const fixed = [
+      reworded,
+      { ...first, conditioning: louder },
+      { ...second, conditioning: louder },
+      { ...close, said: "So the line moved." },
+    ]
+    const conditioned: FlagAnswer = {
+      flag: "f1",
+      kinds: ["too-quiet"],
+      how: "conditioned",
+    }
+    const rewrote: FlagAnswer = {
+      flag: "f1",
+      kinds: ["unhuman"],
+      how: "rewrote",
+      turns: ["k1", "k2"],
+    }
+    expect(
+      stepConversation(state, version(2, fixed, [conditioned, rewrote])).ok
+    ).toBe(true)
+    expect(refusal(state, version(2, fixed, [conditioned]))).toEqual({
+      why: "unanswered",
+      flag: "f1",
     })
+    expect(
+      refusal(
+        state,
+        version(2, fixed, [
+          conditioned,
+          { ...conditioned, how: "kept", note: "No." },
+        ])
+      )
+    ).toEqual({ why: "answer-twice", flag: "f1" })
+    expect(
+      refusal(
+        state,
+        version(2, fixed, [{ ...conditioned, kinds: ["too-fast"] }, rewrote])
+      )
+    ).toEqual({ why: "answer-kinds", flag: "f1", kind: "too-fast" })
+  })
+
+  it("lands a flag on the version the owner heard, never a newer one", () => {
+    const state = after(opened(), v1, ALPHABET.flagAgent!)
+    const v2 = version(
+      2,
+      [reworded, first, second, close],
+      [{ flag: "f1", how: "rewrote", turns: ["k1"] }]
+    )
+    // Studio's flag on v1's k1, sent after v2 reached home.
+    expect(
+      refusal(after(state, v2), {
+        ...eventOf("flagLater", "flag"),
+        version: 1,
+      })
+    ).toEqual({ why: "flag-version", flag: "f3", expected: 2, got: 1 })
+  })
+
+  it("takes each kind of event from its author only (C1581)", () => {
+    expect(
+      refusal(opened(), { event: "point", by: "agent", at: AT, take: "take-z" })
+    ).toEqual({ why: "author", event: "point", by: "agent" })
+    expect(refusal(opened(), { ...v1, by: "owner" })).toEqual({
+      why: "author",
+      event: "version",
+      by: "owner",
+    })
+    const green = after(opened(), v1, ALPHABET.heard1!, ALPHABET.green1!)
+    expect(refusal(green, { ...ALPHABET.heard1!, by: "owner" })).toEqual({
+      why: "author",
+      event: "heard",
+      by: "owner",
+    })
+    expect(
+      refusal(after(green, ALPHABET.approveA!), {
+        ...ALPHABET.notesAgent!,
+        by: "owner",
+      })
+    ).toEqual({ why: "author", event: "notes", by: "owner" })
+  })
+
+  it("refuses notes on a turn whose words the record doesn't hold", () => {
+    const signed = after(
+      opened(),
+      v1,
+      ALPHABET.heard1!,
+      ALPHABET.green1!,
+      ALPHABET.approveA!
+    )
+    // o1 is a span of the owner's take, with no transcript kept here.
+    expect(
+      refusal(signed, { ...eventOf("notesAgent", "notes"), turn: "o1" })
+    ).toEqual({
+      why: "notes-word",
+      turn: "o1",
+      at: 0,
+    })
+  })
+
+  it("sets a rule anew only by naming the approval it moves", () => {
+    const signed = after(
+      opened(),
+      v1,
+      ALPHABET.heard1!,
+      ALPHABET.green1!,
+      ALPHABET.approveA!
+    )
+    const again = {
+      ...eventOf("approveA", "approve"),
+      preview: "close-up-on-verdict-2",
+    }
+    expect(refusal(signed, again)).toEqual({
+      why: "rule-again",
+      rule: "verdict-close-up",
+    })
+    expect(
+      stepConversation(signed, { ...again, moves: "close-up-on-verdict" }).ok
+    ).toBe(true)
+  })
+
+  // A record main's /1 code wrote and reads (`sample/conversation`), lifted.
+  // Family: read as kept; saved again; a /2 version past its boundary,
+  // unmeasured; a /2 record claiming /1's rules for events /1 never kept;
+  // a boundary past its events.
+  const V1_RECORD: unknown = JSON.parse(
+    readFileSync(
+      join(import.meta.dirname, "../sample/conversation/v1-week-12.json"),
+      "utf8"
+    )
+  )
+
+  it("reads a record kept in /1, lifted, its events under /1's rules", () => {
+    const parsed = parseConversationRecord(V1_RECORD)
     if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
-    expect(parsed.value.state.phase).toBe("green-lit")
-    expect(parsed.value.state.schema).toBe(1)
+    expect(parsed.value.state.phase).toBe("flagged")
+    expect(parsed.value.record.lifted).toEqual({
+      from: CONVERSATION_RECORD_SCHEMA_V1,
+      through: 6,
+    })
     expect(parsed.value.record.events[3]).toEqual({
       event: "flag",
-      at: AT,
+      by: "owner",
+      at: "2026-11-25T18:30:00.000Z",
+      version: 1,
       flag: {
         id: "f1",
         on: { scope: "turn", turn: "k1" },
         kinds: ["assumes-context"],
+        note: "Which line?",
       },
     })
-    // Saved again as it was read, it still reads, under /1's rules.
+    // Saved again as it was read, it reads the same.
     const again = parseConversationRecord(
       JSON.parse(JSON.stringify(parsed.value.record))
     )
@@ -1430,7 +1597,67 @@ describe("conversation/2", () => {
       parseConversationRecord({
         schema: CONVERSATION_RECORD_SCHEMA_V1,
         id: "week-12",
-        events: [ALPHABET.topic, ALPHABET.heard1],
+        events: [ALPHABET.topic],
+      }).ok
+    ).toBe(false)
+  })
+
+  it("holds every event past the lift to /2's rules: a new version needs its measure", () => {
+    const parsed = parseConversationRecord(V1_RECORD)
+    if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
+    const v3: ConversationEvent = {
+      event: "version",
+      by: "agent",
+      at: AT,
+      version: {
+        n: 3,
+        speakers: [...ESSAY],
+        turns: [reworded, take, close],
+        answers: [{ flag: "f2", how: "conditioned" }],
+      },
+    }
+    const green3: ConversationEvent = {
+      event: "green-light",
+      by: "owner",
+      at: AT,
+      version: 3,
+    }
+    const record = {
+      ...parsed.value.record,
+      events: [...parsed.value.record.events, v3, green3],
+    }
+    expect(parseConversationRecord(record)).toEqual({
+      ok: false,
+      problems: [
+        "events.7: version 3 can't be green-lit before home has measured its audio",
+      ],
+    })
+  })
+
+  it("refuses a record claiming /1's rules for events /1 never kept", () => {
+    // A native /2 record marked lifted, to take /1's rules for a /2 event
+    // (a measured length /1 never had). A record of events /1 could keep
+    // is /1's own history, which /1 green-lit unmeasured.
+    const events = ["topic", "pointA", "v1", "heard1", "green1"].map(
+      (n) => ALPHABET[n]!
+    )
+    expect(
+      parseConversationRecord({
+        schema: CONVERSATION_RECORD_SCHEMA,
+        id: "week-12",
+        lifted: { from: CONVERSATION_RECORD_SCHEMA_V1, through: 5 },
+        events,
+      })
+    ).toEqual({
+      ok: false,
+      problems: ["events.3: it is marked lifted from /1, and /1 never kept it"],
+    })
+    expect(
+      parseConversationRecord({
+        schema: CONVERSATION_RECORD_SCHEMA,
+        id: "week-12",
+        lifted: { from: CONVERSATION_RECORD_SCHEMA_V1, through: 9 },
+        events,
       }).ok
     ).toBe(false)
   })
