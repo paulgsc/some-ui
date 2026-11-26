@@ -664,6 +664,27 @@ const appended = (
       : { tag: node.tag, attrs: node.attrs, children: own }
   })
 
+/** The angle a part's own `rotate(…)` holds it at: 0 when it has none, null when no node is `part`. */
+function restAngle(
+  nodes: ReadonlyArray<CastNode>,
+  part: string
+): number | null {
+  for (const node of nodes) {
+    if (node.attrs["data-part"] === part) {
+      const turn = /rotate\((-?[\d.]+)/.exec(String(node.attrs.transform ?? ""))
+      return turn === null ? 0 : Number(turn[1])
+    }
+    const inner =
+      node.children === undefined ? null : restAngle(node.children, part)
+    if (inner !== null) return inner
+  }
+  return null
+}
+
+/** `deg` as the shorter turn, within ±180. */
+const shortTurn = (deg: number): number =>
+  ((((deg + 180) % 360) + 360) % 360) - 180
+
 /** The play act's transform at its phase: each character's own (`PLAY_ACTS`). */
 function playTransform(play: Liveness["play"]): string {
   if (play === null) return ""
@@ -741,23 +762,26 @@ function livened(
     if (who === "mochi") {
       const sx = side === "left" ? 24 : 72
       const rest = side === "left" ? 180 : 0
-      let turn = angle - rest
-      while (turn > 180) turn -= 360
-      while (turn < -180) turn += 360
-      turn = clamp(turn, -80, 80)
+      const turn = clamp(shortTurn(angle - rest), -80, 80)
       out = retouched(
         out,
         `arm-${side}`,
         { opacity: num(Math.min(1, point * 3)) },
         `translate(${sx} 60) rotate(${num(turn * point)}) translate(${-sx} -60)`
       )
-    } else
+    } else {
+      // the wing turns from where its pose holds it toward the target, the short way round,
+      // and stays within 35° of pointing outward, where the body can't hide it
+      const outward = side === "left" ? 180 : 0
+      const aim = outward + clamp(shortTurn(angle - outward), -35, 35)
+      const rest = restAngle(out, `wing-${side}`) ?? 0
       out = retouched(
         out,
         `wing-${side}`,
         {},
-        `rotate(${num((side === "left" ? -1 : 1) * 70 * point)})`
+        `rotate(${num(shortTurn(aim - rest) * point)})`
       )
+    }
   }
   if (live.fatigue > 0.02)
     out = [

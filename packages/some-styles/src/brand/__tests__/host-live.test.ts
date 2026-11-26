@@ -155,6 +155,29 @@ describe("attention: a point only toward a target, on a cue (HOST5)", () => {
       )
     ).toBeGreaterThan(0.9)
   })
+
+  it("turns Tin Bird's wing toward a target up and to its right", () => {
+    const words = wordsBy<"tin-owlet">(3, 80, 0).map((w, i) =>
+      i === 20 ? { ...w, cue: true } : w
+    )
+    const peak = Array.from({ length: 600 }, (_, k) => k * 50).reduce(
+      (best, t) =>
+        pointAt(words, true, t) > pointAt(words, true, best) ? t : best,
+      0
+    )
+    const beat = tinSpeaker({
+      placement: "bottom-left",
+      words,
+      target: { x: 0.95, y: 0.05 },
+    })
+    const svg = hostAt([beat], 7, peak, AREAS.landscape)?.svg ?? ""
+    const wing = /data-part="wing-right"[^>]*transform="([^"]*)"/.exec(svg)
+    const turns = [...(wing?.[1] ?? "").matchAll(/rotate\((-?[\d.]+)/g)]
+    const total = turns.reduce((sum, m) => sum + Number(m[1]), 0)
+    const facing = ((((total + 180) % 360) + 360) % 360) - 180
+    expect(facing).toBeGreaterThan(-90)
+    expect(facing).toBeLessThan(0)
+  })
 })
 
 describe("play only in a pause (HOST5)", () => {
