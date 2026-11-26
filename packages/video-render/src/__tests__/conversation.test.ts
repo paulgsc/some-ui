@@ -2,8 +2,10 @@
  * CR1 (HOST11, #3553): every order of events keeps a conversation's record
  * whole. Family: every interleaving, up to `DEPTH` accepted events, of the
  * alphabet below (a topic, points and a retake, versions answering flags by
- * each kind of answer, flags of each voice, withdrawals, green lights), with
- * every event of the alphabet tried at every state short of `DEPTH`; the
+ * each kind of answer, flags of each voice, withdrawals, green lights). The
+ * step is pure, so an order's future depends only on the state it reached:
+ * the walk visits every distinct state those orders reach and tries every
+ * event of the alphabet at each one short of `DEPTH`; the
  * order of events' dates is held by its own refusal below. Proof: the walk
  * in "every event order" holds that nothing kept is lost, that the phase
  * matches the open flags, that a version answers exactly the open flags, and
@@ -178,38 +180,65 @@ const ALPHABET: Readonly<Record<string, ConversationEvent>> = {
 }
 
 /** Every law a single step keeps, from `before` by `event`. */
-function checkStep(before: ConversationState, event: ConversationEvent): void {
-  const stepped = stepConversation(before, event)
-  if (!stepped.ok) return
-  const after = stepped.state
+/** JSON's text of `value`: a cheap equality over the walk's thousands of steps. */
+const text = (value: unknown): string => JSON.stringify(value)
+
+/** Every law a step from `before` by `event` to `after` breaks, as lines. */
+function stepProblems(
+  before: ConversationState,
+  event: ConversationEvent,
+  after: ConversationState
+): Array<string> {
+  const problems: Array<string> = []
+  const law = (holds: boolean, what: string): void => {
+    if (!holds) problems.push(`${event.event} from ${before.phase}: ${what}`)
+  }
   // Nothing kept is lost: every version and flag before is still there,
   // unchanged but for a withdrawal.
   if (before.phase !== "new" && after.phase !== "new") {
-    expect(after.versions.slice(0, before.versions.length)).toEqual(
-      before.versions
+    law(
+      text(after.versions.slice(0, before.versions.length)) ===
+        text(before.versions),
+      "a version was lost or changed"
     )
-    expect(after.points.slice(0, before.points.length)).toEqual(before.points)
-    expect(after.topic).toEqual(before.topic)
+    law(
+      text(after.points.slice(0, before.points.length)) === text(before.points),
+      "a point was lost"
+    )
+    law(text(after.topic) === text(before.topic), "the topic changed")
     for (const [i, flag] of before.flags.entries()) {
       const now = after.flags[i]
-      expect(now?.id).toBe(flag.id)
-      expect({ ...now, withdrawn: flag.withdrawn }).toEqual(flag)
-      if (flag.withdrawn) expect(now?.withdrawn).toBe(true)
+      law(
+        now !== undefined &&
+          text({ ...now, withdrawn: flag.withdrawn }) === text(flag) &&
+          (!flag.withdrawn || now.withdrawn),
+        `flag ${flag.id} was lost or changed`
+      )
     }
   }
   // The phase is what the record says it is.
-  if (after.phase === "drafting") expect(after.versions).toHaveLength(0)
-  if (after.phase === "podcast") expect(openFlags(after)).toHaveLength(0)
+  if (after.phase === "drafting")
+    law(after.versions.length === 0, "drafting with a version")
+  if (after.phase === "podcast")
+    law(openFlags(after).length === 0, "podcast with an open flag")
   if (after.phase === "flagged")
-    expect(openFlags(after).length).toBeGreaterThan(0)
+    law(openFlags(after).length > 0, "flagged with no open flag")
   if (after.phase === "green-lit")
-    expect(greenLitVersion(after)?.n).toBe(latestVersion(after)?.n)
-  if (event.event === "version")
-    expect(event.version.answers.map((a) => a.flag).sort()).toEqual(
-      openFlags(before)
-        .map((f) => f.id)
-        .sort()
+    law(
+      greenLitVersion(after)?.n === latestVersion(after)?.n,
+      "green-lit an older version"
     )
+  if (event.event === "version")
+    law(
+      text(event.version.answers.map((a) => a.flag).sort()) ===
+        text(
+          openFlags(before)
+            .map((f) => f.id)
+            .sort()
+        ),
+      "the version doesn't answer exactly the open flags"
+    )
+  return problems
 }
 
 const DEPTH = 9
@@ -218,25 +247,37 @@ describe("every event order (CR1)", () => {
   it("keeps the record whole, and a replay of what was kept is the same state", () => {
     const reached = new Set<string>()
     const acceptedOnce = new Set<string>()
-    let orders = 0
-    const walk = (
-      state: ConversationState,
-      kept: ReadonlyArray<ConversationEvent>
-    ): void => {
-      reached.add(state.phase)
-      expect(replayConversation(kept)).toEqual({ ok: true, state })
-      if (kept.length === DEPTH) return
-      for (const [name, event] of Object.entries(ALPHABET)) {
-        checkStep(state, event)
-        const stepped = stepConversation(state, event)
-        if (stepped.ok) {
-          orders += 1
+    const seen = new Set<string>()
+    const problems: Array<string> = []
+    // The step is pure, so what follows an order depends only on the state
+    // it reached. The walk is breadth first, so each state is met first by
+    // its shortest order, walked once from there, and its log must replay
+    // to it.
+    let frontier: ReadonlyArray<{
+      readonly state: ConversationState
+      readonly kept: ReadonlyArray<ConversationEvent>
+    }> = [{ state: NEW_CONVERSATION, kept: [] }]
+    for (let depth = 0; frontier.length > 0; depth += 1) {
+      const next: Array<(typeof frontier)[number]> = []
+      for (const { state, kept } of frontier) {
+        const key = text(state)
+        if (seen.has(key)) continue
+        seen.add(key)
+        reached.add(state.phase)
+        const replayed = replayConversation(kept)
+        if (!replayed.ok || text(replayed.state) !== key)
+          problems.push(`${kept.length} events don't replay to their state`)
+        if (depth === DEPTH) continue
+        for (const [name, event] of Object.entries(ALPHABET)) {
+          const stepped = stepConversation(state, event)
+          if (!stepped.ok) continue
+          problems.push(...stepProblems(state, event, stepped.state))
           acceptedOnce.add(name)
-          walk(stepped.state, [...kept, event])
+          next.push({ state: stepped.state, kept: [...kept, event] })
         }
       }
+      frontier = next
     }
-    walk(NEW_CONVERSATION, [])
     expect([...reached].sort()).toEqual(
       Object.keys(CONVERSATION_ACCEPTS).sort()
     )
@@ -245,7 +286,8 @@ describe("every event order (CR1)", () => {
     expect(Object.keys(ALPHABET).filter((n) => !acceptedOnce.has(n))).toEqual([
       "flagWrongVoice",
     ])
-    expect(orders).toBeGreaterThan(1000)
+    expect(problems).toEqual([])
+    expect(seen.size).toBeGreaterThan(1000)
   })
 
   it("closes on a green light: nothing is accepted after it", () => {
