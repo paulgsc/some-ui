@@ -8,6 +8,7 @@
  * kept on this phone until it is.
  */
 import type { JSX } from "react"
+import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import type { ShopPort } from "@some-ui/topik"
 // This page is its own build (`build:fit-phone`) and in no shipped bundle,
 // so the eager edge the rule guards against costs nothing here.
@@ -19,6 +20,12 @@ import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 import { patternPort } from "@/lib/takes-desk"
 
 const noop = (): void => undefined
+
+/**
+ * Compact chrome, as the phone's session gives it below the handheld
+ * height (topik's `isShort`): the landscape sweep draws what the phone does.
+ */
+const short = (): boolean => window.innerHeight < HANDHELD_MAX_HEIGHT
 
 /** The spoken hunches' takes, as the phone's desk shapes them: one a hunch. */
 function hunchTakes(): NonNullable<ShopPort["takes"]> {
@@ -83,17 +90,18 @@ export const SHOP_FIXTURES = {
         onOrder={noop}
         onServe={noop}
         onHunch={noop}
+        short={short()}
       />
     </Stage>
   ),
   shop: (): JSX.Element => (
     <Stage>
-      <ShopScreen port={home} onBack={noop} />
+      <ShopScreen port={home} onBack={noop} short={short()} />
     </Stage>
   ),
   "shop-unreached": (): JSX.Element => (
     <Stage>
-      <ShopScreen port={unreached} onBack={noop} />
+      <ShopScreen port={unreached} onBack={noop} short={short()} />
     </Stage>
   ),
 } satisfies Record<string, () => JSX.Element>

@@ -227,9 +227,10 @@ export const createShopRuntime = (
       if (disposed) return
       disposed = true
       gone.abort()
-      // A take under way (opening, recording, or still being kept) ends
-      // under this name with nothing left to follow it, and goes home as a
-      // voice note: the next take is another hunch, so another name.
+      // A take recording or still being kept ends under this name, with
+      // nothing left to follow it, and goes home as a voice note; one still
+      // opening is let go. Either way the next take is another hunch, so
+      // another name.
       if (
         takes !== undefined &&
         takes.pattern.getSnapshot().take.kind !== "idle"
