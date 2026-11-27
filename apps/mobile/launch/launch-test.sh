@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The release APK's launch test, run by mobile-apk.yml's `launch` job inside a
 # booted emulator (reactivecircus/android-emulator-runner): install it, start
-# it from the plain icon, let it settle, enter each wing by its own icon and
-# drag down there, press back in one, then drive it with a short seeded
-# monkey run.
+# it from the plain icon, let it settle and drag down there, enter each wing
+# by its own icon and drag down there, press back in one, then drive it with
+# a short seeded monkey run.
 #
 #   bash apps/mobile/launch/launch-test.sh <apk> [<out-dir>]
 #
@@ -22,8 +22,9 @@
 # its cold start, and each wing's icon (every other LAUNCHER entry the
 # installed package has, read from the package manager rather than a list kept
 # here) "wing entered: <id>", where the alias is .Wing<Id>; both are
-# MainActivity's own lines under the same tag. At each wing's root a drag down
-# from near the top of the page must check again (PULL5, epic #2456): the
+# MainActivity's own lines under the same tag. At the foyer and at each wing's
+# root a drag down from near the top of the page must check again (PULL5,
+# epic #2456): the
 # page's pull writes a "pull checked: <how>" line in the same log for each
 # check that ends on the page that asked (lib/pull-refresh's `note` port), so
 # a gesture the WebView or a scroller ate fails here, since no test elsewhere
@@ -78,10 +79,12 @@ current=""
 } >> "$summary"
 : > "$out/steps.txt"
 step() {
+  local at
+  at=$(date -u +%T)
   current=$1
-  echo "[launch $(date -u +%T)] $1"
-  echo "$(date -u +%T) $1" >> "$out/steps.txt"
-  echo "1. \`$(date -u +%T)\` $1" >> "$summary"
+  echo "[launch $at] $1"
+  echo "$at $1" >> "$out/steps.txt"
+  echo "1. \`$at\` $1" >> "$summary"
 }
 
 # A run that ends before its verdict (adb gone under `set -e`, most often):
@@ -95,15 +98,16 @@ gone() {
   local state
   state=$(timeout 10 adb get-state 2>&1 | tr -d '\r' || true)
   {
-    pgrep -af "qemu-system|emulator" || echo "no emulator process"
+    pgrep -af "qemu-system" || echo "no emulator process"
     echo
     free -m || true
   } > "$out/host.txt" 2>&1
+  local dmesg="" killed=""
   if command -v sudo > /dev/null && sudo -n true 2> /dev/null; then
-    sudo -n dmesg -T 2>&1 | tail -n 60 > "$out/host-dmesg.txt" || true
+    dmesg=$(sudo -n dmesg -T 2>&1 || true)
+    echo "$dmesg" | tail -n 60 > "$out/host-dmesg.txt"
+    killed=$(echo "$dmesg" | grep -iE "out of memory|oom-kill|killed process" | tail -3 || true)
   fi
-  local killed
-  killed=$(grep -iE "out of memory|oom-kill|killed process" "$out/host-dmesg.txt" 2>/dev/null | tail -3 || true)
   {
     echo
     echo "- ❌ The test stopped (exit $code) during: **${current:-before its first step}**."
@@ -116,11 +120,12 @@ gone() {
     if [ -n "$killed" ]; then
       echo "- The host's kernel log names a kill for memory:"
       while IFS= read -r line; do echo "  - $line"; done <<< "$killed"
-    elif [ -f "$out/host-dmesg.txt" ]; then
+    elif [ -n "$dmesg" ]; then
       echo "- The host's kernel log names no kill for memory (host-dmesg.txt)."
     fi
+    for f in "${failures[@]}"; do echo "- ❌ Before that: $f"; done
     echo
-    echo "steps.txt, host.txt, the \`top-<where>.txt\` files and logcat.txt are in the \`mobile-launch-<sha>\` artifact."
+    echo "steps.txt, host.txt, the \`top-<where>.txt\` files and logcat.txt are in the run's artifact."
   } >> "$summary"
   echo "::error title=Launch test::the test stopped during: ${current:-before its first step} (exit $code); see the step summary"
 }
@@ -164,8 +169,9 @@ pulls=()
 # check's end, twice. Its own deadline is 20 s (CHECK_MS), and a drag the
 # wing's navigation landed on ends silently.
 pull_at() {
-  local where=$1 pulled="" before
-  adb shell top -b -n 1 -m 10 > "$out/top-$where.txt" 2>&1 || true
+  local where=$1 pulled="" before attempt
+  step "note the busiest processes before the drag at the $where page"
+  timeout 20 adb shell top -b -n 1 -m 10 > "$out/top-$where.txt" 2>&1 || true
   for attempt in 1 2; do
     before=$(native_count "$PULL_CHECKED")
     step "drag down at the $where page (try $attempt)"
@@ -188,8 +194,6 @@ pull_at() {
 if [ -n "$pid" ] && ! native_line "wing entered: foyer"; then
   failures+=("the plain icon's cold start logged no \"wing entered: foyer\" (logcat.txt)")
 fi
-# The first drag after boot, at the foyer: no wing's page is involved, so
-# a failure here is not one wing's (#3613).
 [ -z "$pid" ] || pull_at foyer
 
 # Each wing's icon, on the running app: a warm entry, which www answers with
