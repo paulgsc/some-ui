@@ -27,8 +27,8 @@
 # epic #2456): the page's pull writes a "pull checked: <how>" line in the
 # same log for each check that ends on the page that asked
 # (lib/pull-refresh's `note` port), so a gesture the WebView or a scroller
-# ate fails here, since no test elsewhere drags a real WebView. A drag the wing's own navigation interrupted is
-# tried once more. How the check ended (read, offline, unread) is listed,
+# ate fails here, since no test elsewhere drags a real WebView. A drag the
+# wing's own navigation interrupted is tried once more. How the check ended (read, offline, unread) is listed,
 # not failed: the emulator has no home to read. Back pressed at a wing's root,
 # entered by its icon, must leave the app: MainActivity's back handling is
 # reached by nothing else, since the monkey run below never presses back.

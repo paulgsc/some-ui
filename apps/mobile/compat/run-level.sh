@@ -149,10 +149,11 @@ GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY:-/dev/null} \
 
 # A launch test that ended with the emulator gone (#3613) leaves nothing to
 # run the rest on, and the storm's `adb wait-for-device` would wait out the
-# job's timeout.
-if [ "$(timeout 10 adb get-state 2> /dev/null)" != device ]; then
+# job's timeout. A minute rides out a brief offline spell.
+if ! timeout 60 adb wait-for-device 2> /dev/null \
+  || [ "$(timeout 10 adb get-state 2> /dev/null)" != device ]; then
   write_row "$launch" "not run" "not run" "not run"
-  echo "::error title=API $api::the emulator went away during the launch test, so the rest is not run (launch/steps.txt)."
+  echo "::error title=API $api::adb lost the emulator during the launch test and it did not come back within a minute, so the rest is not run (launch/steps.txt)."
   exit 1
 fi
 
