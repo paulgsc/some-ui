@@ -122,6 +122,7 @@ describe("the shop", () => {
       kind: "unreached",
       hunch: { kind: "typed", text: "it's okay" },
       number: 1,
+      kept: true,
     })
     expect(step(unreached, { kind: "retry" }).effects).toEqual([
       { kind: "look-up", seq: 2, hunch: 1, words: "it's okay" },
@@ -253,7 +254,7 @@ describe("the shop's runtime", () => {
 
   it("hears a take, looks up its words, and shows the phrases", async () => {
     const port: ShopPort = {
-      keep: () => undefined,
+      keep: () => true,
       hear: () => Promise.resolve("where's my phone"),
       lookUp: (words) =>
         Promise.resolve(
@@ -277,7 +278,7 @@ describe("the shop's runtime", () => {
   it("says a hunch may not be kept when home can't be reached, and sends the take again", async () => {
     const heard: Array<Blob> = []
     const port: ShopPort = {
-      keep: () => undefined,
+      keep: () => true,
       hear: (take) => {
         heard.push(take)
         return heard.length === 1
@@ -294,6 +295,7 @@ describe("the shop's runtime", () => {
       kind: "unreached",
       hunch: { kind: "spoken" },
       number: 1,
+      kept: true,
     })
     shop.tap({ kind: "retry" })
     await settle()
@@ -309,7 +311,10 @@ describe("the shop's runtime", () => {
     const kept: Array<readonly [string, string]> = []
     let fail = true
     const port: ShopPort = {
-      keep: (words, hunch) => kept.push([words, hunch]),
+      keep: (words, hunch) => {
+        kept.push([words, hunch])
+        return true
+      },
       hear: () => Promise.resolve(""),
       lookUp: (_, hunch) => {
         named.push(hunch)
@@ -336,7 +341,7 @@ describe("the shop's runtime", () => {
     const ports: Array<string> = []
     const stop = addFailureSink((failure) => ports.push(failure.port))
     const port: ShopPort = {
-      keep: () => undefined,
+      keep: () => true,
       hear: () => Promise.resolve(""),
       lookUp: () => {
         throw new Error("no adapter")
@@ -355,7 +360,7 @@ describe("the shop's runtime", () => {
     let hearFirst: (words: string) => void = () => undefined
     let hears = 0
     const port: ShopPort = {
-      keep: () => undefined,
+      keep: () => true,
       hear: () => {
         hears += 1
         return hears === 1
@@ -392,10 +397,62 @@ describe("the shop's runtime", () => {
     expect(shop.snapshot()).toBe(after)
   })
 
+  it("keeps a look-up that fails after the screen is gone", async () => {
+    const kept: Array<string> = []
+    let fail: (error: Error) => void = () => undefined
+    const port: ShopPort = {
+      keep: (words, hunch) => {
+        kept.push(`${hunch}:${words}`)
+        return true
+      },
+      hear: () => Promise.resolve(""),
+      lookUp: () =>
+        new Promise((_, reject) => {
+          fail = reject
+        }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    shop.type("I need a plumber")
+    await settle()
+    shop.dispose()
+    fail(new Error("offline"))
+    await settle()
+    expect(kept).toEqual(["r-1:I need a plumber"])
+  })
+
+  it("answers again once resumed after dispose, as a screen shown twice is", async () => {
+    const port: ShopPort = {
+      keep: () => true,
+      hear: () => Promise.resolve(""),
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined)
+    shop.dispose()
+    shop.resume()
+    shop.type("I need a plumber")
+    await settle()
+    expect(shop.snapshot().at).toEqual({
+      kind: "kept",
+      words: "I need a plumber",
+    })
+  })
+
+  it("says a hunch this phone couldn't keep wasn't kept", async () => {
+    const port: ShopPort = {
+      keep: () => false,
+      hear: () => Promise.resolve(""),
+      lookUp: () => Promise.reject(new Error("offline")),
+    }
+    const shop = createShopRuntime(port, () => undefined)
+    shop.type("I need a plumber")
+    await settle()
+    expect(shop.snapshot().at).toMatchObject({ kind: "unreached", kept: false })
+  })
+
   it("changes nothing once disposed", async () => {
     const seen: Array<string> = []
     const port: ShopPort = {
-      keep: () => undefined,
+      keep: () => true,
       hear: () => Promise.resolve("it's okay"),
       lookUp: () => Promise.resolve({ kind: "kept" }),
     }

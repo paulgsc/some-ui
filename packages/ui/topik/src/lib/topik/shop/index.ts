@@ -16,10 +16,11 @@
  * the hunch (its words, when) for the routine (KP5) and says so, in the same
  * answer, so a miss is never lost between two calls. A hunch left in flight
  * for another, or for "again", is still answered, and a miss is kept all the
- * same. Nothing the owner said is let go unsent (#3596): a look-up home
- * didn't answer is kept on this phone (`keep`) and sent when home is next
- * reached, under the same name, and a spoken take is kept on this phone
- * before it is heard (the port's `hear`).
+ * same. Nothing the owner typed is let go unsent (#3596): a look-up home
+ * didn't answer is kept on this phone (`keep`), also once the screen is
+ * gone, and sent when home is next reached, under the same name; the
+ * screen says so, or that this phone couldn't keep it. A spoken take is
+ * the port's to keep before it is heard (`hear`).
  *
  * Memoryless (#2849): the basket is only this machine's state. Nothing here
  * stores it, and it is gone when the session ends. A phrase home names that
@@ -59,10 +60,11 @@ export type ShopState = Readonly<{
     /** Home named only phrases this build doesn't hold. */
     | { kind: "unknown"; words: string }
     /**
-     * Home couldn't be reached, or its answer was lost: the hunch may not be
-     * kept. Sent again under its own number, home keeps it once.
+     * Home couldn't be reached, or its answer was lost. Sent again under its
+     * own number, home keeps it once. `kept` is false once this phone
+     * couldn't keep it either.
      */
-    | { kind: "unreached"; hunch: Hunch; number: number }
+    | { kind: "unreached"; hunch: Hunch; number: number; kept: boolean }
 }>
 
 export type ShopEvent = Readonly<
@@ -72,6 +74,8 @@ export type ShopEvent = Readonly<
   | { kind: "answered"; seq: number; lookup: Lookup }
   /** Home couldn't be reached to hear the take. */
   | { kind: "unreached"; seq: number }
+  /** This phone couldn't keep hunch `hunch`'s look-up for home. */
+  | { kind: "unkept"; hunch: number }
   /** Home didn't answer a look-up of `words`, hunch `hunch`'s. */
   | { kind: "unanswered"; seq: number; hunch: number; words: string }
   /** Try the hunch home couldn't be reached for again. */
@@ -187,6 +191,7 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
             kind: "unreached",
             hunch: { kind: "spoken" },
             number: at.number,
+            kept: true,
           },
         })
       return stay(state)
@@ -206,10 +211,17 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
             kind: "unreached",
             hunch: { kind: "typed", text: at.words },
             number: at.number,
+            kept: true,
           },
         },
         effects,
       }
+    }
+    case "unkept": {
+      const { at } = state
+      if (at.kind !== "unreached" || at.number !== event.hunch || !at.kept)
+        return stay(state)
+      return stay({ ...state, at: { ...at, kept: false } })
     }
     case "retry": {
       return state.at.kind === "unreached"

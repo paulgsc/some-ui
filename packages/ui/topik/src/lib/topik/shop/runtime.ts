@@ -4,10 +4,10 @@
  * The spoken take is held here, so a hunch home couldn't be reached for can
  * be heard again, until the next take replaces it or `dispose` lets it go.
  *
- * A request that fails, for any reason, is `unreached`, and reported
- * (`reportFailure`): the hunch may not be kept, and the screen says so and
- * offers to send it again. Each request names its hunch to home by this
- * runtime's id and the hunch's number.
+ * A request that fails, for any reason, is reported (`reportFailure`), and
+ * the screen offers to send it again; a look-up that fails is kept for home
+ * (`keep`), even once the screen is gone. Each request names its hunch to
+ * home by this runtime's id and the hunch's number.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -24,9 +24,9 @@ import { initialShop, step } from "@topik/lib/topik/shop"
 /** Home, as the shop asks it: typed ahead of its route (#2853). */
 export type ShopPort = Readonly<{
   /**
-   * Home's Whisper: the words of a spoken take, in English. The take is kept
-   * on this phone before it is heard, under `hunch`, so it reaches home
-   * however this ends.
+   * Home's Whisper: the words of a spoken take, in English, under `hunch`.
+   * A port that offers it keeps the take before it is heard, so it reaches
+   * home however this ends.
    */
   hear: (take: Blob, hunch: string) => Promise<string>
   /**
@@ -34,8 +34,11 @@ export type ShopPort = Readonly<{
    * names the hunch, the same each time it is sent: home keeps a miss once.
    */
   lookUp: (words: string, hunch: string) => Promise<Lookup>
-  /** Keeps a look-up home didn't answer, to send when home is next reached. */
-  keep: (words: string, hunch: string) => void
+  /**
+   * Keeps a look-up home didn't answer, to send when home is next reached;
+   * false when this phone couldn't keep it.
+   */
+  keep: (words: string, hunch: string) => boolean
 }>
 
 /** What the owner taps, once a hunch is sent. */
@@ -49,6 +52,8 @@ export type ShopRuntime = Readonly<{
   tap: (event: Tap) => void
   /** The screen is gone: late answers change nothing, and the take is let go. */
   dispose: () => void
+  /** The screen is shown again (a second mount): answers count again. */
+  resume: () => void
 }>
 
 export const createShopRuntime = (
@@ -116,7 +121,8 @@ export const createShopRuntime = (
         return
       }
       case "keep": {
-        port.keep(effect.words, named(effect.hunch))
+        if (!port.keep(effect.words, named(effect.hunch)))
+          dispatch({ kind: "unkept", hunch: effect.hunch })
         return
       }
       default: {
@@ -129,7 +135,12 @@ export const createShopRuntime = (
   // event waits for the current one's effects, as in read-aloud's runtimes.
   const dispatch = serialDispatch<ShopEvent>(
     (event) => {
-      if (disposed) return
+      if (disposed) {
+        // The screen is gone, but what the owner typed is still kept.
+        if (event.kind === "unanswered")
+          port.keep(event.words, named(event.hunch))
+        return
+      }
       const next = step(state, event)
       if (next.state !== state) {
         state = next.state
@@ -154,6 +165,9 @@ export const createShopRuntime = (
     dispose: (): void => {
       disposed = true
       take = null
+    },
+    resume: (): void => {
+      disposed = false
     },
   }
 }

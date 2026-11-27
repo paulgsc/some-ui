@@ -22,6 +22,8 @@ export const SHOP_WORDS = {
     "Home found a phrase for that which this version of the app doesn't have yet.",
   unreached:
     "Home couldn't be reached. Your words are kept on this phone and go to home when it's next reachable.",
+  unkept:
+    "Home couldn't be reached, and this phone couldn't keep your words either. Try again once home is reachable.",
   retry: "Try again",
   again: "Something else",
   pick: "Add to my basket",

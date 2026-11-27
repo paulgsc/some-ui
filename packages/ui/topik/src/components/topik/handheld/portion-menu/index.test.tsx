@@ -9,7 +9,7 @@ afterEach(cleanup)
 const PORT: ShopPort = {
   hear: () => Promise.reject(new Error("not offered")),
   lookUp: () => Promise.resolve({ kind: "kept" }),
-  keep: () => undefined,
+  keep: () => true,
 }
 
 const menu = (shop?: ShopPort): void => {

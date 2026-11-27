@@ -27,7 +27,11 @@ type Shop = Readonly<{
   subscribe: (listener: () => void) => () => void
 }>
 
-/** One shop per screen, let go when the screen goes. */
+/**
+ * One shop per screen, open while the screen is shown: the effect resumes
+ * it and its cleanup lets it go, so a screen shown again (StrictMode's
+ * second mount, an offscreen re-show) has a live one.
+ */
 function useShop(port: ShopPort): Readonly<{
   state: ShopState
   runtime: ShopRuntime
@@ -48,12 +52,12 @@ function useShop(port: ShopPort): Readonly<{
       },
     }
   })
-  useEffect(
-    () => (): void => {
+  useEffect(() => {
+    shop.runtime.resume()
+    return (): void => {
       shop.runtime.dispose()
-    },
-    [shop]
-  )
+    }
+  }, [shop])
   const state = useSyncExternalStore(
     shop.subscribe,
     shop.runtime.snapshot,
@@ -158,7 +162,7 @@ const Answer = ({
     case "unreached": {
       return (
         <div className="flex flex-col gap-2">
-          <p className="mx-1 text-sm">{W.unreached}</p>
+          <p className="mx-1 text-sm">{at.kept ? W.unreached : W.unkept}</p>
           <Button
             variant="outline"
             className="self-start rounded-xl"
