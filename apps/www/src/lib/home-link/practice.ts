@@ -14,7 +14,8 @@
  * a typed reflection, an ask, a soundbite, an answer's note, a lens answer, a read-aloud rep
  * or a LeetType session finishing asks for a run. Its waiting count is the
  * sessions, written reflections, asks, notes, lens entries, finished
- * LeetType sessions and Studio's sittings and answers home lacks:
+ * LeetType sessions and Studio's sittings and answers home lacks, and the
+ * shop's hunches waiting to be sent again (not those home refused):
  * Studio's time log is read as it is when counted, since nothing tells of a
  * write to it, and its answers as last read.
  * Once a run's notes part ends, the soundbites and LeetType's answer notes
@@ -157,6 +158,12 @@ export const practiceLane: Lane = {
       leetypeNotesMoved.subscribe,
       leetypeNotesMoved.getSnapshot
     )
+    // The shop's hunches home didn't answer wait on this phone until a run
+    // sends them; read again whenever one is kept or let go.
+    const hunches = useSyncExternalStore(
+      hunchOutbox.subscribe,
+      () => hunchOutbox.going().length
+    )
     const counts =
       held === null
         ? { sessions: 0, shelf: 0, refused: 0, reflections: 0, prompts: 0 }
@@ -178,7 +185,8 @@ export const practiceLane: Lane = {
             notesToSend(notesOf(bites, leetypeNotes()), held).length +
             lensToSend(lens, held).length +
             logToSend(leetype, held).length +
-            studioWaiting(studioReports, held)),
+            studioWaiting(studioReports, held) +
+            hunches),
       hidden: 0,
       pulled: true,
     }
