@@ -830,20 +830,20 @@ export const characterSvg = (who: Character, size: number): string =>
     { ground: "none", glow: false }
   )}</svg>`
 
-/** How `nodesText` draws: the backdrop's paint, and whether the key light shows. */
+/** How a drawing is made standalone: the backdrop's paint, and whether the key light shows. */
 type TextOptions = { readonly ground: string; readonly glow?: boolean }
 
 /**
- * `nodes` as SVG text, for a drawing made outside React (a thumbnail,
- * `@some-ui/video-render`'s `thumbnail`). `ground` paints the backdrop's
+ * `nodes` made standalone, still as data: `ground` paints the backdrop's
  * rect (`data-ground`), which a page leaves to its theme; `glow: false`
  * leaves out the stage's square key light (`data-glow`), which reads as a
- * box on a ground other than a bubble's.
+ * box on a ground other than a bubble's. No `data-ground` or `data-glow`
+ * is left, and every node keeps a `children` list.
  */
-export const nodesText = (
+export const plainNodes = (
   nodes: ReadonlyArray<CastNode>,
   { ground, glow = true }: TextOptions
-): string =>
+): ReadonlyArray<CastNode> =>
   nodes
     .filter((node) => glow || node.attrs["data-glow"] === undefined)
     .map((node) => {
@@ -854,7 +854,32 @@ export const nodesText = (
         node.attrs["data-ground"] === undefined
           ? attrs
           : [...attrs, ["fill", ground] as const]
-      const children = nodesText(node.children ?? [], { ground, glow })
-      return `<${node.tag}${painted.map(([name, value]) => ` ${name}="${escapeText(value)}"`).join("")}>${children}</${node.tag}>`
+      const children = plainNodes(node.children ?? [], { ground, glow })
+      return el(node.tag, Object.fromEntries(painted), children)
+    })
+
+/**
+ * `nodes` as SVG text, as they are: a node with no `children` closes
+ * itself, and one with a list, even an empty one, is written open and
+ * closed, so each drawing keeps the bytes it always had (HOST5).
+ */
+export const textOf = (nodes: ReadonlyArray<CastNode>): string =>
+  nodes
+    .map((node) => {
+      const attrs = Object.entries(node.attrs)
+        .map(([name, value]) => ` ${name}="${escapeText(value)}"`)
+        .join("")
+      return node.children === undefined
+        ? `<${node.tag}${attrs}/>`
+        : `<${node.tag}${attrs}>${textOf(node.children)}</${node.tag}>`
     })
     .join("")
+
+/**
+ * `nodes` made standalone (`plainNodes`) as SVG text, for a drawing made
+ * outside React (a thumbnail, `@some-ui/video-render`'s `thumbnail`).
+ */
+export const nodesText = (
+  nodes: ReadonlyArray<CastNode>,
+  options: TextOptions
+): string => textOf(plainNodes(nodes, options))

@@ -51,7 +51,8 @@ import {
   castNodes,
   el,
   INK,
-  nodesText,
+  plainNodes,
+  textOf,
   type CastNode,
   type Character,
 } from "./cast"
@@ -434,7 +435,13 @@ export type HostFrame = {
     readonly emotion: Emotion | null
     readonly weight: number
   }
-  /** The drawing, a standalone `<svg>` the size of `box`. */
+  /**
+   * The drawing, a standalone `<svg>` the size of `box`, as data: what a
+   * React page draws (`drawNodes`, `@some-ui/shared`), naming its ids for
+   * itself, since every frame's are `host-<character>-…`.
+   */
+  readonly drawing: CastNode
+  /** The same drawing as SVG text, for a drawing made outside React. */
   readonly svg: string
 }
 
@@ -519,7 +526,7 @@ export function hostSvg(
   idPrefix: string = `host-${beat.character}`
 ): string {
   const nodes = floorNodes(beat, tMs, seed, aim, idPrefix, beat.atMs, beat.atMs)
-  return svgOf(nodes, size, breathOf(seed, tMs), "", 0, beat)
+  return svgText(drawingOf(nodes, size, breathOf(seed, tMs), "", 0, beat))
 }
 
 // ---- One drawing from two poses ----
@@ -814,8 +821,8 @@ const bubblePath = (frame: Frame): string =>
     ? "M48 2L88 25V71L48 94L8 71V25Z"
     : "M48 2A46 46 0 1 1 47.99 2Z"
 
-/** The drawing as SVG text: the breath, the living body, and the bubble when it shows. */
-function svgOf(
+/** The drawing, a standalone `<svg>`: the breath, the living body, and the bubble when it shows. */
+function drawingOf(
   nodes: ReadonlyArray<CastNode>,
   size: number,
   breath: string,
@@ -823,22 +830,56 @@ function svgOf(
   bubble: number,
   beat: Beat,
   idPrefix: string = `host-${beat.character}`
-): string {
-  const body = nodesText(nodes, { ground: "none", glow: false })
-  const inner =
-    motion === ""
-      ? `<g transform="${breath}">${body}</g>`
-      : `<g transform="${breath}"><g transform="${motion}">${body}</g></g>`
-  if (bubble <= 0.01)
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}">${inner}</svg>`
+): CastNode {
+  const body = plainNodes(nodes, { ground: "none", glow: false })
+  const inner = el(
+    "g",
+    { transform: breath },
+    motion === "" ? body : [el("g", { transform: motion }, body)]
+  )
+  const root = {
+    xmlns: "http://www.w3.org/2000/svg",
+    viewBox: CAST_VIEW_BOX,
+    width: num(size),
+    height: num(size),
+  }
+  if (bubble <= 0.01) return el("svg", root, [inner])
   const d = bubblePath(beat.frame ?? "circle")
   const clip = `${idPrefix}-bubble`
   const grow = 1 + 0.2 * bubble
-  const placed = `<g transform="translate(48 ${num(48 + 9.6 * bubble)}) scale(${num(grow)}) translate(-48 -48)">${inner}</g>`
   // the clip tightens as the bubble grows: 2.5× its shape (past the whole box) at none, its shape at full, so nothing pops
   const reach = 1 + 1.5 * (1 - bubble)
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${num(size)}" height="${num(size)}"><defs><clipPath id="${clip}"><path d="${d}" transform="translate(48 48) scale(${num(reach)}) translate(-48 -48)"/></clipPath></defs><path d="${d}" fill="#141e45" opacity="${num(bubble)}"/><g clip-path="url(#${clip})">${placed}</g><path d="${d}" fill="none" stroke="${ringOf(beat)}" stroke-width="${num(3 * bubble)}" opacity="${num(bubble)}"/></svg>`
+  return el("svg", root, [
+    el("defs", {}, [
+      el("clipPath", { id: clip }, [
+        el("path", {
+          d,
+          transform: `translate(48 48) scale(${num(reach)}) translate(-48 -48)`,
+        }),
+      ]),
+    ]),
+    el("path", { d, fill: "#141e45", opacity: num(bubble) }),
+    el("g", { "clip-path": `url(#${clip})` }, [
+      el(
+        "g",
+        {
+          transform: `translate(48 ${num(48 + 9.6 * bubble)}) scale(${num(grow)}) translate(-48 -48)`,
+        },
+        [inner]
+      ),
+    ]),
+    el("path", {
+      d,
+      fill: "none",
+      stroke: ringOf(beat),
+      "stroke-width": num(3 * bubble),
+      opacity: num(bubble),
+    }),
+  ])
 }
+
+/** A drawing (`drawingOf`) as SVG text: it is already standalone. */
+const svgText = (drawing: CastNode): string => textOf([drawing])
 
 /** Where the host is drawn, how solid, and how much of its bubble shows. */
 type Placed = {
@@ -1100,6 +1141,14 @@ export function hostAt(
   const point = pointAt(words, beat.target !== undefined, tMs)
   const drawn = livened(beat.character, nodes, live, point, toward)
   const motion = `${playTransform(live.play)} translate(${num(live.body.dx)} ${num(live.body.dy)}) translate(48 88) rotate(${num(live.body.rot)}) scale(${num(live.body.sx)} ${num(live.body.sy)}) translate(-48 -88)`
+  const drawing = drawingOf(
+    drawn,
+    box.width,
+    breathOf(seed, tMs),
+    motion,
+    bubble,
+    beat
+  )
   return {
     beat,
     box,
@@ -1107,6 +1156,7 @@ export function hostAt(
     bubble: clamp(bubble, 0, 1),
     live,
     note: pose.note,
-    svg: svgOf(drawn, box.width, breathOf(seed, tMs), motion, bubble, beat),
+    drawing,
+    svg: svgText(drawing),
   }
 }
