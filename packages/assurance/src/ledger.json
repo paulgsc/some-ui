@@ -4535,6 +4535,10 @@
       "why": "Mood events in and out; each write answers with what it kept."
     },
     {
+      "module": "phrases",
+      "why": "Looks a hunch's words up in home's meaning index (KP4, paulgsc/server#1261); the answer is the outcome: the phrases that do it, or that home kept the hunch in the same request."
+    },
+    {
       "module": "readiness",
       "why": "Answers whether home and its dependencies are ready, with its build."
     },
@@ -5402,6 +5406,13 @@
       "store": "server:passkey",
       "class": "record",
       "growth": "bounded: at most MAX_PASSKEYS_PER_SUBJECT = 16 per account; a 17th is refused, never evicted; the signature counter is updated in place.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:phrase_hunch",
+      "class": "record",
+      "growth": "Per hunch the owner asked KPLAY's shop that no phrase did (KP4, paulgsc/server#1261): one row (the phone's name for the hunch <= 64 chars, the owner's words <= 200 chars, when), at most one per hunch however often it is sent; append-only (UPDATE aborts); a hit writes nothing. A few a day at most, by hand.",
+      "horizon": "kept for good: the owner's history, read by KP5's routine; it goes only with the account",
       "family": "what-is-kept"
     },
     {

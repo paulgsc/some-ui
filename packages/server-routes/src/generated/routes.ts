@@ -3,7 +3,7 @@
 export const API_BASE_PATH = "/api/v1";
 
 /** The server contract epoch this snapshot is (file_host's `contract::CONTRACT_EPOCH`). */
-export const SERVER_CONTRACT_EPOCH = 30;
+export const SERVER_CONTRACT_EPOCH = 31;
 /** The lowest epoch that server still serves (`contract::OLDEST_SUPPORTED`). */
 export const SERVER_OLDEST_SUPPORTED = 1;
 
@@ -88,6 +88,7 @@ export type ServerRoute =
   | "/api/v1/mood_events/week/:week"
   | "/api/v1/now-playing"
   | "/api/v1/outcomes"
+  | "/api/v1/phrases/lookup"
   | "/api/v1/presence/lease"
   | "/api/v1/previews/:template"
   | "/api/v1/previews/:template/:id/video"

@@ -1,0 +1,18 @@
+{
+  "id": "C1606",
+  "made": "2026-11-27",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/phrases.rs",
+    "server:docs/phrases.md"
+  ],
+  "chose": "A phrase's score is its nearest intent's cosine with the hunch's words under potion-multilingual-128M. A hit is every phrase at or above THRESHOLD = 0.75 and within NEAR = 0.1 of the best, closest first. Both numbers were set from the real model's scores over the 14 seed phrases (server docs/phrases.md, \"The threshold\").",
+  "options": [
+    "0.75 and 0.1: err toward a miss",
+    "0.6: more paraphrases hit, but unrelated sentences sharing words hit too (\"call me later\" 0.615 to where-is-my-phone, \"this food is amazing\" 0.628 to did-you-eat)",
+    "the best phrase alone, with no runners-up"
+  ],
+  "gray": "A static model is coarse. Honest paraphrases below 0.75 miss (\"grab lunch together\" 0.497, \"I'm swamped today\" 0.417), and \"see you tomorrow\" sits at 0.746 to will-it-rain-tomorrow, just under the line. A miss is kept for KP5, so a miss costs less than showing a wrong phrase.",
+  "undo": "Change THRESHOLD and NEAR in file_host::phrases, with a new call.",
+  "refs": ["server#1261", "#2853"]
+}
