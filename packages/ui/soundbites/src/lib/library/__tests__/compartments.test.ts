@@ -128,6 +128,7 @@ describe("the compartments and their chips (TAKES3)", () => {
       drama: 0,
       soundbite: 0,
       lens: 0,
+      hunch: 0,
       leetype: 0,
       other: 0,
       all: 7,

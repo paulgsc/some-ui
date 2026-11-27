@@ -1,17 +1,19 @@
 /**
  * Runs the shop machine (`shop`) over its port to home. A screen reads
- * `snapshot`, sends a hunch with `type` or `speak`, and its taps with `tap`.
- * The spoken take is held here, so a hunch home couldn't be reached for can
- * be heard again, until the next take replaces it or `dispose` lets it go.
+ * `snapshot`, sends a typed hunch with `type`, a spoken one with `record`
+ * (where the port offers takes), and its taps with `tap`.
  *
- * A request that fails, for any reason, is `unreached`, and reported
- * (`reportFailure`): the hunch may not be kept, and the screen says so and
- * offers to send it again. Each request names its hunch to home by this
- * runtime's id and the hunch's number.
+ * A request that fails, for any reason, is reported (`reportFailure`), and
+ * the screen offers to send it again; a look-up that fails is kept for home
+ * (`keep`), even once the screen is gone. Each request names its hunch to
+ * home: a typed one by this runtime's id and the hunch's number, a spoken
+ * one by the name its take was recorded under, which its voice note carries
+ * as its ref, so home finds the take from the hunch.
  */
 
 import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+import type { PatternTake, TakePattern } from "@some-ui/voice-capture"
 import { serialDispatch } from "@topik/lib/topik/read-aloud/serial-dispatch"
 import type {
   Lookup,
@@ -21,15 +23,51 @@ import type {
 } from "@topik/lib/topik/shop"
 import { initialShop, step } from "@topik/lib/topik/shop"
 
-/** Home, as the shop asks it: typed ahead of its route (#2853). */
+/**
+ * The phone's takes of spoken hunches, on the take pattern, as the grammar
+ * lens's (`LensTakes`): each take's item is the hunch's name.
+ */
+export type ShopTakes = Readonly<{
+  pattern: TakePattern
+  getSnapshot: () => Readonly<{
+    takes: ReadonlyArray<PatternTake>
+    full: boolean
+  }>
+  subscribe: (listener: () => void) => () => void
+}>
+
+/** What home said of a spoken take's words. */
+export type Heard = Readonly<
+  | { kind: "heard"; words: string }
+  /** Home holds the take and hasn't heard it yet. */
+  | { kind: "held" }
+  /** The take is still on its way to home. */
+  | { kind: "going" }
+>
+
+/** Home, as the shop asks it (paulgsc/server#1265). */
 export type ShopPort = Readonly<{
-  /** Home's Whisper: the words of a spoken take, in English. */
-  hear: (take: Blob) => Promise<string>
+  /**
+   * The phone's takes of spoken hunches, each kept here until home has it;
+   * absent, no hunch is spoken.
+   */
+  takes?: ShopTakes | undefined
+  /**
+   * Home's Whisper: the words of the spoken take `note`, hunch `hunch`'s,
+   * once home has heard it; or that it hasn't in time, home holding it or
+   * the take still on its way there. `gone` aborts once the screen is gone.
+   */
+  hear: (note: string, hunch: string, gone: AbortSignal) => Promise<Heard>
   /**
    * Home's meaning index: the phrases a hunch's words find, or kept. `hunch`
    * names the hunch, the same each time it is sent: home keeps a miss once.
    */
   lookUp: (words: string, hunch: string) => Promise<Lookup>
+  /**
+   * Keeps a look-up home didn't answer, to send when home is next reached;
+   * false when this phone couldn't keep it.
+   */
+  keep: (words: string, hunch: string) => boolean
 }>
 
 /** What the owner taps, once a hunch is sent. */
@@ -38,11 +76,16 @@ type Tap = Extract<ShopEvent, { kind: "retry" | "pick" | "put-back" | "again" }>
 export type ShopRuntime = Readonly<{
   snapshot: () => ShopState
   type: (text: string) => void
-  /** A spoken hunch: the take is held until the next one replaces it. */
-  speak: (take: Blob) => void
+  /**
+   * Starts a spoken hunch's take, or stops the one under way, where the
+   * port offers takes; the take, once kept, is the hunch.
+   */
+  record: () => void
   tap: (event: Tap) => void
-  /** The screen is gone: late answers change nothing, and the take is let go. */
+  /** The screen is gone: late answers change nothing, and a take under way is kept. */
   dispose: () => void
+  /** The screen is shown again (a second mount): answers count again. */
+  resume: () => void
 }>
 
 export const createShopRuntime = (
@@ -52,26 +95,39 @@ export const createShopRuntime = (
   id: string = crypto.randomUUID()
 ): ShopRuntime => {
   let state = initialShop
-  let take: Blob | null = null
   let disposed = false
+  let gone = new AbortController()
+  let said = 0
+  /** The name the next take is recorded under. */
+  let recording = `${id}-said-1`
 
-  /** Every failure, a throw before the promise included, as `unreached`. */
+  const named = (hunch: number, name: string | null): string =>
+    name ?? `${id}-${hunch}`
+
+  /** Every failure, a throw before the promise included, as `failed`. */
   const ask = <T>(
     what: "hear" | "look-up",
-    seq: number,
-    call: () => Promise<T>,
+    failed: ShopEvent,
+    call: (asked: AbortSignal) => Promise<T>,
     answer: (value: T) => ShopEvent
   ): void => {
+    // A hear the screen's going cut short says nothing, either way: `resume`
+    // asks again. A look-up that fails is kept however late.
+    const asked = gone.signal
     Promise.resolve()
-      .then(call)
+      .then(() => call(asked))
       .then(
-        (value) => dispatch(answer(value)),
+        (value) => {
+          if (what === "hear" && asked.aborted) return
+          dispatch(answer(value))
+        },
         (error: unknown) => {
+          if (what === "hear" && asked.aborted) return
           reportFailure({
             port: `topik shop (${what})`,
             error: toIntentError(error),
           })
-          dispatch({ kind: "unreached", seq })
+          dispatch(failed)
         }
       )
   }
@@ -79,31 +135,31 @@ export const createShopRuntime = (
   const run = (effect: ShopEffect): void => {
     switch (effect.kind) {
       case "hear": {
-        if (take === null) {
-          dispatch({ kind: "unreached", seq: effect.seq })
-          return
-        }
-        const held = take
+        const { seq, hunch, note, name } = effect
         ask(
           "hear",
-          effect.seq,
-          () => port.hear(held),
-          (words) => ({
-            kind: "heard",
-            seq: effect.seq,
-            hunch: effect.hunch,
-            words,
-          })
+          { kind: "unreached", seq },
+          (asked) => port.hear(note, name, asked),
+          (heard): ShopEvent =>
+            heard.kind === "heard"
+              ? { kind: "heard", seq, hunch, name, words: heard.words }
+              : { kind: "unheard", seq, going: heard.kind === "going" }
         )
         return
       }
       case "look-up": {
+        const { seq, hunch, words, name } = effect
         ask(
           "look-up",
-          effect.seq,
-          () => port.lookUp(effect.words, `${id}-${effect.hunch}`),
-          (lookup) => ({ kind: "answered", seq: effect.seq, lookup })
+          { kind: "unanswered", seq, hunch, words, name },
+          () => port.lookUp(words, named(hunch, name)),
+          (lookup) => ({ kind: "answered", seq, lookup })
         )
+        return
+      }
+      case "keep": {
+        if (!port.keep(effect.words, named(effect.hunch, effect.name)))
+          dispatch({ kind: "unkept", hunch: effect.hunch })
         return
       }
       default: {
@@ -112,11 +168,16 @@ export const createShopRuntime = (
     }
   }
 
-  // An effect may dispatch (a hear with no take is unreached at once); that
-  // event waits for the current one's effects, as in read-aloud's runtimes.
+  // An effect may dispatch (a keep this phone couldn't make); that event
+  // waits for the current one's effects, as in read-aloud's runtimes.
   const dispatch = serialDispatch<ShopEvent>(
     (event) => {
-      if (disposed) return
+      if (disposed) {
+        // The screen is gone, but what the owner typed is still kept.
+        if (event.kind === "unanswered")
+          port.keep(event.words, named(event.hunch, event.name))
+        return
+      }
       const next = step(state, event)
       if (next.state !== state) {
         state = next.state
@@ -127,20 +188,65 @@ export const createShopRuntime = (
     () => undefined
   )
 
+  // A take kept under the name it was started on is that hunch, spoken:
+  // followed from the first record until the screen is gone.
+  const takes = port.takes
+  let ended = 0
+  let following: (() => void) | null = null
+  const follow = (): (() => void) => {
+    if (takes === undefined) return (): void => undefined
+    ended = takes.pattern.getSnapshot().ended?.seq ?? 0
+    return takes.pattern.subscribe(() => {
+      const last = takes.pattern.getSnapshot().ended
+      if (last === null || last.seq === ended) return
+      ended = last.seq
+      if (last.ending !== "kept" || last.id === null) return
+      if (last.answers !== recording) return
+      const name = recording
+      said += 1
+      recording = `${id}-said-${String(said + 1)}`
+      dispatch({
+        kind: "hunch",
+        hunch: { kind: "spoken", note: last.id, name },
+      })
+    })
+  }
+
   return {
     snapshot: () => state,
     type: (text): void => {
       dispatch({ kind: "hunch", hunch: { kind: "typed", text } })
     },
-    speak: (spoken): void => {
-      if (disposed) return
-      take = spoken
-      dispatch({ kind: "hunch", hunch: { kind: "spoken" } })
+    record: (): void => {
+      if (disposed || takes === undefined) return
+      following ??= follow()
+      takes.pattern.tap(recording)
     },
     tap: dispatch,
     dispose: (): void => {
+      if (disposed) return
       disposed = true
-      take = null
+      gone.abort()
+      // A take under way is kept by `leave`, under this name, and goes home
+      // as a voice note: the next take is another hunch, so another name.
+      if (takes?.pattern.getSnapshot().take.kind === "recording") {
+        said += 1
+        recording = `${id}-said-${String(said + 1)}`
+      }
+      following?.()
+      following = null
+      takes?.pattern.leave()
+    },
+    resume: (): void => {
+      if (!disposed) return
+      disposed = false
+      gone = new AbortController()
+      // A hear the screen's going stopped is asked again.
+      const { at } = state
+      if (at.kind === "hearing") {
+        const { number, note, name } = at
+        run({ kind: "hear", seq: state.seq, hunch: number, note, name })
+      }
     },
   }
 }

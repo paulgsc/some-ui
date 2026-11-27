@@ -44,6 +44,7 @@ import type { RoutineFilesPort } from "@topik/lib/topik/adapter/routine-files"
 import { createRoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import { createTreeFeed } from "@topik/lib/topik/adapter/tree-feed"
+import type { ShopPort } from "@topik/lib/topik/shop/runtime"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
 const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
@@ -93,6 +94,11 @@ export type KoreanStudyPageProps = {
   routineFiles?: RoutineFilesPort
   /** The Android app's ask of home for the next scene (`SceneAsk`). */
   sceneAsk?: SceneAsk
+  /**
+   * The Android app's shop on home (KP4): a hunch in English looked up on
+   * the phrase shelf. Absent, "What are you hungry for?" offers no hunch.
+   */
+  shopHome?: ShopPort
   /**
    * The Android app's microphone, for saying the next scene aloud
    * (`SceneVoice`); absent, the scene is typed.
@@ -239,6 +245,7 @@ export const KoreanStudyPage = ({
   shelf,
   routineFiles,
   sceneAsk,
+  shopHome,
   sceneVoice,
   sceneFileHint,
   wordSetHint,
@@ -275,6 +282,7 @@ export const KoreanStudyPage = ({
       ...(shelf ? { shelf } : {}),
       ...(routineFiles ? { routineFeed: createRoutineFeed(routineFiles) } : {}),
       ...(sceneAsk ? { sceneAsk } : {}),
+      ...(shopHome ? { shopHome } : {}),
       ...(sceneVoice ? { sceneVoice } : {}),
       ...(sceneFileHint ? { sceneFileHint } : {}),
       ...(wordSetHint ? { wordSetHint } : {}),
@@ -295,6 +303,7 @@ export const KoreanStudyPage = ({
       shelf,
       routineFiles,
       sceneAsk,
+      shopHome,
       sceneVoice,
       sceneFileHint,
       wordSetHint,

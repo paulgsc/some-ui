@@ -76,6 +76,7 @@ export const VOICE_OFS = [
   "leetype",
   "rust-round",
   "interview",
+  "hunch",
 ] as const
 
 /** A voice note's kind, as home is told it. */

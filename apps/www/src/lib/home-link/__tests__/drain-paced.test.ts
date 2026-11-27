@@ -236,6 +236,8 @@ function practiceLane(
     letGoHeld: () => undefined,
     promptsGoing: () => [],
     letGoHeldPrompts: () => undefined,
+    hunchesGoing: () => [],
+    hunchesAnswered: () => undefined,
     notesGoing: nothing,
     holdNotes: () => undefined,
     lensGoing: nothing,

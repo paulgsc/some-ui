@@ -104,6 +104,7 @@ import {
   MonitorPlay,
   NotebookPen,
   Shapes,
+  ShoppingBasket,
   Trophy,
 } from "lucide-react"
 
@@ -189,6 +190,7 @@ const MARKS: Readonly<Record<TakeKind, LucideIcon>> = {
   bite: Trophy,
   round: Cog,
   interview: MessagesSquare,
+  hunch: ShoppingBasket,
   reflection: NotebookPen,
   jobs: BriefcaseBusiness,
   drama: Drama,

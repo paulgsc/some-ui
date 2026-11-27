@@ -187,6 +187,11 @@ const HOME_LINK_CALLERS = new Set([
   // Try again and after a pick, and sends a pick as the record's approve
   // event on a tap.
   "lib/preview-home/index.ts",
+  // LA8 (KP4, #2853): KPLAY's shop, which sends home a hunch's words and
+  // its name to look up, once per hunch sent or sent again; and for a hunch
+  // spoken, once asks home to hear its take next and reads its words every
+  // few seconds until home has heard it.
+  "lib/shop-home/index.ts",
   // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play;
@@ -257,11 +262,13 @@ const KEEPERS = new Set([
   "lib/home-link/kept-runtime.ts",
   "lib/home-link/routine.ts",
   "lib/home-link/heard.ts",
+  "lib/home-link/fast-track.ts",
   "lib/home-link/voice-audio.ts",
   "lib/home-link/kept-read.ts",
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
   "lib/home-link/preview-reads.ts",
+  "lib/home-link/phrase-lookup.ts",
   "lib/home-link/takes-read.ts",
   "lib/home-link/attention.ts",
   "lib/home-link/call-videos.ts",
@@ -311,6 +318,10 @@ const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
 /** LA8, IH1: the read of one take's words, and the one request it may send. */
 const HEARD_READ = "lib/home-link/heard.ts"
 const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
+
+/** LA8 (KP4): the shop's ask that home hear one take next, and its one request. */
+const FAST_TRACK = "lib/home-link/fast-track.ts"
+const FAST_TRACK_SENDS = [['"POST"', "fastTrackPath(id)"]]
 
 /**
  * LA8, RR6, ST32: the read of one note's audio (a Rust Rounds note, or a
@@ -409,6 +420,10 @@ const PREVIEW_SENDS = [
   ['"POST"', "path", "JSON.stringify(ask.event)"],
   ['"GET"', "path"],
 ]
+
+/** LA8 (KP4): the shop's look-up, and the one request it may send. */
+const LOOKUP_ASK = "lib/home-link/phrase-lookup.ts"
+const LOOKUP_SENDS = [['"POST"', '"/phrases/lookup"', "body"]]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
@@ -1118,6 +1133,26 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
+  it("sends nothing from the shop but a hunch's look-up, and only the shop asks it, the drain sending the same body (KP4)", () => {
+    expect(sendCalls(LOOKUP_ASK, read(LOOKUP_ASK))).toEqual(LOOKUP_SENDS)
+    expect(read(LOOKUP_ASK)).toContain("homeLink().keep(")
+    const callers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/phrase-lookup"|from "@\/lib\/home-link\/phrase-lookup"/.test(
+          read(f)
+        )
+      )
+    // The drain's part reads only the look-up's body from it.
+    expect(read("lib/home-link/hunches.ts")).toContain(
+      'import { lookupBody } from "./phrase-lookup"'
+    )
+    expect(callers).toEqual([
+      "lib/home-link/hunches.ts",
+      "lib/shop-home/index.ts",
+    ])
+  })
+
   it("sends nothing from Studio's Previews but its reads and a pick's approve event, and only it asks them (HOST16)", () => {
     expect(sendCalls(PREVIEW_READS, read(PREVIEW_READS))).toEqual(PREVIEW_SENDS)
     expect(read(PREVIEW_READS)).toContain("homeLink().keep(")
@@ -1150,7 +1185,20 @@ describe("LA8: the phone reaches home through one module", () => {
     ])
   })
 
-  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers, Rust Rounds' week and Studio's Spoken read it (IH1, RR13, W5)", () => {
+  it("sends nothing from the fast-track but one POST of /voice-notes/:id/fast-track, and only the shop asks it (KP4)", () => {
+    expect(sendCalls(FAST_TRACK, read(FAST_TRACK))).toEqual(FAST_TRACK_SENDS)
+    expect(read(FAST_TRACK)).toContain("/fast-track`")
+    const callers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/fast-track"|from "@\/lib\/home-link\/fast-track"/.test(
+          read(f)
+        )
+      )
+    expect(callers).toEqual(["lib/shop-home/hear.ts", "lib/shop-home/index.ts"])
+  })
+
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers, Rust Rounds' week, Studio's Spoken and the shop read it (IH1, RR13, W5, KP4)", () => {
     expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
     expect(read(HEARD_READ)).toContain("/heard`")
     const readers = sourceFiles()
@@ -1160,6 +1208,7 @@ describe("LA8: the phone reaches home through one module", () => {
       )
     expect(readers).toEqual([
       "lib/idea-hearing/index.ts",
+      "lib/shop-home/index.ts",
       "lib/studio-spoken/index.ts",
       "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
