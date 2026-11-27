@@ -5,6 +5,7 @@ import type { FastTracked } from "@/lib/home-link/fast-track"
 import { hearOnHome } from "@/lib/shop-home/hear"
 
 const TIMING = { everyMs: 5, forMs: 20 }
+const LIVE = new AbortController().signal
 
 function ports(
   tracks: Array<FastTracked>,
@@ -14,12 +15,12 @@ function ports(
   let tracked = 0
   return {
     ports: {
-      fastTrack: () => {
+      fastTrack: (): Promise<FastTracked> => {
         tracked += 1
         return Promise.resolve(tracks.shift() ?? "asked")
       },
       heard: () => Promise.resolve(heards.shift() ?? { kind: "notYet" }),
-      wait: (ms) => {
+      wait: (ms): Promise<void> => {
         clock += ms
         return Promise.resolve()
       },
@@ -39,29 +40,35 @@ describe("a spoken hunch heard on home", () => {
         { kind: "heard", text: "where's my phone" },
       ]
     )
-    expect(await hearOnHome("n1", p, TIMING)).toBe("where's my phone")
+    expect(await hearOnHome("n1", p, LIVE, TIMING)).toEqual({
+      kind: "heard",
+      words: "where's my phone",
+    })
     expect(tracked()).toBe(2)
   })
 
   it("says home has the take but hasn't heard it, once its time is up", async () => {
     const { ports: p } = ports(["asked"], [])
-    expect(await hearOnHome("n1", p, TIMING)).toBeNull()
+    expect(await hearOnHome("n1", p, LIVE, TIMING)).toEqual({ kind: "held" })
   })
 
-  it("rejects when home never said it holds the take, or can't give its words", async () => {
-    const never = ports(
-      ["notHeld", "notHeld", "notHeld", "notHeld", "notHeld", "notHeld"],
-      [
-        { kind: "notHeld" },
-        { kind: "notHeld" },
-        { kind: "notHeld" },
-        { kind: "notHeld" },
-        { kind: "notHeld" },
-        { kind: "notHeld" },
-      ]
+  it("says a take home never said it holds is still on its way", async () => {
+    const { ports: p } = ports(
+      Array.from({ length: 9 }, () => "notHeld" as const),
+      Array.from({ length: 9 }, () => ({ kind: "notHeld" }) as const)
     )
-    await expect(hearOnHome("n1", never.ports, TIMING)).rejects.toThrow()
+    expect(await hearOnHome("n1", p, LIVE, TIMING)).toEqual({ kind: "going" })
+  })
+
+  it("stops once the screen is gone", async () => {
+    const gone = new AbortController()
+    gone.abort()
+    const { ports: p } = ports([], [])
+    await expect(hearOnHome("n1", p, gone.signal, TIMING)).rejects.toThrow()
+  })
+
+  it("rejects when home can't give the take's words", async () => {
     const away = ports(["asked"], [{ kind: "unreachable" }])
-    await expect(hearOnHome("n1", away.ports, TIMING)).rejects.toThrow()
+    await expect(hearOnHome("n1", away.ports, LIVE, TIMING)).rejects.toThrow()
   })
 })

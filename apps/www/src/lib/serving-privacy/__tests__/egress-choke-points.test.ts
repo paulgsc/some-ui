@@ -1188,10 +1188,7 @@ describe("LA8: the phone reaches home through one module", () => {
           read(f)
         )
       )
-    expect(callers).toEqual([
-      "lib/shop-home/hear.ts",
-      "lib/shop-home/index.ts",
-    ])
+    expect(callers).toEqual(["lib/shop-home/hear.ts", "lib/shop-home/index.ts"])
   })
 
   it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers, Rust Rounds' week, Studio's Spoken and the shop read it (IH1, RR13, W5, KP4)", () => {

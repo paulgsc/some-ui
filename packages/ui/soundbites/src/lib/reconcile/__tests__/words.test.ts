@@ -25,6 +25,7 @@ const OFS = [
   "scene",
   "soundbite",
   "jobs",
+  "hunch",
   "studio",
   "newer",
 ]

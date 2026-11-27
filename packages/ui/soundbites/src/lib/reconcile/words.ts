@@ -6,6 +6,7 @@
  * `__tests__/words.test.ts` holds both.
  */
 import { counted } from "@some-ui/core-utils"
+import type { TakeOf } from "@soundbites/lib/library/kinds"
 import { dayAt } from "@soundbites/lib/library/words"
 
 import type { ProblemCode } from "./codes"
@@ -28,8 +29,12 @@ const LANGUAGES: Readonly<Record<string, string>> = {
 const languageName = (code: string): string =>
   LANGUAGES[code] ?? "another language"
 
-/** Each kind of take home keeps, by home's name for it. */
-const OF_WORDS: Readonly<Record<string, string>> = {
+/**
+ * Each kind of take home keeps, by home's name for it, Studio's but one
+ * (its takes name their own place); a kind added to `TAKE_OFS` fails to
+ * compile here until it has words.
+ */
+const OF_WORDS = {
   "rust-round": "A Rust Rounds take",
   interview: "An interview take",
   reflection: "A spoken reflection",
@@ -39,7 +44,11 @@ const OF_WORDS: Readonly<Record<string, string>> = {
   scene: "A drama scene take",
   soundbite: "A soundbite take",
   jobs: "A Jobs take",
-}
+  hunch: "A take for the shop",
+} as const satisfies Record<Exclude<TakeOf, "studio">, string>
+
+const isNamed = (of: string): of is keyof typeof OF_WORDS =>
+  Object.hasOwn(OF_WORDS, of)
 
 export const RECONCILE_WORDS = {
   heading: "Needs your attention",
@@ -140,7 +149,7 @@ export const RECONCILE_WORDS = {
    * What kind of take it is, by home's name for its kind; a Studio take is
    * named by what it was for (`LIBRARY_WORDS.kinds`) instead.
    */
-  of: (of: string): string => OF_WORDS[of] ?? "A take",
+  of: (of: string): string => (isNamed(of) ? OF_WORDS[of] : "A take"),
   /** What a row of chips does, for a reader that can't see it. */
   chips: "Show only the takes where",
   /** The acts, and what each keeps. */

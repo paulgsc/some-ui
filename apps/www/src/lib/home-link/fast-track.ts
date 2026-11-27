@@ -17,7 +17,7 @@ import { answered } from "./while-busy"
 export type FastTracked = "asked" | "notHeld" | "busy" | "unreachable"
 
 /** The fast-track of note `id`, as home takes it. */
-export const fastTrackPath = (id: string): string =>
+const fastTrackPath = (id: string): string =>
   `/voice-notes/${encodeURIComponent(id)}/fast-track`
 
 /** Asks home once to hear note `id` next; never rejects. */

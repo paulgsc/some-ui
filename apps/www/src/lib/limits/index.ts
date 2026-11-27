@@ -198,6 +198,20 @@ export const LIMIT_ROWS: ReadonlyArray<LimitRow> = [
     },
   },
   {
+    id: "hunchTakes",
+    concern: "phone",
+    words: PHONE_LIMITS.hunchTakes,
+    unit: "count",
+    sources: [`${WWW}/hunch-takes/budget.ts#HUNCH_TAKES_MAX`],
+    read: async (): Promise<LimitCount> => {
+      const [{ hunchTakesDesk }, { HUNCH_TAKES_MAX }] = await Promise.all([
+        import("@/lib/hunch-takes"),
+        import("@/lib/hunch-takes/budget"),
+      ])
+      return deskCount(hunchTakesDesk, HUNCH_TAKES_MAX)
+    },
+  },
+  {
     id: "lensRecord",
     concern: "phone",
     words: PHONE_LIMITS.lensRecord,

@@ -343,7 +343,7 @@ export function refOf(text: string): string {
 }
 
 /** A hunch spoken in the shop, as home is told it: its ref is the hunch's name. */
-export function hunchNote(take: HunchTake): VoiceOut {
+function hunchNote(take: HunchTake): VoiceOut {
   return {
     id: take.id,
     of: "hunch",

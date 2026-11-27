@@ -24,10 +24,7 @@ const LookupSchema: z.ZodType<Lookup> = z.discriminatedUnion("kind", [
 ])
 
 /** The shop's look-up on home; rejects when home gave no readable answer. */
-export async function lookUpOnHome(
-  words: string,
-  hunch: string
-): Promise<Lookup> {
+async function lookUpOnHome(words: string, hunch: string): Promise<Lookup> {
   const read = await readHome(() => askLookup({ words, hunch }), LookupSchema)
   if (read.kind === "read") return read.value
   throw new Error(`home's look-up: ${read.kind}`)
@@ -46,11 +43,10 @@ export const phoneShop: ShopPort = {
   takes: phoneHunchTakes(),
   lookUp: lookUpOnHome,
   keep: hunchOutbox.keep,
-  hear: (note) =>
-    hearOnHome(note, {
-      fastTrack: askFastTrack,
-      heard: askHeard,
-      wait,
-      now: Date.now,
-    }),
+  hear: (note, _hunch, gone) =>
+    hearOnHome(
+      note,
+      { fastTrack: askFastTrack, heard: askHeard, wait, now: Date.now },
+      gone
+    ),
 }
