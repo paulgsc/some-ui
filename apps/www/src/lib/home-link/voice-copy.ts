@@ -22,6 +22,8 @@
  *   `lib/soundbite-keeping`; HF5 #2180): `soundbite`, how it came to be
  *   recorded, when it was; its record goes as a study note (`./notes`);
  * - a grammar-lens take (`lib/lens-takes`): `lens`, the line, when taken;
+ * - a hunch spoken in the shop (`lib/hunch-takes`): `hunch`, the hunch's
+ *   name, when said;
  * - a LeetType spoken answer's take (`lib/leetype-takes`): `leetype`, the
  *   session file and screen, when taken; its note goes as a study note;
  * - a Rust Rounds note (`lib/rust-rounds`, RR6 #2237): `rust-round`, the card
@@ -151,6 +153,8 @@ import type { TakeKept } from "@some-ui/voice-capture"
 import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
+import type { HunchTake } from "@/lib/hunch-takes"
+import { hunchTakesDesk } from "@/lib/hunch-takes"
 import type { IdeaTake } from "@/lib/idea-takes"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { interviewDesk } from "@/lib/interview-week"
@@ -338,27 +342,32 @@ export function refOf(text: string): string {
   return ref === "" ? "-" : ref
 }
 
-/** A grammar-lens take, as home is told it. */
-export function lensNote(take: LensTake): VoiceOut {
-  return {
+/**
+ * A desk's take, as home is told it: a note `of` a kind, its ref read from
+ * the take (by default its line, as a ref home takes). Each desk's note
+ * below is one of these.
+ */
+const deskNote =
+  (of: VoiceOf, ref: (take: DeskTake) => string = (take) => refOf(take.line)) =>
+  (take: DeskTake): VoiceOut => ({
     id: take.id,
-    of: "lens",
-    ref: refOf(take.line),
+    of,
+    ref: ref(take),
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
-  }
-}
+  })
+
+/** A hunch spoken in the shop, as home is told it: its ref is the hunch's name. */
+const hunchNote: (take: HunchTake) => VoiceOut = deskNote("hunch")
+
+/** A grammar-lens take, as home is told it. */
+export const lensNote: (take: LensTake) => VoiceOut = deskNote("lens")
 
 /** A LeetType spoken answer's take (its `line` is `<file>#<screen>`), as home is told it. */
-export function leetypeNote(take: LeetypeTake): VoiceOut {
-  return {
-    id: take.id,
-    of: "leetype",
-    ref: refOf(take.line.replace("#", ":")),
-    at: new Date(take.takenAt).toISOString(),
-    contentType: take.mimeType,
-  }
-}
+export const leetypeNote: (take: LeetypeTake) => VoiceOut = deskNote(
+  "leetype",
+  (take) => refOf(take.line.replace("#", ":"))
+)
 
 /**
  * A Rust Rounds note, as home is told it: by `ref`, what its line names
@@ -386,15 +395,9 @@ export function rustRoundNote(
  * Rounds ticket's (`<week>:<ticket>`, RR13) or the interview week's
  * (`<week>:<question>` or `<week>:read:<card>`, IW1). Its ref is its line.
  */
-export const lineNote =
-  (of: "rust-round" | "interview") =>
-  (take: DeskTake): VoiceOut => ({
-    id: take.id,
-    of,
-    ref: take.line,
-    at: new Date(take.takenAt).toISOString(),
-    contentType: take.mimeType,
-  })
+export const lineNote = (
+  of: "rust-round" | "interview"
+): ((take: DeskTake) => VoiceOut) => deskNote(of, (take) => take.line)
 
 /**
  * A take on the desk of Studio's answers, as home is told it: a Studio note
@@ -402,15 +405,7 @@ export const lineNote =
  * ref, `answerRef`, for an answer recorded before asks left the phone,
  * C1097), which home reads as any other.
  */
-export function ideaNote(take: IdeaTake): VoiceOut {
-  return {
-    id: take.id,
-    of: "studio",
-    ref: refOf(take.line),
-    at: new Date(take.takenAt).toISOString(),
-    contentType: take.mimeType,
-  }
-}
+export const ideaNote: (take: IdeaTake) => VoiceOut = deskNote("studio")
 
 /**
  * A take with no scene yet (ST32), as home is told it: a Studio note named
@@ -420,17 +415,11 @@ export function ideaNote(take: IdeaTake): VoiceOut {
  * named by its part's line instead (`spoken:<card>.<part>`, C807), which
  * home keeps as a take with no scene too.
  */
-export function libraryNote(take: LibraryTake): VoiceOut {
-  return {
-    id: take.id,
-    of: "studio",
-    ref: refOf(
-      spokenPartOfLine(take.line) === null ? `take:${take.id}` : take.line
-    ),
-    at: new Date(take.takenAt).toISOString(),
-    contentType: take.mimeType,
-  }
-}
+export const libraryNote: (take: LibraryTake) => VoiceOut = deskNote(
+  "studio",
+  (take) =>
+    refOf(spokenPartOfLine(take.line) === null ? `take:${take.id}` : take.line)
+)
 
 /** A soundbite, as home is told it. */
 export function soundbiteNote(bite: Soundbite): VoiceOut {
@@ -656,6 +645,10 @@ function listed(
     audio: (): Promise<Blob | null> => lensTakesDesk.audio(take.id),
     aside: asideAt(take),
   }))
+  const hunches = hunchTakesDesk.kept().map((take) => ({
+    note: hunchNote(take),
+    audio: (): Promise<Blob | null> => hunchTakesDesk.audio(take.id),
+  }))
   const leetype = leetypeTakesDesk.kept().map((take) => ({
     note: leetypeNote(take),
     audio: (): Promise<Blob | null> => leetypeTakesDesk.audio(take.id),
@@ -725,6 +718,7 @@ function listed(
     ...studio,
     ...sounds,
     ...lens,
+    ...hunches,
     ...leetype,
     ...rust,
     ...week,
@@ -1177,6 +1171,7 @@ const DELETED_LETS_GO: Readonly<Record<VoiceOf, LetsGoDeleted>> = {
     ).every(Boolean),
   interview: (deleted) => interviewDesk.letGoDeleted(deleted),
   lens: (deleted) => lensTakesDesk.letGoDeleted(deleted),
+  hunch: (deleted) => hunchTakesDesk.letGoDeleted(deleted),
   leetype: (deleted) => leetypeTakesDesk.letGoDeleted(deleted),
   reflection: (deleted) =>
     Promise.resolve(letGoDeletedReflections([...deleted])),
@@ -1337,6 +1332,7 @@ export function holdNotes(): void {
  */
 function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
+  hunchTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
   rustRoundsDesk.keptWhere(voiceKept)
   rustRoundsDesk.audioFrom(askAudio)
@@ -1388,6 +1384,7 @@ export function watchVoiceNotes(): () => void {
         // A bite's release (Undo closed) is a change to its record.
         phoneGameBites().subscribe(copySoon),
         lensTakesDesk.phone().takes.subscribe(copySoon),
+        hunchTakesDesk.phone().takes.subscribe(copySoon),
         leetypeTakesDesk.phone().takes.subscribe(copySoon),
         rustRoundsDesk.phone().takes.subscribe(copySoon),
         ideaTakesDesk.phone().subscribe(copySoon),

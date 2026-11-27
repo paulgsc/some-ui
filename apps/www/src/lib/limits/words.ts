@@ -89,6 +89,12 @@ export const PHONE_LIMITS = {
     atLimit: "makes-room",
     then: MAKES_ROOM,
   },
+  hunchTakes: {
+    what: "Things you said to the shop",
+    standing: kept,
+    atLimit: "makes-room",
+    then: MAKES_ROOM,
+  },
   lensRecord: {
     what: "Grammar lens answers, line by line",
     standing: kept,

@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { TAKE_OFS } from "@soundbites/lib/library/kinds"
 import { CODES } from "@soundbites/lib/reconcile/codes"
 import { RECONCILE_WORDS } from "@soundbites/lib/reconcile/words"
 import { describe, expect, it } from "vitest"
@@ -15,19 +16,7 @@ const MACHINERY =
 const OTHER_WORDS = /\b(recordings?|answers?|bites?|notes?|clips?)\b/i
 
 /** Home's names for its kinds of take, and one it may add. */
-const OFS = [
-  "rust-round",
-  "interview",
-  "reflection",
-  "game",
-  "leetype",
-  "lens",
-  "scene",
-  "soundbite",
-  "jobs",
-  "studio",
-  "newer",
-]
+const OFS = [...TAKE_OFS, "newer"]
 
 const AT = "2026-11-03T09:00:00.000Z"
 

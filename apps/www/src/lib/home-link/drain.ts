@@ -11,7 +11,8 @@
  * note home lacks (`./notes`), whose stores then hear what home holds of
  * them (`holdNotes`, OS1), the grammar-lens entries home lacks as they
  * are (`./lens-record`), and the rest of Korean's record likewise
- * (`./korean-record`, KH3). Nothing of home's is taken in, and nothing on the
+ * (`./korean-record`, KH3), and last the shop's hunches home didn't answer
+ * (`./hunches`, KP4). Nothing of home's is taken in, and nothing on the
  * phone is let go but written reflections (`letGoHeld`, LA16) and the asks
  * home holds, with the scene notes they named (`letGoHeldPrompts`, LA18): a
  * session leaves on home's word only by a tap, the clear in
@@ -35,10 +36,12 @@ import {
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
 import type { PendingAsk } from "@/lib/scene-ask"
+import type { PendingHunch } from "@/lib/shop-home/outbox"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import { sendHunches } from "./hunches"
 import { sendKorean } from "./korean-record"
 import type { LogReport, TakenEvents } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
@@ -91,6 +94,13 @@ export type DrainPorts = {
    * they named as carried by them (`./going`'s `letGoHeldPrompts`).
    */
   letGoHeldPrompts: (sent: Sent) => void
+  /** The shop's hunches home didn't answer (`lib/shop-home`'s outbox). */
+  hunchesGoing: () => ReadonlyArray<PendingHunch>
+  /** Home answered these hunches, and refused those: the outbox hears it. */
+  hunchesAnswered: (
+    answered: ReadonlySet<string>,
+    refused: ReadonlySet<string>
+  ) => void
   /** The study notes home lacks under `pairing`, and those on the phone (`./going`). */
   notesGoing: () => Promise<KeyedGoing<StudyNote>>
   /**
@@ -320,6 +330,10 @@ export async function drainHome(
     korean: korean.onPhone,
   })
   if (koreanEnded !== null) return koreanEnded
+  const hunches = await sendHunches(ports.hunchesGoing(), send)
+  ports.hunchesAnswered(hunches.answered, hunches.refused)
+  if (hunches.ended !== null) return hunches.ended
+  if (hunches.refused.size > 0) short ??= "refused"
 
   return short === null ? { kind: "synced" } : failed(short)
 }

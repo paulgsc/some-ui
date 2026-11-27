@@ -26,7 +26,7 @@ import { z } from "zod"
 
 import { homeLink } from "./index"
 import { blockedOf } from "./settle"
-import { answered } from "./while-busy"
+import { answered, BUSY } from "./while-busy"
 
 const Heard = z.object({
   // Other fields home adds are let through unread.
@@ -37,9 +37,6 @@ const Heard = z.object({
 export function heardPath(id: string): string {
   return `/voice-notes/${encodeURIComponent(id)}/heard`
 }
-
-/** Statuses that say home, or what is before it, is busy for now. */
-const BUSY = new Set([429, 503])
 
 /** What home's answer says of the note's words. */
 export function readHeard(answer: HomeAnswer): HeardAnswer {

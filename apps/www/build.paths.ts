@@ -165,6 +165,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/limits/**",
   "apps/www/src/lib/lens-takes/**",
+  "apps/www/src/lib/hunch-takes/**",
   "apps/www/src/lib/moves/**",
   "apps/www/src/lib/my-data/**",
   "apps/www/src/lib/leetype-files/**",
@@ -388,6 +389,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "a conversation essay's record and the previews it offers, and the owner's picks on them (HOST16, #3558): only the Android app's Studio shows Previews and keeps a pick on home (src/routes/_dashboard/_apk/journal/previews.tsx, src/lib/home-link)",
     },
     {
+      modules: ["apps/www/src/lib/shop-home/**"],
+      profiles: [MOBILE_PROFILE],
+      why: "KPLAY's shop asks home to look a hunch up (KP4, #2853): only the Android app's Korean offers the hunch door (src/components/player/session-viewport.tsx, src/lib/home-link)",
+    },
+    {
       modules: ["packages/video-render/src/feedback.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the categories a note on an episode picks from and where each goes (SFEED6): only the Android app's Studio leaves a note (src/lib/episode-feedback). The reflections routine's filing (`pending.ts`) reads the same module from the repo, outside any build",
@@ -428,6 +434,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/demo/index.ts",
         "apps/www/src/lib/demo/leetype-sample*",
         "apps/www/src/lib/demo/rust-rounds-sample.ts",
+        "apps/www/src/lib/demo/shop-sample.ts",
       ],
       profiles: [],
       why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the capture build Snips photographs seeds them now, and no deployable ships them; the public site is a CV with no app to draft in (C1055, #3401), and the owner's builds keep to their own records",

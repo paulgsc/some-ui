@@ -36,6 +36,7 @@ export const KIND_OF = {
   leetype: "leetype",
   "rust-round": "round",
   interview: "interview",
+  hunch: "hunch",
 } as const satisfies Record<OtherOf, string>
 
 /** A compartment named by a port, or `other` for a kind this phone doesn't know. */
@@ -277,6 +278,8 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
         : (names.question(week, second) ?? spoken(second))
     return { kind: "interview", topic, parts: present([question]) }
   },
+  // A hunch spoken in KPLAY's shop: its words are what home heard.
+  hunch: () => ({ kind: "hunch", topic: null, parts: [] }),
 }
 
 /** What a take of a kind this phone doesn't know is about: nothing more than its kind. */

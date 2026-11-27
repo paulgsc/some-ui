@@ -3,8 +3,8 @@
  * holds of its own record, drained by `./drain` through the one wiring
  * (`./lanes`): its finished sessions and kept shelf items, its finished
  * LeetType sessions, Studio's sittings and answers, its written
- * reflections (LA16), its asks for the next scene (LA18), the soundbites'
- * records and LeetType's answer notes (`./notes`), and the grammar-lens
+ * reflections (LA16), its asks for the next scene (LA18), the shop's
+ * hunches home didn't answer (KP4), the soundbites' records and LeetType's answer notes (`./notes`), and the grammar-lens
  * record (`./lens-record`) and read aloud's (`./korean-record`). Its record moves with the sessions the app has
  * read (React Query's `sessionsKey`), each shelf keep (`onKept`), each write
  * to Studio's projects, each change to the reflections and the asks, each
@@ -14,7 +14,8 @@
  * a typed reflection, an ask, a soundbite, an answer's note, a lens answer, a read-aloud rep
  * or a LeetType session finishing asks for a run. Its waiting count is the
  * sessions, written reflections, asks, notes, lens entries, finished
- * LeetType sessions and Studio's sittings and answers home lacks:
+ * LeetType sessions and Studio's sittings and answers home lacks, and the
+ * shop's hunches waiting to be sent again (not those home refused):
  * Studio's time log is read as it is when counted, since nothing tells of a
  * write to it, and its answers as last read.
  * Once a run's notes part ends, the soundbites and LeetType's answer notes
@@ -30,6 +31,7 @@ import { sceneAsks } from "@/lib/scene-ask"
 import { reflections } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { onKept } from "@/lib/shelf-client"
+import { hunchOutbox } from "@/lib/shop-home/outbox"
 import { studioKeeping } from "@/lib/studio-keeping"
 import { useSessions } from "@/lib/tenant"
 import { sessionsKey } from "@/lib/tenant/queries"
@@ -88,6 +90,8 @@ export const practiceLane: Lane = {
       letGoHeld: letGoHeldReflections,
       promptsGoing: () => promptsGoing(pairing, storage),
       letGoHeldPrompts,
+      hunchesGoing: hunchOutbox.going,
+      hunchesAnswered: hunchOutbox.answered,
       notesGoing: () => notesGoing(pairing, storage),
       holdNotes,
       lensGoing: () => lensGoing(pairing, storage),
@@ -106,6 +110,7 @@ export const practiceLane: Lane = {
         ...sceneAsks
           .kept()
           .map((p) => `${p.stamp}@${p.held === true ? "held" : "kept"}`),
+        ...hunchOutbox.going().map((h) => `hunch:${h.hunch}`),
         // A note never changes on the phone (`./notes`), so its id says it.
         ...practiceRead.getSnapshot().bites.map((b) => `bite:${b.id}`),
         ...leetypeNotes().map((n) => `note:${n.id}`),
@@ -118,6 +123,7 @@ export const practiceLane: Lane = {
     const unsubscribeShelf = onKept(listener)
     const unsubscribeReflections = reflections.subscribe(listener)
     const unsubscribeAsks = sceneAsks.subscribe(listener)
+    const unsubscribeHunches = hunchOutbox.subscribe(listener)
     const unsubscribeNotes = leetypeNotesMoved.subscribe(listener)
     const unsubscribeRead = practiceRead.subscribe(listener)
     const stopReads = watchPracticeStores()
@@ -128,6 +134,7 @@ export const practiceLane: Lane = {
       unsubscribeShelf()
       unsubscribeReflections()
       unsubscribeAsks()
+      unsubscribeHunches()
       unsubscribeNotes()
       unsubscribeRead()
       stopReads()
@@ -151,6 +158,12 @@ export const practiceLane: Lane = {
       leetypeNotesMoved.subscribe,
       leetypeNotesMoved.getSnapshot
     )
+    // The shop's hunches home didn't answer wait on this phone until a run
+    // sends them; read again whenever one is kept or let go.
+    const hunches = useSyncExternalStore(
+      hunchOutbox.subscribe,
+      () => hunchOutbox.going().length
+    )
     const counts =
       held === null
         ? { sessions: 0, shelf: 0, refused: 0, reflections: 0, prompts: 0 }
@@ -172,7 +185,8 @@ export const practiceLane: Lane = {
             notesToSend(notesOf(bites, leetypeNotes()), held).length +
             lensToSend(lens, held).length +
             logToSend(leetype, held).length +
-            studioWaiting(studioReports, held)),
+            studioWaiting(studioReports, held) +
+            hunches),
       hidden: 0,
       pulled: true,
     }

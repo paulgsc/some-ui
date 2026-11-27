@@ -17,6 +17,7 @@ import type { OutboxPort, OutboxView, StoredBite } from "@some-ui/game-week"
 
 import { episodeFeedback } from "@/lib/episode-feedback"
 import { phoneGameBites } from "@/lib/game-bites"
+import { hunchTakesDesk } from "@/lib/hunch-takes"
 import { ideasMoved } from "@/lib/idea-keeping"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { interviewDesk } from "@/lib/interview-week"
@@ -109,6 +110,8 @@ export const voiceLane: Lane = {
     useSyncExternalStore(storesRead.subscribe, storesRead.getSnapshot)
     const lens = lensTakesDesk.phone().takes
     useSyncExternalStore(lens.subscribe, lens.getSnapshot)
+    const hunches = hunchTakesDesk.phone().takes
+    useSyncExternalStore(hunches.subscribe, hunches.getSnapshot)
     const leetype = leetypeTakesDesk.phone().takes
     useSyncExternalStore(leetype.subscribe, leetype.getSnapshot)
     const ideas = ideaTakesDesk.phone()

@@ -20,6 +20,9 @@ import type { Run } from "./model"
 import type { RawRun } from "./settle"
 import { settleRun } from "./settle"
 
+/** Statuses that say home, or what is before it, is busy for now. */
+export const BUSY: ReadonlySet<number> = new Set([429, 503])
+
 const TRIES = 10
 const WAIT_MS = 1_000
 
