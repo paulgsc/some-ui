@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import type { FastTracked } from "@/lib/home-link/fast-track"
 import { hearOnHome } from "@/lib/shop-home/hear"
 
-const TIMING = { everyMs: 5, forMs: 20 }
+const TIMING = { pollMs: 5, deadlineMs: 20 }
 const LIVE = new AbortController().signal
 
 function ports(

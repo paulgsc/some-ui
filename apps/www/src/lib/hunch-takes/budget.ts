@@ -1,7 +1,6 @@
 /**
- * Hunches spoken and kept on this phone: at most forty (`lib/takes-desk/
- * runtime`). At the cap a new one replaces the oldest home already has;
- * while home has none of them, the new one isn't kept, and the shop says so.
+ * Hunches spoken and kept on this phone: at most forty, at the cap as
+ * `lib/takes-desk/runtime` keeps any desk.
  */
 export const HUNCH_TAKES_MAX = 40
 

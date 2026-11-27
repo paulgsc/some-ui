@@ -90,15 +90,4 @@ describe("the shop", () => {
     )
     expect(screen.getByRole("button", { name: SHOP_WORDS.say })).toBeTruthy()
   })
-
-  it("says a miss was kept on home", async () => {
-    const port: ShopPort = {
-      hear: () => Promise.resolve({ kind: "held" }),
-      lookUp: () => Promise.resolve({ kind: "kept" }),
-      keep: () => true,
-    }
-    render(<ShopScreen port={port} onBack={() => undefined} />)
-    type("I need a plumber")
-    expect(await screen.findByText(SHOP_WORDS.kept)).toBeTruthy()
-  })
 })

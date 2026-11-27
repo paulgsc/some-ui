@@ -1143,7 +1143,11 @@ describe("LA8: the phone reaches home through one module", () => {
           read(f)
         )
       )
-    expect(callers).toEqual(["lib/shop-home/index.ts"])
+    // The drain's part reads only the look-up's body from it.
+    expect(callers).toEqual([
+      "lib/home-link/hunches.ts",
+      "lib/shop-home/index.ts",
+    ])
   })
 
   it("sends nothing from Studio's Previews but its reads and a pick's approve event, and only it asks them (HOST16)", () => {

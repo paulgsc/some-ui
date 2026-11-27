@@ -33,12 +33,7 @@ async function lookUpOnHome(words: string, hunch: string): Promise<Lookup> {
 const wait = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms))
 
-/**
- * The Android app's shop on home: a hunch looked up there, and one home
- * didn't answer kept on this phone for the drain (`./outbox`); a spoken one
- * kept as a take (`lib/hunch-takes`), which the voice lane takes home, and
- * heard there (`./hear`).
- */
+/** The Android app's shop on home. */
 export const phoneShop: ShopPort = {
   takes: phoneHunchTakes(),
   lookUp: lookUpOnHome,

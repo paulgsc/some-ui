@@ -2,15 +2,16 @@
  * The shop's part of the one drain (`./drain`, KP4, #3596): each hunch this
  * phone keeps because home didn't answer its look-up (`lib/shop-home`'s
  * outbox), sent again as one `POST /phrases/lookup` each (paulgsc/server
- * `handlers::phrases`, #1265), its words and its name only. Home keeps a
- * miss once per name, so an answer, hit or kept, lets the hunch go; one home
- * refused (`422`) is set aside on the phone, and the run ends short once.
- * It is the drain's last part, so a home that can't look up holds back
- * nothing else.
+ * `handlers::phrases`, #1265), its words and its name only; what each
+ * answer does to the hunch is the outbox's (`lib/shop-home/outbox`). It is
+ * the drain's last part, so a home that can't look up holds back nothing
+ * else.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
 import type { PendingHunch } from "@/lib/shop-home/outbox"
+
+import { lookupBody } from "./phrase-lookup"
 
 /** How the part ended, and what home said of each hunch it answered. */
 export type HunchesSent = {
@@ -27,8 +28,9 @@ export async function sendHunches(
 ): Promise<HunchesSent> {
   const answered = new Set<string>()
   const refused = new Set<string>()
-  for (const { words, hunch } of going) {
-    const body = JSON.stringify({ words, hunch })
+  for (const pending of going) {
+    const { hunch } = pending
+    const body = lookupBody(pending)
     const answer = await send("POST", "/phrases/lookup", body)
     if (answer.status === 200) {
       answered.add(hunch)

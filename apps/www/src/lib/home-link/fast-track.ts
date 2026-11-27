@@ -4,15 +4,9 @@
  * KPLAY's shop once for a hunch it spoke (`lib/shop-home`, KP4), so the owner
  * isn't kept waiting behind other takes, through the link's `keep` (LA8). It
  * sends nothing of the phone's but the note's id.
- *
- * - `200` or `201`: home will hear it next;
- * - `404`: home doesn't hold the note yet (the voice lane is still taking it
- *   home): ask again later;
- * - busy (`429`, `503`, the link busy): ask again later;
- * - anything else, or no answer: home can't hear it sooner now.
  */
 import { homeLink } from "./index"
-import { answered } from "./while-busy"
+import { answered, BUSY } from "./while-busy"
 
 export type FastTracked = "asked" | "notHeld" | "busy" | "unreachable"
 
@@ -32,7 +26,7 @@ export async function askFastTrack(id: string): Promise<FastTracked> {
         ? "asked"
         : status === 404
           ? "notHeld"
-          : status === 429 || status === 503
+          : BUSY.has(status)
             ? "busy"
             : "unreachable"
   )

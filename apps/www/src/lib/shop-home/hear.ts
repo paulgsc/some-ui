@@ -10,6 +10,8 @@
  * until home has it either way.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { HearingTiming } from "@some-ui/soundbites"
+import { HEARING_TIMING } from "@some-ui/soundbites"
 import type { Heard } from "@some-ui/topik"
 import type { HeardAnswer } from "@some-ui/voice-capture"
 
@@ -18,22 +20,19 @@ import type { FastTracked } from "@/lib/home-link/fast-track"
 export type HearPorts = {
   readonly fastTrack: (note: string) => Promise<FastTracked>
   readonly heard: (note: string) => Promise<HeardAnswer>
-  /** Waits `ms`. */
   readonly wait: (ms: number) => Promise<void>
   readonly now: () => number
 }
-
-/** How often home is asked, and for how long at most. */
-const HEAR_TIMING = { everyMs: 5_000, forMs: 180_000 } as const
 
 /** The take `note`'s words, once home has heard it, or why not yet. */
 export async function hearOnHome(
   note: string,
   ports: HearPorts,
   gone: AbortSignal,
-  timing: { readonly everyMs: number; readonly forMs: number } = HEAR_TIMING
+  // As often and as long as Studio's idea answers wait for theirs.
+  timing: HearingTiming = HEARING_TIMING
 ): Promise<Heard> {
-  const until = ports.now() + timing.forMs
+  const until = ports.now() + timing.deadlineMs
   let asked = false
   // Home said it holds the take: by its fast-track, or by hearing it.
   let held = false
@@ -67,6 +66,6 @@ export async function hearOnHome(
       }
     }
     if (ports.now() >= until) return { kind: held ? "held" : "going" }
-    await ports.wait(timing.everyMs)
+    await ports.wait(timing.pollMs)
   }
 }

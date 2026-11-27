@@ -110,7 +110,6 @@ export const voiceLane: Lane = {
     useSyncExternalStore(storesRead.subscribe, storesRead.getSnapshot)
     const lens = lensTakesDesk.phone().takes
     useSyncExternalStore(lens.subscribe, lens.getSnapshot)
-    // A hunch said in the shop.
     const hunches = hunchTakesDesk.phone().takes
     useSyncExternalStore(hunches.subscribe, hunches.getSnapshot)
     const leetype = leetypeTakesDesk.phone().takes
