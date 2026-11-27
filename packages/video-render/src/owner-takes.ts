@@ -27,8 +27,10 @@
  *   Cut on the waveform's own silences, not on the transcript's word
  *   boundaries, which clipped word endings ("choppy… it clips word
  *   endings").
- * - **Spans** (`spanProblems`): a turn cut from a long take says what its
- *   words say, and its edges fall between words.
+ * - **Spans** (`spanOf`, `spanProblems`): a turn cut from a long take says
+ *   what its words say, and each edge falls in the waveform's own silence
+ *   between two words, never at the transcript's time, since a
+ *   transcriber's words often abut and its times are loose (TAKE1, #3582).
  * - **Captions** (`retimed`): the transcript's words placed on the
  *   conditioned audio, through the same cut and tempo.
  */
@@ -96,6 +98,14 @@ export const TAKE_POLICY = {
    * take's end, still reads for a moment at its edge.
    */
   captionLeastMs: 80,
+  /**
+   * How far a transcriber's word times may be off the voice (TAKE1): the
+   * owner's m2 started about 320 ms before its word, and up to 450 ms was
+   * seen. A span edge is looked for in the waveform's silence this far from
+   * the transcript's boundary, and a word this near a span's edge may be
+   * said on either side of it.
+   */
+  transcriptErrorMs: 500,
   /** The loudest a take's silences may be before it is flagged. */
   noiseFloorMostDb: -50,
 } as const
@@ -409,41 +419,177 @@ export function retimed(
 }
 
 /**
+ * Where a span's edge between words `a` and `b` falls (TAKE1, #3582): in the
+ * run of the waveform's own silence (frames neither voiced nor a breath)
+ * nearest the transcript's boundary, at its middle, so no word is cut
+ * and a breath goes whole to one side. Looked for within `transcriptErrorMs` of
+ * the boundary and never past either word's middle, since the transcript's
+ * times are loose and its words often abut. Null when the words run
+ * together there, with no silence to cut in.
+ */
+function silenceBetween(
+  screened: Screened,
+  a: TimedWord,
+  b: TimedWord,
+  policy: TakePolicy
+): number | null {
+  const f = policy.frameMs
+  const boundary = (a.endMs + b.startMs) / 2
+  const fromMs = Math.max(
+    boundary - policy.transcriptErrorMs,
+    (a.startMs + a.endMs) / 2
+  )
+  const toMs = Math.min(
+    boundary + policy.transcriptErrorMs,
+    (b.startMs + b.endMs) / 2
+  )
+  const silent = screened.voiced.map(
+    (v, i) =>
+      !v &&
+      screened.breath[i] !== true &&
+      i * f >= fromMs &&
+      (i + 1) * f <= toMs
+  )
+  // The silence nearest the transcript's boundary, not the longest: a
+  // word's own closure (the hold of a stop) can outlast the gap after it,
+  // and the transcript, loose as it is, is nearer the gap.
+  const away = (r: { readonly from: number; readonly to: number }): number =>
+    Math.max(0, r.from * f - boundary, boundary - r.to * f)
+  const runs = runsOf(silent)
+  const best = runs.reduce<(typeof runs)[number] | undefined>((kept, run) => {
+    if (kept === undefined) return run
+    const nearer = away(kept) - away(run)
+    if (nearer !== 0) return nearer > 0 ? run : kept
+    return run.to - run.from > kept.to - kept.from ? run : kept
+  }, undefined)
+  return best === undefined ? null : Math.round(((best.from + best.to) / 2) * f)
+}
+
+/**
  * The span of a long take that words `first` to `last` (indices into its
- * transcript) are said in: each edge in the middle of the silence between
- * the turn's outer word and its neighbour, so no word is cut and none of a
- * neighbour's spills in; at the take's own edges, its first word's start
- * and its last's end plus the tail. Null for indices outside the words.
+ * transcript) are said in (TAKE1, #3582): each edge between a turn's outer
+ * word and its neighbour in the waveform's own silence there
+ * (`silenceBetween`), never at the transcript's time; at the take's own
+ * edges, the take's bound (`screened.kept`). Refused, with the words named,
+ * where they run together with no silence to cut in, where the span found
+ * holds no voice, and for indices outside the words. TAKE1's family: each
+ * word's transcript middle lies in its own voice, its times off it by at
+ * most `transcriptErrorMs`, and the transcript's boundary nearer the gap
+ * between two words than any closure inside them.
  */
 export function spanOf(
+  screened: Screened,
   words: ReadonlyArray<TimedWord>,
   first: number,
   last: number,
   policy: TakePolicy = TAKE_POLICY
-): Stretch | null {
+): Parsed<Stretch> {
   const from = words[first]
   const to = words[last]
-  if (from === undefined || to === undefined || first > last) return null
+  if (from === undefined || to === undefined || first > last)
+    return {
+      ok: false,
+      problems: [
+        `words ${String(first)} to ${String(last)}: the transcript has no such words`,
+      ],
+    }
   const before = words[first - 1]
   const after = words[last + 1]
-  return {
-    fromMs:
-      before === undefined
-        ? Math.max(0, from.startMs - policy.leadMs)
-        : Math.round((before.endMs + from.startMs) / 2),
-    toMs:
-      after === undefined
-        ? to.endMs + policy.tailMs
-        : Math.round((to.endMs + after.startMs) / 2),
-  }
+  const fromMs =
+    before === undefined
+      ? screened.kept.fromMs
+      : silenceBetween(screened, before, from, policy)
+  const toMs =
+    after === undefined
+      ? screened.kept.toMs
+      : silenceBetween(screened, to, after, policy)
+  const together = (a: TimedWord, b: TimedWord): string =>
+    `"${a.text}" and "${b.text}" run together near ${String(Math.round(b.startMs))} ms: no silence to cut the turn in`
+  const problems = [
+    ...(fromMs === null && before !== undefined
+      ? [together(before, from)]
+      : []),
+    ...(toMs === null && after !== undefined ? [together(to, after)] : []),
+  ]
+  if (fromMs === null || toMs === null) return { ok: false, problems }
+  // Outside TAKE1's family (a transcript off by more than half a word's
+  // length) an edge can be found in the wrong silence; a span it leaves
+  // empty of voice is named, never kept.
+  const f = policy.frameMs
+  const voiced = screened.voiced.some(
+    (v, i) => v && i * f >= fromMs && (i + 1) * f <= toMs
+  )
+  return toMs > fromMs && voiced
+    ? { ok: true, value: { fromMs, toMs } }
+    : {
+        ok: false,
+        problems: [
+          `"${from.text}" to "${to.text}": the span the transcript's times give holds no voice; they are off by more than the words are long`,
+        ],
+      }
 }
 
 /** A word as compared: its letters and digits, lower case. */
 const bare = (text: string): string =>
   text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "")
 
-/** The words a span of a take holds: each whose middle falls inside it. */
-export const spanWords = (
+/**
+ * Whether `meant` is what `span` says, by the transcript's loose times
+ * (TAKE1): the words whose middles lie well inside the span are said in it,
+ * and each word whose middle lies within `slack` of an edge, on either
+ * side, may be said in it or its neighbour's turn. So `meant` must be one
+ * run of those words, in order, holding every sure one; where the two
+ * edges' slack overlaps, a short turn's run may leave out near words at
+ * either end.
+ */
+function saysWithin(
+  meant: ReadonlyArray<string>,
+  words: ReadonlyArray<TimedWord>,
+  span: Stretch,
+  slack: number
+): boolean {
+  const placed = words.map((w) => ({
+    text: bare(w.text),
+    middle: (w.startMs + w.endMs) / 2,
+  }))
+  const near = (edge: number, middle: number): boolean =>
+    Math.abs(middle - edge) <= slack
+  const kept = placed.filter((w) => w.text !== "")
+  const sure = kept.filter(
+    (w) =>
+      w.middle >= span.fromMs &&
+      w.middle < span.toMs &&
+      !near(span.fromMs, w.middle) &&
+      !near(span.toMs, w.middle)
+  )
+  // The words that may be said in the turn, in order: every sure one and
+  // the near ones around them, a run of which the turn's text must be.
+  const may = kept.filter(
+    (w) =>
+      sure.includes(w) ||
+      near(span.fromMs, w.middle) ||
+      near(span.toMs, w.middle)
+  )
+  const first = may.findIndex((w) => sure.includes(w))
+  const last = may.reduce((at, w, k) => (sure.includes(w) ? k : at), -1)
+  const want = meant.join(" ")
+  if (want === "") return sure.length === 0
+  for (let i = 0; i < may.length; i++)
+    for (let j = i; j <= may.length; j++) {
+      if (first >= 0 && (i > first || j <= last)) continue
+      if (
+        may
+          .slice(i, j)
+          .map((w) => w.text)
+          .join(" ") === want
+      )
+        return true
+    }
+  return false
+}
+
+/** The words whose middles fall inside `span`, as the turn would be read. */
+const spanWords = (
   words: ReadonlyArray<TimedWord>,
   span: Stretch
 ): ReadonlyArray<TimedWord> =>
@@ -454,25 +600,35 @@ export const spanWords = (
 
 /**
  * Every way a turn cut from a long take disagrees with its words: an edge
- * that falls inside a word, and a turn whose text isn't what the span's
- * words say (the third pain point's sentence moved into the fourth's turn).
+ * that falls in the waveform's voice or a breath (TAKE1: never judged by the
+ * transcript's loose times), and a turn whose text isn't what the span's
+ * words say (the third pain point's sentence moved into the fourth's turn),
+ * allowing a word within `transcriptErrorMs` of an edge on either side.
  */
 export function spanProblems(
   turn: { readonly id: string; readonly text: string },
+  screened: Screened,
   words: ReadonlyArray<TimedWord>,
-  span: Stretch
+  span: Stretch,
+  policy: TakePolicy = TAKE_POLICY
 ): ReadonlyArray<string> {
   const problems: Array<string> = []
   for (const edge of [span.fromMs, span.toMs]) {
-    const cut = words.find((w) => w.startMs < edge && edge < w.endMs)
-    if (cut !== undefined)
-      problems.push(`${turn.id}: its span cuts "${cut.text}" at ${edge} ms`)
+    const i = Math.floor(edge / policy.frameMs)
+    const inside =
+      edge > screened.kept.fromMs &&
+      edge < screened.kept.toMs &&
+      (screened.voiced[i] === true || screened.breath[i] === true)
+    if (inside)
+      problems.push(
+        `${turn.id}: its span's edge at ${String(edge)} ms is in the voice or a breath`
+      )
   }
   const said = spanWords(words, span)
     .map((w) => bare(w.text))
     .filter(Boolean)
   const meant = turn.text.split(/\s+/).map(bare).filter(Boolean)
-  if (said.join(" ") !== meant.join(" "))
+  if (!saysWithin(meant, words, span, policy.transcriptErrorMs))
     problems.push(
       `${turn.id}: its span says "${said.join(" ")}", and the turn "${meant.join(" ")}"`
     )

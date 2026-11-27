@@ -96,6 +96,17 @@ const studio: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
+    // A preview to approve (HOST16): its variants, one recommended, used in
+    // one tap or answered with something else in the owner's words.
+    {
+      id: "approve-preview",
+      surface: "apk",
+      name: "Use this preview",
+      routes: ["/journal/previews"],
+      offer: "listed",
+      emits: ["offered", "taken", "passed-over"],
+      touches: true,
+    },
     // Your ideas (ST19): every idea kept, and where each is.
     {
       id: "your-ideas",
