@@ -408,15 +408,15 @@ const IDEA_SENDS = [
 ]
 
 /** LA8 (HOST16): Studio's Previews' requests, one per ask, and the ones it may send. */
-/** LA8 (KP4): the shop's look-up, and the one request it may send. */
-const LOOKUP_ASK = "lib/home-link/phrase-lookup.ts"
-const LOOKUP_SENDS = [['"POST"', '"/phrases/lookup"', "body"]]
-
 const PREVIEW_READS = "lib/home-link/preview-reads.ts"
 const PREVIEW_SENDS = [
   ['"POST"', "path", "JSON.stringify(ask.event)"],
   ['"GET"', "path"],
 ]
+
+/** LA8 (KP4): the shop's look-up, and the one request it may send. */
+const LOOKUP_ASK = "lib/home-link/phrase-lookup.ts"
+const LOOKUP_SENDS = [['"POST"', '"/phrases/lookup"', "body"]]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request

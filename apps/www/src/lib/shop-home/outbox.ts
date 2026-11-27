@@ -3,7 +3,9 @@
  * this phone, in `localStorage`, until home answers its look-up, which the
  * Practice lane's drain sends again (`lib/home-link/hunches`). Home keeps a
  * miss once per hunch however often it is sent, so a hunch is let go only
- * once home has answered it, hit or kept. Nothing here sends. Phone-only.
+ * once home has answered it, hit or kept. One home refused (its words out
+ * of home's bounds) is set aside: kept here, and not sent again. Nothing
+ * here sends. Phone-only.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -23,22 +25,36 @@ export type PendingHunch = {
   readonly words: string
   /** When it was kept, as ISO 8601. */
   readonly at: string
+  /** Home refused it: kept, and not sent again. */
+  readonly refused?: true
 }
 
 function isPending(value: unknown): value is PendingHunch {
   if (typeof value !== "object" || value === null) return false
-  return ["hunch", "words", "at"].every(
-    (key) => typeof Reflect.get(value, key) === "string"
+  const refused: unknown = Reflect.get(value, "refused")
+  return (
+    (refused === undefined || refused === true) &&
+    ["hunch", "words", "at"].every(
+      (key) => typeof Reflect.get(value, key) === "string"
+    )
   )
 }
 
 export type HunchOutbox = {
-  /** Keeps a hunch, once however often it is kept. */
-  keep: (words: string, hunch: string) => void
-  /** Every hunch kept, oldest first. */
+  /** Keeps a hunch, once however often it is kept; false when it can't. */
+  keep: (words: string, hunch: string) => boolean
+  /** Every hunch kept, oldest first, set aside or not. */
   kept: () => Array<PendingHunch>
-  /** Home answered these hunches (the drain alone): they go. */
-  answered: (hunches: ReadonlySet<string>) => void
+  /** The hunches to send home: those not set aside. */
+  going: () => Array<PendingHunch>
+  /**
+   * What home said of these hunches (the drain alone): those it answered
+   * go, those it refused are set aside.
+   */
+  answered: (
+    answered: ReadonlySet<string>,
+    refused: ReadonlySet<string>
+  ) => void
   subscribe: (listener: () => void) => () => void
 }
 
@@ -52,10 +68,10 @@ export function createHunchOutbox(ports: {
   const listeners = new Set<() => void>()
   const read = (): Array<PendingHunch> =>
     openKept(ports.storage(), KEY, items, []).value
-  const write = (next: Array<PendingHunch>): void => {
+  const write = (next: Array<PendingHunch>): boolean => {
     if (writeKept(ports.storage(), KEY, next, items)) {
       for (const listener of listeners) listener()
-      return
+      return true
     }
     reportFailure({
       port: "shop hunches",
@@ -64,17 +80,27 @@ export function createHunchOutbox(ports: {
         summary: "This phone couldn't keep a hunch home didn't answer.",
       },
     })
+    return false
   }
   return {
-    keep(words, hunch): void {
+    keep(words, hunch): boolean {
       const kept = read()
-      if (kept.some((pending) => pending.hunch === hunch)) return
-      write([...kept, { hunch, words, at: ports.now().toISOString() }])
+      if (kept.some((pending) => pending.hunch === hunch)) return true
+      return write([...kept, { hunch, words, at: ports.now().toISOString() }])
     },
     kept: read,
-    answered(hunches): void {
-      if (hunches.size === 0) return
-      write(read().filter((pending) => !hunches.has(pending.hunch)))
+    going: () => read().filter((pending) => pending.refused !== true),
+    answered(answered, refused): void {
+      if (answered.size + refused.size === 0) return
+      write(
+        read()
+          .filter((pending) => !answered.has(pending.hunch))
+          .map((pending) =>
+            refused.has(pending.hunch)
+              ? { ...pending, refused: true as const }
+              : pending
+          )
+      )
     },
     subscribe(listener): () => void {
       listeners.add(listener)

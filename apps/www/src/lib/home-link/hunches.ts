@@ -4,19 +4,20 @@
  * outbox), sent again as one `POST /phrases/lookup` each (paulgsc/server
  * `handlers::phrases`, #1265), its words and its name only. Home keeps a
  * miss once per name, so an answer, hit or kept, lets the hunch go; one home
- * refused (`422`) stays, and the run says so.
+ * refused (`422`) is set aside on the phone, and the run ends short once.
+ * It is the drain's last part, so a home that can't look up holds back
+ * nothing else.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { unexpectedAnswer } from "@some-ui/core-utils"
 
 import type { PendingHunch } from "@/lib/shop-home/outbox"
 
-/** How the part ended, and which hunches home answered. */
+/** How the part ended, and what home said of each hunch it answered. */
 export type HunchesSent = {
   readonly answered: ReadonlySet<string>
-  /** Home refused one: it stays, and the run ends short. */
-  readonly refused: boolean
-  /** The run's end, when home's answer ends it (forgotten, or unexpected). */
+  /** Home refused these (`422`): set aside, and the run ends short. */
+  readonly refused: ReadonlySet<string>
+  /** The run's end when home no longer knows this phone (`401`). */
   readonly ended: HomeExchanged | null
 }
 
@@ -25,7 +26,7 @@ export async function sendHunches(
   send: HomeCall
 ): Promise<HunchesSent> {
   const answered = new Set<string>()
-  let refused = false
+  const refused = new Set<string>()
   for (const { words, hunch } of going) {
     const body = JSON.stringify({ words, hunch })
     const answer = await send("POST", "/phrases/lookup", body)
@@ -34,17 +35,14 @@ export async function sendHunches(
       continue
     }
     if (answer.status === 422) {
-      refused = true
+      refused.add(hunch)
       continue
     }
-    // A home without the route (404) or with meaning off (503): the rest
-    // wait for the next run, and the parts after this one go.
-    if (answer.status === 404 || answer.status === 503) break
-    const ended: HomeExchanged =
-      answer.status === 401
-        ? { kind: "forgotten" }
-        : unexpectedAnswer("a hunch", answer.status)
-    return { answered, refused, ended }
+    if (answer.status === 401)
+      return { answered, refused, ended: { kind: "forgotten" } }
+    // Anything else (no route yet, meaning off, busy, a fault on home):
+    // the rest wait for the next run, and the run goes on.
+    break
   }
   return { answered, refused, ended: null }
 }

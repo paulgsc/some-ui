@@ -776,11 +776,13 @@ describe("the drain's hunches home didn't answer (KP4)", () => {
 
   it("sends each one's words and name, and lets go those home answered", async () => {
     const answered: Array<ReadonlySet<string>> = []
+    const refusals: Array<ReadonlySet<string>> = []
     const { ports } = setup({
       kept: [],
       hunchesGoing: () => [PLUMBER, PHONE],
-      hunchesAnswered: (hunches) => {
+      hunchesAnswered: (hunches, refused) => {
         answered.push(hunches)
+        refusals.push(refused)
       },
     })
     const { send, sent } = sending([200, 422])
@@ -793,10 +795,11 @@ describe("the drain's hunches home didn't answer (KP4)", () => {
       JSON.stringify({ words: "where's my phone", hunch: "r-2" }),
     ])
     expect(answered).toEqual([new Set(["r-1"])])
+    expect(refusals).toEqual([new Set(["r-2"])])
   })
 
-  it("leaves the rest for the next run on a home without the route or with meaning off", async () => {
-    for (const status of [404, 503]) {
+  it("leaves the rest for the next run on any other answer, the run going on", async () => {
+    for (const status of [404, 429, 500, 503]) {
       const answered: Array<ReadonlySet<string>> = []
       const { ports } = setup({
         kept: [],

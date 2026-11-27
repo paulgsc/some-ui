@@ -22,6 +22,7 @@ export function sampleLookup(words: string): Lookup {
 
 export const sampleShop: ShopPort = {
   lookUp: (words) => Promise.resolve(sampleLookup(words)),
-  keep: () => undefined,
+  // Asks no home, so nothing goes unanswered, and nothing is kept.
+  keep: () => false,
   hear: () => Promise.reject(new Error("a spoken hunch isn't offered")),
 }

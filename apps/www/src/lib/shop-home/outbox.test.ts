@@ -20,9 +20,25 @@ describe("the shop's hunches home didn't answer", () => {
       { hunch: "r-1", words: "I need a plumber", at: AT.toISOString() },
       { hunch: "r-2", words: "where's my phone", at: AT.toISOString() },
     ])
-    outbox.answered(new Set(["r-1"]))
+    outbox.answered(new Set(["r-1"]), new Set())
     expect(outbox.kept().map((h) => h.hunch)).toEqual(["r-2"])
     expect(told).toBe(3)
+  })
+
+  it("sets a refused hunch aside: kept, and not sent again", () => {
+    const storage = memoryStorage()
+    const outbox = createHunchOutbox({ storage: () => storage, now: () => AT })
+    expect(outbox.keep("I need a plumber", "r-1")).toBe(true)
+    outbox.answered(new Set(), new Set(["r-1"]))
+    expect(outbox.kept()).toEqual([
+      {
+        hunch: "r-1",
+        words: "I need a plumber",
+        at: AT.toISOString(),
+        refused: true,
+      },
+    ])
+    expect(outbox.going()).toEqual([])
   })
 
   it("keeps what it holds across a reload", () => {

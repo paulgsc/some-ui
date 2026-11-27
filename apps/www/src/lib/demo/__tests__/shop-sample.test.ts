@@ -12,6 +12,6 @@ describe("the capture build's sample shop", () => {
   })
 
   it("keeps nothing", () => {
-    expect(sampleShop.keep("I need a plumber", "r-1")).toBeUndefined()
+    expect(sampleShop.keep("I need a plumber", "r-1")).toBe(false)
   })
 })

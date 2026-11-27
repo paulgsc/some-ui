@@ -89,7 +89,7 @@ export const practiceLane: Lane = {
       letGoHeld: letGoHeldReflections,
       promptsGoing: () => promptsGoing(pairing, storage),
       letGoHeldPrompts,
-      hunchesGoing: hunchOutbox.kept,
+      hunchesGoing: hunchOutbox.going,
       hunchesAnswered: hunchOutbox.answered,
       notesGoing: () => notesGoing(pairing, storage),
       holdNotes,
@@ -109,7 +109,7 @@ export const practiceLane: Lane = {
         ...sceneAsks
           .kept()
           .map((p) => `${p.stamp}@${p.held === true ? "held" : "kept"}`),
-        ...hunchOutbox.kept().map((h) => `hunch:${h.hunch}`),
+        ...hunchOutbox.going().map((h) => `hunch:${h.hunch}`),
         // A note never changes on the phone (`./notes`), so its id says it.
         ...practiceRead.getSnapshot().bites.map((b) => `bite:${b.id}`),
         ...leetypeNotes().map((n) => `note:${n.id}`),
