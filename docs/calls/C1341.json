@@ -1,0 +1,15 @@
+{
+  "id": "C1341",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/topik/src/lib/topik/phrases"],
+  "chose": "The phrase shelf (KP3, #2852) lands as a typed data module in @some-ui/topik, a case of the authored Korean line (read-aloud's run rule, `hangulRuns`, exported unchanged and reused). A phrase's parts are words written as they stand or predicates built by conjugation (KP2) from a listed word, a catalogue ending and a tense, and `checkPhrase` keeps an entry only when its parts rebuild the Korean run for run, each built part keeps its ending's constraints, one closing ending ends it in the phrase's register and mood, and each joining ending gets the clause after it that it requires. Fourteen seed phrases, written by this session, stand as `proposed` until the owner accepts them, and every one's audio is labelled the AI voice, since no native audio is kept yet. A native speaker's check of the Korean waits with KPLAY's other sample Korean, as C1085 has it.",
+  "options": [
+    "a typed module of phrases whose parts are checked by conjugation, seeded and marked proposed (taken)",
+    "hold the seed until the owner has accepted each phrase",
+    "a JSON deck parsed at load, like read-aloud's sets"
+  ],
+  "gray": "#2852 says an entry is added only when the owner accepts it, and asks for a seed shelf; landing the seed as typed `proposed` entries meets both without claiming the owner's acceptance. A typed module is checked by the compiler; a deck parsed at load would be the shape once the routine proposes entries (KP5).",
+  "undo": "Remove the phrases module and the `hangulRuns` export; the ids stay retired, never reused.",
+  "refs": ["#2852", "#2849"]
+}

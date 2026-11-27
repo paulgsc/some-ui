@@ -256,7 +256,7 @@ const HANGUL = /^[가-힣]+$/
 const IdSchema = z.string().regex(ID, "ids are kebab-case ASCII")
 const LevelSchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
 
-const WordSchema = z.object({
+export const WordSchema = z.object({
   id: IdSchema,
   lemma: z.string().regex(HANGUL, "a lemma is Hangul syllables"),
   gloss: z.string().trim().min(1),
@@ -399,7 +399,7 @@ function auditLens(
     const parsed = CueSchema.safeParse(lens.data.cue)
     if (parsed.success) {
       cue = parsed.data
-      cueRuns = hangulRuns(cue.korean)
+      cueRuns = hangulWords(cue.korean)
     } else {
       dropped("lens-malformed", `cue: ${summarise(parsed.error)}`)
     }
@@ -524,7 +524,7 @@ type LineAudit = {
 }
 
 /** A line's words as written: its maximal runs of Hangul syllables. */
-const hangulRuns = (korean: string): Array<string> =>
+export const hangulWords = (korean: string): Array<string> =>
   Array.from(korean.matchAll(/[가-힣]+/g), (match) => match[0])
 
 function auditOccurrence(
@@ -679,7 +679,7 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
     }
     lineIds.add(line.id)
 
-    const runs = hangulRuns(line.korean)
+    const runs = hangulWords(line.korean)
     const audit: LineAudit = {
       id: line.id,
       runs,
