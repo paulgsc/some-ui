@@ -334,10 +334,18 @@ describe("the shop's runtime", () => {
       },
       lookUp: (words, hunch) => {
         looked.push([words, hunch])
-        return Promise.resolve({ kind: "kept" })
+        return looked.length === 1
+          ? Promise.reject(new Error("offline"))
+          : Promise.resolve({ kind: "kept" })
       },
     }
     const shop = createShopRuntime(port, () => undefined, "r")
+    // A retry moves the request's number on but not the hunch's, so the two
+    // differ from here: the names below are the hunches', not the requests'.
+    shop.type("it's okay")
+    await settle()
+    shop.tap({ kind: "retry" })
+    await settle()
     shop.speak(new Blob(["first"]))
     await settle()
     shop.speak(new Blob(["second"]))
@@ -345,9 +353,9 @@ describe("the shop's runtime", () => {
     const after = shop.snapshot()
     hearFirst("I need a plumber")
     await settle()
-    expect(looked).toEqual([
-      ["did you eat", "r-2"],
-      ["I need a plumber", "r-1"],
+    expect(looked.slice(2)).toEqual([
+      ["did you eat", "r-3"],
+      ["I need a plumber", "r-2"],
     ])
     expect(shop.snapshot()).toBe(after)
   })
