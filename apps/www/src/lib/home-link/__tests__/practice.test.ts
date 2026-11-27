@@ -42,6 +42,7 @@ import {
   leetypeNotesHeldByHome,
   phoneSpokenTakes,
 } from "@/lib/leetype-takes"
+import { hunchOutbox } from "@/lib/shop-home/outbox"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
 
@@ -353,6 +354,29 @@ describe("Practice's lane, for HF5's records", () => {
     expect(fakes.bitesHeard.size).toBe(0)
     expect(fakes.lensHeard.size).toBe(0)
     expect(fakes.readAloudHeard.size).toBe(0)
+  })
+
+  it("counts a hunch home didn't answer as waiting until home has it (KP4)", () => {
+    const counts = renderHook(() => practiceLane.useCounts())
+    const before = counts.result.current.waiting
+    act(() => {
+      expect(hunchOutbox.keep("I need a plumber", "fit-1")).toBe(true)
+    })
+    expect(counts.result.current.waiting).toBe(before + 1)
+    act(() => {
+      hunchOutbox.answered(new Set(["fit-1"]), new Set())
+    })
+    expect(counts.result.current.waiting).toBe(before)
+    // One home refused is set aside, never sent again: it waits for nothing.
+    act(() => {
+      expect(hunchOutbox.keep("a refused hunch", "fit-2")).toBe(true)
+    })
+    expect(counts.result.current.waiting).toBe(before + 1)
+    act(() => {
+      hunchOutbox.answered(new Set(), new Set(["fit-2"]))
+    })
+    expect(counts.result.current.waiting).toBe(before)
+    counts.unmount()
   })
 
   it("OS1: a store full while home held none says so no longer once a run has sent what waited, with no other redraw", async () => {

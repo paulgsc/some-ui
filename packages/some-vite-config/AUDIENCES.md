@@ -128,10 +128,12 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   stops it running: a file deleted, renamed or moved, or `check:ui-manifests` dropped from
   the root `lint` script or from pr.yml's node job.
 - _Scope:_ those three files, and `packages/ui/*` workspaces with a non-`public` audience.
-  Held: the repo's two contracts each re-export a module with no value import:
+  Held: the repo's two contracts re-export only modules with no value import:
   `@some-ui/soundbites`' `src/contract.ts` re-exports `src/lib/policy.ts`, whose one import
-  is `import type`, and `@some-ui/burn-ins`' re-exports `src/lib/captions/theme.ts`, which
-  imports nothing (SFEED11); `@some-ui/lesson-crm` exports no `./contract`.
+  is `import type`, and `src/lib/library/take-ofs.ts` and `src/lib/idea/hearing-timing.ts`
+  (KP4), which import nothing; and `@some-ui/burn-ins`' re-exports
+  `src/lib/captions/theme.ts`, which imports nothing (SFEED11); `@some-ui/lesson-crm`
+  exports no `./contract`.
 - _Why not wholly enforced:_ the graph is enforced. `pnpm check:ui-manifests` finds each such
   workspace's contract source (the `entries.contract` of its `vite.config.ts`, read only when
   that is `export default createViteConfig({ … })` over a plain literal object, and which it

@@ -48,6 +48,7 @@ export const TAKE_KINDS = [
   "soundbite",
   "lens",
   "leetype",
+  "hunch",
   "other",
 ] as const satisfies ReadonlyArray<(typeof STUDIO_KINDS)[number] | PortKind>
 
@@ -308,6 +309,7 @@ export function compartmentCounts(
     drama: 0,
     soundbite: 0,
     lens: 0,
+    hunch: 0,
     leetype: 0,
     other: 0,
     all: takes.length,

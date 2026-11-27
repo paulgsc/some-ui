@@ -64,6 +64,7 @@ import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
 import { RustWeekFixture } from "./rust-week"
 import { SettingsBar } from "./settings-bar"
+import { SHOP_FIXTURES } from "./shop"
 import { SIGN_IN_FIXTURES } from "./sign-in-header"
 import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
@@ -431,6 +432,8 @@ export const PHONE_FIXTURES = {
   "rust-week": RustWeekFixture,
   /** The handheld lesson (`./topik`, `../stays-put-topik.spec.ts`). */
   ...TOPIK_FIXTURES,
+  /** KPLAY's shop and its door (`./shop`, `../shop-fit.spec.ts`). */
+  ...SHOP_FIXTURES,
   /** www's screens and shared parts (`./www`, `../stays-put-www.spec.ts`). */
   ...WWW_FIXTURES,
   /** Studio's wing, for `../stays-put-soundbites.spec.ts` (`./soundbites`). */

@@ -193,6 +193,11 @@ export const LIBRARY_WORDS = {
       many: "LeetType",
       line: "What you say to a LeetType screen.",
     },
+    hunch: {
+      one: "Something you said to the shop",
+      many: "Things you said to the shop",
+      line: "What you said you wanted to say, to find it in Korean.",
+    },
     other: {
       one: "Another kind",
       many: "Other takes",

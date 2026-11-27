@@ -14,6 +14,10 @@ export {
   SOUNDBITES_MAX_BYTES,
 } from "./lib/policy"
 
+/** How long home is given to hear a take, and how often it is asked. */
+export type { HearingTiming } from "./lib/idea/hearing-timing"
+export { HEARING_TIMING } from "./lib/idea/hearing-timing"
+
 /** Each kind of take home keeps, as home names it (Takes, TAKES20). */
 export { TAKE_OFS } from "./lib/library/take-ofs"
 

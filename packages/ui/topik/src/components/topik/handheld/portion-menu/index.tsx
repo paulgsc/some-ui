@@ -10,6 +10,7 @@ import type { JSX, ReactNode } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import { ShopScreen } from "@topik/components/topik/handheld/shop"
 import type {
   Dish,
   Fresh,
@@ -27,6 +28,8 @@ import {
   servedAfter,
 } from "@topik/lib/topik/core/portion"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import type { ShopPort } from "@topik/lib/topik/shop/runtime"
+import { SHOP_WORDS } from "@topik/lib/topik/shop/words"
 
 /** Each portion's mark grows with it: a dot, a bowl, a plate, a sparkle. */
 const PORTION_SIZE: Record<Portion, string> = {
@@ -154,11 +157,14 @@ export const PortionAsk = ({
   order,
   onOrder,
   onServe,
+  onHunch,
   short = false,
 }: {
   order: Order
   onOrder: (order: Order) => void
   onServe: () => void
+  /** Opens the shop, where the host gives one; absent, no hunch is offered. */
+  onHunch?: () => void
   /** Landscape phone: compact chrome. */
   short?: boolean
 }): JSX.Element => (
@@ -266,6 +272,18 @@ export const PortionAsk = ({
     >
       {PORTION_WORDS.serve}
     </Button>
+    {onHunch && (
+      <Button
+        variant="outline"
+        className={cn(
+          "shrink-0 rounded-2xl text-base",
+          short ? "h-11" : "h-12"
+        )}
+        onClick={onHunch}
+      >
+        {SHOP_WORDS.door}
+      </Button>
+    )}
   </Screen>
 )
 
@@ -399,6 +417,8 @@ type PortionMenuProps = {
   /** An order was served: the host keeps it for next time. */
   onOrdered: (order: Order) => void
   onStart: (dish: Dish) => void
+  /** The shop on home (KP4); absent, the menu offers no hunch. */
+  shop?: ShopPort
   /** Landscape phone: compact chrome. */
   short?: boolean
 }
@@ -410,9 +430,11 @@ export const PortionMenu = ({
   initialOrder,
   onOrdered,
   onStart,
+  shop,
   short = false,
 }: PortionMenuProps): JSX.Element => {
   const [order, setOrder] = useState(initialOrder)
+  const [shopping, setShopping] = useState(false)
   // What was served for this order, oldest first, and the dish on screen;
   // null while the order is being asked.
   const [table, setTable] = useState<{
@@ -425,6 +447,10 @@ export const PortionMenu = ({
     setTable({ dish, served: dish ? servedAfter(served, dish) : served })
   }
 
+  if (shopping && shop)
+    return (
+      <ShopScreen port={shop} onBack={() => setShopping(false)} short={short} />
+    )
   return table === null ? (
     <PortionAsk
       order={order}
@@ -433,6 +459,7 @@ export const PortionMenu = ({
         onOrdered(order)
         serveNext([])
       }}
+      {...(shop ? { onHunch: () => setShopping(true) } : {})}
       short={short}
     />
   ) : (

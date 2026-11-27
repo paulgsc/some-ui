@@ -497,10 +497,8 @@ stays with review and the walks.
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
-the panel page and the phone page and runs `panel-fit`, `incident-fit`,
-`studio-fit`, `settings-bar-fit`, `my-data-fit`, `launcher-fit`,
-`exercise-shell-fit`, `intent-failure-fit`, `rust-rounds-fit`,
-`take-pattern-fit` and `stays-put` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+the panel page and the phone page and runs the ui-fit specs its ui-fit step
+lists whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.

@@ -7,6 +7,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
 import { viewerSessionFiles } from "@/lib/demo/leetype-sample"
+import { sampleShop } from "@/lib/demo/shop-sample"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { phoneSessionFiles } from "@/lib/leetype-files"
 import { phoneSpokenTakes } from "@/lib/leetype-takes"
@@ -23,6 +24,7 @@ import { sceneAsks } from "@/lib/scene-ask"
 import { phoneSceneVoice } from "@/lib/scene-voice"
 import { lookIn, runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
+import { phoneShop } from "@/lib/shop-home"
 import type { SessionRecord } from "@/lib/tenant"
 import {
   loadTopikFile,
@@ -48,6 +50,12 @@ const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
 const PHONE_SPOKEN_TAKES = ON_PHONE ? phoneSpokenTakes() : undefined
 const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
+/** KPLAY's shop: on home in the app, a sample that keeps nothing in the capture build. */
+const SHOP_HOME = ON_PHONE
+  ? phoneShop
+  : import.meta.env.VITE_STATIC_DATA === "true"
+    ? sampleShop
+    : undefined
 /**
  * The flag is read here, not through `VIEWER_BUILD`, so other builds fold
  * the branch before chunking and ship no sample.
@@ -163,6 +171,7 @@ export const SessionViewport = ({
           routineFiles,
           sceneAsk: PHONE_SCENE_ASK,
           sceneVoice: PHONE_SCENE_VOICE,
+          shopHome: SHOP_HOME,
           // Read at render: main.tsx installs the sidecar after imports run.
           sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
           wordSetHint: ON_PHONE ? lookIn("word-set") : undefined,
