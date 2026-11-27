@@ -488,31 +488,34 @@ describe("a proposed phrase (KP5)", () => {
     if (!checked.ok) expect(checked.error).toContain("parts[1].reading.ending")
   })
 
-  it("is refused with Korean the shelf already holds, naming its entry", () => {
-    const checked = checkProposal({
-      ...proposal,
-      id: "ph.its-fine",
-      korean: "괜찮아요.",
-      intents: ["it's fine"],
-      toWhom: "anyone",
-      setting: "everyday",
-      mood: "statement",
-      parts: [
-        {
-          kind: "built",
-          reading: {
-            dictionary: "괜찮다",
-            ending: "close.ayo.plain",
-            tense: "none",
+  it.each(["괜찮아요.", "괜찮아요!"])(
+    "is refused as %s, a sentence the shelf already holds, naming its entry",
+    (korean) => {
+      const checked = checkProposal({
+        ...proposal,
+        id: "ph.its-fine",
+        korean,
+        intents: ["it's fine"],
+        toWhom: "anyone",
+        setting: "everyday",
+        mood: "statement",
+        parts: [
+          {
+            kind: "built",
+            reading: {
+              dictionary: "괜찮다",
+              ending: "close.ayo.plain",
+              tense: "none",
+            },
+            gloss: "be okay",
           },
-          gloss: "be okay",
-        },
-      ],
-    })
-    expect(checked.ok && checked.faults).toEqual([
-      { kind: "korean-taken", id: "ph.its-okay" },
-    ])
-  })
+        ],
+      })
+      expect(checked.ok && checked.faults).toEqual([
+        { kind: "korean-taken", id: "ph.its-okay" },
+      ])
+    }
+  )
 
   it("is put forward asking what the shelf only says: 괜찮아요?", () => {
     const checked = checkProposal({

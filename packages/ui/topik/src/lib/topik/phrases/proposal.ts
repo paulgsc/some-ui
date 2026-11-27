@@ -28,7 +28,7 @@ import {
   PHRASES,
   type PhraseId,
 } from "@topik/lib/topik/phrases/shelf"
-import { WordSchema } from "@topik/lib/topik/read-aloud/content"
+import { hangulRuns, WordSchema } from "@topik/lib/topik/read-aloud/content"
 import { z } from "zod"
 
 /** Every value of each closed set, checked complete by the compiler. */
@@ -97,6 +97,14 @@ const ProposalSchema = z.strictObject({
   parts: z.array(PartSchema).nonempty(),
 })
 
+/**
+ * The same sentence: the same words, asking or not. A comma, or "!" for ".",
+ * does not make another phrase.
+ */
+const sameSentence = (a: string, b: string): boolean =>
+  hangulRuns(a).join(" ") === hangulRuns(b).join(" ") &&
+  a.endsWith("?") === b.endsWith("?")
+
 /** Something that keeps a proposal from reaching the owner. */
 type ProposalFault =
   | PhraseFault
@@ -121,8 +129,8 @@ export const checkProposal = (raw: unknown): CheckedProposal => {
   const { id, ...rest } = parsed.data
   const phrase: Phrase = { ...rest, hear: "ai-voice", status: "proposed" }
   const taken = PHRASE_IDS.some((landed) => landed === id)
-  const same = PHRASE_IDS.find(
-    (landed) => PHRASES[landed].korean === phrase.korean
+  const same = PHRASE_IDS.find((landed) =>
+    sameSentence(PHRASES[landed].korean, phrase.korean)
   )
   return {
     ok: true,
