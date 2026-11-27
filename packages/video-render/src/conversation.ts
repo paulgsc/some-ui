@@ -1072,7 +1072,6 @@ export const ownerSpans = (
       : []
   )
 
-/** The owner's takes a version plays, each once, in the order first played. */
 /** One of a version's turns as heard, its words timed on the video's clock (the speaker's `/timed`, or the take's transcript as played). */
 export type TimedTurn = {
   readonly turn: string
@@ -1103,6 +1102,7 @@ export function hearsOf(
     .sort((a, b) => a.startMs - b.startMs)
 }
 
+/** The owner's takes a version plays, each once, in the order first played. */
 export const ownerTakes = (version: PodcastVersion): ReadonlyArray<string> => [
   ...new Set(ownerSpans(version).map((s) => s.take)),
 ]

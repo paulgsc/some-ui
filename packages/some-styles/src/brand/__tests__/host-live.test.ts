@@ -616,6 +616,20 @@ describe("a listener's play waits for a pause in the conversation (#3580)", () =
     }
   })
 
+  it("joins cross-talk, so a word inside another never opens a pause (Codex on #3594)", () => {
+    const words = [
+      { startMs: 0, endMs: 1800 },
+      { startMs: 2300, endMs: 2500 },
+    ]
+    const hears = [{ startMs: 1000, endMs: 1100 }]
+    for (let seed = 0; seed < 50; seed++)
+      for (let t = 1800; t < 2300; t += 10)
+        expect(
+          livenessAt("mochi", words, seed, t, hears).play,
+          `seed ${String(seed)} at ${String(t)}`
+        ).toBeNull()
+  })
+
   it("still plays in the conversation's pauses", () => {
     const hears = heard(4)
     const end = hears.at(-1)?.endMs ?? 0

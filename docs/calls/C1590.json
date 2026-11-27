@@ -13,6 +13,6 @@
     "A: play in the listener's own silence, as C1567 left it, which can land over the other speaker's words"
   ],
   "gray": "Whether a listener's fidget reads as alive or as distracting is taste; no check can settle it. The owner picks on the rendered preview, and the pick moves this call either way.",
-  "undo": "Leave `hears` unfilled where the host's beats are made (HOST13), and record a call that moves this one.",
+  "undo": "Go back to A by dropping `hears` from the beats: where a conversation's host beats are made (HOST13), don't call `hearsOf`, and a listener plays in its own silence again. Record that as a call that moves this one.",
   "refs": ["#3580", "#3521"]
 }
