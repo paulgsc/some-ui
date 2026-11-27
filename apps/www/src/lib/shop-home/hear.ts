@@ -10,8 +10,8 @@
  * until home has it either way.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { HearingTiming } from "@some-ui/soundbites"
-import { HEARING_TIMING } from "@some-ui/soundbites"
+import type { HearingTiming } from "@some-ui/soundbites/contract"
+import { HEARING_TIMING } from "@some-ui/soundbites/contract"
 import type { Heard } from "@some-ui/topik"
 import type { HeardAnswer } from "@some-ui/voice-capture"
 

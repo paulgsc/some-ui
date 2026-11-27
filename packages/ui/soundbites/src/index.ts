@@ -25,7 +25,7 @@ export type {
   IdeaTakes,
   IdeaTakeSnapshot,
 } from "./lib/idea/hearing"
-export { HEARING_TIMING, homeHearing } from "./lib/idea/hearing"
+export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
 export type { LibraryUses, TopicGap } from "./components/take-library"
 export type {

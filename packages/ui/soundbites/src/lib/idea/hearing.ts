@@ -67,22 +67,11 @@ import type {
   TurnListener,
 } from "@some-ui/voice-capture"
 
-/** How often home is asked, and for how long. */
-export type HearingTiming = {
-  readonly pollMs: number
-  /** From the take's keeping; the page's hidden time counts too. */
-  readonly deadlineMs: number
-}
+import type { HearingTiming } from "./hearing-timing"
+import { HEARING_TIMING } from "./hearing-timing"
 
-/**
- * Home hears each note within a pass (about a minute) of holding it, and
- * the take reaches home within a drain of being kept, so three minutes is a
- * couple of passes' room.
- */
-export const HEARING_TIMING: HearingTiming = {
-  pollMs: 5_000,
-  deadlineMs: 3 * 60_000,
-}
+export type { HearingTiming } from "./hearing-timing"
+export { HEARING_TIMING } from "./hearing-timing"
 
 /** How a take ended, as the take port says it. */
 type TakeEnd = {
