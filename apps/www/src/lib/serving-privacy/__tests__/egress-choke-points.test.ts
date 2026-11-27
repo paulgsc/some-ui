@@ -187,6 +187,9 @@ const HOME_LINK_CALLERS = new Set([
   // Try again and after a pick, and sends a pick as the record's approve
   // event on a tap.
   "lib/preview-home/index.ts",
+  // LA8 (KP4, #2853): KPLAY's shop, which sends home a hunch's words and
+  // its name to look up, once per hunch sent or sent again.
+  "lib/shop-home/index.ts",
   // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play;
@@ -262,6 +265,7 @@ const KEEPERS = new Set([
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
   "lib/home-link/preview-reads.ts",
+  "lib/home-link/phrase-lookup.ts",
   "lib/home-link/takes-read.ts",
   "lib/home-link/attention.ts",
   "lib/home-link/call-videos.ts",
@@ -404,6 +408,10 @@ const IDEA_SENDS = [
 ]
 
 /** LA8 (HOST16): Studio's Previews' requests, one per ask, and the ones it may send. */
+/** LA8 (KP4): the shop's look-up, and the one request it may send. */
+const LOOKUP_ASK = "lib/home-link/phrase-lookup.ts"
+const LOOKUP_SENDS = [['"POST"', '"/phrases/lookup"', "body"]]
+
 const PREVIEW_READS = "lib/home-link/preview-reads.ts"
 const PREVIEW_SENDS = [
   ['"POST"', "path", "JSON.stringify(ask.event)"],
@@ -1116,6 +1124,19 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(callers).toEqual(["lib/idea-home/index.ts"])
+  })
+
+  it("sends nothing from the shop but a hunch's look-up, and only the shop asks it (KP4)", () => {
+    expect(sendCalls(LOOKUP_ASK, read(LOOKUP_ASK))).toEqual(LOOKUP_SENDS)
+    expect(read(LOOKUP_ASK)).toContain("homeLink().keep(")
+    const callers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/phrase-lookup"|from "@\/lib\/home-link\/phrase-lookup"/.test(
+          read(f)
+        )
+      )
+    expect(callers).toEqual(["lib/shop-home/index.ts"])
   })
 
   it("sends nothing from Studio's Previews but its reads and a pick's approve event, and only it asks them (HOST16)", () => {
