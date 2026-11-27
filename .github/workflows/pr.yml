@@ -332,6 +332,7 @@ jobs:
               tests/ui-fit/pull-fit.spec.ts \
               tests/ui-fit/settings-bar-fit.spec.ts \
               tests/ui-fit/my-data-fit.spec.ts \
+              tests/ui-fit/shop-fit.spec.ts \
               tests/ui-fit/intent-failure-fit.spec.ts \
               tests/ui-fit/rust-rounds-fit.spec.ts \
               tests/ui-fit/take-pattern-fit.spec.ts \

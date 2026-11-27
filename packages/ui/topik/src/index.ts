@@ -141,6 +141,8 @@ export type {
   SceneAsk,
   SceneAskSnapshot,
 } from "./lib/topik/adapter/next-scene-ask"
+/** The shop (KP4), which the ui-fit phone page mounts on its own. */
+export { ShopScreen } from "./components/topik/handheld/shop"
 export type { Lookup } from "./lib/topik/shop"
 export type { Heard, ShopPort } from "./lib/topik/shop/runtime"
 export type {
