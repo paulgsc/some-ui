@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 30,
+  "contract_epoch": 31,
   "oldest_supported": 1,
   "routes": [
     {
@@ -662,6 +662,13 @@
       "full_path": "/api/v1/outcomes",
       "versioned": true,
       "module": "outcomes"
+    },
+    {
+      "method": "POST",
+      "path": "/phrases/lookup",
+      "full_path": "/api/v1/phrases/lookup",
+      "versioned": true,
+      "module": "phrases"
     },
     {
       "method": "POST",
