@@ -94,11 +94,12 @@ const LookCard = ({
 }): JSX.Element => {
   const body = (
     <>
-      <HostPreview
-        beats={[beatOf(look, "close-up", "center", playing)]}
-        seed={seedOf(look)}
-        tMs={tMs}
-        className="bg-muted/40 w-full rounded-md"
+      {/* BISECTION (#3613), never merged: a plain box in place of the host. */}
+      <div
+        data-bisect-tms={String(tMs)}
+        data-bisect-seed={seedOf(look)}
+        data-bisect-beat={beatOf(look, "close-up", "center", playing).emotion}
+        className="bg-muted/40 aspect-square w-full rounded-md"
       />
       <CardLinkBody className="items-center">
         <span className="text-sm font-medium">{lookName(look)}</span>
