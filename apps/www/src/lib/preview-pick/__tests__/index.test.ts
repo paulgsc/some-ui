@@ -374,7 +374,7 @@ describe("previewsRuntime (HOST16)", () => {
     }
   )
 
-  it("takes no pick while an uncertain one is read again, and asks again when it can't be", async () => {
+  it("takes no pick while an uncertain one is read again, and waits for Try again when it can't be", async () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)
     runtime.open()
@@ -390,14 +390,29 @@ describe("previewsRuntime (HOST16)", () => {
     runtime.pick("runners", OFFER.preview, { kind: "else", said: "Slower." })
     expect(s.sent).toHaveLength(1)
     const waiting = runtime.state.getSnapshot()
-    expect(waiting.phase === "shown" && waiting.reconciling).toBe(true)
-    // It couldn't be read: the screen says why and asks again from the top.
+    expect(waiting.phase === "shown" && waiting.reconciling).toEqual({
+      conversation: "runners",
+      failed: null,
+    })
+    // It couldn't be read: the screen stays (the words typed stay with it),
+    // picks still wait, and Try again reads that conversation again.
     s.rereads[0]?.({ kind: "away" })
     await settled()
-    expect(runtime.state.getSnapshot()).toEqual({
-      phase: "nothing",
-      why: "away",
+    const failed = runtime.state.getSnapshot()
+    expect(failed.phase === "shown" && failed.reconciling).toEqual({
+      conversation: "runners",
+      failed: "away",
     })
+    runtime.pick("runners", OFFER.preview, { kind: "else", said: "Slower." })
+    expect(s.sent).toHaveLength(1)
+    runtime.reconcile()
+    expect(s.rereads).toHaveLength(2)
+    s.rereads[1]?.({ kind: "read", value: conversation() })
+    await settled()
+    const settledState = runtime.state.getSnapshot()
+    expect(settledState.phase === "shown" && settledState.reconciling).toBe(
+      null
+    )
   })
 
   it("names the preview whose rule a pick would set again as the one it moves", async () => {

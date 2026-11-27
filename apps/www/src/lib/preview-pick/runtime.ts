@@ -50,6 +50,8 @@ export type PreviewsRuntime = {
   readonly state: Readable<PreviewsState>
   /** Reads the previews, again if they were read. */
   readonly open: () => void
+  /** Reads again what is kept, after a pick whose outcome stayed uncertain. */
+  readonly reconcile: () => void
   readonly pick: (
     conversation: string,
     preview: string,
@@ -115,6 +117,9 @@ export function previewsRuntime(
     state,
     open: (): void => {
       dispatch({ kind: "again" })
+    },
+    reconcile: (): void => {
+      dispatch({ kind: "reconcile" })
     },
     pick: (conversation, preview, pick): void => {
       dispatch({ kind: "pick", conversation, preview, pick, at: now() })

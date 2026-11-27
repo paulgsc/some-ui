@@ -86,11 +86,15 @@ export type PreviewsState =
       } | null
       readonly said: PickSaid | null
       /**
-       * Whether a pick's outcome is uncertain and the conversation is being
-       * read again: no pick is taken until it is, since one would follow
-       * what may no longer stand.
+       * A pick whose outcome is uncertain: its conversation is read again
+       * (or, when that read `failed`, waits for Try again), and no pick is
+       * taken until it is, since one would follow what may no longer stand.
+       * The screen stays, so words not yet kept stay where they were typed.
        */
-      readonly reconciling: boolean
+      readonly reconciling: {
+        readonly conversation: string
+        readonly failed: NotShown | null
+      } | null
     }
 
 export type PreviewsEvent =
@@ -115,8 +119,10 @@ export type PreviewsEvent =
     }
   /** A conversation read again, as where picks are kept now holds it. */
   | { readonly kind: "refreshed"; readonly now: ConversationPreviews }
-  /** It couldn't be read again: why, and the screen asks again from the top. */
+  /** It couldn't be read again: why, and the screen waits for Try again. */
   | { readonly kind: "unreconciled"; readonly why: NotShown }
+  /** Try again: read the conversation again, after that read failed. */
+  | { readonly kind: "reconcile" }
 
 /** What a step asks of where picks are kept: the runtime does exactly this. */
 export type PreviewsEffect =
@@ -238,7 +244,7 @@ export function stepPreviews(
                 unreadable: event.result.value.unreadable,
                 keeping: null,
                 said: null,
-                reconciling: false,
+                reconciling: null,
               }
             : { phase: "nothing", why: event.result.kind },
       }
@@ -250,7 +256,7 @@ export function stepPreviews(
     }
     case "pick": {
       if (state.phase !== "shown" || state.keeping !== null) return { state }
-      if (state.reconciling) return { state }
+      if (state.reconciling !== null) return { state }
       const held = state.conversations.find((c) => c.id === event.conversation)
       const offered = previewIn(state, event.conversation, event.preview)
       if (held === undefined || offered === undefined) return { state }
@@ -315,7 +321,9 @@ export function stepPreviews(
         conversations,
         keeping: null,
         said: said(state, event.outcome),
-        reconciling: uncertain,
+        reconciling: uncertain
+          ? { conversation: keeping.conversation, failed: null }
+          : null,
       }
       return uncertain
         ? {
@@ -330,15 +338,30 @@ export function stepPreviews(
             state: {
               ...state,
               conversations: withNow(state.conversations, event.now),
-              reconciling: false,
+              reconciling: null,
             },
           }
         : { state }
     }
     case "unreconciled": {
-      return state.phase === "shown" && state.reconciling
-        ? { state: { phase: "nothing", why: event.why } }
+      return state.phase === "shown" && state.reconciling !== null
+        ? {
+            state: {
+              ...state,
+              reconciling: { ...state.reconciling, failed: event.why },
+            },
+          }
         : { state }
+    }
+    case "reconcile": {
+      if (state.phase !== "shown" || state.reconciling === null)
+        return { state }
+      const { conversation, failed } = state.reconciling
+      if (failed === null) return { state }
+      return {
+        state: { ...state, reconciling: { conversation, failed: null } },
+        effect: { kind: "reread", conversation },
+      }
     }
     default: {
       return assertNever(event)

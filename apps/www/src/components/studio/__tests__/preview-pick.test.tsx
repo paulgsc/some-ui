@@ -4,8 +4,9 @@
  * HOST16 (#3558): only a variant's "Use this" picks, never its clip; the
  * pick goes where picks are kept and the screen says what it came to; using
  * another later is a new pick that moves the earlier one; something else
- * takes the owner's words; the sample says it keeps nothing; and when home
- * can't be read, the screen says why and asks again.
+ * takes the owner's words, kept on the screen while what home holds can't
+ * be read again; the sample says it keeps nothing; and when home can't be
+ * read, the screen says why and asks again.
  */
 import type { ConversationEvent } from "@some-ui/video-render"
 import { sampleTransitionsOffer } from "@some-ui/video-render"
@@ -205,6 +206,38 @@ describe("Previews (HOST16)", () => {
     fireEvent.click(screen.getByText(PICK_WORDS.again))
     await settle()
     expect(reads).toBe(2)
+  })
+
+  it("keeps the owner's words when what home holds can't be read again, and reads again on Try again", async () => {
+    const home = keepingHome()
+    let rereads = 0
+    const lost: PreviewSource = {
+      ...home.source,
+      approve: () => Promise.resolve({ kind: "away" }),
+      reread: () => {
+        rereads += 1
+        return rereads === 1
+          ? Promise.resolve({ kind: "away" })
+          : home.source.reread("runners")
+      },
+    }
+    await drawn(lost)
+    fireEvent.click(screen.getByText(PICK_WORDS.own))
+    fireEvent.change(screen.getByLabelText(PICK_WORDS.ownPrompt), {
+      target: { value: "Softer, like a page turning." },
+    })
+    fireEvent.click(screen.getByText(PICK_WORDS.ownSend))
+    await settle()
+    expect(screen.getByText(PICK_WORDS.unreconciled)).toBeTruthy()
+    fireEvent.click(screen.getByText(PICK_WORDS.again))
+    await settle()
+    expect(rereads).toBe(2)
+    expect(screen.queryByText(PICK_WORDS.unreconciled)).toBeNull()
+    // The card stayed, so its words are there to send again.
+    fireEvent.click(screen.getByText(PICK_WORDS.own))
+    expect(
+      screen.getByDisplayValue("Softer, like a page turning.")
+    ).toBeTruthy()
   })
 
   it("gives each card's something else its own field", async () => {

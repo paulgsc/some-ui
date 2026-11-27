@@ -218,6 +218,8 @@ export const Previews = ({
       </div>
     )
   const { said } = state
+  // Reading again what home holds failed: picks wait for Try again.
+  const failed = state.reconciling?.failed ?? null
   return (
     <div className="flex flex-col gap-4">
       {previews.where === "sample" && (
@@ -240,7 +242,7 @@ export const Previews = ({
               key={offered.preview}
               offered={offered}
               watchFirst={previews.where === "home"}
-              disabled={state.keeping !== null || state.reconciling}
+              disabled={state.keeping !== null || state.reconciling !== null}
               onPick={(pick) => {
                 previews.pick(c.id, offered.preview, pick)
               }}
@@ -253,7 +255,15 @@ export const Previews = ({
           )}
         </Part>
       ))}
-      {said !== null && (
+      {failed !== null && (
+        <Notice
+          tone="danger"
+          action={{ label: W.again, onClick: previews.reconcile }}
+        >
+          {W.unreconciled}
+        </Notice>
+      )}
+      {failed === null && said !== null && (
         <Notice
           key={said.n}
           {...(said.outcome === "kept" || said.outcome === "already"

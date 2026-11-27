@@ -20,6 +20,9 @@ export const PICK_WORDS = {
   watchFirst: "You can use this one once you've watched its clip here.",
   reading: "Reading home's previews.",
   again: "Try again",
+  /** A pick's outcome stayed uncertain: home's picks couldn't be read again. */
+  unreconciled:
+    "This phone couldn't read again what home holds, so picks wait until it can.",
   /** Home answered, and offers nothing to pick yet. */
   empty: "Home has no previews for you to pick yet.",
   unreadableConversations: (n: number): string =>
