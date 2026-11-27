@@ -50,9 +50,10 @@ describe("the shop", () => {
       kind: "hunch",
       hunch: { kind: "spoken" },
     })
-    expect(heard.effects).toEqual([{ kind: "hear", seq: 1 }])
+    expect(heard.effects).toEqual([{ kind: "hear", seq: 1, hunch: 1 }])
     expect(
-      step(heard.state, { kind: "heard", seq: 1, words: "it's okay" }).effects
+      step(heard.state, { kind: "heard", seq: 1, hunch: 1, words: "it's okay" })
+        .effects
     ).toEqual([{ kind: "look-up", seq: 1, hunch: 1, words: "it's okay" }])
   })
 
@@ -119,7 +120,7 @@ describe("the shop", () => {
   it("after a take is heard and its lookup fails, sends its words, not the take", () => {
     const unreached = run([
       { kind: "hunch", hunch: { kind: "spoken" } },
-      { kind: "heard", seq: 1, words: "it's okay" },
+      { kind: "heard", seq: 1, hunch: 1, words: "it's okay" },
       { kind: "unreached", seq: 1 },
     ])
     expect(step(unreached, { kind: "retry" }).effects).toEqual([
@@ -138,13 +139,35 @@ describe("the shop", () => {
       { kind: "answered", seq: 1, lookup: hit },
     ])
     expect(step(found, { kind: "unreached", seq: 1 }).state).toBe(found)
-    const hearing = run([
-      { kind: "hunch", hunch: { kind: "spoken" } },
-      { kind: "hunch", hunch: { kind: "spoken" } },
-    ])
-    expect(step(hearing, { kind: "heard", seq: 1, words: "x" }).state).toBe(
-      hearing
-    )
+  })
+
+  it("still looks up a hunch heard after the owner moved on, changing nothing", () => {
+    const hit = { kind: "hit", phrases: ["ph.its-okay"] } as const
+    const spoken = { kind: "hunch", hunch: { kind: "spoken" } } as const
+    for (const moved of [
+      run([spoken, spoken]),
+      run([spoken, typed("did you eat")]),
+      run([spoken, { kind: "again" }]),
+    ]) {
+      const late = step(moved, {
+        kind: "heard",
+        seq: 1,
+        hunch: 1,
+        words: "I need a plumber",
+      })
+      expect(late.state).toBe(moved)
+      expect(late.effects).toEqual([
+        { kind: "look-up", seq: 1, hunch: 1, words: "I need a plumber" },
+      ])
+      expect(step(moved, { kind: "answered", seq: 1, lookup: hit }).state).toBe(
+        moved
+      )
+      expect(step(moved, { kind: "unreached", seq: 1 }).state).toBe(moved)
+    }
+    const quiet = run([spoken, spoken])
+    expect(
+      step(quiet, { kind: "heard", seq: 1, hunch: 1, words: " " }).effects
+    ).toEqual([])
   })
 
   it("keeps the same state when a tap changes nothing", () => {
@@ -158,7 +181,7 @@ describe("the shop", () => {
     expect(
       run([
         { kind: "hunch", hunch: { kind: "spoken" } },
-        { kind: "heard", seq: 1, words: "  " },
+        { kind: "heard", seq: 1, hunch: 1, words: "  " },
       ]).at
     ).toEqual({
       kind: "asking",

@@ -89,7 +89,12 @@ export const createShopRuntime = (
           "hear",
           effect.seq,
           () => port.hear(held),
-          (words) => ({ kind: "heard", seq: effect.seq, words })
+          (words) => ({
+            kind: "heard",
+            seq: effect.seq,
+            hunch: effect.hunch,
+            words,
+          })
         )
         return
       }

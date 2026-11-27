@@ -68,7 +68,8 @@ export type ShopState = Readonly<{
 
 export type ShopEvent = Readonly<
   | { kind: "hunch"; hunch: Hunch }
-  | { kind: "heard"; seq: number; words: string }
+  /** `hunch` is the heard hunch's number, from its `hear` effect. */
+  | { kind: "heard"; seq: number; hunch: number; words: string }
   | { kind: "answered"; seq: number; lookup: Lookup }
   | { kind: "unreached"; seq: number }
   /** Try the hunch home couldn't be reached for again. */
@@ -80,7 +81,7 @@ export type ShopEvent = Readonly<
 >
 
 export type ShopEffect = Readonly<
-  | { kind: "hear"; seq: number }
+  | { kind: "hear"; seq: number; hunch: number }
   /** `hunch` is the hunch's number this session, the same when sent again. */
   | { kind: "look-up"; seq: number; hunch: number; words: string }
 >
@@ -113,7 +114,7 @@ const send = (state: ShopState, hunch: Hunch, number?: number): Next => {
   if (words === null)
     return {
       state: { ...sent, at: { kind: "hearing", number: hunchNumber } },
-      effects: [{ kind: "hear", seq }],
+      effects: [{ kind: "hear", seq, hunch: hunchNumber }],
     }
   return {
     state: { ...sent, at: { kind: "looking", words, number: hunchNumber } },
@@ -152,15 +153,22 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
       return send(state, event.hunch)
     }
     case "heard": {
-      if (event.seq !== state.seq || state.at.kind !== "hearing")
-        return stay(state)
       const words = event.words.trim()
+      const { hunch } = event
+      if (event.seq !== state.seq || state.at.kind !== "hearing") {
+        // The owner moved on: its words are still looked up, so home keeps a
+        // miss, and the answer, under the old request, changes nothing.
+        if (words === "") return stay(state)
+        return {
+          state,
+          effects: [{ kind: "look-up", seq: event.seq, hunch, words }],
+        }
+      }
       // Nothing heard is nothing to look up or keep: ask again.
       if (words === "") return stay({ ...state, at: { kind: "asking" } })
-      const { number } = state.at
       return {
-        state: { ...state, at: { kind: "looking", words, number } },
-        effects: [{ kind: "look-up", seq: state.seq, hunch: number, words }],
+        state: { ...state, at: { kind: "looking", words, number: hunch } },
+        effects: [{ kind: "look-up", seq: state.seq, hunch, words }],
       }
     }
     case "answered": {
