@@ -433,6 +433,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/demo/index.ts",
         "apps/www/src/lib/demo/leetype-sample*",
         "apps/www/src/lib/demo/rust-rounds-sample.ts",
+        "apps/www/src/lib/demo/shop-sample.ts",
       ],
       profiles: [],
       why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the capture build Snips photographs seeds them now, and no deployable ships them; the public site is a CV with no app to draft in (C1055, #3401), and the owner's builds keep to their own records",

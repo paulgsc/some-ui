@@ -5,11 +5,13 @@
  * Anything but a read answer rejects, which the shop's runtime says as
  * home not reached, and the hunch may be sent again. Phone-only.
  */
-import type { Lookup } from "@some-ui/topik"
+import type { Lookup, ShopPort } from "@some-ui/topik"
 import { z } from "zod"
 
 import { readHome } from "@/lib/home-link/home-read"
 import { askLookup } from "@/lib/home-link/phrase-lookup"
+
+import { hunchOutbox } from "./outbox"
 
 /** `POST /phrases/lookup`'s `200`: the phrases that do it, or kept. */
 const LookupSchema: z.ZodType<Lookup> = z.discriminatedUnion("kind", [
@@ -25,4 +27,16 @@ export async function lookUpOnHome(
   const read = await readHome(() => askLookup({ words, hunch }), LookupSchema)
   if (read.kind === "read") return read.value
   throw new Error(`home's look-up: ${read.kind}`)
+}
+
+/**
+ * The Android app's shop on home: a hunch looked up there, and one home
+ * didn't answer kept on this phone for the drain (`./outbox`). A spoken
+ * hunch is not offered yet: the screen shows no microphone, so `hear` is
+ * never asked.
+ */
+export const phoneShop: ShopPort = {
+  lookUp: lookUpOnHome,
+  keep: hunchOutbox.keep,
+  hear: () => Promise.reject(new Error("a spoken hunch isn't offered yet")),
 }
