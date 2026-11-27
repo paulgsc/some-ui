@@ -1,4 +1,5 @@
 import { addFailureSink } from "@some-ui/intent-kit"
+import { lensTakes } from "@topik/lib/topik/adapter/lens-takes/__tests__/takes"
 import { PHRASES } from "@topik/lib/topik/phrases/shelf"
 import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import {
@@ -7,9 +8,16 @@ import {
   type ShopEvent,
   type ShopState,
 } from "@topik/lib/topik/shop"
-import { createShopRuntime, type ShopPort } from "@topik/lib/topik/shop/runtime"
+import {
+  createShopRuntime,
+  type ShopPort,
+  type ShopRuntime,
+} from "@topik/lib/topik/shop/runtime"
 import { saidHow, SHOP_WORDS, shownParts } from "@topik/lib/topik/shop/words"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+/** A spoken hunch, its take kept as note n1 under the name s-1. */
+const SAID = { kind: "spoken", note: "n1", name: "s-1" } as const
 
 const run = (
   events: ReadonlyArray<ShopEvent>,
@@ -25,7 +33,13 @@ describe("the shop", () => {
   it("looks up a typed hunch, and shows what home found", () => {
     const sent = step(initialShop, typed(" where's my phone "))
     expect(sent.effects).toEqual([
-      { kind: "look-up", seq: 1, hunch: 1, words: "where's my phone" },
+      {
+        kind: "look-up",
+        seq: 1,
+        hunch: 1,
+        words: "where's my phone",
+        name: null,
+      },
     ])
     const found = run(
       [
@@ -50,13 +64,22 @@ describe("the shop", () => {
   it("hears a spoken hunch first, then looks up its words", () => {
     const heard = step(initialShop, {
       kind: "hunch",
-      hunch: { kind: "spoken" },
+      hunch: SAID,
     })
-    expect(heard.effects).toEqual([{ kind: "hear", seq: 1, hunch: 1 }])
+    expect(heard.effects).toEqual([
+      { kind: "hear", seq: 1, hunch: 1, note: "n1", name: "s-1" },
+    ])
     expect(
-      step(heard.state, { kind: "heard", seq: 1, hunch: 1, words: "it's okay" })
-        .effects
-    ).toEqual([{ kind: "look-up", seq: 1, hunch: 1, words: "it's okay" }])
+      step(heard.state, {
+        kind: "heard",
+        seq: 1,
+        hunch: 1,
+        name: "s-1",
+        words: "it's okay",
+      }).effects
+    ).toEqual([
+      { kind: "look-up", seq: 1, hunch: 1, words: "it's okay", name: "s-1" },
+    ])
   })
 
   it("says a miss was kept on home", () => {
@@ -85,6 +108,7 @@ describe("the shop", () => {
       kind: "looking",
       words: "did you eat",
       number: 2,
+      name: null,
     })
   })
 
@@ -113,9 +137,10 @@ describe("the shop", () => {
       seq: 1,
       hunch: 1,
       words: "it's okay",
+      name: null,
     } as const
     expect(step(run([typed("it's okay")]), unanswered).effects).toEqual([
-      { kind: "keep", hunch: 1, words: "it's okay" },
+      { kind: "keep", hunch: 1, words: "it's okay", name: null },
     ])
     const unreached = run([typed("it's okay"), unanswered])
     expect(unreached.at).toEqual({
@@ -123,20 +148,21 @@ describe("the shop", () => {
       hunch: { kind: "typed", text: "it's okay" },
       number: 1,
       kept: true,
+      name: null,
     })
     expect(step(unreached, { kind: "retry" }).effects).toEqual([
-      { kind: "look-up", seq: 2, hunch: 1, words: "it's okay" },
+      { kind: "look-up", seq: 2, hunch: 1, words: "it's okay", name: null },
     ])
   })
 
   it("after a take is heard and its lookup fails, sends its words, not the take", () => {
     const unreached = run([
-      { kind: "hunch", hunch: { kind: "spoken" } },
-      { kind: "heard", seq: 1, hunch: 1, words: "it's okay" },
-      { kind: "unanswered", seq: 1, hunch: 1, words: "it's okay" },
+      { kind: "hunch", hunch: SAID },
+      { kind: "heard", seq: 1, hunch: 1, name: "s-1", words: "it's okay" },
+      { kind: "unanswered", seq: 1, hunch: 1, words: "it's okay", name: "s-1" },
     ])
     expect(step(unreached, { kind: "retry" }).effects).toEqual([
-      { kind: "look-up", seq: 2, hunch: 1, words: "it's okay" },
+      { kind: "look-up", seq: 2, hunch: 1, words: "it's okay", name: "s-1" },
     ])
   })
 
@@ -160,16 +186,17 @@ describe("the shop", () => {
       seq: 1,
       hunch: 1,
       words: "it's okay",
+      name: null,
     })
     expect(late.state).toBe(moved)
     expect(late.effects).toEqual([
-      { kind: "keep", hunch: 1, words: "it's okay" },
+      { kind: "keep", hunch: 1, words: "it's okay", name: null },
     ])
   })
 
   it("still looks up a hunch heard after the owner moved on, changing nothing", () => {
     const hit = { kind: "hit", phrases: ["ph.its-okay"] } as const
-    const spoken = { kind: "hunch", hunch: { kind: "spoken" } } as const
+    const spoken = { kind: "hunch", hunch: SAID } as const
     for (const moved of [
       run([spoken, spoken]),
       run([spoken, typed("did you eat")]),
@@ -179,11 +206,18 @@ describe("the shop", () => {
         kind: "heard",
         seq: 1,
         hunch: 1,
+        name: "s-1",
         words: "I need a plumber",
       })
       expect(late.state).toBe(moved)
       expect(late.effects).toEqual([
-        { kind: "look-up", seq: 1, hunch: 1, words: "I need a plumber" },
+        {
+          kind: "look-up",
+          seq: 1,
+          hunch: 1,
+          words: "I need a plumber",
+          name: "s-1",
+        },
       ])
       expect(step(moved, { kind: "answered", seq: 1, lookup: hit }).state).toBe(
         moved
@@ -192,7 +226,8 @@ describe("the shop", () => {
     }
     const quiet = run([spoken, spoken])
     expect(
-      step(quiet, { kind: "heard", seq: 1, hunch: 1, words: " " }).effects
+      step(quiet, { kind: "heard", seq: 1, hunch: 1, name: "s-1", words: " " })
+        .effects
     ).toEqual([])
   })
 
@@ -206,8 +241,8 @@ describe("the shop", () => {
   it("asks again when nothing was heard", () => {
     expect(
       run([
-        { kind: "hunch", hunch: { kind: "spoken" } },
-        { kind: "heard", seq: 1, hunch: 1, words: "  " },
+        { kind: "hunch", hunch: SAID },
+        { kind: "heard", seq: 1, hunch: 1, name: "s-1", words: "  " },
       ]).at
     ).toEqual({
       kind: "asking",
@@ -251,60 +286,6 @@ describe("the shop's runtime", () => {
 
   const settle = (): Promise<unknown> =>
     new Promise((resolve) => setTimeout(resolve, 0))
-
-  it("hears a take, looks up its words, and shows the phrases", async () => {
-    const port: ShopPort = {
-      keep: () => true,
-      hear: () => Promise.resolve("where's my phone"),
-      lookUp: (words) =>
-        Promise.resolve(
-          words === "where's my phone"
-            ? { kind: "hit", phrases: ["ph.where-is-my-phone"] }
-            : { kind: "kept" }
-        ),
-    }
-    const seen: Array<string> = []
-    const shop = createShopRuntime(port, (state) => seen.push(state.at.kind))
-    shop.speak(new Blob(["take"]))
-    await settle()
-    expect(shop.snapshot().at).toEqual({
-      kind: "found",
-      words: "where's my phone",
-      phrases: ["ph.where-is-my-phone"],
-    })
-    expect(seen).toEqual(["hearing", "looking", "found"])
-  })
-
-  it("says a hunch may not be kept when home can't be reached, and sends the take again", async () => {
-    const heard: Array<Blob> = []
-    const port: ShopPort = {
-      keep: () => true,
-      hear: (take) => {
-        heard.push(take)
-        return heard.length === 1
-          ? Promise.reject(new Error("offline"))
-          : Promise.resolve("it's okay")
-      },
-      lookUp: () => Promise.resolve({ kind: "hit", phrases: ["ph.its-okay"] }),
-    }
-    const shop = createShopRuntime(port, () => undefined)
-    const take = new Blob(["take"])
-    shop.speak(take)
-    await settle()
-    expect(shop.snapshot().at).toEqual({
-      kind: "unreached",
-      hunch: { kind: "spoken" },
-      number: 1,
-      kept: true,
-    })
-    shop.tap({ kind: "retry" })
-    await settle()
-    expect(shop.snapshot().at).toMatchObject({
-      kind: "found",
-      phrases: ["ph.its-okay"],
-    })
-    expect(heard).toEqual([take, take])
-  })
 
   it("names a hunch to home the same way each time it is sent, and keeps one unanswered", async () => {
     const named: Array<string> = []
@@ -353,48 +334,6 @@ describe("the shop's runtime", () => {
     stop()
     expect(shop.snapshot().at).toMatchObject({ kind: "unreached", number: 1 })
     expect(ports).toEqual(["topik shop (look-up)"])
-  })
-
-  it("looks up a take heard after the next hunch, named as its own hunch", async () => {
-    const looked: Array<readonly [string, string]> = []
-    let hearFirst: (words: string) => void = () => undefined
-    let hears = 0
-    const port: ShopPort = {
-      keep: () => true,
-      hear: () => {
-        hears += 1
-        return hears === 1
-          ? new Promise((resolve) => {
-              hearFirst = resolve
-            })
-          : Promise.resolve("did you eat")
-      },
-      lookUp: (words, hunch) => {
-        looked.push([words, hunch])
-        return looked.length === 1
-          ? Promise.reject(new Error("offline"))
-          : Promise.resolve({ kind: "kept" })
-      },
-    }
-    const shop = createShopRuntime(port, () => undefined, "r")
-    // A retry moves the request's number on but not the hunch's, so the two
-    // differ from here: the names below are the hunches', not the requests'.
-    shop.type("it's okay")
-    await settle()
-    shop.tap({ kind: "retry" })
-    await settle()
-    shop.speak(new Blob(["first"]))
-    await settle()
-    shop.speak(new Blob(["second"]))
-    await settle()
-    const after = shop.snapshot()
-    hearFirst("I need a plumber")
-    await settle()
-    expect(looked.slice(2)).toEqual([
-      ["did you eat", "r-3"],
-      ["I need a plumber", "r-2"],
-    ])
-    expect(shop.snapshot()).toBe(after)
   })
 
   it("keeps a look-up that fails after the screen is gone", async () => {
@@ -459,10 +398,123 @@ describe("the shop's runtime", () => {
     const shop = createShopRuntime(port, (state) => seen.push(state.at.kind))
     shop.type("it's okay")
     shop.dispose()
-    shop.speak(new Blob(["late take"]))
     await settle()
     expect(seen).toEqual(["looking"])
     expect(shop.snapshot().at.kind).toBe("looking")
+  })
+})
+
+describe("a spoken hunch", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  const pass = async (ms = 0): Promise<void> => {
+    await vi.advanceTimersByTimeAsync(ms)
+  }
+
+  /** A take said for two seconds, then kept. */
+  const say = async (shop: ShopRuntime): Promise<void> => {
+    shop.record()
+    await pass(2_000)
+    shop.record()
+    await pass()
+  }
+
+  it("records a take under its hunch's name, hears it, and looks its words up under the same name", async () => {
+    const takes = lensTakes()
+    const asked: Array<string> = []
+    const port: ShopPort = {
+      takes,
+      keep: () => true,
+      hear: (note, hunch) => {
+        asked.push(`hear ${hunch}`)
+        expect(takes.getSnapshot().takes.map((t) => t.id)).toContain(note)
+        return Promise.resolve("where's my phone")
+      },
+      lookUp: (words, hunch) => {
+        asked.push(`look ${hunch} ${words}`)
+        return Promise.resolve({
+          kind: "hit",
+          phrases: ["ph.where-is-my-phone"],
+        })
+      },
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    expect(takes.getSnapshot().takes.map((t) => t.answers)).toEqual([
+      "r-said-1",
+    ])
+    expect(asked).toEqual(["hear r-said-1", "look r-said-1 where's my phone"])
+    expect(shop.snapshot().at).toMatchObject({ kind: "found" })
+    await say(shop)
+    expect(takes.getSnapshot().takes.map((t) => t.answers)).toEqual([
+      "r-said-1",
+      "r-said-2",
+    ])
+  })
+
+  it("says home has the take but hasn't heard it yet, and asks again on a retry", async () => {
+    let heard: string | null = null
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: () => true,
+      hear: () => Promise.resolve(heard),
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    expect(shop.snapshot().at).toMatchObject({ kind: "unheard", number: 1 })
+    heard = "I need a plumber"
+    shop.tap({ kind: "retry" })
+    await pass()
+    expect(shop.snapshot().at).toEqual({
+      kind: "kept",
+      words: "I need a plumber",
+    })
+  })
+
+  it("keeps a spoken hunch's look-up home didn't answer under its own name", async () => {
+    const kept: Array<string> = []
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: (words, hunch) => {
+        kept.push(`${hunch}:${words}`)
+        return true
+      },
+      hear: () => Promise.resolve("I need a plumber"),
+      lookUp: () => Promise.reject(new Error("offline")),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    expect(kept).toEqual(["r-said-1:I need a plumber"])
+    expect(shop.snapshot().at).toMatchObject({
+      kind: "unreached",
+      name: "r-said-1",
+    })
+  })
+
+  it("says a hunch home couldn't hear for is kept, its take on this phone", async () => {
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: () => true,
+      hear: () => Promise.reject(new Error("offline")),
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    expect(shop.snapshot().at).toEqual({
+      kind: "unreached",
+      hunch: { kind: "spoken", note: expect.any(String), name: "r-said-1" },
+      number: 1,
+      kept: true,
+      name: "r-said-1",
+    })
   })
 })
 

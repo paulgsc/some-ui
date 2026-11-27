@@ -33,8 +33,14 @@
 import { assertNever } from "@some-ui/core-utils"
 import { isPhraseId, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 
-/** How a hunch came in: words typed, or a take spoken. */
-type Hunch = Readonly<{ kind: "typed"; text: string } | { kind: "spoken" }>
+/**
+ * How a hunch came in: words typed, or a take spoken, kept on this phone as
+ * `note` under the hunch's `name`, which its look-up carries too.
+ */
+type Hunch = Readonly<
+  | { kind: "typed"; text: string }
+  | { kind: "spoken"; note: string; name: string }
+>
 
 /** Home's answer to a hunch's words. */
 export type Lookup = Readonly<
@@ -53,8 +59,14 @@ export type ShopState = Readonly<{
   hunches: number
   at:
     | { kind: "asking" }
-    | { kind: "hearing"; number: number }
-    | { kind: "looking"; words: string; number: number }
+    | { kind: "hearing"; number: number; note: string; name: string }
+    /** `name` is a spoken hunch's, null for one typed. */
+    | {
+        kind: "looking"
+        words: string
+        number: number
+        name: string | null
+      }
     | { kind: "found"; words: string; phrases: ReadonlyArray<PhraseId> }
     | { kind: "kept"; words: string }
     /** Home named only phrases this build doesn't hold. */
@@ -64,20 +76,36 @@ export type ShopState = Readonly<{
      * own number, home keeps it once. `kept` is false once this phone
      * couldn't keep it either.
      */
-    | { kind: "unreached"; hunch: Hunch; number: number; kept: boolean }
+    | {
+        kind: "unreached"
+        hunch: Hunch
+        number: number
+        kept: boolean
+        name: string | null
+      }
+    /** Home has the spoken take but hasn't heard it yet: ask again. */
+    | { kind: "unheard"; hunch: Hunch; number: number }
 }>
 
 export type ShopEvent = Readonly<
   | { kind: "hunch"; hunch: Hunch }
   /** `hunch` is the heard hunch's number, from its `hear` effect. */
-  | { kind: "heard"; seq: number; hunch: number; words: string }
+  | { kind: "heard"; seq: number; hunch: number; name: string; words: string }
+  /** Home has the take but didn't hear it in time. */
+  | { kind: "unheard"; seq: number }
   | { kind: "answered"; seq: number; lookup: Lookup }
   /** Home couldn't be reached to hear the take. */
   | { kind: "unreached"; seq: number }
   /** This phone couldn't keep hunch `hunch`'s look-up for home. */
   | { kind: "unkept"; hunch: number }
   /** Home didn't answer a look-up of `words`, hunch `hunch`'s. */
-  | { kind: "unanswered"; seq: number; hunch: number; words: string }
+  | {
+      kind: "unanswered"
+      seq: number
+      hunch: number
+      words: string
+      name: string | null
+    }
   /** Try the hunch home couldn't be reached for again. */
   | { kind: "retry" }
   | { kind: "pick"; phrase: PhraseId }
@@ -87,11 +115,21 @@ export type ShopEvent = Readonly<
 >
 
 export type ShopEffect = Readonly<
-  | { kind: "hear"; seq: number; hunch: number }
-  /** `hunch` is the hunch's number this session. */
-  | { kind: "look-up"; seq: number; hunch: number; words: string }
+  /** Ask home to hear the spoken take `note`, hunch `name`. */
+  | { kind: "hear"; seq: number; hunch: number; note: string; name: string }
+  /**
+   * `hunch` is the hunch's number this session; `name` a spoken hunch's
+   * name, or null for the runtime to name a typed one by its number.
+   */
+  | {
+      kind: "look-up"
+      seq: number
+      hunch: number
+      words: string
+      name: string | null
+    }
   /** Keep a look-up home didn't answer, to send when home is next reached. */
-  | { kind: "keep"; hunch: number; words: string }
+  | { kind: "keep"; hunch: number; words: string; name: string | null }
 >
 
 export const initialShop: ShopState = {
@@ -109,21 +147,36 @@ const stay = (state: ShopState): Next => ({ state, effects: [] })
  * Send a hunch, to be heard first or its words looked up: a new one, or one
  * sent again under its own `number`.
  */
-const send = (state: ShopState, hunch: Hunch, number?: number): Next => {
+const send = (
+  state: ShopState,
+  hunch: Hunch,
+  number?: number,
+  name: string | null = null
+): Next => {
   const seq = state.seq + 1
   const words = hunch.kind === "typed" ? hunch.text.trim() : null
   if (words === "") return stay(state)
   const hunches = number === undefined ? state.hunches + 1 : state.hunches
   const sent = { ...state, seq, hunches }
   const hunchNumber = number ?? hunches
-  if (words === null)
+  if (hunch.kind === "spoken") {
+    const { note, name: said } = hunch
     return {
-      state: { ...sent, at: { kind: "hearing", number: hunchNumber } },
-      effects: [{ kind: "hear", seq, hunch: hunchNumber }],
+      state: {
+        ...sent,
+        at: { kind: "hearing", number: hunchNumber, note, name: said },
+      },
+      effects: [{ kind: "hear", seq, hunch: hunchNumber, note, name: said }],
     }
+  }
   return {
-    state: { ...sent, at: { kind: "looking", words, number: hunchNumber } },
-    effects: [{ kind: "look-up", seq, hunch: hunchNumber, words }],
+    state: {
+      ...sent,
+      at: { kind: "looking", words: words ?? "", number: hunchNumber, name },
+    },
+    effects: [
+      { kind: "look-up", seq, hunch: hunchNumber, words: words ?? "", name },
+    ],
   }
 }
 
@@ -159,21 +212,24 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
     }
     case "heard": {
       const words = event.words.trim()
-      const { hunch } = event
+      const { hunch, name } = event
       if (event.seq !== state.seq || state.at.kind !== "hearing") {
         // The owner moved on: its words are still looked up, so home keeps a
         // miss, and the answer, under the old request, changes nothing.
         if (words === "") return stay(state)
         return {
           state,
-          effects: [{ kind: "look-up", seq: event.seq, hunch, words }],
+          effects: [{ kind: "look-up", seq: event.seq, hunch, words, name }],
         }
       }
       // Nothing heard is nothing to look up or keep: ask again.
       if (words === "") return stay({ ...state, at: { kind: "asking" } })
       return {
-        state: { ...state, at: { kind: "looking", words, number: hunch } },
-        effects: [{ kind: "look-up", seq: state.seq, hunch, words }],
+        state: {
+          ...state,
+          at: { kind: "looking", words, number: hunch, name },
+        },
+        effects: [{ kind: "look-up", seq: state.seq, hunch, words, name }],
       }
     }
     case "answered": {
@@ -181,26 +237,30 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
         return stay(state)
       return stay(answered(state, state.at.words, event.lookup))
     }
-    case "unreached": {
-      if (event.seq !== state.seq) return stay(state)
+    case "unreached":
+    case "unheard": {
       const { at } = state
-      if (at.kind === "hearing")
-        return stay({
-          ...state,
-          at: {
-            kind: "unreached",
-            hunch: { kind: "spoken" },
-            number: at.number,
-            kept: true,
-          },
-        })
-      return stay(state)
+      if (event.seq !== state.seq || at.kind !== "hearing") return stay(state)
+      const hunch: Hunch = { kind: "spoken", note: at.note, name: at.name }
+      // The take is kept on this phone, or on home, either way.
+      return stay({
+        ...state,
+        at:
+          event.kind === "unheard"
+            ? { kind: "unheard", hunch, number: at.number }
+            : {
+                kind: "unreached",
+                hunch,
+                number: at.number,
+                kept: true,
+                name: at.name,
+              },
+      })
     }
     case "unanswered": {
       // Kept however late: the owner may have moved on, but not lost it.
-      const effects = [
-        { kind: "keep", hunch: event.hunch, words: event.words },
-      ] as const
+      const { hunch, words, name } = event
+      const effects = [{ kind: "keep", hunch, words, name }] as const
       const { at } = state
       if (event.seq !== state.seq || at.kind !== "looking")
         return { state, effects }
@@ -212,6 +272,7 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
             hunch: { kind: "typed", text: at.words },
             number: at.number,
             kept: true,
+            name: at.name,
           },
         },
         effects,
@@ -224,9 +285,11 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
       return stay({ ...state, at: { ...at, kept: false } })
     }
     case "retry": {
-      return state.at.kind === "unreached"
-        ? send(state, state.at.hunch, state.at.number)
-        : stay(state)
+      const { at } = state
+      if (at.kind === "unreached")
+        return send(state, at.hunch, at.number, at.name)
+      if (at.kind === "unheard") return send(state, at.hunch, at.number)
+      return stay(state)
     }
     case "pick": {
       const { at } = state

@@ -8,9 +8,13 @@
 import type { Lookup, ShopPort } from "@some-ui/topik"
 import { z } from "zod"
 
+import { askFastTrack } from "@/lib/home-link/fast-track"
+import { askHeard } from "@/lib/home-link/heard"
 import { readHome } from "@/lib/home-link/home-read"
 import { askLookup } from "@/lib/home-link/phrase-lookup"
+import { phoneHunchTakes } from "@/lib/hunch-takes"
 
+import { hearOnHome } from "./hear"
 import { hunchOutbox } from "./outbox"
 
 /** `POST /phrases/lookup`'s `200`: the phrases that do it, or kept. */
@@ -29,14 +33,24 @@ export async function lookUpOnHome(
   throw new Error(`home's look-up: ${read.kind}`)
 }
 
+const wait = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
 /**
  * The Android app's shop on home: a hunch looked up there, and one home
- * didn't answer kept on this phone for the drain (`./outbox`). A spoken
- * hunch is not offered yet: the screen shows no microphone, so `hear` is
- * never asked.
+ * didn't answer kept on this phone for the drain (`./outbox`); a spoken one
+ * kept as a take (`lib/hunch-takes`), which the voice lane takes home, and
+ * heard there (`./hear`).
  */
 export const phoneShop: ShopPort = {
+  takes: phoneHunchTakes(),
   lookUp: lookUpOnHome,
   keep: hunchOutbox.keep,
-  hear: () => Promise.reject(new Error("a spoken hunch isn't offered yet")),
+  hear: (note) =>
+    hearOnHome(note, {
+      fastTrack: askFastTrack,
+      heard: askHeard,
+      wait,
+      now: Date.now,
+    }),
 }

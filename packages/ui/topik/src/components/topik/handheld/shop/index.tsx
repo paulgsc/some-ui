@@ -14,7 +14,11 @@ import { Button, Input } from "@some-ui/shared"
 import { PHRASES, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 import type { ShopState } from "@topik/lib/topik/shop"
 import { initialShop } from "@topik/lib/topik/shop"
-import type { ShopPort, ShopRuntime } from "@topik/lib/topik/shop/runtime"
+import type {
+  ShopPort,
+  ShopRuntime,
+  ShopTakes,
+} from "@topik/lib/topik/shop/runtime"
 import { createShopRuntime } from "@topik/lib/topik/shop/runtime"
 import {
   saidHow,
@@ -64,6 +68,33 @@ function useShop(port: ShopPort): Readonly<{
     () => initialShop
   )
   return { state, runtime: shop.runtime }
+}
+
+/** The microphone for a spoken hunch, on the port's take pattern. */
+const SayIt = ({
+  takes,
+  onTap,
+}: {
+  takes: ShopTakes
+  onTap: () => void
+}): JSX.Element => {
+  const pattern = useSyncExternalStore(
+    takes.pattern.subscribe,
+    takes.pattern.getSnapshot
+  )
+  const { full } = useSyncExternalStore(takes.subscribe, takes.getSnapshot)
+  const recording = pattern.take.kind === "recording"
+  if (full && !recording)
+    return <p className="text-muted-foreground mx-1 text-sm">{W.full}</p>
+  return (
+    <Button
+      variant={recording ? "default" : "outline"}
+      className="h-12 rounded-xl"
+      onClick={onTap}
+    >
+      {recording ? W.stop : W.say}
+    </Button>
+  )
 }
 
 const Found = ({
@@ -159,6 +190,20 @@ const Answer = ({
     case "unknown": {
       return <p className="mx-1 text-sm">{W.unknown}</p>
     }
+    case "unheard": {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="mx-1 text-sm">{W.unheard}</p>
+          <Button
+            variant="outline"
+            className="self-start rounded-xl"
+            onClick={() => runtime.tap({ kind: "retry" })}
+          >
+            {W.retry}
+          </Button>
+        </div>
+      )
+    }
     case "unreached": {
       return (
         <div className="flex flex-col gap-2">
@@ -233,6 +278,9 @@ export const ShopScreen = ({
           {W.find}
         </Button>
       </form>
+      {port.takes && (
+        <SayIt takes={port.takes} onTap={() => runtime.record()} />
+      )}
       <Answer state={state} runtime={runtime} />
       {at.kind !== "asking" &&
         at.kind !== "hearing" &&

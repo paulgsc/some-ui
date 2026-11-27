@@ -24,6 +24,11 @@ export const SHOP_WORDS = {
     "Home couldn't be reached. Your words are kept on this phone and go to home when it's next reachable.",
   unkept:
     "Home couldn't be reached, and this phone couldn't keep your words either. Try again once home is reachable.",
+  unheard:
+    "Home has what you said, but hasn't heard it yet. Try again in a moment.",
+  say: "Say it in English",
+  stop: "Stop",
+  full: "This phone holds as many said hunches as it can until home has some. Type it instead.",
   retry: "Try again",
   again: "Something else",
   pick: "Add to my basket",
