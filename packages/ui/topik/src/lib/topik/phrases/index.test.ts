@@ -514,6 +514,28 @@ describe("a proposed phrase (KP5)", () => {
     ])
   })
 
+  it("is put forward asking what the shelf only says: 괜찮아요?", () => {
+    const checked = checkProposal({
+      ...proposal,
+      id: "ph.are-you-okay",
+      korean: "괜찮아요?",
+      intents: ["are you okay"],
+      mood: "question",
+      parts: [
+        {
+          kind: "built",
+          reading: {
+            dictionary: "괜찮다",
+            ending: "close.ayo.plain",
+            tense: "none",
+          },
+          gloss: "be okay",
+        },
+      ],
+    })
+    expect(checked.ok && checked.faults).toEqual([])
+  })
+
   it("is refused when it claims what only the owner gives: acceptance, audio", () => {
     for (const claim of [
       { status: { accepted: "2026-11-01" } },

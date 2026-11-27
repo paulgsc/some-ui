@@ -19,7 +19,7 @@
  * answer, so a miss is never lost between two calls. A hunch left in flight
  * for another, or for "again", is still answered, and a miss is kept all the
  * same. A hunch home couldn't be reached for is not: a new hunch or "again"
- * lets it go unsent, a gap the phone's side of KP4 closes (#2853). The port
+ * lets it go unsent, a gap the phone's side of KP4 closes (#3596). The port
  * is typed ahead of home's route, which waits on paulgsc/server (#2853).
  *
  * Memoryless (#2849): the basket is only this machine's state. Nothing here

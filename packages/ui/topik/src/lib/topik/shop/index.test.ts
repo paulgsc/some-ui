@@ -7,7 +7,7 @@ import {
   type ShopState,
 } from "@topik/lib/topik/shop"
 import { createShopRuntime, type ShopPort } from "@topik/lib/topik/shop/runtime"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const run = (
   events: ReadonlyArray<ShopEvent>,
@@ -192,6 +192,14 @@ describe("the shop", () => {
 })
 
 describe("the shop's runtime", () => {
+  // A failed request is reported (reportFailure), which writes to the console.
+  beforeEach(() => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   const settle = (): Promise<unknown> =>
     new Promise((resolve) => setTimeout(resolve, 0))
 
@@ -272,7 +280,6 @@ describe("the shop's runtime", () => {
   })
 
   it("reports a port that throws before its promise, and says unreached", async () => {
-    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
     const ports: Array<string> = []
     const stop = addFailureSink((failure) => ports.push(failure.port))
     const port: ShopPort = {

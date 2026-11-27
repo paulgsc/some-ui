@@ -28,7 +28,7 @@ import {
   PHRASES,
   type PhraseId,
 } from "@topik/lib/topik/phrases/shelf"
-import { hangulRuns, WordSchema } from "@topik/lib/topik/read-aloud/content"
+import { WordSchema } from "@topik/lib/topik/read-aloud/content"
 import { z } from "zod"
 
 /** Every value of each closed set, checked complete by the compiler. */
@@ -104,9 +104,6 @@ type ProposalFault =
   /** The shelf already holds this Korean: a new intent for it, not a copy. */
   | Readonly<{ kind: "korean-taken"; id: PhraseId }>
 
-const sameWords = (a: string, b: string): boolean =>
-  hangulRuns(a).join(" ") === hangulRuns(b).join(" ")
-
 export type CheckedProposal =
   | Readonly<{
       ok: true
@@ -124,8 +121,8 @@ export const checkProposal = (raw: unknown): CheckedProposal => {
   const { id, ...rest } = parsed.data
   const phrase: Phrase = { ...rest, hear: "ai-voice", status: "proposed" }
   const taken = PHRASE_IDS.some((landed) => landed === id)
-  const same = PHRASE_IDS.find((landed) =>
-    sameWords(PHRASES[landed].korean, phrase.korean)
+  const same = PHRASE_IDS.find(
+    (landed) => PHRASES[landed].korean === phrase.korean
   )
   return {
     ok: true,
