@@ -353,9 +353,12 @@ The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
 **Launch test.** Before a run counts as green, its release APK is installed
 and started in an API 36 emulator, then driven by a short seeded monkey run
-(`launch/launch-test.sh`). It starts the plain icon, then each wing's icon
-(found from the installed package, and each must log `wing entered: <id>`),
-and presses back at a wing entered by its icon, which must leave the app. A
+(`launch/launch-test.sh`). It starts the plain icon and drags down there,
+then enters each wing's icon in a fixed order (found from the installed
+package, and each must log `wing entered: <id>`) and drags down at its root,
+and presses back at a wing entered by its icon, which must leave the app. It
+writes each step to the run's summary before it runs, so a run whose
+emulator goes away mid-step still names the step (#3613). A
 dead process, a crash, an ANR, a missing wing line, a back that does not
 leave or a monkey run that did not finish fails the run, and the older APK is
 then kept. Since the
