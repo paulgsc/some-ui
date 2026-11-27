@@ -1,3 +1,4 @@
+import { addFailureSink } from "@some-ui/intent-kit"
 import { PHRASES } from "@topik/lib/topik/phrases/shelf"
 import {
   initialShop,
@@ -6,7 +7,7 @@ import {
   type ShopState,
 } from "@topik/lib/topik/shop"
 import { createShopRuntime, type ShopPort } from "@topik/lib/topik/shop/runtime"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 const run = (
   events: ReadonlyArray<ShopEvent>,
@@ -270,6 +271,24 @@ describe("the shop's runtime", () => {
     expect(shop.snapshot().at).toEqual({ kind: "kept", words: "another hunch" })
   })
 
+  it("reports a port that throws before its promise, and says unreached", async () => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const ports: Array<string> = []
+    const stop = addFailureSink((failure) => ports.push(failure.port))
+    const port: ShopPort = {
+      hear: () => Promise.resolve(""),
+      lookUp: () => {
+        throw new Error("no adapter")
+      },
+    }
+    const shop = createShopRuntime(port, () => undefined)
+    shop.type("it's okay")
+    await settle()
+    stop()
+    expect(shop.snapshot().at).toMatchObject({ kind: "unreached", number: 1 })
+    expect(ports).toEqual(["topik shop (look-up)"])
+  })
+
   it("changes nothing once disposed", async () => {
     const seen: Array<string> = []
     const port: ShopPort = {
@@ -279,6 +298,7 @@ describe("the shop's runtime", () => {
     const shop = createShopRuntime(port, (state) => seen.push(state.at.kind))
     shop.type("it's okay")
     shop.dispose()
+    shop.speak(new Blob(["late take"]))
     await settle()
     expect(seen).toEqual(["looking"])
     expect(shop.snapshot().at.kind).toBe("looking")

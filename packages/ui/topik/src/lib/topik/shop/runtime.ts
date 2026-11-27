@@ -4,13 +4,15 @@
  * The spoken take is held here, so a hunch home couldn't be reached for can
  * be heard again, until the next take replaces it or `dispose` lets it go.
  *
- * A request that fails, for any reason, is `unreached`: the hunch may not be
- * kept, and the screen says so and offers to send it again. Each request
+ * A request that fails, for any reason, is `unreached`, and reported
+ * (`reportFailure`): the hunch may not be kept, and the screen says so and
+ * offers to send it again. Each request
  * names its hunch to home by this runtime's id and the hunch's number, the
  * same when sent again, so home keeps a miss once however often it arrives.
  */
 
 import { assertNever } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type {
   Lookup,
   ShopEffect,
@@ -54,6 +56,27 @@ export const createShopRuntime = (
   let take: Blob | null = null
   let disposed = false
 
+  /** Every failure, a throw before the promise included, as `unreached`. */
+  const ask = <T>(
+    what: "hear" | "look-up",
+    seq: number,
+    call: () => Promise<T>,
+    answer: (value: T) => ShopEvent
+  ): void => {
+    Promise.resolve()
+      .then(call)
+      .then(
+        (value) => dispatch(answer(value)),
+        (error: unknown) => {
+          reportFailure({
+            port: `topik shop (${what})`,
+            error: toIntentError(error),
+          })
+          dispatch({ kind: "unreached", seq })
+        }
+      )
+  }
+
   const run = (effect: ShopEffect): void => {
     switch (effect.kind) {
       case "hear": {
@@ -61,16 +84,21 @@ export const createShopRuntime = (
           dispatch({ kind: "unreached", seq: effect.seq })
           return
         }
-        port.hear(take).then(
-          (words) => dispatch({ kind: "heard", seq: effect.seq, words }),
-          () => dispatch({ kind: "unreached", seq: effect.seq })
+        const held = take
+        ask(
+          "hear",
+          effect.seq,
+          () => port.hear(held),
+          (words) => ({ kind: "heard", seq: effect.seq, words })
         )
         return
       }
       case "look-up": {
-        port.lookUp(effect.words, `${id}-${effect.hunch}`).then(
-          (lookup) => dispatch({ kind: "answered", seq: effect.seq, lookup }),
-          () => dispatch({ kind: "unreached", seq: effect.seq })
+        ask(
+          "look-up",
+          effect.seq,
+          () => port.lookUp(effect.words, `${id}-${effect.hunch}`),
+          (lookup) => ({ kind: "answered", seq: effect.seq, lookup })
         )
         return
       }
@@ -96,6 +124,7 @@ export const createShopRuntime = (
       dispatch({ kind: "hunch", hunch: { kind: "typed", text } })
     },
     speak: (spoken): void => {
+      if (disposed) return
       take = spoken
       dispatch({ kind: "hunch", hunch: { kind: "spoken" } })
     },
