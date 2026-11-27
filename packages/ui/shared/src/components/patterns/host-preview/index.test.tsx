@@ -50,7 +50,9 @@ const drawnIn = (container: HTMLElement): CastNode => {
   const svg = pictureOf(container).querySelector("svg")
   if (svg === null) throw new Error("no drawing")
   const id = svg.querySelector("[id]")?.getAttribute("id") ?? ""
-  const prefix = id.slice(0, id.indexOf("-host-"))
+  const at = id.indexOf("-host-")
+  if (at <= 0) throw new Error(`no prefixed host id: ${id}`)
+  const prefix = id.slice(0, at)
   return asDrawn(svg, prefix)
 }
 

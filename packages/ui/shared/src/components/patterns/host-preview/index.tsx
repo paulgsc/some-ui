@@ -103,7 +103,7 @@ export const HostPreview = ({
         <div
           aria-hidden
           data-host-frame=""
-          className="pointer-events-none absolute select-none [&>svg]:size-full"
+          className="pointer-events-none absolute select-none [&>svg]:block [&>svg]:size-full"
           style={{
             left: share(frame.box.x, area.width),
             top: share(frame.box.y, area.height),

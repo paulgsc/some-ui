@@ -1157,6 +1157,9 @@ export function hostAt(
     live,
     note: pose.note,
     drawing,
-    svg: svgText(drawing),
+    // Written out only when asked: a React page draws `drawing` and never reads it.
+    get svg(): string {
+      return svgText(drawing)
+    },
   }
 }
