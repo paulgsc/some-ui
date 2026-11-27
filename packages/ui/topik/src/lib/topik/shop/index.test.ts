@@ -484,6 +484,58 @@ describe("a spoken hunch", () => {
     })
   })
 
+  it("records the next take under a new name once one under way was kept as the screen went", async () => {
+    const takes = lensTakes()
+    const port: ShopPort = {
+      takes,
+      keep: () => true,
+      hear: () => new Promise(() => undefined),
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    shop.record()
+    await pass(2_000)
+    shop.dispose()
+    await pass()
+    shop.resume()
+    await say(shop)
+    expect(takes.getSnapshot().takes.map((t) => t.answers)).toEqual([
+      "r-said-1",
+      "r-said-2",
+    ])
+  })
+
+  it("asks again for a take's words heard across the screen going and coming back, saying nothing failed", async () => {
+    const reported: Array<string> = []
+    const stop = addFailureSink((failure) => reported.push(failure.port))
+    const hears: Array<AbortSignal> = []
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: () => true,
+      hear: (_note, _hunch, gone) => {
+        hears.push(gone)
+        return hears.length === 1
+          ? new Promise((_, reject) => {
+              gone.addEventListener("abort", () => reject(new Error("gone")))
+            })
+          : Promise.resolve({ kind: "heard", words: "I need a plumber" })
+      },
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    shop.dispose()
+    shop.resume()
+    await pass()
+    stop()
+    expect(hears).toHaveLength(2)
+    expect(reported).toEqual([])
+    expect(shop.snapshot().at).toEqual({
+      kind: "kept",
+      words: "I need a plumber",
+    })
+  })
+
   it("says a take still on its way to home is on its way", async () => {
     const port: ShopPort = {
       takes: lensTakes(),

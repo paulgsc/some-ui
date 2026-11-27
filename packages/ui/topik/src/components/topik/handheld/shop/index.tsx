@@ -11,7 +11,7 @@ import type { JSX, SyntheticEvent } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Input } from "@some-ui/shared"
-import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
+import { TAKE_ENDING_WORDS, takeEndingSaid } from "@some-ui/voice-capture"
 import { PHRASES, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 import type { ShopState } from "@topik/lib/topik/shop"
 import { initialShop } from "@topik/lib/topik/shop"
@@ -84,23 +84,18 @@ const SayIt = ({
     takes.pattern.getSnapshot
   )
   const { full } = useSyncExternalStore(takes.subscribe, takes.getSnapshot)
+  // The last take's end as the screen opened: one before is another visit's.
+  const [since] = useState(() => takes.pattern.getSnapshot().ended?.seq ?? 0)
   const recording = pattern.take.kind === "recording"
   if (full && !recording)
     return <p className="text-muted-foreground mx-1 text-sm">{W.full}</p>
-  // Why the last take wasn't the hunch, in the microphone's own words.
+  // Why the last take this visit wasn't the hunch, in the kit's own words;
+  // a take kept is the hunch, so it says nothing.
   const { ended } = pattern
   const why =
-    ended === null || recording
+    ended === null || recording || ended.seq <= since || ended.ending === "kept"
       ? null
-      : ended.ending === "blocked"
-        ? ended.reason === null
-          ? null
-          : TAKE_ENDING_WORDS.blocked(ended.reason)
-        : ended.ending === "kept"
-          ? ended.unheard
-            ? TAKE_ENDING_WORDS.unheard
-            : null
-          : TAKE_ENDING_WORDS[ended.ending]
+      : takeEndingSaid(TAKE_ENDING_WORDS, ended)
   return (
     <div className="flex flex-col gap-1.5">
       <Button

@@ -111,11 +111,15 @@ export const createShopRuntime = (
     call: () => Promise<T>,
     answer: (value: T) => ShopEvent
   ): void => {
+    // A hear the screen's going aborted: nothing to say, as `resume` asks again.
+    const asked = gone.signal
     Promise.resolve()
       .then(call)
       .then(
         (value) => dispatch(answer(value)),
         (error: unknown) => {
+          // A look-up that fails is kept however late; a hear is asked again.
+          if (what === "hear" && asked.aborted) return
           reportFailure({
             port: `topik shop (${what})`,
             error: toIntentError(error),
@@ -220,6 +224,12 @@ export const createShopRuntime = (
       if (disposed) return
       disposed = true
       gone.abort()
+      // A take under way is kept by `leave`, under this name, and goes home
+      // as a voice note: the next take is another hunch, so another name.
+      if (takes?.pattern.getSnapshot().take.kind === "recording") {
+        said += 1
+        recording = `${id}-said-${String(said + 1)}`
+      }
       following?.()
       following = null
       takes?.pattern.leave()
@@ -228,6 +238,12 @@ export const createShopRuntime = (
       if (!disposed) return
       disposed = false
       gone = new AbortController()
+      // A hear the screen's going stopped is asked again.
+      const { at } = state
+      if (at.kind === "hearing") {
+        const { number, note, name } = at
+        run({ kind: "hear", seq: state.seq, hunch: number, note, name })
+      }
     },
   }
 }
