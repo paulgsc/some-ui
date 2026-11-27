@@ -65,7 +65,7 @@
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.3",
     "@ianvs/prettier-plugin-sort-imports": "4.4.0",
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.65.1",
     "@some-ui/eslint-kit": "workspace:*",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.0",

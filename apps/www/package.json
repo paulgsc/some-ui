@@ -97,7 +97,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.65.1",
     "@some-ui/contract-harness": "workspace:*",
     "@some-ui/video-motion": "workspace:*",
     "@vitejs/plugin-react": "^6.3.0",
