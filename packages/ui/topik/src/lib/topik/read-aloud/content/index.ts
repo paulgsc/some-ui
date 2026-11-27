@@ -251,7 +251,8 @@ export type ParsedDeck =
 // SCHEMAS
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-const HANGUL = /^[가-힣]+$/
+/** One run of Hangul syllables: a lemma, a pronunciation. */
+export const HANGUL = /^[가-힣]+$/
 
 const IdSchema = z.string().regex(ID, "ids are kebab-case ASCII")
 const LevelSchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
@@ -523,8 +524,11 @@ type LineAudit = {
   next: number
 }
 
-/** A line's words as written: its maximal runs of Hangul syllables. */
-const hangulRuns = (korean: string): Array<string> =>
+/**
+ * A line's words as written: its maximal runs of Hangul syllables. The phrase
+ * shelf (`phrases`) accounts for a phrase's words by the same rule.
+ */
+export const hangulRuns = (korean: string): Array<string> =>
   Array.from(korean.matchAll(/[가-힣]+/g), (match) => match[0])
 
 function auditOccurrence(
