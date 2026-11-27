@@ -15,8 +15,8 @@
     "Draw the frame on a canvas",
     "Hold the previews still and drop the loop"
   ],
-  "gray": "On #3613 the launch test's emulator went away within 2 s of the Cast wing's page starting, every time, and on no other wing; the Cast Home is the one page that hands the WebView six new images to decode 15 times a second. Whether that decode is the trigger, the render or the loop, no check could tell before trying, and the owner has not opened Cast on a phone yet. Claude proposed drawing inline; the owner picked it through the coordinator on 2026-11-27.",
+  "gray": "Claude proposed drawing inline on #3613, where the launch test's emulator went away within 2 s of the Cast wing's page starting and on no other wing, and the Cast Home was the one page handing the WebView six new images to decode 15 times a second; the owner picked it through the coordinator on 2026-11-27. The proving run (android-compat 46068385008) disproved that premise: drawn inline, the emulator still went away, and a bisection (46070007646) showed the drawing's paint under the emulator's swiftshader_indirect renderer was the trigger, image or not. The owner then chose to land it on its own merits: about 90 fewer image decodes a second on the phone's Cast Home, with the frame's SVG text unchanged. Whether that cost matters on a real phone is unmeasured, which no check settles.",
   "undo": "Draw frame.svg as an <img> with a data:image/svg+xml src again in HostPreview; hostAt's svg is unchanged.",
-  "refs": ["#3613", "#3614", "#3532"],
+  "refs": ["#3613", "#3614", "#3615", "#3532"],
   "moves": "C1533"
 }
