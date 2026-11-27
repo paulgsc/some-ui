@@ -16,9 +16,10 @@
  * the hunch (its words, when) for the routine (KP5) and says so, in the same
  * answer, so a miss is never lost between two calls. A hunch left in flight
  * for another, or for "again", is still answered, and a miss is kept all the
- * same. A hunch home couldn't be reached for is not: a new hunch or "again"
- * lets it go unsent, and so does leaving the screen while a take is still
- * being heard, a gap the phone's side of KP4 closes (#3596).
+ * same. Nothing the owner said is let go unsent (#3596): a look-up home
+ * didn't answer is kept on this phone (`keep`) and sent when home is next
+ * reached, under the same name, and a spoken take is kept on this phone
+ * before it is heard (the port's `hear`).
  *
  * Memoryless (#2849): the basket is only this machine's state. Nothing here
  * stores it, and it is gone when the session ends. A phrase home names that
@@ -69,7 +70,10 @@ export type ShopEvent = Readonly<
   /** `hunch` is the heard hunch's number, from its `hear` effect. */
   | { kind: "heard"; seq: number; hunch: number; words: string }
   | { kind: "answered"; seq: number; lookup: Lookup }
+  /** Home couldn't be reached to hear the take. */
   | { kind: "unreached"; seq: number }
+  /** Home didn't answer a look-up of `words`, hunch `hunch`'s. */
+  | { kind: "unanswered"; seq: number; hunch: number; words: string }
   /** Try the hunch home couldn't be reached for again. */
   | { kind: "retry" }
   | { kind: "pick"; phrase: PhraseId }
@@ -82,6 +86,8 @@ export type ShopEffect = Readonly<
   | { kind: "hear"; seq: number; hunch: number }
   /** `hunch` is the hunch's number this session. */
   | { kind: "look-up"; seq: number; hunch: number; words: string }
+  /** Keep a look-up home didn't answer, to send when home is next reached. */
+  | { kind: "keep"; hunch: number; words: string }
 >
 
 export const initialShop: ShopState = {
@@ -183,16 +189,27 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
             number: at.number,
           },
         })
-      if (at.kind === "looking")
-        return stay({
+      return stay(state)
+    }
+    case "unanswered": {
+      // Kept however late: the owner may have moved on, but not lost it.
+      const effects = [
+        { kind: "keep", hunch: event.hunch, words: event.words },
+      ] as const
+      const { at } = state
+      if (event.seq !== state.seq || at.kind !== "looking")
+        return { state, effects }
+      return {
+        state: {
           ...state,
           at: {
             kind: "unreached",
             hunch: { kind: "typed", text: at.words },
             number: at.number,
           },
-        })
-      return stay(state)
+        },
+        effects,
+      }
     }
     case "retry": {
       return state.at.kind === "unreached"

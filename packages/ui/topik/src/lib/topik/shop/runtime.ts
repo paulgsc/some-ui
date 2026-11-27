@@ -23,13 +23,19 @@ import { initialShop, step } from "@topik/lib/topik/shop"
 
 /** Home, as the shop asks it: typed ahead of its route (#2853). */
 export type ShopPort = Readonly<{
-  /** Home's Whisper: the words of a spoken take, in English. */
-  hear: (take: Blob) => Promise<string>
+  /**
+   * Home's Whisper: the words of a spoken take, in English. The take is kept
+   * on this phone before it is heard, under `hunch`, so it reaches home
+   * however this ends.
+   */
+  hear: (take: Blob, hunch: string) => Promise<string>
   /**
    * Home's meaning index: the phrases a hunch's words find, or kept. `hunch`
    * names the hunch, the same each time it is sent: home keeps a miss once.
    */
   lookUp: (words: string, hunch: string) => Promise<Lookup>
+  /** Keeps a look-up home didn't answer, to send when home is next reached. */
+  keep: (words: string, hunch: string) => void
 }>
 
 /** What the owner taps, once a hunch is sent. */
@@ -55,10 +61,12 @@ export const createShopRuntime = (
   let take: Blob | null = null
   let disposed = false
 
-  /** Every failure, a throw before the promise included, as `unreached`. */
+  const named = (hunch: number): string => `${id}-${hunch}`
+
+  /** Every failure, a throw before the promise included, as `failed`. */
   const ask = <T>(
     what: "hear" | "look-up",
-    seq: number,
+    failed: ShopEvent,
     call: () => Promise<T>,
     answer: (value: T) => ShopEvent
   ): void => {
@@ -71,7 +79,7 @@ export const createShopRuntime = (
             port: `topik shop (${what})`,
             error: toIntentError(error),
           })
-          dispatch({ kind: "unreached", seq })
+          dispatch(failed)
         }
       )
   }
@@ -86,8 +94,8 @@ export const createShopRuntime = (
         const held = take
         ask(
           "hear",
-          effect.seq,
-          () => port.hear(held),
+          { kind: "unreached", seq: effect.seq },
+          () => port.hear(held, named(effect.hunch)),
           (words) => ({
             kind: "heard",
             seq: effect.seq,
@@ -98,12 +106,17 @@ export const createShopRuntime = (
         return
       }
       case "look-up": {
+        const { seq, hunch, words } = effect
         ask(
           "look-up",
-          effect.seq,
-          () => port.lookUp(effect.words, `${id}-${effect.hunch}`),
-          (lookup) => ({ kind: "answered", seq: effect.seq, lookup })
+          { kind: "unanswered", seq, hunch, words },
+          () => port.lookUp(words, named(hunch)),
+          (lookup) => ({ kind: "answered", seq, lookup })
         )
+        return
+      }
+      case "keep": {
+        port.keep(effect.words, named(effect.hunch))
         return
       }
       default: {
