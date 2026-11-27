@@ -84,6 +84,9 @@ export function previewsRuntime(
     dispatch({ kind: "pick", conversation, preview, pick: choice })
     const current = state.getSnapshot()
     if (offered === undefined || held === undefined) return
+    // Only a pick this dispatch took is sent: one made while another is
+    // being kept leaves that one's `keeping` in place, and sends nothing.
+    if (before.phase !== "shown" || before.keeping !== null) return
     if (current.phase !== "shown" || current.keeping === null) return
     const moves = movesFor(held, preview, choice)
     const event = approveEvent(

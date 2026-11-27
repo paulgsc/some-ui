@@ -244,6 +244,31 @@ describe("previewsRuntime (HOST16)", () => {
     expect(s.sent[1]?.moves).toBe(OFFER.preview)
   })
 
+  it("sends nothing for a pick made while another is being kept", async () => {
+    const s = scripted()
+    const runtime = previewsRuntime(s.source, () => AT)
+    runtime.open()
+    s.reads[0]?.({
+      kind: "read",
+      value: { conversations: [conversation()], unreadable: 0 },
+    })
+    await settled()
+    runtime.pick("runners", OFFER.preview, {
+      kind: "variant",
+      variant: "crossfade",
+    })
+    runtime.pick("runners", OFFER.preview, {
+      kind: "variant",
+      variant: "dip-to-black",
+    })
+    expect(s.sent).toHaveLength(1)
+    const state = runtime.state.getSnapshot()
+    expect(state.phase === "shown" && state.keeping?.pick).toEqual({
+      kind: "variant",
+      variant: "crossfade",
+    })
+  })
+
   it.each(["refused", "unpaired", "away", "busy"] as const)(
     "says a pick home didn't keep, or may not have: %s",
     async (kind) => {
