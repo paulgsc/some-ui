@@ -1,0 +1,21 @@
+{
+  "id": "C1595",
+  "made": "2026-11-27",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/topik/src/lib/topik/shop",
+    "some-ui:apps/www/src/lib/shop-home",
+    "some-ui:apps/www/src/lib/home-link/hunches.ts",
+    "some-ui:apps/www/src/lib/home-link/drain.ts"
+  ],
+  "chose": "A hunch home didn't answer is kept on the phone, never let go unsent (#3596). A look-up home didn't answer is kept in an outbox in localStorage, keyed by the hunch's name, and the Practice lane's drain sends it again as POST /phrases/lookup after the asks for the next scene. Home keeps a miss once per name, so any answer, hit or kept, lets it go; a refusal stays. A new hunch or \"again\" no longer drops one. The outbox is one more part of the drain the Practice lane already runs, not a lane of its own.",
+  "options": [
+    "keep it in an outbox the Practice drain sends again (taken)",
+    "a lane of its own for the shop's hunches",
+    "say on the screen that a hunch not sent is let go when the owner moves on"
+  ],
+  "gray": "\"Never lose the record\" asks for a durable copy, or the owner's word, before anything discards what the owner said, but which store and lane carry the copy no check settles. The coordinator settled keep-and-resend on #3596; where it rides is Claude's.",
+  "undo": "Drop the hunches part from drainHome and its two ports, and the outbox in lib/shop-home; the machine's keep effect then has nowhere to go and the port's keep becomes a no-op.",
+  "refs": ["#3596", "#2853", "#2849", "server#1261"],
+  "moves": "C1342"
+}

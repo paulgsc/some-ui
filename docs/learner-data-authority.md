@@ -1230,8 +1230,8 @@ was silent, so the run ended as if all had gone.
 ### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
 
 Everything the phone keeps for home (aph, the Jobs record, Practice's
-record with its written reflections, asks for the next scene, the
-soundbites' records, LeetType's answer notes, the grammar-lens record and
+record with its written reflections, asks for the next scene, the shop's
+hunches home didn't answer (KP4), the soundbites' records, LeetType's answer notes, the grammar-lens record and
 the rest of read aloud's Korean record (KH3), voice notes, Studio's ideas
 sent whole (ST26, which the voice lane carries after the notes their
 answers name) and Studio's videos kept for home to

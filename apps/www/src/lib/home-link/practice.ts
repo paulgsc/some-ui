@@ -3,8 +3,8 @@
  * holds of its own record, drained by `./drain` through the one wiring
  * (`./lanes`): its finished sessions and kept shelf items, its finished
  * LeetType sessions, Studio's sittings and answers, its written
- * reflections (LA16), its asks for the next scene (LA18), the soundbites'
- * records and LeetType's answer notes (`./notes`), and the grammar-lens
+ * reflections (LA16), its asks for the next scene (LA18), the shop's
+ * hunches home didn't answer (KP4), the soundbites' records and LeetType's answer notes (`./notes`), and the grammar-lens
  * record (`./lens-record`) and read aloud's (`./korean-record`). Its record moves with the sessions the app has
  * read (React Query's `sessionsKey`), each shelf keep (`onKept`), each write
  * to Studio's projects, each change to the reflections and the asks, each
@@ -30,6 +30,7 @@ import { sceneAsks } from "@/lib/scene-ask"
 import { reflections } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { onKept } from "@/lib/shelf-client"
+import { hunchOutbox } from "@/lib/shop-home/outbox"
 import { studioKeeping } from "@/lib/studio-keeping"
 import { useSessions } from "@/lib/tenant"
 import { sessionsKey } from "@/lib/tenant/queries"
@@ -88,6 +89,8 @@ export const practiceLane: Lane = {
       letGoHeld: letGoHeldReflections,
       promptsGoing: () => promptsGoing(pairing, storage),
       letGoHeldPrompts,
+      hunchesGoing: hunchOutbox.kept,
+      hunchesAnswered: hunchOutbox.answered,
       notesGoing: () => notesGoing(pairing, storage),
       holdNotes,
       lensGoing: () => lensGoing(pairing, storage),
@@ -106,6 +109,7 @@ export const practiceLane: Lane = {
         ...sceneAsks
           .kept()
           .map((p) => `${p.stamp}@${p.held === true ? "held" : "kept"}`),
+        ...hunchOutbox.kept().map((h) => `hunch:${h.hunch}`),
         // A note never changes on the phone (`./notes`), so its id says it.
         ...practiceRead.getSnapshot().bites.map((b) => `bite:${b.id}`),
         ...leetypeNotes().map((n) => `note:${n.id}`),
@@ -118,6 +122,7 @@ export const practiceLane: Lane = {
     const unsubscribeShelf = onKept(listener)
     const unsubscribeReflections = reflections.subscribe(listener)
     const unsubscribeAsks = sceneAsks.subscribe(listener)
+    const unsubscribeHunches = hunchOutbox.subscribe(listener)
     const unsubscribeNotes = leetypeNotesMoved.subscribe(listener)
     const unsubscribeRead = practiceRead.subscribe(listener)
     const stopReads = watchPracticeStores()
@@ -128,6 +133,7 @@ export const practiceLane: Lane = {
       unsubscribeShelf()
       unsubscribeReflections()
       unsubscribeAsks()
+      unsubscribeHunches()
       unsubscribeNotes()
       unsubscribeRead()
       stopReads()

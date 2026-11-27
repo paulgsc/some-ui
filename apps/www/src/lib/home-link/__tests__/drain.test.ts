@@ -24,6 +24,7 @@ import { notesOnPhone } from "@/lib/home-link/notes"
 import type { KeyedGoing } from "@/lib/home-link/sent"
 import { digestOf, readSent, SENT_KEY } from "@/lib/home-link/sent"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
+import type { PendingHunch } from "@/lib/shop-home/outbox"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
@@ -92,6 +93,8 @@ function setup(
     letGoHeld?: DrainPorts["letGoHeld"]
     prompts?: DrainPorts["promptsGoing"]
     letGoHeldPrompts?: DrainPorts["letGoHeldPrompts"]
+    hunchesGoing?: DrainPorts["hunchesGoing"]
+    hunchesAnswered?: DrainPorts["hunchesAnswered"]
     notes?: DrainPorts["notesGoing"]
     holdNotes?: DrainPorts["holdNotes"]
     lens?: DrainPorts["lensGoing"]
@@ -128,6 +131,8 @@ function setup(
     letGoHeld: over.letGoHeld ?? ((): void => undefined),
     promptsGoing: over.prompts ?? ((): Array<never> => []),
     letGoHeldPrompts: over.letGoHeldPrompts ?? ((): void => undefined),
+    hunchesGoing: over.hunchesGoing ?? ((): Array<PendingHunch> => []),
+    hunchesAnswered: over.hunchesAnswered ?? ((): void => undefined),
     notesGoing: over.notes ?? nothingGoing,
     holdNotes: over.holdNotes ?? ((): void => undefined),
     lensGoing: over.lens ?? nothingGoing,
@@ -739,6 +744,72 @@ describe("the drain's written reflections (LA16)", () => {
     await expect(drainHome(send, ports)).rejects.toThrow(HomeUnansweredError)
     expect(trims).toEqual([{ r1: expect.any(String) }])
     expect(asks).toEqual([{}])
+  })
+})
+
+describe("the drain's hunches home didn't answer (KP4)", () => {
+  const PLUMBER = {
+    hunch: "r-1",
+    words: "I need a plumber",
+    at: "2026-11-27T05:00:00.000Z",
+  }
+  const PHONE = {
+    hunch: "r-2",
+    words: "where's my phone",
+    at: "2026-11-27T05:01:00.000Z",
+  }
+
+  const sending = (
+    statuses: Array<number>
+  ): { send: HomeCall; sent: Array<string> } => {
+    const sent: Array<string> = []
+    const send: HomeCall = (method, path, body) => {
+      if (path !== "/phrases/lookup")
+        return Promise.resolve({ status: 200, body: "{}" })
+      expect(method).toBe("POST")
+      sent.push(String(body))
+      const status = statuses.shift() ?? 200
+      return Promise.resolve({ status, body: '{"kind":"kept"}' })
+    }
+    return { send, sent }
+  }
+
+  it("sends each one's words and name, and lets go those home answered", async () => {
+    const answered: Array<ReadonlySet<string>> = []
+    const { ports } = setup({
+      kept: [],
+      hunchesGoing: () => [PLUMBER, PHONE],
+      hunchesAnswered: (hunches) => {
+        answered.push(hunches)
+      },
+    })
+    const { send, sent } = sending([200, 422])
+    expect(await drainHome(send, ports)).toEqual({
+      kind: "failed",
+      why: "refused",
+    })
+    expect(sent).toEqual([
+      JSON.stringify({ words: "I need a plumber", hunch: "r-1" }),
+      JSON.stringify({ words: "where's my phone", hunch: "r-2" }),
+    ])
+    expect(answered).toEqual([new Set(["r-1"])])
+  })
+
+  it("leaves the rest for the next run on a home without the route or with meaning off", async () => {
+    for (const status of [404, 503]) {
+      const answered: Array<ReadonlySet<string>> = []
+      const { ports } = setup({
+        kept: [],
+        hunchesGoing: () => [PLUMBER, PHONE],
+        hunchesAnswered: (hunches) => {
+          answered.push(hunches)
+        },
+      })
+      const { send, sent } = sending([status])
+      expect(await drainHome(send, ports)).toEqual({ kind: "synced" })
+      expect(sent).toHaveLength(1)
+      expect(answered).toEqual([new Set()])
+    }
   })
 })
 

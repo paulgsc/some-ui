@@ -7,7 +7,8 @@
  * session PUT event by event and read back (`./leetype-log`), then Studio's
  * sittings and answers the same way (`./studio-log`), then each written
  * reflection (`./reflections`, LA16), then each ask for the next scene
- * (`./prompts`, LA18), then each soundbite's record and LeetType answer's
+ * (`./prompts`, LA18), then each of the shop's hunches home didn't answer
+ * (`./hunches`, KP4), then each soundbite's record and LeetType answer's
  * note home lacks (`./notes`), whose stores then hear what home holds of
  * them (`holdNotes`, OS1), the grammar-lens entries home lacks as they
  * are (`./lens-record`), and the rest of Korean's record likewise
@@ -35,10 +36,12 @@ import {
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
 import type { PendingAsk } from "@/lib/scene-ask"
+import type { PendingHunch } from "@/lib/shop-home/outbox"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import { sendHunches } from "./hunches"
 import { sendKorean } from "./korean-record"
 import type { LogReport, TakenEvents } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
@@ -91,6 +94,10 @@ export type DrainPorts = {
    * they named as carried by them (`./going`'s `letGoHeldPrompts`).
    */
   letGoHeldPrompts: (sent: Sent) => void
+  /** The shop's hunches home didn't answer (`lib/shop-home`'s outbox). */
+  hunchesGoing: () => ReadonlyArray<PendingHunch>
+  /** Home answered these hunches: they go from the outbox. */
+  hunchesAnswered: (hunches: ReadonlySet<string>) => void
   /** The study notes home lacks under `pairing`, and those on the phone (`./going`). */
   notesGoing: () => Promise<KeyedGoing<StudyNote>>
   /**
@@ -298,6 +305,10 @@ export async function drainHome(
     ports.letGoHeld(sent)
     ports.letGoHeldPrompts(sent)
   }
+  const hunches = await sendHunches(ports.hunchesGoing(), send)
+  ports.hunchesAnswered(hunches.answered)
+  if (hunches.ended !== null) return hunches.ended
+  if (hunches.refused) short ??= "refused"
   const notes = await ports.notesGoing()
   let notesEnded: HomeExchanged | null
   try {
