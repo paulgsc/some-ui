@@ -31,17 +31,12 @@ import {
 } from "@topik/lib/topik/constructions"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 
-/**
- * What ends the word: a construction from the catalogue, joining (와서) or
- * closing (와요, the form the mistake catalogue's irregular entries are about).
- */
-type Ending = ConstructionId
-
 type Tense = "none" | "past" | "future"
 
 export type Reading = Readonly<{
   dictionary: Dictionary
-  ending: Ending
+  /** A joining (와서) or closing (와요) construction from the catalogue. */
+  ending: ConstructionId
   tense: Tense
 }>
 
@@ -316,12 +311,11 @@ const breachOf = (reading: Reading): Breach | null => {
   return null
 }
 
-const ENDINGS: ReadonlyArray<Ending> = CONSTRUCTION_IDS
 const TENSES: ReadonlyArray<Tense> = ["none", "past", "future"]
 
 const readingsOf = function* (): Generator<Reading> {
   for (const dictionary of Object.keys(VOCABULARY).filter(isListed))
-    for (const ending of ENDINGS)
+    for (const ending of CONSTRUCTION_IDS)
       for (const tense of TENSES) yield { dictionary, ending, tense }
 }
 
