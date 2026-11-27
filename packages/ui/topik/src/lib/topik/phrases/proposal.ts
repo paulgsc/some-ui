@@ -4,9 +4,10 @@
  * hunches reach it (KP4, KP5), and `check:phrase` runs it on a proposal
  * written as JSON: the proposal is refused unless its shape holds (every
  * predicate a word on the vocabulary list, every ending one in the
- * catalogue), its id and its Korean are new to the shelf, and `checkPhrase`
- * finds no fault. A proposal is always `proposed` and heard in the AI voice: only the
- * owner accepts a phrase (#2852), and a proposal brings no audio.
+ * catalogue), its id is new to the shelf, no entry already says the same
+ * sentence, and `checkPhrase` finds no fault. A proposal is always
+ * `proposed` and heard in the AI voice: only the owner accepts a phrase
+ * (#2852), and a proposal brings no audio.
  */
 
 import type { Reading } from "@topik/lib/topik/conjugation"
@@ -109,7 +110,7 @@ const sameSentence = (a: string, b: string): boolean =>
 type ProposalFault =
   | PhraseFault
   | Readonly<{ kind: "id-taken" }>
-  /** The shelf already holds this Korean: a new intent for it, not a copy. */
+  /** The shelf already says this sentence: a new intent for it, not a copy. */
   | Readonly<{ kind: "korean-taken"; id: PhraseId }>
 
 export type CheckedProposal =

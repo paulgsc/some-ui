@@ -517,6 +517,24 @@ describe("a proposed phrase (KP5)", () => {
     }
   )
 
+  it("is refused as a copy whatever its comma: 비싸지만, 맛있어요.", () => {
+    const {
+      parts,
+      hear: _hear,
+      status: _status,
+      ...pricey
+    } = PHRASES["ph.pricey-but-good"]
+    const checked = checkProposal({
+      ...pricey,
+      id: "ph.dear-but-tasty",
+      korean: "비싸지만, 맛있어요.",
+      parts,
+    })
+    expect(checked.ok && checked.faults).toEqual([
+      { kind: "korean-taken", id: "ph.pricey-but-good" },
+    ])
+  })
+
   it("is put forward asking what the shelf only says: 괜찮아요?", () => {
     const checked = checkProposal({
       ...proposal,
