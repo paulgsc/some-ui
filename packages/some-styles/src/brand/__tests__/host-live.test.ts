@@ -532,7 +532,10 @@ describe("a note in flight survives a move (HN1, #3580)", () => {
   })
 
   it("shows the same note moved or not, over seeded streams, moves, shots and placements", () => {
-    for (let seed = 0; seed < 60; seed++) {
+    // each sample draws a whole frame, so: an 800 ms grid over the stream (a note shows 4 s, so a
+    // different set of notes can't hide between samples), and 50 ms steps through the second after
+    // each move, where a note in flight would be cut
+    for (let seed = 0; seed < 30; seed++) {
       const words =
         seed % 2 === 0
           ? wordsBy(seed, 90, 0, (i, r) =>
@@ -557,7 +560,13 @@ describe("a note in flight survives a move (HN1, #3580)", () => {
         .filter((c, k, all) => k === 0 || c - (all[k - 1] ?? 0) > 500)
       const alone = split(words, [])
       const moved = split(words, cuts, seed)
-      for (let t = 0; t < end; t += 100)
+      const times = [
+        ...Array.from({ length: Math.ceil(end / 800) }, (_, k) => k * 800),
+        ...cuts.flatMap((c) =>
+          Array.from({ length: 21 }, (_, k) => c + k * 50)
+        ),
+      ]
+      for (const t of times)
         expect(noteAt(moved, t), `seed ${String(seed)} at ${String(t)}`).toBe(
           noteAt(alone, t)
         )
