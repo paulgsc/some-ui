@@ -1,10 +1,11 @@
 /**
  * A proposed phrase, checked before the owner sees it (KPLAY's KP5, #2854).
- * The routine writes a proposal as JSON for a hunch that found nothing, and
- * `check:phrase` runs this on it: the proposal is refused unless its shape
- * holds (every predicate a word on the vocabulary list, every ending one in
- * the catalogue), its id is new to the shelf, and `checkPhrase` finds no
- * fault. A proposal is always `proposed` and heard in the AI voice: only the
+ * It is for the routine's answer to a hunch that found nothing, once kept
+ * hunches reach it (KP4, KP5), and `check:phrase` runs it on a proposal
+ * written as JSON: the proposal is refused unless its shape holds (every
+ * predicate a word on the vocabulary list, every ending one in the
+ * catalogue), its id and its Korean are new to the shelf, and `checkPhrase`
+ * finds no fault. A proposal is always `proposed` and heard in the AI voice: only the
  * owner accepts a phrase (#2852), and a proposal brings no audio.
  */
 
@@ -22,8 +23,12 @@ import {
   type Phrase,
   type PhraseFault,
 } from "@topik/lib/topik/phrases"
-import { PHRASE_IDS } from "@topik/lib/topik/phrases/shelf"
-import { HANGUL } from "@topik/lib/topik/read-aloud/content"
+import {
+  PHRASE_IDS,
+  PHRASES,
+  type PhraseId,
+} from "@topik/lib/topik/phrases/shelf"
+import { hangulRuns, WordSchema } from "@topik/lib/topik/read-aloud/content"
 import { z } from "zod"
 
 /** Every value of each closed set, checked complete by the compiler. */
@@ -63,8 +68,7 @@ const PartSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("word"),
     written: z.string(),
-    lemma: z.string().regex(HANGUL, "a lemma is Hangul syllables"),
-    gloss: Text,
+    ...WordSchema.pick({ lemma: true, gloss: true }).shape,
   }),
   z.strictObject({
     kind: z.literal("built"),
@@ -94,7 +98,14 @@ const ProposalSchema = z.strictObject({
 })
 
 /** Something that keeps a proposal from reaching the owner. */
-type ProposalFault = PhraseFault | Readonly<{ kind: "id-taken" }>
+type ProposalFault =
+  | PhraseFault
+  | Readonly<{ kind: "id-taken" }>
+  /** The shelf already holds this Korean: a new intent for it, not a copy. */
+  | Readonly<{ kind: "korean-taken"; id: PhraseId }>
+
+const sameWords = (a: string, b: string): boolean =>
+  hangulRuns(a).join(" ") === hangulRuns(b).join(" ")
 
 export type CheckedProposal =
   | Readonly<{
@@ -113,12 +124,18 @@ export const checkProposal = (raw: unknown): CheckedProposal => {
   const { id, ...rest } = parsed.data
   const phrase: Phrase = { ...rest, hear: "ai-voice", status: "proposed" }
   const taken = PHRASE_IDS.some((landed) => landed === id)
+  const same = PHRASE_IDS.find((landed) =>
+    sameWords(PHRASES[landed].korean, phrase.korean)
+  )
   return {
     ok: true,
     id,
     phrase,
     faults: [
       ...(taken ? [{ kind: "id-taken" } as const] : []),
+      ...(same === undefined
+        ? []
+        : [{ kind: "korean-taken", id: same } as const]),
       ...checkPhrase(phrase),
     ],
   }

@@ -252,12 +252,13 @@ export type ParsedDeck =
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 /** One run of Hangul syllables: a lemma, a pronunciation. */
-export const HANGUL = /^[가-힣]+$/
+const HANGUL = /^[가-힣]+$/
 
 const IdSchema = z.string().regex(ID, "ids are kebab-case ASCII")
 const LevelSchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
 
-const WordSchema = z.object({
+/** A listed word, whose lemma and gloss a phrase's word part reuses. */
+export const WordSchema = z.object({
   id: IdSchema,
   lemma: z.string().regex(HANGUL, "a lemma is Hangul syllables"),
   gloss: z.string().trim().min(1),

@@ -483,7 +483,35 @@ describe("a proposed phrase (KP5)", () => {
         },
       ],
     }
-    expect(checkProposal(unknown).ok).toBe(false)
+    const checked = checkProposal(unknown)
+    expect(checked.ok).toBe(false)
+    if (!checked.ok) expect(checked.error).toContain("parts[1].reading.ending")
+  })
+
+  it("is refused with Korean the shelf already holds, naming its entry", () => {
+    const checked = checkProposal({
+      ...proposal,
+      id: "ph.its-fine",
+      korean: "괜찮아요.",
+      intents: ["it's fine"],
+      toWhom: "anyone",
+      setting: "everyday",
+      mood: "statement",
+      parts: [
+        {
+          kind: "built",
+          reading: {
+            dictionary: "괜찮다",
+            ending: "close.ayo.plain",
+            tense: "none",
+          },
+          gloss: "be okay",
+        },
+      ],
+    })
+    expect(checked.ok && checked.faults).toEqual([
+      { kind: "korean-taken", id: "ph.its-okay" },
+    ])
   })
 
   it("is refused when it claims what only the owner gives: acceptance, audio", () => {
