@@ -198,6 +198,7 @@ export const HandheldLesson = ({
     routineFeed,
     metadataRepository,
     sceneAsk,
+    shopHome,
     sceneVoice,
     sceneFileHint,
     wordSetHint,
@@ -701,6 +702,7 @@ export const HandheldLesson = ({
           initialOrder={openingOrder(orders.last(), holdsNew(held, menu.tally))}
           onOrdered={orders.save}
           onStart={startDish}
+          {...(shopHome ? { shop: shopHome } : {})}
           short={short}
         />
       )

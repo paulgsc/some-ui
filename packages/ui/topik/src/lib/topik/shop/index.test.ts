@@ -1,5 +1,6 @@
 import { addFailureSink } from "@some-ui/intent-kit"
 import { PHRASES } from "@topik/lib/topik/phrases/shelf"
+import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import {
   initialShop,
   step,
@@ -7,6 +8,7 @@ import {
   type ShopState,
 } from "@topik/lib/topik/shop"
 import { createShopRuntime, type ShopPort } from "@topik/lib/topik/shop/runtime"
+import { saidHow, SHOP_WORDS, shownParts } from "@topik/lib/topik/shop/words"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const run = (
@@ -404,5 +406,35 @@ describe("the shop's runtime", () => {
     await settle()
     expect(seen).toEqual(["looking"])
     expect(shop.snapshot().at.kind).toBe("looking")
+  })
+})
+
+describe("what the shop says", () => {
+  const said = (value: unknown): Array<string> =>
+    typeof value === "string"
+      ? [value]
+      : typeof value === "object" && value !== null
+        ? Object.values(value).flatMap(said)
+        : []
+
+  it("says what is kept where, never the machinery", () => {
+    const words = said(SHOP_WORDS).filter((w) => w !== "")
+    expect(words.length).toBeGreaterThan(20)
+    for (const word of words) expect(word).not.toMatch(MACHINERY)
+  })
+
+  it("shows a phrase's parts as written, each with what it is made from", () => {
+    const phrase = PHRASES["ph.rained-so-stayed-home"]
+    expect(shownParts(phrase)).toEqual([
+      { written: "비가", from: "비", gloss: expect.any(String) },
+      { written: "와서", from: "오다 + -아서/어서", gloss: expect.any(String) },
+      { written: "집에", from: "집", gloss: expect.any(String) },
+      {
+        written: "있었어요",
+        from: "있다 + -아요/어요, in the past",
+        gloss: expect.any(String),
+      },
+    ])
+    expect(saidHow(phrase)).toMatch(/^polite, to /)
   })
 })

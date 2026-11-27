@@ -10,6 +10,7 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik/core/session-types"
+import type { ShopPort } from "@topik/lib/topik/shop/runtime"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository
@@ -41,6 +42,8 @@ export type SessionConfig = {
    * the Android app's. Absent, the prompt goes by the clipboard alone.
    */
   sceneAsk?: SceneAsk
+  /** Looks a hunch up on home (`lib/topik/shop`): the Android app's. */
+  shopHome?: ShopPort
   sceneVoice?: SceneVoice
   sceneFileHint?: string
   wordSetHint?: string
