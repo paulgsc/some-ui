@@ -142,7 +142,7 @@ export type {
   SceneAskSnapshot,
 } from "./lib/topik/adapter/next-scene-ask"
 export type { Lookup } from "./lib/topik/shop"
-export type { ShopPort } from "./lib/topik/shop/runtime"
+export type { Heard, ShopPort } from "./lib/topik/shop/runtime"
 export type {
   SceneNote,
   SceneVoice,

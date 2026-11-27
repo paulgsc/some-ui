@@ -83,16 +83,19 @@ export type ShopState = Readonly<{
         kept: boolean
         name: string | null
       }
-    /** Home has the spoken take but hasn't heard it yet: ask again. */
-    | { kind: "unheard"; hunch: Hunch; number: number }
+    /**
+     * The spoken take isn't heard yet: home has it (`going` false), or it is
+     * still on its way there (`going` true). Ask again.
+     */
+    | { kind: "unheard"; hunch: Hunch; number: number; going: boolean }
 }>
 
 export type ShopEvent = Readonly<
   | { kind: "hunch"; hunch: Hunch }
   /** `hunch` is the heard hunch's number, from its `hear` effect. */
   | { kind: "heard"; seq: number; hunch: number; name: string; words: string }
-  /** Home has the take but didn't hear it in time. */
-  | { kind: "unheard"; seq: number }
+  /** Home didn't hear the take in time: it has it, or it is on its way. */
+  | { kind: "unheard"; seq: number; going: boolean }
   | { kind: "answered"; seq: number; lookup: Lookup }
   /** Home couldn't be reached to hear the take. */
   | { kind: "unreached"; seq: number }
@@ -247,7 +250,7 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
         ...state,
         at:
           event.kind === "unheard"
-            ? { kind: "unheard", hunch, number: at.number }
+            ? { kind: "unheard", hunch, number: at.number, going: event.going }
             : {
                 kind: "unreached",
                 hunch,

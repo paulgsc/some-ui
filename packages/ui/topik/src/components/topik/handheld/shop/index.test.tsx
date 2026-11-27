@@ -21,7 +21,7 @@ const type = (words: string): void => {
 describe("the shop", () => {
   it("shows the phrases a hunch finds, with their parts, and keeps a basket", async () => {
     const port: ShopPort = {
-      hear: () => Promise.resolve(null),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () =>
         Promise.resolve({ kind: "hit", phrases: ["ph.where-is-my-phone"] }),
       keep: () => true,
@@ -42,7 +42,7 @@ describe("the shop", () => {
     vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
     const kept: Array<string> = []
     const port: ShopPort = {
-      hear: () => Promise.resolve(null),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.reject(new Error("offline")),
       keep: (words) => {
         kept.push(words)
@@ -58,7 +58,7 @@ describe("the shop", () => {
 
   it("answers under StrictMode, which shows the screen twice", async () => {
     const port: ShopPort = {
-      hear: () => Promise.resolve(null),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.resolve({ kind: "kept" }),
       keep: () => true,
     }
@@ -73,7 +73,7 @@ describe("the shop", () => {
 
   it("offers to say it where the port keeps takes, and only there", () => {
     const port: ShopPort = {
-      hear: () => Promise.resolve(null),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.resolve({ kind: "kept" }),
       keep: () => true,
     }
@@ -93,7 +93,7 @@ describe("the shop", () => {
 
   it("says a miss was kept on home", async () => {
     const port: ShopPort = {
-      hear: () => Promise.resolve(null),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.resolve({ kind: "kept" }),
       keep: () => true,
     }

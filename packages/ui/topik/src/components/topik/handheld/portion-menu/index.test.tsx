@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest"
 afterEach(cleanup)
 
 const PORT: ShopPort = {
-  hear: () => Promise.resolve(null),
+  hear: () => Promise.resolve({ kind: "held" }),
   lookUp: () => Promise.resolve({ kind: "kept" }),
   keep: () => true,
 }

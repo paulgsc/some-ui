@@ -36,6 +36,15 @@ export type ShopTakes = Readonly<{
   subscribe: (listener: () => void) => () => void
 }>
 
+/** What home said of a spoken take's words. */
+export type Heard = Readonly<
+  | { kind: "heard"; words: string }
+  /** Home holds the take and hasn't heard it yet. */
+  | { kind: "held" }
+  /** The take is still on its way to home. */
+  | { kind: "going" }
+>
+
 /** Home, as the shop asks it (paulgsc/server#1265). */
 export type ShopPort = Readonly<{
   /**
@@ -45,10 +54,10 @@ export type ShopPort = Readonly<{
   takes?: ShopTakes | undefined
   /**
    * Home's Whisper: the words of the spoken take `note`, hunch `hunch`'s,
-   * once home has heard it; null when home has it but hasn't heard it in
-   * time.
+   * once home has heard it; or that it hasn't in time, home holding it or
+   * the take still on its way there. `gone` aborts once the screen is gone.
    */
-  hear: (note: string, hunch: string) => Promise<string | null>
+  hear: (note: string, hunch: string, gone: AbortSignal) => Promise<Heard>
   /**
    * Home's meaning index: the phrases a hunch's words find, or kept. `hunch`
    * names the hunch, the same each time it is sent: home keeps a miss once.
@@ -87,6 +96,7 @@ export const createShopRuntime = (
 ): ShopRuntime => {
   let state = initialShop
   let disposed = false
+  let gone = new AbortController()
   let said = 0
   /** The name the next take is recorded under. */
   let recording = `${id}-said-1`
@@ -122,11 +132,11 @@ export const createShopRuntime = (
         ask(
           "hear",
           { kind: "unreached", seq },
-          () => port.hear(note, name),
-          (words): ShopEvent =>
-            words === null
-              ? { kind: "unheard", seq }
-              : { kind: "heard", seq, hunch, name, words }
+          () => port.hear(note, name, gone.signal),
+          (heard): ShopEvent =>
+            heard.kind === "heard"
+              ? { kind: "heard", seq, hunch, name, words: heard.words }
+              : { kind: "unheard", seq, going: heard.kind === "going" }
         )
         return
       }
@@ -171,11 +181,15 @@ export const createShopRuntime = (
     () => undefined
   )
 
-  // A take kept under the name it was started on is that hunch, spoken.
+  // A take kept under the name it was started on is that hunch, spoken:
+  // followed from the first record until the screen is gone.
   const takes = port.takes
-  let ended = takes?.pattern.getSnapshot().ended?.seq ?? 0
-  const follow = (): (() => void) =>
-    takes?.pattern.subscribe(() => {
+  let ended = 0
+  let following: (() => void) | null = null
+  const follow = (): (() => void) => {
+    if (takes === undefined) return (): void => undefined
+    ended = takes.pattern.getSnapshot().ended?.seq ?? 0
+    return takes.pattern.subscribe(() => {
       const last = takes.pattern.getSnapshot().ended
       if (last === null || last.seq === ended) return
       ended = last.seq
@@ -188,8 +202,8 @@ export const createShopRuntime = (
         kind: "hunch",
         hunch: { kind: "spoken", note: last.id, name },
       })
-    }) ?? ((): void => undefined)
-  let unfollow = follow()
+    })
+  }
 
   return {
     snapshot: () => state,
@@ -197,19 +211,23 @@ export const createShopRuntime = (
       dispatch({ kind: "hunch", hunch: { kind: "typed", text } })
     },
     record: (): void => {
-      if (!disposed) takes?.pattern.tap(recording)
+      if (disposed || takes === undefined) return
+      following ??= follow()
+      takes.pattern.tap(recording)
     },
     tap: dispatch,
     dispose: (): void => {
       if (disposed) return
       disposed = true
-      unfollow()
+      gone.abort()
+      following?.()
+      following = null
       takes?.pattern.leave()
     },
     resume: (): void => {
       if (!disposed) return
       disposed = false
-      unfollow = follow()
+      gone = new AbortController()
     },
   }
 }

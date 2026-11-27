@@ -10,6 +10,7 @@ import {
 } from "@topik/lib/topik/shop"
 import {
   createShopRuntime,
+  type Heard,
   type ShopPort,
   type ShopRuntime,
 } from "@topik/lib/topik/shop/runtime"
@@ -296,7 +297,7 @@ describe("the shop's runtime", () => {
         kept.push([words, hunch])
         return true
       },
-      hear: () => Promise.resolve(""),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: (_, hunch) => {
         named.push(hunch)
         if (fail) {
@@ -323,7 +324,7 @@ describe("the shop's runtime", () => {
     const stop = addFailureSink((failure) => ports.push(failure.port))
     const port: ShopPort = {
       keep: () => true,
-      hear: () => Promise.resolve(""),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => {
         throw new Error("no adapter")
       },
@@ -344,7 +345,7 @@ describe("the shop's runtime", () => {
         kept.push(`${hunch}:${words}`)
         return true
       },
-      hear: () => Promise.resolve(""),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () =>
         new Promise((_, reject) => {
           fail = reject
@@ -362,7 +363,7 @@ describe("the shop's runtime", () => {
   it("answers again once resumed after dispose, as a screen shown twice is", async () => {
     const port: ShopPort = {
       keep: () => true,
-      hear: () => Promise.resolve(""),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.resolve({ kind: "kept" }),
     }
     const shop = createShopRuntime(port, () => undefined)
@@ -379,7 +380,7 @@ describe("the shop's runtime", () => {
   it("says a hunch this phone couldn't keep wasn't kept", async () => {
     const port: ShopPort = {
       keep: () => false,
-      hear: () => Promise.resolve(""),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.reject(new Error("offline")),
     }
     const shop = createShopRuntime(port, () => undefined)
@@ -392,7 +393,7 @@ describe("the shop's runtime", () => {
     const seen: Array<string> = []
     const port: ShopPort = {
       keep: () => true,
-      hear: () => Promise.resolve("it's okay"),
+      hear: () => Promise.resolve({ kind: "held" }),
       lookUp: () => Promise.resolve({ kind: "kept" }),
     }
     const shop = createShopRuntime(port, (state) => seen.push(state.at.kind))
@@ -435,7 +436,7 @@ describe("a spoken hunch", () => {
       hear: (note, hunch) => {
         asked.push(`hear ${hunch}`)
         expect(takes.getSnapshot().takes.map((t) => t.id)).toContain(note)
-        return Promise.resolve("where's my phone")
+        return Promise.resolve({ kind: "heard", words: "where's my phone" })
       },
       lookUp: (words, hunch) => {
         asked.push(`look ${hunch} ${words}`)
@@ -460,7 +461,7 @@ describe("a spoken hunch", () => {
   })
 
   it("says home has the take but hasn't heard it yet, and asks again on a retry", async () => {
-    let heard: string | null = null
+    let heard: Heard = { kind: "held" }
     const port: ShopPort = {
       takes: lensTakes(),
       keep: () => true,
@@ -469,14 +470,48 @@ describe("a spoken hunch", () => {
     }
     const shop = createShopRuntime(port, () => undefined, "r")
     await say(shop)
-    expect(shop.snapshot().at).toMatchObject({ kind: "unheard", number: 1 })
-    heard = "I need a plumber"
+    expect(shop.snapshot().at).toMatchObject({
+      kind: "unheard",
+      number: 1,
+      going: false,
+    })
+    heard = { kind: "heard", words: "I need a plumber" }
     shop.tap({ kind: "retry" })
     await pass()
     expect(shop.snapshot().at).toEqual({
       kind: "kept",
       words: "I need a plumber",
     })
+  })
+
+  it("says a take still on its way to home is on its way", async () => {
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: () => true,
+      hear: () => Promise.resolve({ kind: "going" }),
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    expect(shop.snapshot().at).toMatchObject({ kind: "unheard", going: true })
+  })
+
+  it("stops hearing once the screen is gone", async () => {
+    const seen: { signal: AbortSignal | null } = { signal: null }
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: () => true,
+      hear: (_note, _hunch, gone) => {
+        seen.signal = gone
+        return new Promise(() => undefined)
+      },
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    expect(seen.signal?.aborted).toBe(false)
+    shop.dispose()
+    expect(seen.signal?.aborted).toBe(true)
   })
 
   it("keeps a spoken hunch's look-up home didn't answer under its own name", async () => {
@@ -487,7 +522,7 @@ describe("a spoken hunch", () => {
         kept.push(`${hunch}:${words}`)
         return true
       },
-      hear: () => Promise.resolve("I need a plumber"),
+      hear: () => Promise.resolve({ kind: "heard", words: "I need a plumber" }),
       lookUp: () => Promise.reject(new Error("offline")),
     }
     const shop = createShopRuntime(port, () => undefined, "r")

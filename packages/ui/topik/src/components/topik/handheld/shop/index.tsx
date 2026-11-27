@@ -11,6 +11,7 @@ import type { JSX, SyntheticEvent } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Input } from "@some-ui/shared"
+import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 import { PHRASES, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 import type { ShopState } from "@topik/lib/topik/shop"
 import { initialShop } from "@topik/lib/topik/shop"
@@ -86,14 +87,33 @@ const SayIt = ({
   const recording = pattern.take.kind === "recording"
   if (full && !recording)
     return <p className="text-muted-foreground mx-1 text-sm">{W.full}</p>
+  // Why the last take wasn't the hunch, in the microphone's own words.
+  const { ended } = pattern
+  const why =
+    ended === null || recording
+      ? null
+      : ended.ending === "blocked"
+        ? ended.reason === null
+          ? null
+          : TAKE_ENDING_WORDS.blocked(ended.reason)
+        : ended.ending === "kept"
+          ? ended.unheard
+            ? TAKE_ENDING_WORDS.unheard
+            : null
+          : TAKE_ENDING_WORDS[ended.ending]
   return (
-    <Button
-      variant={recording ? "default" : "outline"}
-      className="h-12 rounded-xl"
-      onClick={onTap}
-    >
-      {recording ? W.stop : W.say}
-    </Button>
+    <div className="flex flex-col gap-1.5">
+      <Button
+        variant={recording ? "default" : "outline"}
+        className="h-12 rounded-xl"
+        onClick={onTap}
+      >
+        {recording ? W.stop : W.say}
+      </Button>
+      {why !== null && (
+        <p className="text-muted-foreground mx-1 text-sm">{why}</p>
+      )}
+    </div>
   )
 }
 
@@ -193,7 +213,7 @@ const Answer = ({
     case "unheard": {
       return (
         <div className="flex flex-col gap-2">
-          <p className="mx-1 text-sm">{W.unheard}</p>
+          <p className="mx-1 text-sm">{at.going ? W.going : W.unheard}</p>
           <Button
             variant="outline"
             className="self-start rounded-xl"
@@ -207,7 +227,13 @@ const Answer = ({
     case "unreached": {
       return (
         <div className="flex flex-col gap-2">
-          <p className="mx-1 text-sm">{at.kept ? W.unreached : W.unkept}</p>
+          <p className="mx-1 text-sm">
+            {at.hunch.kind === "spoken"
+              ? W.unreachedSaid
+              : at.kept
+                ? W.unreached
+                : W.unkept}
+          </p>
           <Button
             variant="outline"
             className="self-start rounded-xl"
