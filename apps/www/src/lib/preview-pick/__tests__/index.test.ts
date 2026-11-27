@@ -303,7 +303,7 @@ describe("previewsRuntime (HOST16)", () => {
     }
   )
 
-  it("lets a pick kept and not read back stand, so the next follows it", async () => {
+  it("reads a pick kept and not read back again, so the next follows home", async () => {
     const s = scripted()
     const runtime = previewsRuntime(s.source, () => AT)
     runtime.open()
@@ -318,15 +318,29 @@ describe("previewsRuntime (HOST16)", () => {
     })
     s.answer[0]?.({ kind: "written", value: null })
     await settled()
-    const state = runtime.state.getSnapshot()
+    const waiting = runtime.state.getSnapshot()
+    // Kept, said so; what stands waits for home's own read of it.
+    expect(waiting.phase === "shown" && waiting.said?.outcome).toBe("kept")
     expect(
-      state.phase === "shown" && state.conversations[0]?.previews[0]?.standing
-    ).toEqual({
+      waiting.phase === "shown" &&
+        waiting.conversations[0]?.previews[0]?.standing
+    ).toBeNull()
+    expect(s.rereads).toHaveLength(1)
+    runtime.pick("runners", OFFER.preview, {
       kind: "variant",
-      variant: "dip-to-black",
-      rule: "joins-dip-at-chapters",
+      variant: "crossfade",
     })
-    // Back to crossfade: sent, as a move.
+    expect(s.sent).toHaveLength(1)
+    s.rereads[0]?.({
+      kind: "read",
+      value: conversation({
+        kind: "variant",
+        variant: "dip-to-black",
+        rule: "joins-dip-at-chapters",
+      }),
+    })
+    await settled()
+    // Back to crossfade: sent, as a move of what home holds.
     runtime.pick("runners", OFFER.preview, {
       kind: "variant",
       variant: "crossfade",

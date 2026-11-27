@@ -176,18 +176,6 @@ const withNow = (
       : c
   )
 
-/** `pick` as the choice that stands, its rule its variant's. */
-const keptOf = (
-  offered: OfferedPreview,
-  pick: PreviewPick
-): KeptChoice | null => {
-  if (pick.kind === "else") return { kind: "else", said: pick.said.trim() }
-  const variant = offered.variants.find((v) => v.variant === pick.variant)
-  return variant === undefined
-    ? offered.standing
-    : { kind: "variant", variant: variant.variant, rule: variant.rule }
-}
-
 /**
  * The approval a pick on `preview` moves, if any (C1581): its own standing
  * pick, else another standing preview of `conversation` that sets the rule
@@ -293,29 +281,19 @@ export function stepPreviews(
       if (state.phase !== "shown" || state.keeping === null) return { state }
       const { keeping } = state
       const { now } = event
-      // Kept, and not read back: the pick stands as sent, so the next pick
-      // follows it (its move, or "already").
+      // What stands is home's alone: a pick kept and read back shows what
+      // home now holds. One refused, not read, not answered (home may have
+      // kept it before the answer was lost), or kept and not read back, is
+      // read again, so the screen and the next pick follow what home's own
+      // record makes of it (its moves included). Busy and unpaired sent
+      // nothing.
       const conversations =
-        now !== undefined
-          ? withNow(state.conversations, now)
-          : event.outcome === "kept"
-            ? state.conversations.map((c) =>
-                c.id !== keeping.conversation
-                  ? c
-                  : {
-                      ...c,
-                      previews: c.previews.map((p) =>
-                        p.preview === keeping.preview
-                          ? { ...p, standing: keptOf(p, keeping.pick) }
-                          : p
-                      ),
-                    }
-              )
-            : state.conversations
-      // Refused, not read, or not answered (home may have kept it before
-      // the answer was lost): read again, so the screen and the next pick
-      // follow what is kept now. Busy and unpaired sent nothing.
-      const uncertain = UNCERTAIN.has(event.outcome)
+        now === undefined
+          ? state.conversations
+          : withNow(state.conversations, now)
+      const uncertain =
+        UNCERTAIN.has(event.outcome) ||
+        (event.outcome === "kept" && now === undefined)
       const next: PreviewsState = {
         ...state,
         conversations,
