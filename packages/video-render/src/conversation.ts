@@ -65,12 +65,13 @@ import {
   SHARED_EMOTIONS,
   type HostCharacter,
 } from "@some-ui/styles/brand/host"
+import type { WordSpan } from "@some-ui/styles/brand/host-live"
 import { ROLES } from "@some-ui/styles/brand/host-role"
 import { z } from "zod"
 
 import { ClaimSourceSchema } from "./claims"
 import { problemsOf, SayableSchema, SpokenTurnSchema } from "./cut-list"
-import type { Parsed } from "./cut-list"
+import type { Parsed, TimedWord } from "./cut-list"
 import { showId, words } from "./format"
 import { KOKORO_VOICES } from "./voices"
 
@@ -1072,6 +1073,36 @@ export const ownerSpans = (
   )
 
 /** The owner's takes a version plays, each once, in the order first played. */
+/** One of a version's turns as heard, its words timed on the video's clock (the speaker's `/timed`, or the take's transcript as played). */
+export type TimedTurn = {
+  readonly turn: string
+  readonly words: ReadonlyArray<TimedWord>
+}
+
+/**
+ * What `character` hears while it listens (#3580): every word the version's
+ * other characters say, in order, as `BeatOf.hears` takes it
+ * (`@some-ui/styles/brand/host`), so a listener's play waits for a pause in
+ * the whole conversation. A character's own speakers in other roles (Tin
+ * Bird the auditor and the skeptic) are itself, never heard. A turn the
+ * version doesn't have, or whose speaker it doesn't name, is not heard.
+ */
+export function hearsOf(
+  version: PodcastVersion,
+  timed: ReadonlyArray<TimedTurn>,
+  character: (typeof CHARACTERS)[number]
+): ReadonlyArray<WordSpan> {
+  const whose = new Map(version.speakers.map((s) => [s.id, s.character]))
+  const by = new Map(version.turns.map((t) => [t.id, whose.get(t.speaker)]))
+  return timed
+    .filter((t) => {
+      const who = by.get(t.turn)
+      return who !== undefined && who !== character
+    })
+    .flatMap((t) => t.words.map(({ startMs, endMs }) => ({ startMs, endMs })))
+    .sort((a, b) => a.startMs - b.startMs)
+}
+
 export const ownerTakes = (version: PodcastVersion): ReadonlyArray<string> => [
   ...new Set(ownerSpans(version).map((s) => s.take)),
 ]

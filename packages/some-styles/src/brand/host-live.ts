@@ -181,7 +181,8 @@ export function livenessAt(
   who: HostCharacter,
   words: ReadonlyArray<SpokenWord>,
   seed: number,
-  tMs: number
+  tMs: number,
+  hears: ReadonlyArray<WordSpan> = []
 ): Liveness {
   const P = LIVENESS_POLICY
   const s = tMs / 1000
@@ -208,14 +209,33 @@ export function livenessAt(
     mouth,
     body,
     fatigue: fatigueAt(words, tMs),
-    play: playAt(who, words, seed, tMs),
+    play: playAt(who, conversationOf(words, hears), seed, tMs),
   }
 }
+
+/**
+ * A word another speaker says while this one listens (#3580): only when, on
+ * the video's clock. Play waits for a pause in the whole conversation, so a
+ * listener never fidgets over someone else's sentence.
+ */
+export type WordSpan = {
+  readonly startMs: number
+  readonly endMs: number
+}
+
+/** Everything said around the host, its own words and those it hears, in order: the silences play may fill. */
+const conversationOf = (
+  words: ReadonlyArray<SpokenWord>,
+  hears: ReadonlyArray<WordSpan>
+): ReadonlyArray<WordSpan> =>
+  hears.length === 0
+    ? words
+    : [...words, ...hears].sort((a, b) => a.startMs - b.startMs)
 
 /** The act played in the silence around `tMs`, if it is one played in: a pause between two words, or open silence. */
 function playAt(
   who: HostCharacter,
-  words: ReadonlyArray<SpokenWord>,
+  words: ReadonlyArray<WordSpan>,
   seed: number,
   tMs: number
 ): Liveness["play"] {
