@@ -116,7 +116,11 @@ export const createShopRuntime = (
     Promise.resolve()
       .then(call)
       .then(
-        (value) => dispatch(answer(value)),
+        (value) => {
+          // A hear the screen's going cut short is asked again on resume.
+          if (what === "hear" && asked.aborted) return
+          dispatch(answer(value))
+        },
         (error: unknown) => {
           // A look-up that fails is kept however late; a hear is asked again.
           if (what === "hear" && asked.aborted) return

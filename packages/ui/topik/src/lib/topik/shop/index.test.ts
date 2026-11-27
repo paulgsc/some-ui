@@ -536,6 +536,35 @@ describe("a spoken hunch", () => {
     })
   })
 
+  it("drops a hear cut short by the screen going, though it answers after it came back", async () => {
+    let first: (heard: Heard) => void = () => undefined
+    let hears = 0
+    const port: ShopPort = {
+      takes: lensTakes(),
+      keep: () => true,
+      hear: () => {
+        hears += 1
+        return hears === 1
+          ? new Promise((resolve) => {
+              first = resolve
+            })
+          : Promise.resolve({ kind: "heard", words: "I need a plumber" })
+      },
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    await say(shop)
+    shop.dispose()
+    shop.resume()
+    await pass()
+    first({ kind: "going" })
+    await pass()
+    expect(shop.snapshot().at).toEqual({
+      kind: "kept",
+      words: "I need a plumber",
+    })
+  })
+
   it("says a take still on its way to home is on its way", async () => {
     const port: ShopPort = {
       takes: lensTakes(),
