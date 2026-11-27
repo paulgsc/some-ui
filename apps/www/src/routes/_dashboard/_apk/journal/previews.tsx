@@ -43,6 +43,14 @@ const PreviewsScreen = (): JSX.Element => {
   )
 }
 
+/**
+ * Only the Android app's build carries the screen: home's previews are read
+ * over the phone's link to home, which runs only there (vite-env.d.ts,
+ * VITE_DEVICE_BACKEND), and the web builds never route here.
+ */
+const PreviewsRoute = (): JSX.Element | null =>
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? <PreviewsScreen /> : null
+
 export const Route = createFileRoute("/_dashboard/_apk/journal/previews")({
-  component: PreviewsScreen,
+  component: PreviewsRoute,
 })

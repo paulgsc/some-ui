@@ -377,6 +377,17 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the files a render leaves beside an episode, and which home makes alone (ASSETS-R, C1300): only the Android app's episode page shows them and asks home for one (src/lib/call-videos, components/episode-files.tsx). home's worker reads the same module from the repo, outside any build, through `record:asset`",
     },
     {
+      modules: [
+        "packages/video-render/src/conversation.ts",
+        "packages/video-render/src/preview-offer.ts",
+        "apps/www/src/lib/preview-home/**",
+        "apps/www/src/lib/preview-pick/**",
+        "apps/www/src/components/studio/preview-pick.tsx",
+      ],
+      profiles: [MOBILE_PROFILE],
+      why: "a conversation essay's record and the previews it offers, and the owner's picks on them (HOST16, #3558): only the Android app's Studio shows Previews and keeps a pick on home (src/routes/_dashboard/_apk/journal/previews.tsx, src/lib/home-link)",
+    },
+    {
       modules: ["packages/video-render/src/feedback.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the categories a note on an episode picks from and where each goes (SFEED6): only the Android app's Studio leaves a note (src/lib/episode-feedback). The reflections routine's filing (`pending.ts`) reads the same module from the repo, outside any build",
