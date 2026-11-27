@@ -23,16 +23,16 @@
 # installed package has, read from the package manager rather than a list kept
 # here) "wing entered: <id>", where the alias is .Wing<Id>; both are
 # MainActivity's own lines under the same tag. At the foyer and at each wing's
-# root a drag down from near the top of the page must check again (PULL5,
-# epic #2456): the page's pull writes a "pull checked: <how>" line in the
-# same log for each check that ends on the page that asked
-# (lib/pull-refresh's `note` port), so a gesture the WebView or a scroller
-# ate fails here, since no test elsewhere drags a real WebView. A drag the
-# wing's own navigation interrupted is tried once more. How the check ended (read, offline, unread) is listed,
+# root a drag down from near the top of the page must check again (PULL5, epic
+# #2456): the page's pull writes a "pull checked: <how>" line in the same log
+# for each check that ends on the page that asked (lib/pull-refresh's `note`
+# port), so a gesture the WebView or a scroller ate fails here, since no test
+# elsewhere drags a real WebView. A drag the wing's own navigation interrupted
+# is tried once more. How the check ended (read, offline, unread) is listed,
 # not failed: the emulator has no home to read. Back pressed at a wing's root,
 # entered by its icon, must leave the app: MainActivity's back handling is
-# reached by nothing else, since the monkey run below never presses back.
-# The launcher shortcut, on the running app, must log its entry too.
+# reached by nothing else, since the monkey run below never presses back. The
+# launcher shortcut, on the running app, must log its entry too.
 #
 # What it cannot see is a WebView that starts and stays blank: that does not
 # crash. Only the screenshot shows the page rendered. Two signals that looked
