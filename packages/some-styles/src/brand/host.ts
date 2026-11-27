@@ -1062,6 +1062,9 @@ function feeling(beat: Beat, emotion: Emotion): Beat {
   }
 }
 
+/** One empty list for a beat that says nothing, so the living layer's merge (`conversationOf`) is kept once per beat, not made again every frame. */
+const NO_WORDS: ReadonlyArray<never> = []
+
 /**
  * What the host shows `tMs` into its run, over `area` (the frame's safe
  * area above the captions, or a preview's card): the latest beat at or
@@ -1090,7 +1093,7 @@ export function hostAt(
     before?.character === beat.character && e < 1
       ? blendNodes(poseOf(beats, i - 1, seed, tMs, aim).nodes, pose.nodes, e)
       : pose.nodes
-  const words = beat.words ?? []
+  const words = beat.words ?? NO_WORDS
   const live = livenessAt(beat.character, words, seed, tMs, beat.hears)
   const toward =
     beat.target === undefined ? { x: 0, y: 0 } : towards(beat.target, box, area)
