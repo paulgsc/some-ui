@@ -3,6 +3,9 @@
  * previews the agent offered, each preview with its standing pick, and a
  * pick on its way to where picks are kept. The runtime (`./runtime`) owns
  * every wait and dispatches what came back; this is what the screen reads.
+ * Each step also returns what it asks of where picks are kept (a read, an
+ * approval, a read again), and the runtime does exactly that and nothing
+ * else: it never infers a request from the state.
  *
  * A pick is the record's `approve` (C1581, C1582). One pick is on its way at
  * a time, and the one that stands is home's: once home took it, the screen
@@ -12,10 +15,12 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { HomeRead } from "@some-ui/soundbites"
 import type {
+  ConversationEvent,
   KeptChoice,
   PreviewOffer,
   PreviewPick,
 } from "@some-ui/video-render"
+import { approveEvent } from "@some-ui/video-render"
 
 /** A preview as the screen shows it: the offer, each variant's clip, and its standing pick. */
 export type OfferedPreview = PreviewOffer & {
@@ -99,6 +104,8 @@ export type PreviewsEvent =
       readonly conversation: string
       readonly preview: string
       readonly pick: PreviewPick
+      /** When the owner picked: the approval's `at`. */
+      readonly at: string
     }
   | {
       readonly kind: "picked"
@@ -111,10 +118,27 @@ export type PreviewsEvent =
   /** It couldn't be read again: why, and the screen asks again from the top. */
   | { readonly kind: "unreconciled"; readonly why: NotShown }
 
+/** What a step asks of where picks are kept: the runtime does exactly this. */
+export type PreviewsEffect =
+  | { readonly kind: "read" }
+  | {
+      readonly kind: "approve"
+      readonly conversation: string
+      readonly event: Extract<ConversationEvent, { event: "approve" }>
+    }
+  /** Read one conversation again, after a pick whose outcome is uncertain. */
+  | { readonly kind: "reread"; readonly conversation: string }
+
+/** A step: the state after an event, and what it asks, if anything. */
+export type PreviewsStep = {
+  readonly state: PreviewsState
+  readonly effect?: PreviewsEffect
+}
+
 export const READING: PreviewsState = { phase: "reading" }
 
 /** The outcomes after which what is kept is read again before the next pick. */
-export const UNCERTAIN: ReadonlySet<PickOutcome> = new Set([
+const UNCERTAIN: ReadonlySet<PickOutcome> = new Set([
   "refused",
   "unreadable",
   "away",
@@ -163,7 +187,7 @@ const keptOf = (
  * pick, else another standing preview of `conversation` that sets the rule
  * this pick would, since the record refuses a rule set twice unnamed.
  */
-export function movesFor(
+function movesFor(
   conversation: ConversationPreviews,
   preview: string,
   pick: PreviewPick
@@ -182,7 +206,7 @@ export function movesFor(
 }
 
 /** The preview `preview` of conversation `conversation`, where it is shown. */
-export function previewIn(
+function previewIn(
   state: PreviewsState,
   conversation: string,
   preview: string
@@ -194,45 +218,73 @@ export function previewIn(
     : undefined
 }
 
-/** The state after `event`: pure, so every order is a test. */
+/**
+ * The state after `event`, and what it asks of where picks are kept: pure,
+ * so every order is a test, and a request is sent only when a step returns
+ * it.
+ */
 export function stepPreviews(
   state: PreviewsState,
   event: PreviewsEvent
-): PreviewsState {
+): PreviewsStep {
   switch (event.kind) {
     case "read": {
-      return event.result.kind === "read"
-        ? {
-            phase: "shown",
-            conversations: event.result.value.conversations,
-            unreadable: event.result.value.unreadable,
-            keeping: null,
-            said: null,
-            reconciling: false,
-          }
-        : { phase: "nothing", why: event.result.kind }
+      return {
+        state:
+          event.result.kind === "read"
+            ? {
+                phase: "shown",
+                conversations: event.result.value.conversations,
+                unreadable: event.result.value.unreadable,
+                keeping: null,
+                said: null,
+                reconciling: false,
+              }
+            : { phase: "nothing", why: event.result.kind },
+      }
     }
     case "again": {
-      return state.phase === "shown" && state.keeping !== null ? state : READING
+      return state.phase === "shown" && state.keeping !== null
+        ? { state }
+        : { state: READING, effect: { kind: "read" } }
     }
     case "pick": {
-      if (state.phase !== "shown" || state.keeping !== null) return state
-      if (state.reconciling) return state
+      if (state.phase !== "shown" || state.keeping !== null) return { state }
+      if (state.reconciling) return { state }
+      const held = state.conversations.find((c) => c.id === event.conversation)
       const offered = previewIn(state, event.conversation, event.preview)
-      if (offered === undefined) return state
+      if (held === undefined || offered === undefined) return { state }
       if (stands(offered.standing, event.pick))
-        return { ...state, said: said(state, "already") }
+        return { state: { ...state, said: said(state, "already") } }
+      const moves = movesFor(held, event.preview, event.pick)
+      const approve = approveEvent(
+        offered,
+        event.pick,
+        event.at,
+        moves === undefined ? {} : { moves }
+      )
+      // Not an approval the record could take (empty words): nothing sent,
+      // so nothing is uncertain.
+      if (approve === null)
+        return { state: { ...state, said: said(state, "refused") } }
       return {
-        ...state,
-        keeping: {
+        state: {
+          ...state,
+          keeping: {
+            conversation: event.conversation,
+            preview: event.preview,
+            pick: event.pick,
+          },
+        },
+        effect: {
+          kind: "approve",
           conversation: event.conversation,
-          preview: event.preview,
-          pick: event.pick,
+          event: approve,
         },
       }
     }
     case "picked": {
-      if (state.phase !== "shown" || state.keeping === null) return state
+      if (state.phase !== "shown" || state.keeping === null) return { state }
       const { keeping } = state
       const { now } = event
       // Kept, and not read back: the pick stands as sent, so the next pick
@@ -254,27 +306,39 @@ export function stepPreviews(
                     }
               )
             : state.conversations
-      return {
+      // Refused, not read, or not answered (home may have kept it before
+      // the answer was lost): read again, so the screen and the next pick
+      // follow what is kept now. Busy and unpaired sent nothing.
+      const uncertain = UNCERTAIN.has(event.outcome)
+      const next: PreviewsState = {
         ...state,
         conversations,
         keeping: null,
         said: said(state, event.outcome),
-        reconciling: UNCERTAIN.has(event.outcome),
+        reconciling: uncertain,
       }
+      return uncertain
+        ? {
+            state: next,
+            effect: { kind: "reread", conversation: keeping.conversation },
+          }
+        : { state: next }
     }
     case "refreshed": {
       return state.phase === "shown"
         ? {
-            ...state,
-            conversations: withNow(state.conversations, event.now),
-            reconciling: false,
+            state: {
+              ...state,
+              conversations: withNow(state.conversations, event.now),
+              reconciling: false,
+            },
           }
-        : state
+        : { state }
     }
     case "unreconciled": {
       return state.phase === "shown" && state.reconciling
-        ? { phase: "nothing", why: event.why }
-        : state
+        ? { state: { phase: "nothing", why: event.why } }
+        : { state }
     }
     default: {
       return assertNever(event)

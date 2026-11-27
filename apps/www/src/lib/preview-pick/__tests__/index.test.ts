@@ -45,7 +45,7 @@ const shown = (c: ConversationPreviews = conversation()): PreviewsState =>
       kind: "read",
       result: { kind: "read", value: { conversations: [c], unreadable: 0 } },
     }
-  )
+  ).state
 
 /** A promise and its resolve, to answer when the test says. */
 function later<T>(): {
@@ -69,7 +69,7 @@ describe("stepPreviews (HOST16)", () => {
         stepPreviews(
           { phase: "reading" },
           { kind: "read", result: { kind: why } }
-        )
+        ).state
       ).toEqual({ phase: "nothing", why })
     }
   )
@@ -80,7 +80,8 @@ describe("stepPreviews (HOST16)", () => {
       conversation: "runners",
       preview: OFFER.preview,
       pick: { kind: "variant", variant: "crossfade" },
-    })
+      at: AT,
+    }).state
     expect(picking.phase === "shown" && picking.keeping?.preview).toBe(
       OFFER.preview
     )
@@ -91,7 +92,8 @@ describe("stepPreviews (HOST16)", () => {
         conversation: "runners",
         preview: OFFER.preview,
         pick: { kind: "variant", variant: "dip-to-black" },
-      })
+        at: AT,
+      }).state
     ).toBe(picking)
     const kept = stepPreviews(picking, {
       kind: "picked",
@@ -101,7 +103,7 @@ describe("stepPreviews (HOST16)", () => {
         variant: "crossfade",
         rule: "joins-crossfade",
       }),
-    })
+    }).state
     if (kept.phase !== "shown") throw new Error("not shown")
     expect(kept.keeping).toBeNull()
     expect(kept.said).toEqual({ n: 1, outcome: "kept" })
@@ -114,7 +116,8 @@ describe("stepPreviews (HOST16)", () => {
       conversation: "runners",
       preview: OFFER.preview,
       pick: { kind: "variant", variant: "crossfade" },
-    })
+      at: AT,
+    }).state
     expect(again.phase === "shown" && again.keeping).toBeNull()
     expect(again.phase === "shown" && again.said).toEqual({
       n: 2,
@@ -130,9 +133,12 @@ describe("stepPreviews (HOST16)", () => {
         conversation: "elsewhere",
         preview: OFFER.preview,
         pick: { kind: "variant", variant: "crossfade" },
-      })
+        at: AT,
+      }).state
     ).toBe(state)
-    expect(stepPreviews(state, { kind: "picked", outcome: "kept" })).toBe(state)
+    expect(stepPreviews(state, { kind: "picked", outcome: "kept" }).state).toBe(
+      state
+    )
   })
 })
 
@@ -186,7 +192,7 @@ describe("conversations home can't read (HOST16)", () => {
           value: { conversations: [conversation()], unreadable: 2 },
         },
       }
-    )
+    ).state
     expect(state.phase === "shown" && state.unreadable).toBe(2)
   })
 })
