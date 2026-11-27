@@ -319,6 +319,39 @@ describe("the shop's runtime", () => {
     expect(ports).toEqual(["topik shop (look-up)"])
   })
 
+  it("looks up a take heard after the next hunch, named as its own hunch", async () => {
+    const looked: Array<readonly [string, string]> = []
+    let hearFirst: (words: string) => void = () => undefined
+    let hears = 0
+    const port: ShopPort = {
+      hear: () => {
+        hears += 1
+        return hears === 1
+          ? new Promise((resolve) => {
+              hearFirst = resolve
+            })
+          : Promise.resolve("did you eat")
+      },
+      lookUp: (words, hunch) => {
+        looked.push([words, hunch])
+        return Promise.resolve({ kind: "kept" })
+      },
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    shop.speak(new Blob(["first"]))
+    await settle()
+    shop.speak(new Blob(["second"]))
+    await settle()
+    const after = shop.snapshot()
+    hearFirst("I need a plumber")
+    await settle()
+    expect(looked).toEqual([
+      ["did you eat", "r-2"],
+      ["I need a plumber", "r-1"],
+    ])
+    expect(shop.snapshot()).toBe(after)
+  })
+
   it("changes nothing once disposed", async () => {
     const seen: Array<string> = []
     const port: ShopPort = {
