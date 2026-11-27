@@ -12,6 +12,7 @@ import ReactDOM from "react-dom/client"
 import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
+import { sweepHunchTakes } from "@/lib/hunch-takes"
 import { sweepIdeaTakes } from "@/lib/idea-takes"
 import { sweepInterviewTakes } from "@/lib/interview-week"
 import { listenForNoticeTaps } from "@/lib/jobs/notice-native"
@@ -49,12 +50,14 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections, scene notes, grammar-lens takes, LeetType takes, Rust
+// Voice reflections, scene notes, grammar-lens takes, the shop's spoken
+// hunches, LeetType takes, Rust
 // Rounds' notes, the interview week's takes, Studio's idea takes and takes
 // with no scene, and their audio, each without the other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepLensTakes()
+  sweepHunchTakes()
   sweepLeetypeTakes()
   sweepRustRoundsNotes()
   sweepInterviewTakes()

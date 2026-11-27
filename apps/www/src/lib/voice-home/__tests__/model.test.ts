@@ -124,6 +124,7 @@ describe("the record of voice notes on their way home", () => {
       "leetype",
       "rust-round",
       "interview",
+      "hunch",
     ])
   })
 

@@ -26,6 +26,7 @@ export const KIND_NAMES: Readonly<Record<Of, string>> = {
   jobs: "Jobs notes",
   "rust-round": "Rust Rounds notes",
   interview: "Interview takes",
+  hunch: "Things you said to the shop",
 }
 
 /** Where a recording is kept. */
@@ -327,6 +328,7 @@ export const DELETABLE_NAMES: Readonly<
   jobs: { one: "Jobs note", many: "Jobs notes" },
   "rust-round": { one: "Rust Rounds note", many: "Rust Rounds notes" },
   interview: { one: "interview take", many: "interview takes" },
+  hunch: { one: "thing said to the shop", many: "things said to the shop" },
 }
 
 /**
@@ -376,6 +378,10 @@ const STAYS_HERE: Readonly<
   interview: {
     one: "Its place in the interview week: the question or card it answered",
     many: "Each one's place in the interview week: the question or card it answered",
+  },
+  hunch: {
+    one: "Nothing: the shop keeps no list of what you said to it",
+    many: "Nothing: the shop keeps no list of what you said to it",
   },
 }
 

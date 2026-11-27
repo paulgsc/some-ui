@@ -15,6 +15,7 @@ export const TAKE_OFS = [
   "leetype",
   "rust-round",
   "interview",
+  "hunch",
 ] as const
 
 /**
