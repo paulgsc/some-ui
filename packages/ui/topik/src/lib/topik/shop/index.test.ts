@@ -505,6 +505,29 @@ describe("a spoken hunch", () => {
     ])
   })
 
+  it("records the next take under a new name once one still being kept as the screen went is kept", async () => {
+    const takes = lensTakes()
+    const port: ShopPort = {
+      takes,
+      keep: () => true,
+      hear: () => new Promise(() => undefined),
+      lookUp: () => Promise.resolve({ kind: "kept" }),
+    }
+    const shop = createShopRuntime(port, () => undefined, "r")
+    shop.record()
+    await pass(2_000)
+    shop.record()
+    expect(takes.pattern.getSnapshot().take.kind).toBe("keeping")
+    shop.dispose()
+    await pass()
+    shop.resume()
+    await say(shop)
+    expect(takes.getSnapshot().takes.map((t) => t.answers)).toEqual([
+      "r-said-1",
+      "r-said-2",
+    ])
+  })
+
   it("asks again for a take's words heard across the screen going and coming back, saying nothing failed", async () => {
     const reported: Array<string> = []
     const stop = addFailureSink((failure) => reported.push(failure.port))

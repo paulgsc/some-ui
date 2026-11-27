@@ -227,9 +227,13 @@ export const createShopRuntime = (
       if (disposed) return
       disposed = true
       gone.abort()
-      // A take under way is kept by `leave`, under this name, and goes home
-      // as a voice note: the next take is another hunch, so another name.
-      if (takes?.pattern.getSnapshot().take.kind === "recording") {
+      // A take under way (opening, recording, or still being kept) ends
+      // under this name with nothing left to follow it, and goes home as a
+      // voice note: the next take is another hunch, so another name.
+      if (
+        takes !== undefined &&
+        takes.pattern.getSnapshot().take.kind !== "idle"
+      ) {
         said += 1
         recording = `${id}-said-${String(said + 1)}`
       }
