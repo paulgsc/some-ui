@@ -14,7 +14,13 @@
 import type { JSX } from "react"
 import { useId, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, DecisionPick, Notice, Textarea } from "@some-ui/shared"
+import {
+  Button,
+  DecisionPick,
+  Notice,
+  Reading,
+  Textarea,
+} from "@some-ui/shared"
 import type { DecisionPicked } from "@some-ui/shared"
 import type { PreviewPick as Pick, PreviewVariant } from "@some-ui/video-render"
 import { CONVERSATION_POLICY } from "@some-ui/video-render"
@@ -206,8 +212,7 @@ export const Previews = ({
     previews.state.subscribe,
     previews.state.getSnapshot
   )
-  if (state.phase === "reading")
-    return <p className="text-muted-foreground text-sm">{W.reading}</p>
+  if (state.phase === "reading") return <Reading>{W.reading}</Reading>
   if (state.phase === "nothing")
     return (
       <div className="flex flex-col gap-2">
