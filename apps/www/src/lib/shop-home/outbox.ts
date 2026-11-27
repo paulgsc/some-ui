@@ -41,7 +41,10 @@ function isPending(value: unknown): value is PendingHunch {
 }
 
 export type HunchOutbox = {
-  /** Keeps a hunch, once however often it is kept; false when it can't. */
+  /**
+   * Keeps a hunch, once however often it is kept; false when it can't, or
+   * when home refused it before.
+   */
   keep: (words: string, hunch: string) => boolean
   /** Every hunch kept, oldest first, set aside or not. */
   kept: () => Array<PendingHunch>
@@ -85,7 +88,9 @@ export function createHunchOutbox(ports: {
   return {
     keep(words, hunch): boolean {
       const kept = read()
-      if (kept.some((pending) => pending.hunch === hunch)) return true
+      const held = kept.find((pending) => pending.hunch === hunch)
+      // One set aside is never sent again: not kept for home.
+      if (held !== undefined) return held.refused !== true
       return write([...kept, { hunch, words, at: ports.now().toISOString() }])
     },
     kept: read,

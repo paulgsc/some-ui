@@ -39,6 +39,7 @@ describe("the shop's hunches home didn't answer", () => {
       },
     ])
     expect(outbox.going()).toEqual([])
+    expect(outbox.keep("I need a plumber", "r-1")).toBe(false)
   })
 
   it("keeps what it holds across a reload", () => {

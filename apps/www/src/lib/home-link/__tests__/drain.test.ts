@@ -798,7 +798,31 @@ describe("the drain's hunches home didn't answer (KP4)", () => {
     expect(refusals).toEqual([new Set(["r-2"])])
   })
 
-  it("leaves the rest for the next run on any other answer, the run going on", async () => {
+  it("asks for the hunches last, after Korean's record", async () => {
+    const order: Array<string> = []
+    const { ports } = setup({
+      kept: [],
+      korean: () => {
+        order.push("korean")
+        return nothingGoing()
+      },
+      hunchesGoing: () => {
+        order.push("hunches")
+        return []
+      },
+    })
+    await drainHome(sending([]).send, ports)
+    expect(order).toEqual(["korean", "hunches"])
+  })
+
+  it("ends the run as home forgetting this phone on a 401", async () => {
+    const { ports } = setup({ kept: [], hunchesGoing: () => [PLUMBER] })
+    expect(await drainHome(sending([401]).send, ports)).toEqual({
+      kind: "forgotten",
+    })
+  })
+
+  it("leaves the rest for the next run on any other answer", async () => {
     for (const status of [404, 429, 500, 503]) {
       const answered: Array<ReadonlySet<string>> = []
       const { ports } = setup({
