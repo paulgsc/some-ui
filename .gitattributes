@@ -1,0 +1,2 @@
+# The RNNoise model is pinned by its sha256: never convert its line endings.
+packages/video-render/src/rnnoise/sh.rnnn -text

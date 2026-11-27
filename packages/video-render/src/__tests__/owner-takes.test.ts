@@ -22,6 +22,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { TimedWord } from "@video-render/cut-list"
+import { expand, spectralGate } from "@video-render/hiss"
 import { nodePorts, rnnoiseModel } from "@video-render/node"
 import {
   conditionTake,
@@ -927,6 +928,25 @@ describe("conditionTake (HOST12, HISS1)", () => {
       )
       if (!done.ok) throw new Error(done.problems.join("\n"))
       const bytes = new Uint8Array(await readFile(join(root, work, "out.wav")))
+      // The levelled turn, through the gate, the expander and the trim:
+      // what is written is exactly that (HISS1's wiring).
+      const level = samplesOf(
+        new Uint8Array(await readFile(join(root, work, "levelled.wav")))
+      )
+      if (level === null) throw new Error("no levelled turn")
+      const trimmed = expand(
+        spectralGate(Float64Array.from(level.samples), level.rate),
+        level.rate
+      )
+      if (trimmed === null) throw new Error("nothing voiced")
+      expect(bytes.byteLength).toBe(44 + trimmed.samples.length * 2)
+      const pcm = new DataView(bytes.buffer, bytes.byteOffset + 44)
+      trimmed.samples.forEach((x, i) => {
+        if (i % 101 !== 0) return
+        expect(pcm.getInt16(i * 2, true)).toBe(
+          Math.max(-32768, Math.min(32767, Math.round(x * 32767))) | 0
+        )
+      })
       const out = samplesOf(bytes)
       if (out === null) throw new Error("not a WAV")
       runs.push({

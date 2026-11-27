@@ -58,11 +58,22 @@ describe("spectralGate (HISS1)", () => {
   })
 
   it("filters a take longer than a chunk in chunks, as noisereduce does", () => {
+    // noisereduce's own output with chunk_size=10000 and padding=4000, at
+    // the seams between chunks.
     const policy = { ...HISS_POLICY, chunk: 10_000, padding: 4_000 }
     const y = spectralGate(input(), RATE, policy)
+    const want: ReadonlyArray<readonly [number, number]> = [
+      [9_999, -0.2136201049],
+      [10_000, -0.2038194455],
+      [10_001, -0.2129215511],
+      [19_999, 0.001437815264],
+      [20_000, 6.684949131e-5],
+      [20_001, 0.001988648603],
+      [28_799, 0.001457820438],
+    ]
     expect(y.length).toBe(28_800)
-    // Each chunk sees its neighbours through its padding: the tone is kept.
-    expect(Math.abs(y[12_345] ?? 0)).toBeGreaterThan(0.15)
+    for (const [i, v] of want)
+      expect(Math.abs((y[i] ?? 0) - v)).toBeLessThan(1e-6)
   })
 })
 

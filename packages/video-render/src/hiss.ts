@@ -2,7 +2,11 @@
  * The hiss taken out of the owner's conditioned takes (HISS1, #3607): the
  * last two stages of the chain the owner picked by ear (C1611, "C2"), after
  * `arnndn` and HOST12's cut and level. Pure functions of a take's samples,
- * so the same take gives the same bytes:
+ * so the same take gives the same bytes on the same engine: its windows and
+ * twiddles are `synth.ts`'s arithmetic, but its levels are `Math.log10`
+ * and `Math.hypot`, whose last bit is the engine's, so the bytes are held
+ * by the render image's pinned Node, not by this file alone (it is not one
+ * of eslint.config.js's `SAME_BYTES` files):
  *
  * - **The spectral gate** (`spectralGate`): noisereduce's stationary gate
  *   (3.0.3, `stationary=True`), ported so home's render image needs no

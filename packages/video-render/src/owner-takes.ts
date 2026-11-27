@@ -747,7 +747,7 @@ export type ConditionedTake = {
  * its loudness, then through the spectral gate, the expander and the trim
  * (HISS1). Four ffmpeg calls (RNNoise, cut, measure, level) and the gate in
  * code, whose bytes depend only on the take, the conditioning and the
- * model. `model` is the path ffmpeg loads `RNNOISE_MODEL` from; `work`
+ * model, on one render image (its ffmpeg and Node pinned). `model` is the path ffmpeg loads `RNNOISE_MODEL` from; `work`
  * holds the step's own files.
  */
 export async function conditionTake(

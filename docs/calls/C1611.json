@@ -7,14 +7,7 @@
     "some-ui:packages/video-render/src/owner-takes.ts",
     "some-ui:packages/video-render/src/plan.ts"
   ],
-  "chose": "C2, the chain the owner picked by ear from CONVO-PD's A/B on their own takes. The owner: \"B is still not clean. C is the closest… some noise at the middle. We don't want too much complexity, so we can descend on C, unless there's a trivial way of targeting that noise in the middle.\" Then: \"C2 is cleaner, go with C2.\" Each take: a high-pass at 80 Hz and RNNoise (arnndn, GregorR's somnolent-hogwash sh.rnnn) on the raw take; HOST12's conditioning (TAKE1's spans, the 280 ms gap, 1.2x, -16 LUFS); noisereduce's stationary gate (prop_decrease 0.9, n_fft 2048, its profile the turn's quietest 15% of 10 ms frames); an expander fully open 22 dB under the speaking level (the 90th percentile of its frames), closed 8 dB under that, held 20 ms each side, smoothed by a 7-frame Hann window, floored at 0.02; and a trim to 60 ms before the first voiced frame and 140 ms after the last, with 30 ms fades. It moves C1564's denoise, and HOST12's keep-breaths-whole rule for the owner's takes: a breath is still never cut, but the expander turns it down with the pause around it.",
-  "options": [
-    "B: RNNoise alone, then HOST12",
-    "A: HOST12, then noisereduce and the expander (thr speak-28, hold 40 ms, floor 0.03)",
-    "C: RNNoise, HOST12, noisereduce, the expander at speak-28",
-    "C2: C with the expander at speak-22, hold 20 ms, floor 0.02 (taken)"
-  ],
-  "gray": "How clean the owner's voice sounds is theirs to hear; no check settles it, and they chose between versions of their own takes.",
+  "chose": "C2, the chain the owner picked by ear from CONVO-PD's A/B on their own takes. The owner: \"B is still not clean. C is the closest… some noise at the middle. We don't want too much complexity, so we can descend on C, unless there's a trivial way of targeting that noise in the middle.\" Then: \"C2 is cleaner, go with C2.\" Each take: a high-pass at 80 Hz and RNNoise (arnndn, GregorR's somnolent-hogwash sh.rnnn) on the raw take; HOST12's conditioning (TAKE1's spans, the 280 ms gap, 1.2x, -16 LUFS); noisereduce's stationary gate (prop_decrease 0.9, n_fft 2048, its profile the turn's quietest 15% of 10 ms frames); an expander fully open 22 dB under the speaking level (the 90th percentile of its frames), closed 8 dB under that, held 20 ms each side, smoothed by a 7-frame Hann window, floored at 0.02; and a trim to 60 ms before the first voiced frame and 140 ms after the last, with 30 ms fades. It moves C1564's denoise by adding to it (HOST12's own high-pass and afftdn still run in the cut, as they did in the chain the owner heard), and HOST12's keep-breaths-whole rule for the owner's takes: a breath is still never cut, but the expander turns it down with the pause around it.",
   "undo": "Move HISS_POLICY in packages/video-render/src/hiss.ts back to C's (openUnderSpeakingDb 28, holdFrames 4, floor 0.03), or drop the RNNoise step and the gate from conditionTake; record a call that moves this one.",
   "refs": ["#3607", "#3521"],
   "moves": "C1564"
