@@ -6,15 +6,19 @@
  * function the essays' burn-ins draw.
  *
  * `HostPreview` is pure in its time: the same beats, seed and `tMs` give the
- * same picture. `useLoopTime` is the page's one loop clock
- * (`lib/loop-clock`), held still where the phone asks for less motion.
+ * same picture. It draws the frame's drawing inline (`drawNodes`), under ids
+ * of its own, so a frame changes elements in place rather than handing the
+ * page a new image to decode (C1612). `useLoopTime` is the page's one
+ * loop clock (`lib/loop-clock`), held still where the phone asks for less
+ * motion.
  */
 import type { JSX, ReactNode } from "react"
-import { useSyncExternalStore } from "react"
+import { useId, useSyncExternalStore } from "react"
 import { useMediaQuery } from "@some-ui/react-hooks"
 import type { Area, Beat } from "@some-ui/styles/brand/host"
 import { hostAt, idleAt } from "@some-ui/styles/brand/host"
 
+import { drawNodes } from "../../../lib/draw-nodes"
 import type { LoopClock } from "../../../lib/loop-clock"
 import {
   ANIMATION_FRAMES,
@@ -79,6 +83,7 @@ export const HostPreview = ({
   label,
   className,
 }: HostPreviewProps): JSX.Element => {
+  const ids = useId().replace(/[^A-Za-z0-9]/g, "")
   const area = areaOf(aspect)
   const frame = hostAt(
     beats,
@@ -95,12 +100,10 @@ export const HostPreview = ({
     >
       {children}
       {frame !== null && (
-        <img
-          src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(frame.svg)}`}
-          alt=""
+        <div
           aria-hidden
-          draggable={false}
-          className="pointer-events-none absolute select-none"
+          data-host-frame=""
+          className="pointer-events-none absolute select-none [&>svg]:block [&>svg]:size-full"
           style={{
             left: share(frame.box.x, area.width),
             top: share(frame.box.y, area.height),
@@ -108,7 +111,9 @@ export const HostPreview = ({
             height: share(frame.box.height, area.height),
             opacity: frame.opacity,
           }}
-        />
+        >
+          {drawNodes([frame.drawing], { idPrefix: ids })}
+        </div>
       )}
     </div>
   )
