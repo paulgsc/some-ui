@@ -263,12 +263,13 @@ adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
 # A short random walk inside the app. System keys are off so it does not
 # leave for the home screen; the seed keeps a failure reproducible.
 step "drive the app with a seeded monkey run"
-# --ignore-timeouts carries it past an ANR in another process: on
-# 2026-11-27 (#3613, android-compat run 46073041905) system_server's IME
+# --ignore-timeouts keeps the walk going past any ANR, the app's included:
+# on 2026-11-27 (#3613, android-compat run 46073041905) system_server's IME
 # switcher timed out under load and aborted the walk at event 160 of 300,
-# with the app fine. An ANR in the app still fails this test: monkey.txt's
-# "// NOT RESPONDING: <pkg>" and logcat's "ANR in <pkg>", below.
-adb shell monkey -p "$pkg" --pct-syskeys 0 --ignore-timeouts --throttle 250 -s 42 -v 300 \
+# with the app fine. An ANR in the app is caught instead by monkey.txt's
+# "// NOT RESPONDING: <pkg>" and logcat's "ANR in <pkg>", below; the walk
+# is bounded at 10 minutes so a hung app still reaches those checks.
+timeout 600 adb shell monkey -p "$pkg" --pct-syskeys 0 --ignore-timeouts --throttle 250 -s 42 -v 300 \
   > "$out/monkey.txt" 2>&1 || true
 adb exec-out screencap -p > "$out/after-monkey.png" || true
 kill "$logcat_pid" 2>/dev/null || true
