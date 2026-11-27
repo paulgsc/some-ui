@@ -9,6 +9,8 @@ export type { Deck, PagerState, Turn } from "./lib/pager"
 export { lockOf, offsetOf, SLOP_PX } from "./lib/pager"
 export type { PagerRuntime } from "./lib/pager/runtime"
 export { CLAIMS_POINTER, claimsAxis, createPager } from "./lib/pager/runtime"
+export type { DrawOptions } from "./lib/draw-nodes"
+export { drawNodes } from "./lib/draw-nodes"
 export type { FramePort, LoopClock } from "./lib/loop-clock"
 export {
   createLoopClock,

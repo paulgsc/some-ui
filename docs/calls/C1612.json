@@ -1,0 +1,22 @@
+{
+  "id": "C1612",
+  "made": "2026-11-27",
+  "by": "claude",
+  "agreed": "2026-11-27",
+  "paths": [
+    "some-ui:packages/ui/shared/src/components/patterns/host-preview/index.tsx",
+    "some-ui:packages/ui/shared/src/lib/draw-nodes/index.ts",
+    "some-ui:packages/some-styles/src/brand/host.ts"
+  ],
+  "chose": "HostPreview draws a frame's drawing inline, as SVG elements through the brand's one React drawer (drawNodes, moved from www's lib/brand into @some-ui/shared), under ids of its own (useId), instead of as an <img> whose src is a fresh data:image/svg+xml URL each frame. hostAt's frame carries its drawing as data (drawing: CastNode) beside the same SVG text (svg), which stays byte-for-byte what it was (HOST5) for what draws outside React, such as the burn-ins' stage. The loop clock, its 6.8 s loop and its 15 pictures a second are as C1533 chose.",
+  "options": [
+    "Draw the frame inline from its data through drawNodes, with ids of its own (chosen)",
+    "Keep the data: URL image each frame (C1533), and accept that Cast takes the launch test's emulator down",
+    "Draw the frame on a canvas",
+    "Hold the previews still and drop the loop"
+  ],
+  "gray": "Claude proposed drawing inline on #3613, where the launch test's emulator went away within 2 s of the Cast wing's page starting and on no other wing, and the Cast Home was the one page handing the WebView six new images to decode 15 times a second; the owner picked it through the coordinator on 2026-11-27. The proving run (android-compat 46068385008) disproved that premise: drawn inline, the emulator still went away, and a bisection (46070007646) showed the drawing's paint under the emulator's swiftshader_indirect renderer was the trigger, image or not. The owner then chose to land it on its own merits: about 90 fewer image decodes a second on the phone's Cast Home, with the frame's SVG text unchanged. Whether that cost matters on a real phone is unmeasured, which no check settles.",
+  "undo": "Draw frame.svg as an <img> with a data:image/svg+xml src again in HostPreview; hostAt's svg is unchanged.",
+  "refs": ["#3613", "#3614", "#3615", "#3532"],
+  "moves": "C1533"
+}

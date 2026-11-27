@@ -1,11 +1,10 @@
 import type { JSX, ReactNode } from "react"
 import { createContext, useContext, useId } from "react"
+import { drawNodes } from "@some-ui/shared"
 import { CAST_VIEW_BOX, castNodes } from "@some-ui/styles/brand/cast"
 import type { Character } from "@some-ui/styles/brand/cast"
 import { codeSpans } from "@some-ui/video-render"
 import type { Shape, Speaker } from "@some-ui/video-render"
-
-import { drawNodes } from "@/lib/brand/draw-nodes"
 
 import { ESSAY_WORDS as W } from "./essay-words"
 
@@ -96,7 +95,7 @@ const CastIcon = ({ who }: { who: Character }): JSX.Element => {
       {drawNodes(
         castNodes(who, (name) => `${prefix}-${name}`),
         // The ground is the theme's.
-        "fill-muted"
+        { groundClass: "fill-muted" }
       )}
     </svg>
   )

@@ -7,10 +7,10 @@
  * every theme, as a video's thumbnail is.
  */
 import type { JSX } from "react"
+import { drawNodes } from "@some-ui/shared"
 import { GENRE_VIEW_BOX, genreArt } from "@some-ui/styles/brand/genres"
 import type { Genre } from "@some-ui/styles/brand/genres"
 
-import { drawNodes } from "@/lib/brand/draw-nodes"
 import type { Feed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index"
 
