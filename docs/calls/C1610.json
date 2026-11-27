@@ -1,0 +1,20 @@
+{
+  "id": "C1610",
+  "made": "2026-11-27",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/hiss.ts",
+    "some-ui:packages/video-render/src/owner-takes.ts",
+    "some-ui:packages/video-render/src/plan.ts",
+    "some-ui:packages/video-render/src/rnnoise"
+  ],
+  "chose": "Rung 3, build only the gap. The owner's chain (C1611) runs on home in the conditioning step itself: RNNoise through the ffmpeg the render image already carries (`arnndn`, pinned 6.1.1), its model kept in the repo (298 KB, GregorR/rnnoise-models@3eee541, which its README says is not subject to copyright) and pinned by its sum; noisereduce 3.0.3's stationary gate, the C2 expander and the trim ported to TypeScript as pure functions (`hiss.ts`), held to noisereduce's and numpy's own output on a fixture (within 1e-6; 1.1e-7 measured) by a test that needs no Python. What is ours is the owner's chosen chain and home as the place it runs; the tools are kept where they already run (ffmpeg) and ported only where carrying them would cost home's image: noisereduce pulls 75 MB of wheels (scipy 35 MB, numpy 16 MB, matplotlib 10 MB as a hard dependency, pillow, fonttools), about 250 MB installed, plus Python, for one gate of about 200 lines.",
+  "options": [
+    "Python, numpy, scipy and noisereduce in the render image, the chain run as CONVO-PD's script: about 250 MB more for every pull of the image",
+    "Pure ffmpeg (arnndn, afftdn with a learned profile, agate): not what the owner heard, so back to them as an A/B; afftdn's learned profile changed nothing on 6.1.1 when tried",
+    "The gate, expander and trim ported to TypeScript, RNNoise through ffmpeg (taken)"
+  ],
+  "gray": "Whether a port is faithful enough to stand for what the owner heard is a judgment: the test holds it to noisereduce's numbers on a fixture, and the owner's own take is compared once, in the PR, not in a test, since essays are public.",
+  "undo": "Put Python and noisereduce in infra/render/Dockerfile and run the gate there instead of `spectralGate` and `expand` in conditionTake; record a call that moves this one.",
+  "refs": ["#3607", "#3521"]
+}

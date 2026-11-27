@@ -759,6 +759,38 @@ export function planLevel(
   }
 }
 
+/** A path as one value inside a filtergraph: escaped for the option, then for the graph. */
+const filterValue = (path: string): string =>
+  path
+    .replace(/[\\':]/g, (c) => `\\${c}`)
+    .replace(/[\\'[\],;]/g, (c) => `\\${c}`)
+
+/**
+ * The first step of conditioning one of the owner's takes (HISS1, C1611):
+ * the take as mono at 48 kHz, high-passed at 80 Hz and denoised by RNNoise
+ * (`arnndn`) with the pinned `model`, written as 16-bit PCM for the
+ * screener to read. One input, so the same take gives the same bytes.
+ */
+export function planRnnoise(
+  take: string,
+  model: string,
+  out: string
+): FfmpegCall {
+  return {
+    args: [
+      ...QUIET,
+      "-i",
+      take,
+      "-af",
+      `${MONO},highpass=f=80,arnndn=m=${filterValue(model)},${MONO}`,
+      "-c:a",
+      "pcm_s16le",
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
 /**
  * One of the owner's takes conditioned, before its level (HOST12): high-
  * passed, denoised from its own floor (`floorDb`), cut to `kept` with a fade
