@@ -1,0 +1,19 @@
+{
+  "id": "C1605",
+  "made": "2026-11-27",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/phrases/intents.json",
+    "server:apps/servers/file_host/src/phrases.rs",
+    "some-ui:packages/ui/topik/src/lib/topik/phrases/shelf.ts"
+  ],
+  "chose": "Home gets the phrase shelf's intents as a synced file: a copy of each phrase's id and English intents (some-ui.phrase-intents/1, with the shelf commit it was copied from) compiled into file_host, embedded once at start by the meaning index's model, one vector per intent keyed by phrase id, in memory, with no table. A phrase reaches home with a server release.",
+  "options": [
+    "a synced file compiled into file_host",
+    "the phone or some-ui's build pushes the intents to home over a route, and home keeps them in a table",
+    "the phone sends the shelf's intents with every lookup"
+  ],
+  "gray": "Home's copy and a phone's build can hold different shelves for a while. Each side copes: the phone drops ids it doesn't hold, and home names only ids in its copy. Nothing checks the copy against the shelf until the shelf is on some-ui main.",
+  "undo": "Replace include_str!(\"phrases/intents.json\") in file_host::phrases with the pushed store, and delete the file.",
+  "refs": ["server#1261", "#2853", "#2849"]
+}

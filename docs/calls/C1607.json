@@ -1,0 +1,19 @@
+{
+  "id": "C1607",
+  "made": "2026-11-27",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/lib.rs",
+    "server:migrations/20261127000200_add_hunch_to_voice_note.up.sql",
+    "some-ui:packages/ui/topik/src/lib/topik/shop/runtime.ts"
+  ],
+  "chose": "A spoken hunch is heard as a voice note of a new kind, hunch, with its ref set to the hunch's name: PUT /voice-notes/:id?of=hunch&ref=<hunch>, then POST /voice-notes/:id/fast-track, then poll GET /voice-notes/:id/heard. It is heard in English with no prompt, and no new route is added. The kept hunch finds its take through the ref.",
+  "options": [
+    "a voice note of kind hunch, heard by the transcriber",
+    "a new route that hears the take on the request's path",
+    "the phone's own recognizer"
+  ],
+  "gray": "A hearing waits on the transcriber's poll (up to a minute) plus the hearing itself; fast-track only skips a give. The port's hear(take) has to carry the hunch's name. It costs a voice_note CHECK rebuild while S14 (#512) is open.",
+  "undo": "Drop hunch from voice_repo::Of and roll back 20261127000200, which refuses once any hunch note is held.",
+  "refs": ["server#1261", "#2853", "server#512"]
+}
