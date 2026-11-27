@@ -146,6 +146,17 @@ type Next = Readonly<{ state: ShopState; effects: ReadonlyArray<ShopEffect> }>
 
 const stay = (state: ShopState): Next => ({ state, effects: [] })
 
+/** The most characters of words home looks up (server `hunch::MAX_WORDS_CHARS`). */
+const WORDS_MAX = 200
+
+/**
+ * Words as home looks them up, the same cut as server `phrases::heard_words`:
+ * trimmed, the first `WORDS_MAX` characters, trimmed at the end; "" for none.
+ * A long take is heard as more than home takes, and home would refuse it all.
+ */
+export const lookupWords = (text: string): string =>
+  Array.from(text.trim()).slice(0, WORDS_MAX).join("").trimEnd()
+
 /**
  * Send a hunch, to be heard first or its words looked up: a new one, or one
  * sent again under its own `number`.
@@ -157,7 +168,7 @@ const send = (
   name: string | null = null
 ): Next => {
   const seq = state.seq + 1
-  const words = hunch.kind === "typed" ? hunch.text.trim() : null
+  const words = hunch.kind === "typed" ? lookupWords(hunch.text) : null
   if (words === "") return stay(state)
   const hunches = number === undefined ? state.hunches + 1 : state.hunches
   const sent = { ...state, seq, hunches }
@@ -214,7 +225,7 @@ export const step = (state: ShopState, event: ShopEvent): Next => {
       return send(state, event.hunch)
     }
     case "heard": {
-      const words = event.words.trim()
+      const words = lookupWords(event.words)
       const { hunch, name } = event
       if (event.seq !== state.seq || state.at.kind !== "hearing") {
         // The owner moved on: its words are still looked up, so home keeps a

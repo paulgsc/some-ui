@@ -246,11 +246,16 @@ export const createShopRuntime = (
       if (!disposed) return
       disposed = false
       gone = new AbortController()
-      // A hear the screen's going stopped is asked again.
-      const { at } = state
+      // A hear or a look-up whose answer the screen's going dropped is
+      // asked again, under the same request.
+      const { at, seq } = state
       if (at.kind === "hearing") {
         const { number, note, name } = at
-        run({ kind: "hear", seq: state.seq, hunch: number, note, name })
+        run({ kind: "hear", seq, hunch: number, note, name })
+      }
+      if (at.kind === "looking") {
+        const { number, words, name } = at
+        run({ kind: "look-up", seq, hunch: number, words, name })
       }
     },
   }

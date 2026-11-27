@@ -4,6 +4,7 @@ import { PHRASES } from "@topik/lib/topik/phrases/shelf"
 import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import {
   initialShop,
+  lookupWords,
   step,
   type ShopEvent,
   type ShopState,
@@ -239,6 +240,29 @@ describe("the shop", () => {
     ).toBe(initialShop)
   })
 
+  it("looks up a long hearing cut to what home takes, as home cuts it", () => {
+    const heard = `  ${"word ".repeat(60)}`
+    const sent = step(initialShop, {
+      kind: "hunch",
+      hunch: { kind: "spoken", note: "n1", name: "r-said-1" },
+    }).state
+    const next = step(sent, {
+      kind: "heard",
+      seq: sent.seq,
+      hunch: 1,
+      name: "r-said-1",
+      words: heard,
+    })
+    const words = "word ".repeat(40).trimEnd()
+    expect(words.length).toBe(199)
+    expect(next.effects).toEqual([
+      { kind: "look-up", seq: sent.seq, hunch: 1, words, name: "r-said-1" },
+    ])
+    expect(lookupWords("가".repeat(300))).toBe("가".repeat(200))
+    expect(lookupWords("😀".repeat(201))).toBe("😀".repeat(200))
+    expect(lookupWords("   ")).toBe("")
+  })
+
   it("asks again when nothing was heard", () => {
     expect(
       run([
@@ -389,19 +413,31 @@ describe("the shop's runtime", () => {
     expect(shop.snapshot().at).toMatchObject({ kind: "unreached", kept: false })
   })
 
-  it("changes nothing once disposed", async () => {
+  it("changes nothing once disposed, and looks up again once resumed", async () => {
     const seen: Array<string> = []
+    const asked: Array<string> = []
     const port: ShopPort = {
       keep: () => true,
       hear: () => Promise.resolve({ kind: "held" }),
-      lookUp: () => Promise.resolve({ kind: "kept" }),
+      lookUp: (words, hunch) => {
+        asked.push(`${hunch}:${words}`)
+        return Promise.resolve({ kind: "kept" })
+      },
     }
-    const shop = createShopRuntime(port, (state) => seen.push(state.at.kind))
+    const shop = createShopRuntime(
+      port,
+      (state) => seen.push(state.at.kind),
+      "r"
+    )
     shop.type("it's okay")
     shop.dispose()
     await settle()
     expect(seen).toEqual(["looking"])
     expect(shop.snapshot().at.kind).toBe("looking")
+    shop.resume()
+    await settle()
+    expect(asked).toEqual(["r-1:it's okay", "r-1:it's okay"])
+    expect(shop.snapshot().at).toEqual({ kind: "kept", words: "it's okay" })
   })
 })
 

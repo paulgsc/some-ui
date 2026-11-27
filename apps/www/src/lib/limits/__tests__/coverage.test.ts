@@ -41,6 +41,8 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "apps/www/src/lib/cooking/board.ts#TRAINS_MAX":
     "How many trains the Cooking page draws at once (C1118): nothing is kept or dropped, and a run with more says so on the page.",
   "apps/www/src/lib/snips-desk/index.ts#NOTE_MAX": ONE_ITEM,
+  "packages/ui/topik/src/lib/topik/shop/index.ts#WORDS_MAX":
+    "Home's own bound on one hunch's words (server hunch::MAX_WORDS_CHARS): longer words heard are cut to it, as home cuts them, and the field takes no more.",
   "apps/www/src/lib/phone-name/index.ts#NAME_MAX":
     "Home's own bound on a phone's name (C498), said where the name is typed: under the pairing form's field (PAIR_FORM.nameRefused) and the lan web's Rename field (PHONES.nameHint).",
   "apps/www/src/lib/cards-essay-key.ts#MAX_ESSAY_KEY":
