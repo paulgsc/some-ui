@@ -1,5 +1,11 @@
 import { StrictMode } from "react"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import { ShopScreen } from "@topik/components/topik/handheld/shop"
 import { lensTakes } from "@topik/lib/topik/adapter/lens-takes/__tests__/takes"
 import type { ShopPort } from "@topik/lib/topik/shop/runtime"
@@ -49,11 +55,21 @@ describe("the shop", () => {
         return true
       },
     }
-    render(<ShopScreen port={port} onBack={() => undefined} />)
+    const { container } = render(
+      <ShopScreen port={port} onBack={() => undefined} />
+    )
     type("I need a plumber")
-    expect(await screen.findByText(SHOP_WORDS.unreached)).toBeTruthy()
+    const said = await screen.findByText(SHOP_WORDS.unreached)
     expect(kept).toEqual(["I need a plumber"])
-    expect(screen.getByRole("button", { name: SHOP_WORDS.retry })).toBeTruthy()
+    // Said over the screen, with its Try again, never in its layout (HS1).
+    const notice = said.closest<HTMLElement>("[data-notice]")
+    if (notice === null) throw new Error("not said as a notice")
+    expect(container.contains(notice)).toBe(false)
+    expect(
+      within(notice).getByRole("button", {
+        name: SHOP_WORDS.retry,
+      })
+    ).toBeTruthy()
   })
 
   it("answers under StrictMode, which shows the screen twice", async () => {

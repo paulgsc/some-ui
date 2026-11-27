@@ -10,7 +10,7 @@
 import type { JSX, SyntheticEvent } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, Notice } from "@some-ui/shared"
 import { TAKE_ENDING_WORDS, takeEndingSaid } from "@some-ui/voice-capture"
 import { PHRASES, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 import type { ShopState } from "@topik/lib/topik/shop"
@@ -106,7 +106,10 @@ const SayIt = ({
         {recording ? W.stop : W.say}
       </Button>
       {why !== null && (
-        <p className="text-muted-foreground mx-1 text-sm">{why}</p>
+        // Keyed by the take it is about, so the next one is said again.
+        <Notice key={ended?.seq} dismissible>
+          {why}
+        </Notice>
       )}
     </div>
   )
@@ -164,22 +167,35 @@ const Found = ({
   )
 }
 
-/** What the shop says of the hunch sent, and the phrases it found. */
+/**
+ * The phrases found, in the screen: what the owner asked for. What the shop
+ * says of a hunch sent (looking, a miss kept, home out of reach) is said over
+ * the screen instead, with what to do about it (HS1).
+ */
 const Answer = ({
   state,
   runtime,
+  onAgain,
 }: {
   state: ShopState
   runtime: ShopRuntime
+  onAgain: () => void
 }): JSX.Element | null => {
   const { at, basket } = state
+  const again = { label: W.again, onClick: onAgain }
+  const retry = {
+    label: W.retry,
+    onClick: (): void => {
+      runtime.tap({ kind: "retry" })
+    },
+  }
   switch (at.kind) {
     case "asking": {
       return null
     }
     case "hearing":
     case "looking": {
-      return <p className="text-muted-foreground mx-1 text-sm">{W.looking}</p>
+      return <Notice>{W.looking}</Notice>
     }
     case "found": {
       return (
@@ -196,47 +212,34 @@ const Answer = ({
               />
             ))}
           </ul>
+          <Button variant="ghost" className="self-start" onClick={onAgain}>
+            {W.again}
+          </Button>
         </div>
       )
     }
     case "kept": {
-      return <p className="mx-1 text-sm">{W.kept}</p>
+      return <Notice action={again}>{W.kept}</Notice>
     }
     case "unknown": {
-      return <p className="mx-1 text-sm">{W.unknown}</p>
+      return <Notice action={again}>{W.unknown}</Notice>
     }
     case "unheard": {
       return (
-        <div className="flex flex-col gap-2">
-          <p className="mx-1 text-sm">{at.going ? W.going : W.unheard}</p>
-          <Button
-            variant="outline"
-            className="self-start rounded-xl"
-            onClick={() => runtime.tap({ kind: "retry" })}
-          >
-            {W.retry}
-          </Button>
-        </div>
+        <Notice tone="warning" action={retry} onDismiss={onAgain}>
+          {at.going ? W.going : W.unheard}
+        </Notice>
       )
     }
     case "unreached": {
       return (
-        <div className="flex flex-col gap-2">
-          <p className="mx-1 text-sm">
-            {at.hunch.kind === "spoken"
-              ? W.unreachedSaid
-              : at.kept
-                ? W.unreached
-                : W.unkept}
-          </p>
-          <Button
-            variant="outline"
-            className="self-start rounded-xl"
-            onClick={() => runtime.tap({ kind: "retry" })}
-          >
-            {W.retry}
-          </Button>
-        </div>
+        <Notice tone="warning" action={retry} onDismiss={onAgain}>
+          {at.hunch.kind === "spoken"
+            ? W.unreachedSaid
+            : at.kept
+              ? W.unreached
+              : W.unkept}
+        </Notice>
       )
     }
     default: {
@@ -261,7 +264,11 @@ export const ShopScreen = ({
     event.preventDefault()
     runtime.type(words)
   }
-  const { basket, at } = state
+  const { basket } = state
+  const again = (): void => {
+    setWords("")
+    runtime.tap({ kind: "again" })
+  }
   return (
     <div
       className={cn(
@@ -302,21 +309,7 @@ export const ShopScreen = ({
       {port.takes && (
         <SayIt takes={port.takes} onTap={() => runtime.record()} />
       )}
-      <Answer state={state} runtime={runtime} />
-      {at.kind !== "asking" &&
-        at.kind !== "hearing" &&
-        at.kind !== "looking" && (
-          <Button
-            variant="ghost"
-            className="self-start"
-            onClick={() => {
-              setWords("")
-              runtime.tap({ kind: "again" })
-            }}
-          >
-            {W.again}
-          </Button>
-        )}
+      <Answer state={state} runtime={runtime} onAgain={again} />
       {basket.length > 0 && (
         <section className="flex flex-col gap-1.5">
           <h3 className="text-muted-foreground mx-1 text-xs font-medium tracking-wider uppercase">

@@ -8,7 +8,7 @@
     "some-ui:apps/www/src/lib/home-link/hunches.ts",
     "some-ui:apps/www/src/lib/home-link/drain.ts"
   ],
-  "chose": "A hunch home didn't answer is kept on the phone, never let go unsent (#3596). A look-up home didn't answer is kept in an outbox in localStorage, keyed by the hunch's name, and the Practice lane's drain sends it again as POST /phrases/lookup after the asks for the next scene. Home keeps a miss once per name, so any answer, hit or kept, lets it go; a refusal stays. A new hunch or \"again\" no longer drops one. The outbox is one more part of the drain the Practice lane already runs, not a lane of its own.",
+  "chose": "A hunch home didn't answer is kept on the phone, never let go unsent (#3596). A look-up home didn't answer is kept in an outbox in localStorage, keyed by the hunch's name, and the Practice lane's drain sends it again as POST /phrases/lookup, last, after the rest of Korean's record. Home keeps a miss once per name, so any answer, hit or kept, lets it go; a refusal stays. A new hunch or \"again\" no longer drops one. The outbox is one more part of the drain the Practice lane already runs, not a lane of its own.",
   "options": [
     "keep it in an outbox the Practice drain sends again (taken)",
     "a lane of its own for the shop's hunches",
