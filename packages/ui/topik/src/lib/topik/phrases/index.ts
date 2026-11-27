@@ -6,7 +6,7 @@
  *
  * A phrase is a case of the authored Korean line (`read-aloud/content`): its
  * Korean, its words, and every run of Hangul in it accounted for by one of
- * its parts, in reading order (`hangulRuns`). A part is either a word written
+ * its parts, in reading order (`hangulWords`). A part is either a word written
  * as it stands (폰, 비가), or a predicate built from a listed word, a
  * catalogue ending and a tense (오다 + -아서/어서 → 와서), whose written form
  * conjugation (KP2) computes and refuses where it breaks a constraint.
@@ -54,7 +54,7 @@ import {
   type Register,
 } from "@topik/lib/topik/constructions"
 import {
-  hangulRuns,
+  hangulWords,
   type ReadAloudWord,
 } from "@topik/lib/topik/read-aloud/content"
 
@@ -137,11 +137,14 @@ const HANGUL_WORDS = /^[가-힣]+(?: [가-힣]+)*$/
 /** A phrase as written: Hangul words, spaced, and one end mark. */
 const HANGUL_SENTENCE = /^[가-힣]+(?:,? [가-힣]+)*[.?!]$/
 
-/** The closing endings that always ask, whatever the mood: -(으)ㄹ까(요). */
-const PROPOSING: ReadonlySet<ConstructionId> = new Set<ConstructionId>([
-  "close.lkkayo.proposing",
-  "close.lkka.proposing",
-])
+/** A closing ending that always asks, whatever the mood: -(으)ㄹ까(요). */
+const proposes = (ending: ConstructionId): boolean => {
+  const entry = CONSTRUCTIONS[ending]
+  return (
+    entry.kind === "closing" &&
+    entry.meanings.some((meaning) => meaning === "proposing")
+  )
+}
 
 /** The moods that ask the listener to act: of an action, in no tense. */
 const ASKS: ReadonlySet<ClauseMood> = new Set(["command", "suggestion"])
@@ -198,8 +201,8 @@ const joiningFaults = (
 /** Every fault that keeps a phrase off the shelf; none for one it keeps. */
 export const checkPhrase = (phrase: Phrase): ReadonlyArray<PhraseFault> => {
   const faults: Array<PhraseFault> = []
-  const written = hangulRuns(phrase.korean)
-  const built = phrase.parts.flatMap((part) => hangulRuns(writtenOf(part)))
+  const written = hangulWords(phrase.korean)
+  const built = phrase.parts.flatMap((part) => hangulWords(writtenOf(part)))
   const sentence = HANGUL_SENTENCE.test(phrase.korean)
   if (!sentence) faults.push({ kind: "korean-not-hangul" })
   if (built.join(" ") !== written.join(" "))
@@ -233,7 +236,7 @@ export const checkPhrase = (phrase: Phrase): ReadonlyArray<PhraseFault> => {
       faults.push({ kind: "mood", ends })
     const asks =
       phrase.mood === "question" ||
-      (last !== undefined && PROPOSING.has(last[1].ending))
+      (last !== undefined && proposes(last[1].ending))
     if (sentence && phrase.korean.endsWith("?") !== asks)
       faults.push({ kind: "mark", asks })
   }

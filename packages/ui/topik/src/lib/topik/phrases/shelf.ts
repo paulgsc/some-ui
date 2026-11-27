@@ -28,6 +28,9 @@ export const PHRASE_IDS = [
 
 export type PhraseId = (typeof PHRASE_IDS)[number]
 
+export const isPhraseId = (id: string): id is PhraseId =>
+  PHRASE_IDS.some((landed) => landed === id)
+
 export const PHRASES = {
   "ph.where-is-my-phone": {
     korean: "내 폰 어디 있지?",

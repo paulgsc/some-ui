@@ -263,11 +263,7 @@ const ANY_THEN = { verb: "any", tense: "any" } as const
 
 const NO_COMMAND_OR_SUGGESTION: ReadonlyArray<Mood> = ["command", "suggestion"]
 
-/**
- * Every mood, chosen by intonation: 가요, 가요?, and 가요 as "go" or "let's go".
- * Only a verb can command or suggest (바빠요 tells no one to be busy); the
- * stem is not related to the mood here, and the phrase check refuses it.
- */
+/** Every mood, chosen by intonation: 가요, 가요?, and 가요 as "go" or "let's go". */
 const ANY_MOOD = ["statement", "question", "command", "suggestion"] as const
 
 /** The past and -겠- before it, then the 어 form: 갔어요, 가겠어요. */

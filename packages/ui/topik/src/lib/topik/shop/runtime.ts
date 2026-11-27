@@ -6,13 +6,13 @@
  *
  * A request that fails, for any reason, is `unreached`, and reported
  * (`reportFailure`): the hunch may not be kept, and the screen says so and
- * offers to send it again. Each request
- * names its hunch to home by this runtime's id and the hunch's number, the
- * same when sent again, so home keeps a miss once however often it arrives.
+ * offers to send it again. Each request names its hunch to home by this
+ * runtime's id and the hunch's number.
  */
 
 import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+import { serialDispatch } from "@topik/lib/topik/read-aloud/serial-dispatch"
 import type {
   Lookup,
   ShopEffect,
@@ -37,7 +37,6 @@ type Tap = Extract<ShopEvent, { kind: "retry" | "pick" | "put-back" | "again" }>
 
 export type ShopRuntime = Readonly<{
   snapshot: () => ShopState
-  /** A typed hunch. */
   type: (text: string) => void
   /** A spoken hunch: the take is held until the next one replaces it. */
   speak: (take: Blob) => void
@@ -113,15 +112,20 @@ export const createShopRuntime = (
     }
   }
 
-  function dispatch(event: ShopEvent): void {
-    if (disposed) return
-    const next = step(state, event)
-    if (next.state !== state) {
-      state = next.state
-      onChange(state)
-    }
-    for (const effect of next.effects) run(effect)
-  }
+  // An effect may dispatch (a hear with no take is unreached at once); that
+  // event waits for the current one's effects, as in read-aloud's runtimes.
+  const dispatch = serialDispatch<ShopEvent>(
+    (event) => {
+      if (disposed) return
+      const next = step(state, event)
+      if (next.state !== state) {
+        state = next.state
+        onChange(state)
+      }
+      for (const effect of next.effects) run(effect)
+    },
+    () => undefined
+  )
 
   return {
     snapshot: () => state,

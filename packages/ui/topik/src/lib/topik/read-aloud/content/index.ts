@@ -251,13 +251,11 @@ export type ParsedDeck =
 // SCHEMAS
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-/** One run of Hangul syllables: a lemma, a pronunciation. */
 const HANGUL = /^[가-힣]+$/
 
 const IdSchema = z.string().regex(ID, "ids are kebab-case ASCII")
 const LevelSchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
 
-/** A listed word, whose lemma and gloss a phrase's word part reuses. */
 export const WordSchema = z.object({
   id: IdSchema,
   lemma: z.string().regex(HANGUL, "a lemma is Hangul syllables"),
@@ -401,7 +399,7 @@ function auditLens(
     const parsed = CueSchema.safeParse(lens.data.cue)
     if (parsed.success) {
       cue = parsed.data
-      cueRuns = hangulRuns(cue.korean)
+      cueRuns = hangulWords(cue.korean)
     } else {
       dropped("lens-malformed", `cue: ${summarise(parsed.error)}`)
     }
@@ -525,11 +523,8 @@ type LineAudit = {
   next: number
 }
 
-/**
- * A line's words as written: its maximal runs of Hangul syllables. The phrase
- * shelf (`phrases`) accounts for a phrase's words by the same rule.
- */
-export const hangulRuns = (korean: string): Array<string> =>
+/** A line's words as written: its maximal runs of Hangul syllables. */
+export const hangulWords = (korean: string): Array<string> =>
   Array.from(korean.matchAll(/[가-힣]+/g), (match) => match[0])
 
 function auditOccurrence(
@@ -684,7 +679,7 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
     }
     lineIds.add(line.id)
 
-    const runs = hangulRuns(line.korean)
+    const runs = hangulWords(line.korean)
     const audit: LineAudit = {
       id: line.id,
       runs,

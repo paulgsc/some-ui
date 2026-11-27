@@ -6,11 +6,9 @@
  * A pure machine, like the grammar lens's (`read-aloud/lens/machine`): `step`
  * takes an event and returns the next state and the effects to run, and
  * every request carries the number of the hunch that asked for it, so a late
- * answer to an earlier hunch changes nothing. A request also carries its
- * hunch's number among this session's hunches, the same when it is sent again,
- * so home keeps a miss once however often it is sent. `ShopRuntime` runs the effects
- * over a port to home, and a screen reads its snapshot and dispatches events
- * (`docs/monorepo-boundaries.md`, R1).
+ * answer to an earlier hunch changes nothing. `ShopRuntime` runs the effects
+ * over a port to home (`ShopPort`), and a screen reads its snapshot and
+ * dispatches events (`docs/monorepo-boundaries.md`, R1).
  *
  * Home decides. A spoken hunch is heard by home's Whisper, then home's meaning
  * index compares the hunch with every phrase's intents: above its threshold
@@ -20,8 +18,7 @@
  * for another, or for "again", is still answered, and a miss is kept all the
  * same. A hunch home couldn't be reached for is not: a new hunch or "again"
  * lets it go unsent, and so does leaving the screen while a take is still
- * being heard, a gap the phone's side of KP4 closes (#3596). The port
- * is typed ahead of home's route, which waits on paulgsc/server (#2853).
+ * being heard, a gap the phone's side of KP4 closes (#3596).
  *
  * Memoryless (#2849): the basket is only this machine's state. Nothing here
  * stores it, and it is gone when the session ends. A phrase home names that
@@ -32,7 +29,7 @@
  */
 
 import { assertNever } from "@some-ui/core-utils"
-import { PHRASE_IDS, type PhraseId } from "@topik/lib/topik/phrases/shelf"
+import { isPhraseId, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 
 /** How a hunch came in: words typed, or a take spoken. */
 type Hunch = Readonly<{ kind: "typed"; text: string } | { kind: "spoken" }>
@@ -83,7 +80,7 @@ export type ShopEvent = Readonly<
 
 export type ShopEffect = Readonly<
   | { kind: "hear"; seq: number; hunch: number }
-  /** `hunch` is the hunch's number this session, the same when sent again. */
+  /** `hunch` is the hunch's number this session. */
   | { kind: "look-up"; seq: number; hunch: number; words: string }
 >
 
@@ -97,9 +94,6 @@ export const initialShop: ShopState = {
 type Next = Readonly<{ state: ShopState; effects: ReadonlyArray<ShopEffect> }>
 
 const stay = (state: ShopState): Next => ({ state, effects: [] })
-
-const onShelf = (id: string): id is PhraseId =>
-  PHRASE_IDS.some((landed) => landed === id)
 
 /**
  * Send a hunch, to be heard first or its words looked up: a new one, or one
@@ -130,7 +124,7 @@ const answered = (
 ): ShopState => {
   switch (lookup.kind) {
     case "hit": {
-      const phrases = [...new Set(lookup.phrases)].filter(onShelf)
+      const phrases = [...new Set(lookup.phrases)].filter(isPhraseId)
       return {
         ...state,
         at:

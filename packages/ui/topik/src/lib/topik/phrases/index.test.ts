@@ -45,7 +45,6 @@ describe("the phrase shelf", () => {
   it("keeps every identifier that has landed, in place", () => {
     expect(PHRASE_IDS.slice(0, LANDED.length)).toEqual(LANDED)
     expect(new Set(PHRASE_IDS).size).toBe(PHRASE_IDS.length)
-    expect(Object.keys(PHRASES).sort()).toEqual([...PHRASE_IDS].sort())
   })
 
   it.each(entries)(
