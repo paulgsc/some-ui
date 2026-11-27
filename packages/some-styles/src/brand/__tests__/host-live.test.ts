@@ -17,12 +17,14 @@ import {
 } from "../host"
 import {
   EMOTION_REFRACTORY_MS,
+  LIVENESS_POLICY,
   livenessAt,
   NOTES_POLICY,
   pointAt,
   pulsesOf,
   type NoteScene,
   type SpokenWordOf,
+  type WordSpan,
 } from "../host-live"
 
 /** The two frames a host is drawn over, above their captions. */
@@ -570,6 +572,96 @@ describe("a note in flight survives a move (HN1, #3580)", () => {
         expect(noteAt(moved, t), `seed ${String(seed)} at ${String(t)}`).toBe(
           noteAt(alone, t)
         )
+    }
+  })
+})
+
+describe("a listener's play waits for a pause in the conversation (#3580)", () => {
+  /** Another speaker's words, seeded: some short gaps, a few long pauses. */
+  const heard = (seed: number): ReadonlyArray<WordSpan> =>
+    wordsBy(seed, 160, 0).map(({ startMs, endMs }) => ({ startMs, endMs }))
+
+  const listener = (
+    hears?: ReadonlyArray<{ startMs: number; endMs: number }>
+  ): Beat => ({
+    atMs: 0,
+    character: "tin-owlet",
+    emotion: "curious",
+    role: "analyst",
+    shot: "medium",
+    placement: "bottom-right",
+    speaking: false,
+    ...(hears === undefined ? {} : { hears }),
+  })
+
+  it("never plays while the other speaker talks, nor in a gap too short to play in", () => {
+    for (let seed = 0; seed < 12; seed++) {
+      const hears = heard(seed)
+      const end = hears.at(-1)?.endMs ?? 0
+      for (let t = 0; t < end; t += 50) {
+        const play = hostAt([listener(hears)], seed, t, AREAS.landscape)?.live
+          .play
+        if (play === null || play === undefined) continue
+        expect(
+          hears.some((w) => w.startMs <= t && t < w.endMs),
+          `seed ${String(seed)} at ${String(t)}`
+        ).toBe(false)
+        const before = [...hears].reverse().find((w) => w.endMs <= t)
+        const after = hears.find((w) => w.startMs > t)
+        if (before !== undefined && after !== undefined)
+          expect(after.startMs - before.endMs).toBeGreaterThanOrEqual(
+            LIVENESS_POLICY.playPauseMs
+          )
+      }
+    }
+  })
+
+  it("joins cross-talk, so a word inside another never opens a pause (Codex on #3594)", () => {
+    const words = [
+      { startMs: 0, endMs: 1800 },
+      { startMs: 2300, endMs: 2500 },
+    ]
+    const hears = [{ startMs: 1000, endMs: 1100 }]
+    for (let seed = 0; seed < 50; seed++)
+      for (let t = 1800; t < 2300; t += 10)
+        expect(
+          livenessAt("mochi", words, seed, t, hears).play,
+          `seed ${String(seed)} at ${String(t)}`
+        ).toBeNull()
+  })
+
+  it("still plays in the conversation's pauses", () => {
+    const hears = heard(4)
+    const end = hears.at(-1)?.endMs ?? 0
+    const plays = Array.from(
+      { length: Math.ceil(end / 50) },
+      (_, k) => hostAt([listener(hears)], 4, k * 50, AREAS.landscape)?.live.play
+    )
+    expect(plays.some((p) => p !== null && p !== undefined)).toBe(true)
+  })
+
+  it("plays in its own silence over the other's words when it hears nothing (the A side)", () => {
+    const hears = heard(4)
+    const end = hears.at(-1)?.endMs ?? 0
+    const over = Array.from(
+      { length: Math.ceil(end / 50) },
+      (_, k) => k * 50
+    ).filter(
+      (t) =>
+        hostAt([listener()], 4, t, AREAS.landscape)?.live.play != null &&
+        hears.some((w) => w.startMs <= t && t < w.endMs)
+    )
+    expect(over.length).toBeGreaterThan(0)
+  })
+
+  it("breathes, sways and pulses the same whatever it hears", () => {
+    const hears = heard(2)
+    for (let t = 0; t < 20_000; t += 250) {
+      const a = hostAt([listener()], 2, t, AREAS.landscape)
+      const b = hostAt([listener(hears)], 2, t, AREAS.landscape)
+      expect(b?.note).toEqual(a?.note)
+      expect(b?.live.body).toEqual(a?.live.body)
+      expect(b?.live.mouth).toBe(a?.live.mouth)
     }
   })
 })

@@ -74,6 +74,7 @@ import {
   pulsesOf,
   type Liveness,
   type SpokenWordOf,
+  type WordSpan,
 } from "./host-live"
 import { MOCHI_CEREMONIES, MOCHI_EMOTIONS } from "./host-mochi"
 import { dressed, roleLookOf, tintAt, type RoleOf } from "./host-role"
@@ -184,6 +185,12 @@ export type BeatOf<C extends HostCharacter> = {
    * sways, bobs and plays in its silence, and its emotion pulses and fades.
    */
   readonly words?: ReadonlyArray<SpokenWordOf<C>>
+  /**
+   * What it hears others say while it listens, on the same clock (#3580):
+   * its play waits for a pause in the whole conversation, not only its own.
+   * Without it, a listener plays in its own silence.
+   */
+  readonly hears?: ReadonlyArray<WordSpan>
   /** What it may point at, a point in its area (0 to 1 each way): a cue word raises the point. */
   readonly target?: Spot
   /** Its bubble at a corner; a circle when none is named. */
@@ -1055,6 +1062,9 @@ function feeling(beat: Beat, emotion: Emotion): Beat {
   }
 }
 
+/** One empty list for a beat that says nothing, so the living layer's merge (`conversationOf`) is kept once per beat, not made again every frame. */
+const NO_WORDS: ReadonlyArray<never> = []
+
 /**
  * What the host shows `tMs` into its run, over `area` (the frame's safe
  * area above the captions, or a preview's card): the latest beat at or
@@ -1083,8 +1093,8 @@ export function hostAt(
     before?.character === beat.character && e < 1
       ? blendNodes(poseOf(beats, i - 1, seed, tMs, aim).nodes, pose.nodes, e)
       : pose.nodes
-  const words = beat.words ?? []
-  const live = livenessAt(beat.character, words, seed, tMs)
+  const words = beat.words ?? NO_WORDS
+  const live = livenessAt(beat.character, words, seed, tMs, beat.hears)
   const toward =
     beat.target === undefined ? { x: 0, y: 0 } : towards(beat.target, box, area)
   const point = pointAt(words, beat.target !== undefined, tMs)

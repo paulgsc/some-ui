@@ -52,6 +52,26 @@ const common = {
   lookAt: SpotSchema.optional(),
   target: SpotSchema.optional(),
   frame: z.enum(FRAMES).optional(),
+  /** What it hears others say, on the video's clock: its play waits for a pause in the conversation (#3580). */
+  hears: z
+    .array(
+      z.strictObject({
+        startMs: z.number().nonnegative(),
+        endMs: z.number().nonnegative(),
+      })
+    )
+    .refine(
+      (ws) =>
+        ws.every(
+          (w, i) =>
+            w.endMs >= w.startMs &&
+            (i === 0 || w.startMs >= (ws[i - 1]?.startMs ?? 0))
+        ),
+      {
+        message: "each heard word ends after it starts, and they come in order",
+      }
+    )
+    .optional(),
 }
 
 /** A word as said, on the video's clock, with the notes it carries in `emotions`' terms (`@some-ui/styles/brand/host-live`). */

@@ -109,6 +109,37 @@ describe("the host's params", () => {
     ).toEqual([])
   })
 
+  it("take a listener's heard words in order, and refuse them out of order (#3580)", () => {
+    expect(
+      problems({
+        seed: 1,
+        beats: [
+          {
+            ...beat,
+            hears: [
+              { startMs: 0, endMs: 200 },
+              { startMs: 300, endMs: 500 },
+            ],
+          },
+        ],
+      })
+    ).toEqual([])
+    expect(
+      problems({
+        seed: 1,
+        beats: [
+          {
+            ...beat,
+            hears: [
+              { startMs: 300, endMs: 500 },
+              { startMs: 0, endMs: 200 },
+            ],
+          },
+        ],
+      }).join(" ")
+    ).toMatch(/heard word/)
+  })
+
   it("refuse an emotion that isn't the character's, a ceremony Tin Bird hasn't, and beats out of order", () => {
     expect(
       problems({ seed: 1, beats: [{ ...beat, emotion: "hesitation" }] })

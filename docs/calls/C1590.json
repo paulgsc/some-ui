@@ -1,0 +1,19 @@
+{
+  "id": "C1590",
+  "made": "2026-11-27",
+  "by": "claude",
+  "agreed": "2026-11-27",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/host-live.ts",
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/video-render/src/conversation.ts"
+  ],
+  "chose": "B: a listener hears the other speakers (`hears`, filled by `hearsOf` from the conversation's timed turns), and its play waits for a pause in the whole conversation, never over another speaker's sentence; breath, sway, bob and its emotion's pulses go on regardless. The preview `host5-listener.html` shows the cost plainly: gaps between sentences and turns are shorter than the 0.8 s a play needs, so in a conversation a listener mostly breathes, sways and pulses, and plays once the talk stops. Weighed by C1545: a fidget mid-sentence is jarring and distracting. The owner, after watching the preview: \"B for the listener, approved\" (2026-11-27).",
+  "options": [
+    "B: play waits for a pause in the conversation (taken)",
+    "A: play in the listener's own silence, as C1567 left it, which can land over the other speaker's words"
+  ],
+  "gray": "Whether a listener's fidget reads as alive or as distracting is taste; no check can settle it. The owner picks on the rendered preview, and the pick moves this call either way.",
+  "undo": "Go back to A by dropping `hears` from the beats: where a conversation's host beats are made (HOST13), don't call `hearsOf`, and a listener plays in its own silence again. Record that as a call that moves this one.",
+  "refs": ["#3580", "#3521"]
+}

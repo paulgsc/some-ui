@@ -181,7 +181,8 @@ export function livenessAt(
   who: HostCharacter,
   words: ReadonlyArray<SpokenWord>,
   seed: number,
-  tMs: number
+  tMs: number,
+  hears: ReadonlyArray<WordSpan> = []
 ): Liveness {
   const P = LIVENESS_POLICY
   const s = tMs / 1000
@@ -208,14 +209,70 @@ export function livenessAt(
     mouth,
     body,
     fatigue: fatigueAt(words, tMs),
-    play: playAt(who, words, seed, tMs),
+    play: playAt(who, conversationOf(words, hears), seed, tMs),
   }
+}
+
+/**
+ * A word another speaker says while this one listens (#3580): only when, on
+ * the video's clock. Play waits for a pause in the whole conversation, so a
+ * listener never fidgets over someone else's sentence.
+ */
+export type WordSpan = {
+  readonly startMs: number
+  readonly endMs: number
+}
+
+/**
+ * Everything said around the host, its own words and those it hears, in
+ * order, overlapping speech joined: the silences play may fill. Both lists
+ * come sorted, so they are merged, and the merge is kept per pair of lists, since every frame asks
+ * again (#3577). Cost: O(words + hears) once per pair, then O(1).
+ */
+const merged = new WeakMap<
+  ReadonlyArray<WordSpan>,
+  WeakMap<ReadonlyArray<WordSpan>, ReadonlyArray<WordSpan>>
+>()
+
+function conversationOf(
+  words: ReadonlyArray<SpokenWord>,
+  hears: ReadonlyArray<WordSpan>
+): ReadonlyArray<WordSpan> {
+  if (hears.length === 0) return words
+  const byHears = merged.get(words) ?? new WeakMap()
+  merged.set(words, byHears)
+  const kept = byHears.get(hears)
+  if (kept !== undefined) return kept
+  // merged by start, and overlapping speech joined into one span, so cross-talk
+  // (a short word inside a long one) never moves a silence's edge back (#3594)
+  const out: Array<{ startMs: number; endMs: number }> = []
+  const join = (w: WordSpan): void => {
+    const last = out.at(-1)
+    if (last !== undefined && w.startMs <= last.endMs)
+      last.endMs = Math.max(last.endMs, w.endMs)
+    else out.push({ startMs: w.startMs, endMs: w.endMs })
+  }
+  let i = 0
+  let j = 0
+  while (i < words.length || j < hears.length) {
+    const a = words[i]
+    const b = hears[j]
+    if (b === undefined || (a !== undefined && a.startMs <= b.startMs)) {
+      if (a !== undefined) join(a)
+      i += 1
+    } else {
+      join(b)
+      j += 1
+    }
+  }
+  byHears.set(hears, out)
+  return out
 }
 
 /** The act played in the silence around `tMs`, if it is one played in: a pause between two words, or open silence. */
 function playAt(
   who: HostCharacter,
-  words: ReadonlyArray<SpokenWord>,
+  words: ReadonlyArray<WordSpan>,
   seed: number,
   tMs: number
 ): Liveness["play"] {
