@@ -15,6 +15,8 @@
  * wrote it: a session, or the routine's proposal (KP5). It returns every
  * fault, and none for a phrase it keeps:
  *
+ * - the Korean is Hangul words, spaced, ending in one mark: "?" exactly when
+ *   it asks (a question, or a proposal with -(으)ㄹ까), "." or "!" otherwise;
  * - the parts rebuild the Korean, run for run, and a word part is written in
  *   Hangul alone (no digits, Latin letters or punctuation);
  * - each built part keeps its ending's constraints;
@@ -36,7 +38,7 @@
 
 import { assertNever } from "@some-ui/core-utils"
 import {
-  check,
+  breachOf,
   conjugate,
   type Breach,
   type Reading,
@@ -48,6 +50,7 @@ import {
 import {
   CONSTRUCTIONS,
   type ClauseMood,
+  type ConstructionId,
   type Register,
 } from "@topik/lib/topik/constructions"
 import {
@@ -94,8 +97,16 @@ export type Phrase = Readonly<{
 
 /** Something that keeps a phrase off the shelf. */
 export type PhraseFault = Readonly<
+  /** The Korean holds something besides spaced Hangul words and one end mark. */
+  | { kind: "korean-not-hangul" }
+  /** The end mark doesn't say whether the sentence asks: "?" or "." / "!". */
+  | { kind: "mark"; asks: boolean }
   /** The parts don't write the Korean, run for run. */
-  | { kind: "rebuild"; written: ReadonlyArray<string>; built: string }
+  | {
+      kind: "rebuild"
+      written: ReadonlyArray<string>
+      built: ReadonlyArray<string>
+    }
   /** A word part written with something other than Hangul: 3, KTX, ?. */
   | { kind: "word-not-hangul"; part: number }
   /** A built part breaks its ending's constraints. */
@@ -122,6 +133,15 @@ export type PhraseFault = Readonly<
 
 /** A word part as written: one or more runs of Hangul, spaced. */
 const HANGUL_WORDS = /^[가-힣]+(?: [가-힣]+)*$/
+
+/** A phrase as written: Hangul words, spaced, and one end mark. */
+const HANGUL_SENTENCE = /^[가-힣]+(?:,? [가-힣]+)*[.?!]$/
+
+/** The closing endings that always ask, whatever the mood: -(으)ㄹ까(요). */
+const PROPOSING: ReadonlySet<ConstructionId> = new Set<ConstructionId>([
+  "close.lkkayo.proposing",
+  "close.lkka.proposing",
+])
 
 /** The moods that ask the listener to act: of an action, in no tense. */
 const ASKS: ReadonlySet<ClauseMood> = new Set(["command", "suggestion"])
@@ -180,8 +200,10 @@ export const checkPhrase = (phrase: Phrase): ReadonlyArray<PhraseFault> => {
   const faults: Array<PhraseFault> = []
   const written = hangulRuns(phrase.korean)
   const built = phrase.parts.flatMap((part) => hangulRuns(writtenOf(part)))
+  const sentence = HANGUL_SENTENCE.test(phrase.korean)
+  if (!sentence) faults.push({ kind: "korean-not-hangul" })
   if (built.join(" ") !== written.join(" "))
-    faults.push({ kind: "rebuild", written, built: built.join(" ") })
+    faults.push({ kind: "rebuild", written, built })
   phrase.parts.forEach((part, index) => {
     if (part.kind === "word" && !HANGUL_WORDS.test(part.written))
       faults.push({ kind: "word-not-hangul", part: index })
@@ -189,9 +211,8 @@ export const checkPhrase = (phrase: Phrase): ReadonlyArray<PhraseFault> => {
 
   const readings = builtAt(phrase.parts)
   for (const [index, reading] of readings) {
-    const kept = check(reading, conjugate(reading))
-    if (kept.kind === "refused" && kept.breach.rule !== "rebuild")
-      faults.push({ kind: "breach", part: index, breach: kept.breach })
+    const breach = breachOf(reading)
+    if (breach !== null) faults.push({ kind: "breach", part: index, breach })
   }
 
   const lastIndex = phrase.parts.length - 1
@@ -210,6 +231,11 @@ export const checkPhrase = (phrase: Phrase): ReadonlyArray<PhraseFault> => {
     const { ends } = closing.constraints
     if (!ends.some((mood) => mood === phrase.mood))
       faults.push({ kind: "mood", ends })
+    const asks =
+      phrase.mood === "question" ||
+      (last !== undefined && PROPOSING.has(last[1].ending))
+    if (sentence && phrase.korean.endsWith("?") !== asks)
+      faults.push({ kind: "mark", asks })
   }
   const main = closing?.kind === "closing" ? last?.[1] : undefined
   if (main !== undefined && ASKS.has(phrase.mood)) {

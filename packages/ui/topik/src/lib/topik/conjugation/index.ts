@@ -298,7 +298,7 @@ const stemlessForm = (
 export const conjugate = (reading: Reading): string => build(reading, "listed")
 
 /** Which of the catalogue's word-level constraints a reading breaks, if any. */
-const breachOf = (reading: Reading): Breach | null => {
+export const breachOf = (reading: Reading): Breach | null => {
   const { dictionary, ending, tense } = reading
   const { constraints } = CONSTRUCTIONS[ending]
   const { class: stemClass } = VOCABULARY[dictionary]

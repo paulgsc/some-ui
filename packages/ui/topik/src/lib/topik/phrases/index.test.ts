@@ -81,7 +81,7 @@ describe("the phrase check", () => {
       {
         kind: "rebuild",
         written: ["비가", "와서", "집에", "있어요"],
-        built: "비가 와서 집에 있었어요",
+        built: ["비가", "와서", "집에", "있었어요"],
       },
     ])
   })
@@ -109,7 +109,7 @@ describe("the phrase check", () => {
 
   it("refuses a phrase no closing ending ends", () => {
     expect(
-      checkPhrase(withParts([rain, come], { korean: "비가 와서" }))
+      checkPhrase(withParts([rain, come], { korean: "비가 와서." }))
     ).toEqual([{ kind: "unclosed" }])
   })
 
@@ -136,9 +136,9 @@ describe("the phrase check", () => {
 
   it("refuses a mood its closing ending can't end in", () => {
     const good = PHRASES["ph.this-is-really-good"]
-    expect(checkPhrase({ ...good, mood: "question" })).toEqual([
-      { kind: "mood", ends: ["statement"] },
-    ])
+    expect(
+      checkPhrase({ ...good, korean: "이거 정말 맛있네요?", mood: "question" })
+    ).toEqual([{ kind: "mood", ends: ["statement"] }])
   })
 
   it("refuses a command after -아서/어서", () => {
@@ -309,7 +309,10 @@ describe("the phrase check, over whole sentences", () => {
           mood: "question",
         })
       )
-    ).toEqual([{ kind: "word-not-hangul", part: 0 }])
+    ).toEqual([
+      { kind: "korean-not-hangul" },
+      { kind: "word-not-hangul", part: 0 },
+    ])
     expect(
       checkPhrase(
         withParts([word(""), built("가다", "close.ayo.plain")], {
@@ -317,6 +320,30 @@ describe("the phrase check, over whole sentences", () => {
         })
       )
     ).toEqual([{ kind: "word-not-hangul", part: 0 }])
+  })
+
+  it("refuses Korean that holds anything but Hangul words and one end mark", () => {
+    const go = [built("가다", "close.ayo.plain")]
+    for (const korean of ["KTX 가요?", "3 시에 가요.", "가요", "가요?!"])
+      expect(
+        checkPhrase(withParts(go, { korean, mood: "question" })),
+        korean
+      ).toContainEqual({ kind: "korean-not-hangul" })
+  })
+
+  it("refuses an end mark that doesn't say whether the sentence asks", () => {
+    expect(
+      checkPhrase({ ...PHRASES["ph.its-okay"], korean: "괜찮아요?" })
+    ).toEqual([{ kind: "mark", asks: false }])
+    expect(
+      checkPhrase({ ...PHRASES["ph.did-you-eat"], korean: "밥 먹었어." })
+    ).toEqual([{ kind: "mark", asks: true }])
+    expect(
+      checkPhrase({
+        ...PHRASES["ph.shall-we-eat-together"],
+        korean: "같이 먹을까요.",
+      })
+    ).toEqual([{ kind: "mark", asks: true }])
   })
 
   it("refuses a word after the predicate that ends the sentence", () => {
