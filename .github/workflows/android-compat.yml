@@ -192,7 +192,10 @@ jobs:
           cores: 1
           ram-size: 1536M
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -netdelay umts -netspeed hsdpa ${{ env.STAGED_DNS }}
+          # ANGLE over SwiftShader for the host's renderer: under
+          # swiftshader_indirect, the emulator's process ended within 2 s of
+          # the Cast wing painting its host drawings (#3613).
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim -netdelay umts -netspeed hsdpa ${{ env.STAGED_DNS }}
           script: bash apps/mobile/compat/run-level.sh "$API" compat-apk compat-out "$CPU_PERCENT"
       # The level's row of the stamp, written even when the emulator never
       # booted, so the table shows it.

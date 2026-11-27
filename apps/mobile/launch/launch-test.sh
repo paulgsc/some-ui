@@ -34,6 +34,15 @@
 # reached by nothing else, since the monkey run below never presses back. The
 # launcher shortcut, on the running app, must log its entry too.
 #
+# LT1 (promise, #3613): the emulator draws every page the app draws, so a
+# run fails only on the app. Family: every page this test opens (the foyer,
+# each wing's root, the New idea page, what the seeded monkey reaches) under
+# the emulator's GPU mode, `-gpu swangle_indirect` in mobile-apk.yml and
+# android-compat.yml; under swiftshader_indirect the emulator's process
+# ended as the Cast wing painted its host drawings. Proof: this test on
+# every push to main, and a run that ends early names its step (`gone`).
+# Tolerance: none; a renderer that dies again fails the run, never passes it.
+#
 # What it cannot see is a WebView that starts and stays blank: that does not
 # crash. Only the screenshot shows the page rendered. Two signals that looked
 # like they would were tried on the first run (2026-09-30) and read nothing:
