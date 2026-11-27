@@ -10,7 +10,7 @@
  * stayed so. Phone-only (`build.paths.ts`).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
-import { jsonOf } from "@some-ui/core-utils"
+import { readAs } from "@some-ui/core-utils"
 import type {
   HomeIdea,
   HomeLists,
@@ -20,9 +20,10 @@ import type {
 } from "@some-ui/soundbites"
 import { z } from "zod"
 
+import type { HomeAnswered } from "@/lib/home-link/home-read"
+import { askHome, readHome } from "@/lib/home-link/home-read"
 import type { IdeasAsk } from "@/lib/home-link/idea-reads"
 import { askIdeas } from "@/lib/home-link/idea-reads"
-import { askWhileBusy } from "@/lib/home-link/while-busy"
 
 /** `idea_repo::Idea`, as `GET /ideas` and `GET /ideas/:id` serve it. */
 const IdeaSchema: z.ZodType<HomeIdea> = z.object({
@@ -63,37 +64,12 @@ const ListsSchema: z.ZodType<HomeLists> = z.object({
 
 const FurnishingSchema = z.object({ furnishing: z.boolean() })
 
-/** Home's answer, once the link was free, or why there is none. */
-type Answered =
-  | { readonly kind: "answered"; readonly answer: HomeAnswer }
-  | { readonly kind: "unpaired" }
-  | { readonly kind: "away" }
-  | { readonly kind: "busy" }
+const ask = (what: IdeasAsk): Promise<HomeAnswered> =>
+  askHome(() => askIdeas(what))
 
-async function ask(what: IdeasAsk): Promise<Answered> {
-  const asked = await askWhileBusy(() => askIdeas(what))
-  return asked.kind === "unreachable" ? { kind: "away" } : asked
-}
-
-/** `body` as `schema` reads it, or null. */
-function bodyAs<T>(schema: z.ZodType<T>, body: string): T | null {
-  const read = schema.safeParse(jsonOf(body))
-  return read.success ? read.data : null
-}
-
-async function read<T>(
-  what: IdeasAsk,
-  schema: z.ZodType<T>
-): Promise<HomeRead<T>> {
-  const asked = await ask(what)
-  if (asked.kind !== "answered") return asked
-  const { status, body } = asked.answer
-  // A home without paulgsc/server#650 serves no such route.
-  if (status === 404) return { kind: "older" }
-  if (status !== 200) return { kind: "unreadable" }
-  const value = bodyAs(schema, body)
-  return value === null ? { kind: "unreadable" } : { kind: "read", value }
-}
+/** `what`'s answer as `schema` reads it; a home without paulgsc/server#650 is `older`. */
+const read = <T>(what: IdeasAsk, schema: z.ZodType<T>): Promise<HomeRead<T>> =>
+  readHome(() => askIdeas(what), schema)
 
 async function write<T>(
   what: IdeasAsk,
@@ -115,7 +91,7 @@ export const ideasHome: IdeasHome = {
   furnish: (id, furnishing) =>
     write({ kind: "furnish", id, furnishing }, ({ status, body }) =>
       status === 200
-        ? held(bodyAs(FurnishingSchema, body)?.furnishing ?? null)
+        ? held(readAs(FurnishingSchema, body)?.furnishing ?? null)
         : null
     ),
   // A repeat is a 204 too: the first mark stands.
@@ -125,6 +101,6 @@ export const ideasHome: IdeasHome = {
     ),
   entry: (list, name, listed) =>
     write({ kind: "entry", list, name, listed }, ({ status, body }) =>
-      status === 200 ? held(bodyAs(ListsSchema, body)) : null
+      status === 200 ? held(readAs(ListsSchema, body)) : null
     ),
 }

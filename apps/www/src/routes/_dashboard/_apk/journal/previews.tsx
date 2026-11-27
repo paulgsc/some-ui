@@ -1,48 +1,56 @@
 import type { JSX } from "react"
-import { useState } from "react"
-import { sampleTransitionsOffer } from "@some-ui/video-render"
+import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { PICK_WORDS, samplePicks } from "@/lib/preview-pick"
+import { homePreviews } from "@/lib/preview-home"
+import { PICK_WORDS, previewsRuntime, sampleSource } from "@/lib/preview-pick"
+import type { PreviewsRuntime } from "@/lib/preview-pick"
 import { KIND_WORDS } from "@/lib/studio-index"
-import { Part, StudioPage } from "@/components/studio/layout"
-import { PreviewPick } from "@/components/studio/preview-pick"
+import { StudioPage } from "@/components/studio/layout"
+import { Previews } from "@/components/studio/preview-pick"
 
-/** The conversation the sample preview stands for until home offers real ones. */
-const SAMPLE_CONVERSATION = "sample"
+const now = (): string => new Date().toISOString()
 
-const OFFER = sampleTransitionsOffer()
+/** A runtime made once per mount, read as soon as the screen opens. */
+function useOpened(initialMake: () => PreviewsRuntime): PreviewsRuntime {
+  // A runtime made once per mount: its own waits are its own (R1).
+  const [runtime] = useState(initialMake)
+  useEffect(() => {
+    runtime.open()
+  }, [runtime])
+  return runtime
+}
 
 /**
- * Studio's Previews (HOST16, #3558): the previews the agent offers for the
- * owner to approve, each pick kept as a rule. Until home offers a
- * conversation's previews (paulgsc/server#1243), it shows the transitions
- * preview (HOST18) as a sample, with no clip yet: its picks are held in
- * memory while the screen is open and never kept, since a pick on a fixture
- * is no approval. Home's previews will be picked through `phonePicks`.
+ * Studio's Previews (HOST16, #3558): the previews the agent offers on
+ * home's conversations, for the owner to approve, each pick kept on home
+ * as the record's approval and a rule after it. Below them, HOST18's
+ * transitions preview as a sample, its picks held in memory while the
+ * screen is open and never kept, since a pick on a fixture is no approval.
  */
-const Previews = (): JSX.Element => {
-  // A sample's picks, held for as long as the screen is open.
-  const [picks] = useState(samplePicks)
+const PreviewsScreen = (): JSX.Element => {
+  const home = useOpened(() => previewsRuntime(homePreviews, now))
+  const sample = useOpened(() => previewsRuntime(sampleSource(), now))
   return (
     <StudioPage
       heading={KIND_WORDS.previews.name}
       intro={PICK_WORDS.intro}
       back="index"
     >
-      <Part label={OFFER.about}>
-        <PreviewPick
-          offer={OFFER}
-          conversation={SAMPLE_CONVERSATION}
-          picks={picks}
-          clipSrc={() => null}
-          now={() => new Date().toISOString()}
-        />
-      </Part>
+      <Previews previews={home} />
+      <Previews previews={sample} />
     </StudioPage>
   )
 }
 
+/**
+ * Only the Android app's build carries the screen: home's previews are read
+ * over the phone's link to home, which runs only there (vite-env.d.ts,
+ * VITE_DEVICE_BACKEND), and the web builds never route here.
+ */
+const PreviewsRoute = (): JSX.Element | null =>
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? <PreviewsScreen /> : null
+
 export const Route = createFileRoute("/_dashboard/_apk/journal/previews")({
-  component: Previews,
+  component: PreviewsRoute,
 })
