@@ -301,6 +301,11 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
+          # The action's default options, with ANGLE over SwiftShader for the
+          # host's renderer: under its default, swiftshader_indirect, the
+          # emulator's process ended within 2 s of the Cast wing painting its
+          # host drawings, the only page that draws them (#3613).
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
             adb install -r launch-apk/debug.apk

@@ -34,6 +34,16 @@
 # reached by nothing else, since the monkey run below never presses back. The
 # launcher shortcut, on the running app, must log its entry too.
 #
+# LT1 (promise, #3613): under `-gpu swangle_indirect`, the emulator survives
+# drawing every page this test opens. Family: those pages (the foyer, each
+# wing's root, the New idea page, what the seeded monkey reaches) on the
+# emulators that run this test: mobile-apk.yml's launch job, and each
+# android-compat.yml level (apps/mobile/compat/run-level.sh). Under
+# swiftshader_indirect the emulator's process ended as the Cast wing
+# painted its host drawings. Proof: this test, on every push to main and
+# on each compat dispatch, fails when the emulator goes away and names the
+# step it was on (`gone`). Tolerance: none.
+#
 # What it cannot see is a WebView that starts and stays blank: that does not
 # crash. Only the screenshot shows the page rendered. Two signals that looked
 # like they would were tried on the first run (2026-09-30) and read nothing:
@@ -253,7 +263,13 @@ adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
 # A short random walk inside the app. System keys are off so it does not
 # leave for the home screen; the seed keeps a failure reproducible.
 step "drive the app with a seeded monkey run"
-adb shell monkey -p "$pkg" --pct-syskeys 0 --throttle 250 -s 42 -v 300 \
+# --ignore-timeouts keeps the walk going past any ANR, the app's included:
+# on 2026-11-27 (#3613, android-compat run 46073041905) system_server's IME
+# switcher timed out under load and aborted the walk at event 160 of 300,
+# with the app fine. An ANR in the app is caught instead by monkey.txt's
+# "// NOT RESPONDING: <pkg>" and logcat's "ANR in <pkg>", below; the walk
+# is bounded at 10 minutes so a hung app still reaches those checks.
+timeout 600 adb shell monkey -p "$pkg" --pct-syskeys 0 --ignore-timeouts --throttle 250 -s 42 -v 300 \
   > "$out/monkey.txt" 2>&1 || true
 adb exec-out screencap -p > "$out/after-monkey.png" || true
 kill "$logcat_pid" 2>/dev/null || true
