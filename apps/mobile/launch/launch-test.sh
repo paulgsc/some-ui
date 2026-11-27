@@ -46,6 +46,17 @@
 # fills with system noise in seconds, and a dump after the monkey run no
 # longer held the app's first lines.
 #
+# Each step is written to the step summary and to steps.txt before it runs,
+# so a run whose emulator goes away mid-step still names the step: on
+# 2026-11-27 (#3613) the emulator died during a drag, adb exited 255, and
+# `set -e` ended the script before it wrote a line. A run that ends before
+# its verdict also records why the device went (`gone`, below). Before each
+# drag, the device's busiest processes go to top-<where>.txt.
+#
+# The order is fixed, so two runs of one APK take the same steps: a drag at
+# the foyer first, the first drag after boot with no wing involved, then
+# the wings by alias name, Z to A (Cast last today, #3613).
+#
 # It is one script rather than the action's `script:` input because that
 # input runs each line as its own shell, so no variable or `if` spans lines.
 set -euo pipefail
@@ -56,13 +67,73 @@ pkg=dev.paulgsc.someui
 mkdir -p "$out"
 summary=${GITHUB_STEP_SUMMARY:-/dev/null}
 failures=()
+finished=""
+current=""
+
+{
+  echo "## Launch test"
+  echo
+  echo "Steps, each written before it ran:"
+  echo
+} >> "$summary"
+: > "$out/steps.txt"
+step() {
+  current=$1
+  echo "[launch $(date -u +%T)] $1"
+  echo "$(date -u +%T) $1" >> "$out/steps.txt"
+  echo "1. \`$(date -u +%T)\` $1" >> "$summary"
+}
+
+# A run that ends before its verdict (adb gone under `set -e`, most often):
+# the step it was on, whether adb still sees the device, and what the host
+# says of the emulator's process and of memory, since the emulator's own
+# log said nothing on #3613.
+gone() {
+  local code=$?
+  [ -n "$finished" ] && return
+  kill "${logcat_pid:-}" 2>/dev/null || true
+  local state
+  state=$(timeout 10 adb get-state 2>&1 | tr -d '\r' || true)
+  {
+    pgrep -af "qemu-system|emulator" || echo "no emulator process"
+    echo
+    free -m || true
+  } > "$out/host.txt" 2>&1
+  if command -v sudo > /dev/null && sudo -n true 2> /dev/null; then
+    sudo -n dmesg -T 2>&1 | tail -n 60 > "$out/host-dmesg.txt" || true
+  fi
+  local killed
+  killed=$(grep -iE "out of memory|oom-kill|killed process" "$out/host-dmesg.txt" 2>/dev/null | tail -3 || true)
+  {
+    echo
+    echo "- ❌ The test stopped (exit $code) during: **${current:-before its first step}**."
+    echo "- adb's view of the device afterwards: \`${state:-nothing}\`."
+    if pgrep -f "qemu-system" > /dev/null; then
+      echo "- The emulator's process was still running on the host."
+    else
+      echo "- The emulator's process was gone from the host."
+    fi
+    if [ -n "$killed" ]; then
+      echo "- The host's kernel log names a kill for memory:"
+      while IFS= read -r line; do echo "  - $line"; done <<< "$killed"
+    elif [ -f "$out/host-dmesg.txt" ]; then
+      echo "- The host's kernel log names no kill for memory (host-dmesg.txt)."
+    fi
+    echo
+    echo "steps.txt, host.txt, the \`top-<where>.txt\` files and logcat.txt are in the \`mobile-launch-<sha>\` artifact."
+  } >> "$summary"
+  echo "::error title=Launch test::the test stopped during: ${current:-before its first step} (exit $code); see the step summary"
+}
+trap gone EXIT
 
 adb logcat -c
 adb logcat > "$out/logcat.txt" 2>&1 &
 logcat_pid=$!
+step "install the release APK"
 adb install -r "$apk"
 # The plain icon by name: monkey's LAUNCHER start would pick at random among
 # the app's several launcher entries.
+step "start the app from the plain icon"
 adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
 
 # Up to 60 s for the process, then 20 s for the WebView to load the bundle
@@ -89,36 +160,15 @@ here=$(cd "$(dirname "$0")" && pwd)
 source "$here/native-log.sh"
 pulls=()
 
-if [ -n "$pid" ] && ! native_line "wing entered: foyer"; then
-  failures+=("the plain icon's cold start logged no \"wing entered: foyer\" (logcat.txt)")
-fi
-
-# Each wing's icon, on the running app: a warm entry, which www answers with
-# a navigation to the wing's root rather than a reload.
-aliases=$(adb shell cmd package query-activities --brief \
-  -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$pkg" \
-  | tr -d '\r' | grep -oE "$pkg/[A-Za-z0-9_.]+" | grep -v '\.MainActivity$' || true)
-if [ -z "$aliases" ]; then
-  failures+=("the installed package has no launcher entry besides .MainActivity: no wing icons")
-fi
-wings=()
-for component in $aliases; do
-  alias=${component##*.}
-  id=$(echo "${alias#Wing}" | tr '[:upper:]' '[:lower:]')
-  wings+=("$id")
-  adb shell am start -W -n "$component" > /dev/null
-  if ! native_line "wing entered: $id"; then
-    failures+=("$alias logged no \"wing entered: $id\" (logcat.txt)")
-  fi
-  sleep 2
-  adb exec-out screencap -p > "$out/wing-$id.png" || true
-  # Only on a running app: a wing that was never entered already failed.
-  [ -n "$pid" ] || continue
-  # Up to 30 s for the check's end, twice: its own deadline is 20 s
-  # (CHECK_MS), and a drag the wing's navigation landed on ends silently.
-  pulled=""
-  for _ in 1 2; do
+# A drag down at the page on screen, $1 naming where: up to 30 s for the
+# check's end, twice. Its own deadline is 20 s (CHECK_MS), and a drag the
+# wing's navigation landed on ends silently.
+pull_at() {
+  local where=$1 pulled="" before
+  adb shell top -b -n 1 -m 10 > "$out/top-$where.txt" 2>&1 || true
+  for attempt in 1 2; do
     before=$(native_count "$PULL_CHECKED")
+    step "drag down at the $where page (try $attempt)"
     pull_down
     for _ in $(seq 1 30); do
       if [ "$(native_count "$PULL_CHECKED")" -gt "$before" ]; then
@@ -129,10 +179,44 @@ for component in $aliases; do
     done
   done
   if [ -z "$pulled" ]; then
-    failures+=("a drag down at the $id wing's root never checked again, twice: no \"pull checked\" line (logcat.txt)")
+    failures+=("a drag down at the $where page never checked again, twice: no \"pull checked\" line (logcat.txt)")
   else
-    pulls+=("$id:$pulled")
+    pulls+=("$where:$pulled")
   fi
+}
+
+if [ -n "$pid" ] && ! native_line "wing entered: foyer"; then
+  failures+=("the plain icon's cold start logged no \"wing entered: foyer\" (logcat.txt)")
+fi
+# The first drag after boot, at the foyer: no wing's page is involved, so
+# a failure here is not one wing's (#3613).
+[ -z "$pid" ] || pull_at foyer
+
+# Each wing's icon, on the running app: a warm entry, which www answers with
+# a navigation to the wing's root rather than a reload.
+step "list the wings' launcher icons"
+aliases=$(adb shell cmd package query-activities --brief \
+  -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$pkg" \
+  | tr -d '\r' | grep -oE "$pkg/[A-Za-z0-9_.]+" | grep -v '\.MainActivity$' \
+  | sort -r || true)
+if [ -z "$aliases" ]; then
+  failures+=("the installed package has no launcher entry besides .MainActivity: no wing icons")
+fi
+wings=()
+for component in $aliases; do
+  alias=${component##*.}
+  id=$(echo "${alias#Wing}" | tr '[:upper:]' '[:lower:]')
+  wings+=("$id")
+  step "enter the $id wing by its icon"
+  adb shell am start -W -n "$component" > /dev/null
+  if ! native_line "wing entered: $id"; then
+    failures+=("$alias logged no \"wing entered: $id\" (logcat.txt)")
+  fi
+  sleep 2
+  adb exec-out screencap -p > "$out/wing-$id.png" || true
+  # Only on a running app: a wing that was never entered already failed.
+  [ -n "$pid" ] || continue
+  pull_at "$id"
 done
 
 # Back at a wing's root, entered by its icon, leaves the app: no app activity
@@ -141,6 +225,7 @@ done
 # entered is still on screen, at its root.
 back_left=""
 if [ ${#wings[@]} -gt 0 ]; then
+  step "press back at the ${wings[-1]} wing's root"
   adb shell input keyevent 4
   sleep 2
   if adb shell dumpsys activity activities | tr -d '\r' \
@@ -152,21 +237,25 @@ if [ ${#wings[@]} -gt 0 ]; then
 fi
 # The launcher shortcut (res/xml/shortcuts.xml) on the running app: its
 # fixed action opens its page, which MainActivity logs as an entry.
+step "open the New idea shortcut"
 adb shell am start -W -a dev.paulgsc.someui.NEW_IDEA -n "$pkg/.MainActivity" > /dev/null
 if ! native_line "wing entered: shortcut /journal/idea"; then
   failures+=("the New idea shortcut logged no \"wing entered: shortcut /journal/idea\" (logcat.txt)")
 fi
 # The plain icon on the running app resumes it, which brings it back for the
 # monkey run.
+step "resume the app from the plain icon"
 adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
 
 # A short random walk inside the app. System keys are off so it does not
 # leave for the home screen; the seed keeps a failure reproducible.
+step "drive the app with a seeded monkey run"
 adb shell monkey -p "$pkg" --pct-syskeys 0 --throttle 250 -s 42 -v 300 \
   > "$out/monkey.txt" 2>&1 || true
 adb exec-out screencap -p > "$out/after-monkey.png" || true
 kill "$logcat_pid" 2>/dev/null || true
 wait "$logcat_pid" || true
+step "read the logs"
 
 if ! grep -q "// Monkey finished" "$out/monkey.txt"; then
   failures+=("the monkey run did not finish (monkey.txt)")
@@ -197,12 +286,12 @@ reported=$(grep -c "foreign-failure" "$out/native-log.txt" || true)
 
 events=$(grep -oE "Events injected: [0-9]+" "$out/monkey.txt" | grep -oE "[0-9]+$" || echo 0)
 
+finished=yes
 {
-  echo "## Launch test"
   echo
   echo "- Release APK: \`$(basename "$apk")\`, installed and started on the emulator."
   echo "- Wings entered by their icons: **${wings[*]:-none}**$([ -n "$back_left" ] && echo "; back at the last one's root left the app")."
-  echo "- A drag down at each wing's root checked again: **${pulls[*]:-none}** (how each check ended; the emulator has no home)."
+  echo "- A drag down at the foyer and at each wing's root checked again: **${pulls[*]:-none}** (how each check ended; the emulator has no home)."
   echo "- Monkey events injected: **$events**."
   echo "- Failures the app reported to its native log: **$reported** (native-log.txt)."
   grep -o "foreign-failure.*" "$out/native-log.txt" | sort | uniq -c | head -5 | sed 's/^ */  - /' || true
