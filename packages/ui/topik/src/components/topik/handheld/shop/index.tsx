@@ -14,7 +14,7 @@ import { Button, Input, Notice } from "@some-ui/shared"
 import { TAKE_ENDING_WORDS, takeEndingSaid } from "@some-ui/voice-capture"
 import { PHRASES, type PhraseId } from "@topik/lib/topik/phrases/shelf"
 import type { ShopState } from "@topik/lib/topik/shop"
-import { initialShop } from "@topik/lib/topik/shop"
+import { initialShop, WORDS_MAX } from "@topik/lib/topik/shop"
 import type {
   ShopPort,
   ShopRuntime,
@@ -233,7 +233,19 @@ const Answer = ({
     }
     case "unreached": {
       return (
-        <Notice tone="warning" action={retry} onDismiss={onAgain}>
+        <Notice
+          tone="warning"
+          action={retry}
+          // Words this phone couldn't keep are only in the field: closing
+          // this leaves them there to send again.
+          onDismiss={
+            at.hunch.kind === "typed" && !at.kept
+              ? (): void => {
+                  runtime.tap({ kind: "again" })
+                }
+              : onAgain
+          }
+        >
           {at.hunch.kind === "spoken"
             ? W.unreachedSaid
             : at.kept
@@ -294,7 +306,7 @@ export const ShopScreen = ({
           aria-label={W.field}
           placeholder={W.example}
           value={words}
-          maxLength={200}
+          maxLength={WORDS_MAX}
           onChange={(event) => setWords(event.target.value)}
           className="h-12 min-w-0 flex-1 rounded-xl text-base"
         />

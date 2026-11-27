@@ -72,6 +72,24 @@ describe("the shop", () => {
     ).toBeTruthy()
   })
 
+  it("leaves words this phone couldn't keep in the field when its notice is closed", async () => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const port: ShopPort = {
+      hear: () => Promise.resolve({ kind: "held" }),
+      lookUp: () => Promise.reject(new Error("offline")),
+      keep: () => false,
+    }
+    render(<ShopScreen port={port} onBack={() => undefined} />)
+    type("I need a plumber")
+    expect(await screen.findByText(SHOP_WORDS.unkept)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }))
+    expect(screen.queryByText(SHOP_WORDS.unkept)).toBeNull()
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: SHOP_WORDS.field })
+        .value
+    ).toBe("I need a plumber")
+  })
+
   it("answers under StrictMode, which shows the screen twice", async () => {
     const port: ShopPort = {
       hear: () => Promise.resolve({ kind: "held" }),

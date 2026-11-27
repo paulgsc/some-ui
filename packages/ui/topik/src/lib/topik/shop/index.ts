@@ -147,15 +147,20 @@ type Next = Readonly<{ state: ShopState; effects: ReadonlyArray<ShopEffect> }>
 const stay = (state: ShopState): Next => ({ state, effects: [] })
 
 /** The most characters of words home looks up (server `hunch::MAX_WORDS_CHARS`). */
-const WORDS_MAX = 200
+export const WORDS_MAX = 200
 
 /**
  * Words as home looks them up, the same cut as server `phrases::heard_words`:
  * trimmed, the first `WORDS_MAX` characters, trimmed at the end; "" for none.
  * A long take is heard as more than home takes, and home would refuse it all.
+ * Home's trim also takes U+0085, which JavaScript's keeps, so it is taken
+ * here too; what JavaScript's takes beyond home's only shortens the words.
  */
+const trimmed = (text: string): string =>
+  text.replace(/^[\s\u0085]+|[\s\u0085]+$/g, "")
+
 export const lookupWords = (text: string): string =>
-  Array.from(text.trim()).slice(0, WORDS_MAX).join("").trimEnd()
+  trimmed(Array.from(trimmed(text)).slice(0, WORDS_MAX).join(""))
 
 /**
  * Send a hunch, to be heard first or its words looked up: a new one, or one

@@ -261,6 +261,7 @@ describe("the shop", () => {
     expect(lookupWords("가".repeat(300))).toBe("가".repeat(200))
     expect(lookupWords("😀".repeat(201))).toBe("😀".repeat(200))
     expect(lookupWords("   ")).toBe("")
+    expect(lookupWords("\u0085okay\u0085")).toBe("okay")
   })
 
   it("asks again when nothing was heard", () => {
