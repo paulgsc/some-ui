@@ -1133,7 +1133,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the shop but a hunch's look-up, and only the shop asks it (KP4)", () => {
+  it("sends nothing from the shop but a hunch's look-up, and only the shop asks it, the drain sending the same body (KP4)", () => {
     expect(sendCalls(LOOKUP_ASK, read(LOOKUP_ASK))).toEqual(LOOKUP_SENDS)
     expect(read(LOOKUP_ASK)).toContain("homeLink().keep(")
     const callers = sourceFiles()
@@ -1144,6 +1144,9 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     // The drain's part reads only the look-up's body from it.
+    expect(read("lib/home-link/hunches.ts")).toContain(
+      'import { lookupBody } from "./phrase-lookup"'
+    )
     expect(callers).toEqual([
       "lib/home-link/hunches.ts",
       "lib/shop-home/index.ts",

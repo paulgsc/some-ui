@@ -108,21 +108,20 @@ export const createShopRuntime = (
   const ask = <T>(
     what: "hear" | "look-up",
     failed: ShopEvent,
-    call: () => Promise<T>,
+    call: (asked: AbortSignal) => Promise<T>,
     answer: (value: T) => ShopEvent
   ): void => {
-    // A hear the screen's going aborted: nothing to say, as `resume` asks again.
+    // A hear the screen's going cut short says nothing, either way: `resume`
+    // asks again. A look-up that fails is kept however late.
     const asked = gone.signal
     Promise.resolve()
-      .then(call)
+      .then(() => call(asked))
       .then(
         (value) => {
-          // A hear the screen's going cut short is asked again on resume.
           if (what === "hear" && asked.aborted) return
           dispatch(answer(value))
         },
         (error: unknown) => {
-          // A look-up that fails is kept however late; a hear is asked again.
           if (what === "hear" && asked.aborted) return
           reportFailure({
             port: `topik shop (${what})`,
@@ -140,7 +139,7 @@ export const createShopRuntime = (
         ask(
           "hear",
           { kind: "unreached", seq },
-          () => port.hear(note, name, gone.signal),
+          (asked) => port.hear(note, name, asked),
           (heard): ShopEvent =>
             heard.kind === "heard"
               ? { kind: "heard", seq, hunch, name, words: heard.words }
