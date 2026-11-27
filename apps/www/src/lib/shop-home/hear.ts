@@ -4,8 +4,10 @@
  * (`home-link/fast-track`), then reads its words (`home-link/heard`) every
  * few seconds until home has heard it, for a few minutes at most, and not
  * once the screen is gone. A take not heard in time is `held` when home
- * said it holds it, else `going`: still on its way there. A home that can't
- * give its words rejects; the take stays here until home has it either way.
+ * said it holds it, else `going`: not yet known on home, which a home busy
+ * throughout is read as too. A home that can't give its words is `held`
+ * once it said it holds the take, and rejects before; the take stays here
+ * until home has it either way.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Heard } from "@some-ui/topik"
@@ -49,6 +51,7 @@ export async function hearOnHome(
         return { kind: "heard", words: said.text }
       }
       case "unreachable": {
+        if (held) return { kind: "held" }
         throw new Error("home couldn't give the take's words")
       }
       case "notYet": {

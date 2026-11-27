@@ -380,8 +380,8 @@ const STAYS_HERE: Readonly<
     many: "Each one's place in the interview week: the question or card it answered",
   },
   hunch: {
-    one: "Its words, if home hadn't yet looked them up, kept on this phone until it does",
-    many: "Their words, where home hadn't yet looked them up, kept on this phone until it does",
+    one: "Its words, if home hadn't yet looked them up, kept on this phone",
+    many: "Their words, where home hadn't yet looked them up, kept on this phone",
   },
 }
 

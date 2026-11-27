@@ -67,8 +67,15 @@ describe("a spoken hunch heard on home", () => {
     await expect(hearOnHome("n1", p, gone.signal, TIMING)).rejects.toThrow()
   })
 
-  it("rejects when home can't give the take's words", async () => {
-    const away = ports(["asked"], [{ kind: "unreachable" }])
+  it("rejects when home can't give the words of a take it never said it holds", async () => {
+    const away = ports(["notHeld"], [{ kind: "unreachable" }])
     await expect(hearOnHome("n1", away.ports, LIVE, TIMING)).rejects.toThrow()
+  })
+
+  it("says home holds a take it said it holds, though it can't give its words now", async () => {
+    const away = ports(["asked"], [{ kind: "unreachable" }])
+    expect(await hearOnHome("n1", away.ports, LIVE, TIMING)).toEqual({
+      kind: "held",
+    })
   })
 })
