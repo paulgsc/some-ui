@@ -153,6 +153,10 @@ export type Ports = {
   readonly sha256: (file: string) => Promise<string | null>
   readonly mkdir: (dir: string) => Promise<void>
   readonly writeFile: (file: string, text: string) => Promise<void>
+  /** A file's bytes, or null when it is missing or unreadable. */
+  readonly readBytes?: (file: string) => Promise<Uint8Array | null>
+  /** Writes a file's bytes. */
+  readonly writeBytes?: (file: string, bytes: Uint8Array) => Promise<void>
   /** A file's size in bytes, or null when it is missing. */
   readonly fileBytes?: (file: string) => Promise<number | null>
   /** Removes a file, when it is there. */

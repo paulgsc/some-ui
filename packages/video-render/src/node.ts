@@ -16,6 +16,7 @@ import {
   writeFile,
 } from "node:fs/promises"
 import { basename, dirname, join, resolve as resolvePath } from "node:path"
+import { fileURLToPath } from "node:url"
 import { z } from "zod"
 
 import { parseCutList } from "./cut-list"
@@ -24,6 +25,7 @@ import { parseFormat } from "./format"
 import type { Format } from "./format"
 import type { Mailbox } from "./mailbox"
 import { MUSIC_BED, musicBedWav } from "./music-bed"
+import { RNNOISE_MODEL } from "./owner-takes"
 import type { SourceFacts } from "./plan"
 import { DEFAULT_POLICY } from "./policy"
 import { fail, Refused } from "./refused"
@@ -149,7 +151,13 @@ async function decodedMs(
   return n && d ? Math.round((stream.nb_read_frames * 1000 * d) / n) : 0
 }
 
-export function nodePorts(root: string): Ports {
+/** Where `RNNOISE_MODEL` is on this machine, for ffmpeg's `arnndn` to load (HISS1). */
+export const rnnoiseModel = (): string =>
+  fileURLToPath(new URL(`./${RNNOISE_MODEL.file}`, import.meta.url))
+
+export function nodePorts(
+  root: string
+): Ports & Required<Pick<Ports, "readBytes" | "writeBytes">> {
   const at = (file: string): string => resolvePath(root, file)
   return {
     ffmpeg: async (call): Promise<{ ok: boolean; stderr: string }> => {
@@ -198,6 +206,14 @@ export function nodePorts(root: string): Ports {
       await mkdir(at(dir), { recursive: true })
     },
     writeFile: (file, text) => writeFile(at(file), text),
+    readBytes: async (file): Promise<Uint8Array | null> => {
+      try {
+        return new Uint8Array(await readFile(at(file)))
+      } catch {
+        return null
+      }
+    },
+    writeBytes: (file, bytes) => writeFile(at(file), bytes),
     fileBytes: async (file): Promise<number | null> => {
       try {
         return (await stat(at(file))).size

@@ -7,13 +7,23 @@
  * the bound or under it. Then the gaps, a turn's span against its words,
  * the captions through the cut, the WAV read by its chunks, and the ffmpeg
  * step's bytes.
+ *
+ * HISS1 (#3607): a conditioned take's pauses and edges sit at −60 dBFS or
+ * under, its words kept, a word's release with them. Its family, by
+ * dimension: phone hiss (stationary, broadband) under the whole take;
+ * start-up and stop noise longer than the 40 ms click HOST12 catches, at
+ * either edge; a room's echo tail in a pause. Its takes are spoken in
+ * speech-like sound (`speechOf`), which RNNoise keeps, where it takes a pure
+ * tone for noise. The ported gate and expander are held to noisereduce's
+ * and numpy's numbers in `hiss.test.ts`.
  */
 import { createHash } from "node:crypto"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { TimedWord } from "@video-render/cut-list"
-import { nodePorts } from "@video-render/node"
+import { expand, spectralGate } from "@video-render/hiss"
+import { nodePorts, rnnoiseModel } from "@video-render/node"
 import {
   conditionTake,
   DEFAULT_CONDITIONING,
@@ -21,13 +31,14 @@ import {
   joinsOf,
   keptStretches,
   retimed,
+  RNNOISE_MODEL,
   samePath,
   screenEdges,
   spanOf,
   spanProblems,
   TAKE_POLICY,
 } from "@video-render/owner-takes"
-import type { Stretch } from "@video-render/owner-takes"
+import type { ConditionedTake, Stretch } from "@video-render/owner-takes"
 import { samplesOf, wavMs } from "@video-render/wav"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -54,8 +65,74 @@ type Piece =
     }
   /** A breath: quiet broadband noise, well under the voice and over the hiss. */
   | { readonly kind: "breath"; readonly fromMs: number; readonly toMs: number }
+  /** The phone's start-up or stop noise: broadband, loud, longer than a click (HISS1). */
+  | { readonly kind: "rustle"; readonly fromMs: number; readonly toMs: number }
+  /**
+   * Speech as RNNoise hears it (HISS1): a glottal pulse train through a
+   * vowel's formants, a syllable each 180 ms. RNNoise takes a pure tone for
+   * noise, so the denoised takes are spoken in this. `decayMs` lets it die
+   * away (a word's release, an echo); `level` scales it (an echo).
+   */
+  | {
+      readonly kind: "speech"
+      readonly fromMs: number
+      readonly toMs: number
+      readonly seed: number
+      readonly decayMs?: number
+      readonly level?: number
+    }
 
 const at = (ms: number): number => Math.round((ms * RATE) / 1000)
+
+/** A two-pole resonator at `hz`, `bw` wide, over `x`. */
+function resonate(x: Float64Array, hz: number, bw: number): Float64Array {
+  const r = Math.exp((-Math.PI * bw) / RATE)
+  const a1 = -2 * r * Math.cos((2 * Math.PI * hz) / RATE)
+  const a2 = r * r
+  const y = new Float64Array(x.length)
+  let y1 = 0
+  let y2 = 0
+  for (let i = 0; i < x.length; i++) {
+    const v = (1 - r) * (x[i] ?? 0) - a1 * y1 - a2 * y2
+    y[i] = v
+    y2 = y1
+    y1 = v
+  }
+  return y
+}
+
+const VOWELS: ReadonlyArray<readonly [number, number, number]> = [
+  [700, 1200, 2500],
+  [300, 2300, 3000],
+  [500, 900, 2400],
+  [400, 1900, 2600],
+]
+
+/** `n` samples of speech-like sound: a wavering pitch through a vowel's formants, a syllable each 180 ms, its peak 0.5. */
+function speechOf(n: number, seed: number): Float64Array {
+  const pulses = new Float64Array(n)
+  let phase = 0
+  for (let i = 0; i < n; i++) {
+    const before = Math.floor(phase)
+    phase += (130 + 20 * Math.sin(2 * Math.PI * 1.3 * (i / RATE) + seed)) / RATE
+    pulses[i] = Math.floor(phase) > before ? 1 : 0
+  }
+  const out = new Float64Array(n)
+  const syllable = at(180)
+  for (let k = 0; k < n; k += syllable) {
+    const seg = pulses.subarray(k, Math.min(n, k + syllable))
+    const formants = VOWELS[(k / syllable + seed) % VOWELS.length] ?? [
+      500, 1500, 2500,
+    ]
+    const voiced = formants.map((hz) => resonate(seg, hz, 80))
+    for (let i = 0; i < seg.length; i++)
+      out[k + i] =
+        voiced.reduce((sum, f) => sum + (f[i] ?? 0), 0) *
+        Math.sqrt(Math.sin((Math.PI * i) / seg.length))
+  }
+  const peak = out.reduce((m, v) => Math.max(m, Math.abs(v)), 0)
+  return out.map((v) => (peak > 0 ? (v / peak) * 0.5 : 0))
+}
 
 /** A take `ms` long: hiss under it, and each piece laid on it. */
 function takeOf(
@@ -67,9 +144,18 @@ function takeOf(
   for (const p of pieces) {
     const from = at(p.fromMs)
     const to = at(p.toMs)
+    if (p.kind === "speech") {
+      const said = speechOf(to - from, p.seed)
+      for (let i = from; i < to && i < out.length; i++) {
+        const fade =
+          p.decayMs === undefined ? 1 : Math.exp(-(i - from) / at(p.decayMs))
+        out[i] = (out[i] ?? 0) + (p.level ?? 1) * fade * (said[i - from] ?? 0)
+      }
+      continue
+    }
     const burst = hiss(
       to - from,
-      p.kind === "breath" ? 0.008 : 0.6,
+      p.kind === "breath" ? 0.008 : p.kind === "rustle" ? 0.05 : 0.6,
       p.fromMs + 1
     )
     for (let i = from; i < to && i < out.length; i++) {
@@ -267,6 +353,21 @@ describe("keptStretches (HOST12)", () => {
 })
 
 describe("retimed captions (HOST12)", () => {
+  it("places the words on the hiss's trim, never before its start or past its end (HISS1)", () => {
+    const kept: ReadonlyArray<Stretch> = [{ fromMs: 0, toMs: 3_000 }]
+    const words: ReadonlyArray<TimedWord> = [
+      { text: "a", startMs: 0, endMs: 600 },
+      { text: "b", startMs: 1_200, endMs: 1_800 },
+      { text: "c", startMs: 2_400, endMs: 3_000 },
+    ]
+    const placed = retimed(words, kept, 1, 80, { fromMs: 300, toMs: 2_700 })
+    expect(placed.map((w) => [w.startMs, w.endMs])).toEqual([
+      [0, 300],
+      [900, 1_500],
+      [2_100, 2_400],
+    ])
+  })
+
   it("shows a word drawn to nothing for a moment at its edge, never over the next, never past the end", () => {
     // The review's probe: "um" and "uh" wholly inside a cut, and a word
     // past the take's end.
@@ -751,7 +852,7 @@ describe("a take's WAV, read by its chunks", () => {
   })
 })
 
-describe("conditionTake (HOST12)", () => {
+describe("conditionTake (HOST12, HISS1)", () => {
   let root = ""
   beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), "owner-takes-"))
@@ -760,8 +861,18 @@ describe("conditionTake (HOST12)", () => {
     if (root) await rm(root, { recursive: true, force: true })
   })
 
+  it("loads the pinned RNNoise model", async () => {
+    const bytes = await readFile(rnnoiseModel())
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+      RNNOISE_MODEL.sha256
+    )
+  })
+
   it("never writes over the take it conditions", async () => {
-    const wav = wavOf(takeOf(1_000, [{ kind: "word", fromMs: 100, toMs: 900 }]))
+    await writeFile(
+      join(root, "take.wav"),
+      wavOf(takeOf(1_000, [{ kind: "word", fromMs: 100, toMs: 900 }]))
+    )
     const ports = nodePorts(root)
     for (const out of [
       "take.wav",
@@ -771,11 +882,12 @@ describe("conditionTake (HOST12)", () => {
     ]) {
       const done = await conditionTake(
         ports,
-        { file: "take.wav", wav },
+        { file: "take.wav" },
         DEFAULT_CONDITIONING,
         "work",
         out,
-        root
+        root,
+        rnnoiseModel()
       )
       expect(done.ok ? [] : done.problems).toEqual([
         "take.wav: conditioning would write over the take itself",
@@ -786,43 +898,159 @@ describe("conditionTake (HOST12)", () => {
     expect(samePath("/x/a/b.wav", "a/b.wav", "/w")).toBe(false)
   })
 
+  /** A take conditioned twice into fresh folders: each run's output, its sum and its levels in 20 ms frames. */
+  async function conditionTwice(
+    name: string,
+    samples: Float32Array,
+    words?: ReadonlyArray<TimedWord>
+  ): Promise<
+    ReadonlyArray<{
+      readonly done: ConditionedTake
+      readonly sum: string
+      readonly ms: number
+      readonly levels: ReadonlyArray<number>
+    }>
+  > {
+    await writeFile(join(root, `${name}.wav`), wavOf(samples, true))
+    const ports = nodePorts(root)
+    const runs = []
+    for (const k of [1, 2]) {
+      const work = `${name}-${String(k)}`
+      await ports.mkdir(work)
+      const done = await conditionTake(
+        ports,
+        { file: `${name}.wav`, ...(words === undefined ? {} : { words }) },
+        DEFAULT_CONDITIONING,
+        work,
+        `${work}/out.wav`,
+        root,
+        rnnoiseModel()
+      )
+      if (!done.ok) throw new Error(done.problems.join("\n"))
+      const bytes = new Uint8Array(await readFile(join(root, work, "out.wav")))
+      // The levelled turn, through the gate, the expander and the trim:
+      // what is written is exactly that (HISS1's wiring).
+      const level = samplesOf(
+        new Uint8Array(await readFile(join(root, work, "levelled.wav")))
+      )
+      if (level === null) throw new Error("no levelled turn")
+      const trimmed = expand(
+        spectralGate(Float64Array.from(level.samples), level.rate),
+        level.rate
+      )
+      if (trimmed === null) throw new Error("nothing voiced")
+      expect(bytes.byteLength).toBe(44 + trimmed.samples.length * 2)
+      const pcm = new DataView(bytes.buffer, bytes.byteOffset + 44)
+      trimmed.samples.forEach((x, i) => {
+        if (i % 101 !== 0) return
+        expect(pcm.getInt16(i * 2, true)).toBe(
+          Math.max(-32768, Math.min(32767, Math.round(x * 32767))) | 0
+        )
+      })
+      const out = samplesOf(bytes)
+      if (out === null) throw new Error("not a WAV")
+      runs.push({
+        done: done.value,
+        sum: createHash("sha256").update(bytes).digest("hex"),
+        ms: wavMs(bytes) ?? 0,
+        levels: framesOf(out.samples, out.rate, 20).map((f) => f.db),
+      })
+    }
+    return runs
+  }
+
   it("cuts, speeds and levels a take, the same bytes each time", async () => {
     const pieces: ReadonlyArray<Piece> = [
       { kind: "click", fromMs: 20, toMs: 25 },
-      { kind: "word", fromMs: 400, toMs: 1_400 },
-      { kind: "word", fromMs: 2_600, toMs: 3_400 },
+      { kind: "speech", fromMs: 400, toMs: 1_400, seed: 0 },
+      { kind: "speech", fromMs: 2_600, toMs: 3_400, seed: 1 },
       { kind: "click", fromMs: 3_900, toMs: 3_905 },
     ]
-    const wav = wavOf(takeOf(4_000, pieces), true)
-    await writeFile(join(root, "take.wav"), wav)
-    const ports = nodePorts(root)
-    const sums: Array<string> = []
-    for (const k of [1, 2]) {
-      await ports.mkdir(`work-${String(k)}`)
-      const done = await conditionTake(
-        ports,
-        {
-          file: "take.wav",
-          wav,
-          words: [{ text: "Hello", startMs: 400, endMs: 1_400 }],
-        },
-        DEFAULT_CONDITIONING,
-        `work-${String(k)}`,
-        `out-${String(k)}.wav`,
-        root
+    const runs = await conditionTwice("take", takeOf(4_000, pieces), [
+      { text: "Hello", startMs: 400, endMs: 1_400 },
+    ])
+    for (const { done, ms } of runs) {
+      const kept = done.kept.reduce((n, s) => n + s.toMs - s.fromMs, 0)
+      // The kept audio, played 1.2 times as fast, trimmed to its voice.
+      expect(Math.abs(ms - (done.trim.toMs - done.trim.fromMs))).toBeLessThan(1)
+      expect(done.trim.toMs).toBeLessThanOrEqual(
+        kept / DEFAULT_CONDITIONING.tempo + 20
       )
-      if (!done.ok) throw new Error(done.problems.join("\n"))
-      const kept = done.value.kept.reduce((n, s) => n + s.toMs - s.fromMs, 0)
-      const out = new Uint8Array(
-        await readFile(join(root, `out-${String(k)}.wav`))
-      )
-      // The kept audio, played 1.2 times as fast.
-      expect(
-        Math.abs((wavMs(out) ?? 0) - kept / DEFAULT_CONDITIONING.tempo)
-      ).toBeLessThan(30)
-      expect(done.value.words?.[0]?.startMs).toBeLessThanOrEqual(100)
-      sums.push(createHash("sha256").update(out).digest("hex"))
+      expect(done.words?.[0]?.startMs).toBeLessThanOrEqual(100)
     }
-    expect(sums[0]).toBe(sums[1])
+    expect(runs[0]?.sum).toBe(runs[1]?.sum)
+  }, 60_000)
+
+  it("quiets a hissing take's pauses and edges, and keeps its words (HISS1, #3607)", async () => {
+    // Phone hiss about 35 dB under the voice, start-up and stop noise
+    // 150 ms long, an echo after each word, pauses the gap cap shortens and
+    // one it leaves, and a last word that dies away as a voice does.
+    const said: ReadonlyArray<Stretch> = [
+      { fromMs: 500, toMs: 1_800 },
+      { fromMs: 2_600, toMs: 3_500 },
+      { fromMs: 3_800, toMs: 5_200 },
+    ]
+    const pieces: ReadonlyArray<Piece> = [
+      { kind: "rustle", fromMs: 0, toMs: 150 },
+      ...said.flatMap(
+        (w, seed): ReadonlyArray<Piece> => [
+          { kind: "speech", ...w, seed },
+          {
+            kind: "speech",
+            fromMs: w.toMs,
+            toMs: w.toMs + 200,
+            seed,
+            decayMs: 60,
+            level: 0.03,
+          },
+        ]
+      ),
+      { kind: "speech", fromMs: 5_200, toMs: 5_500, seed: 3, decayMs: 80 },
+      { kind: "rustle", fromMs: 5_850, toMs: 6_000 },
+    ]
+    const runs = await conditionTwice(
+      "hiss",
+      takeOf(6_000, pieces, { hissAmp: 0.006 }),
+      said.map((w, i) => ({
+        text: `w${String(i)}`,
+        startMs: w.fromMs,
+        // The last word's caption holds its release.
+        endMs: i === said.length - 1 ? 5_500 : w.toMs,
+      }))
+    )
+    for (const { done, levels } of runs) {
+      const speaking = [...levels].sort((a, b) => a - b)[
+        Math.floor(levels.length * 0.9)
+      ]
+      if (speaking === undefined) throw new Error("no frames")
+      // The edges: the first and last 40 ms.
+      expect(
+        Math.max(...levels.slice(0, 2), ...levels.slice(-2))
+      ).toBeLessThanOrEqual(-60)
+      // The pauses: every frame 40 ms or more from a word, by its caption.
+      const words = done.words ?? []
+      const pauses = levels.filter((_, i) =>
+        words.every(
+          (w) => i * 20 + 20 <= w.startMs - 40 || i * 20 >= w.endMs + 40
+        )
+      )
+      expect(pauses.length).toBeGreaterThan(10)
+      expect(Math.max(...pauses)).toBeLessThanOrEqual(-60)
+      const voice = levels.map((db) => db >= speaking - 20)
+      // The words: as long as they were said, sped up, none clipped, and
+      // the last one's release kept.
+      const voicedMs = voice.filter(Boolean).length * 20
+      // The release is within 20 dB of the voice for 80·ln 10 ≈ 184 ms.
+      const saidMs =
+        (said.reduce((ms, w) => ms + w.toMs - w.fromMs, 0) + 184) /
+        DEFAULT_CONDITIONING.tempo
+      expect(Math.abs(voicedMs - saidMs)).toBeLessThanOrEqual(100)
+      // The release: it dies away over the frames after the voice, never cut off.
+      const lastVoice = voice.lastIndexOf(true)
+      expect(
+        levels.slice(lastVoice + 1).filter((db) => db > -60).length
+      ).toBeGreaterThanOrEqual(2)
+    }
+    expect(runs[0]?.sum).toBe(runs[1]?.sum)
   }, 60_000)
 })

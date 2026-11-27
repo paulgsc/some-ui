@@ -18,9 +18,14 @@
  *   and the take is bounded to its voiced frames, a short lead before the
  *   first and a tail after the last. No fixed cut: a word that starts early
  *   is voice, and is kept.
+ * - **The hiss** (HISS1, #3607; the owner's chain, C1611): before anything
+ *   is measured, the take goes through RNNoise (`arnndn`, the pinned
+ *   `RNNOISE_MODEL`); after it is levelled, through noisereduce's stationary
+ *   gate, an expander and a trim, ported (`hiss.ts`, C1610). So a take's
+ *   pauses and edges sit at −60 dBFS or under and its words are kept.
  * - **The noise floor**: what is left in a take's silences, measured, and a
  *   take above `noiseFloorMostDb` is flagged (`noisy`), never failed
- *   silently. The denoise pass is ffmpeg's, set from that floor.
+ *   silently. The cut's own denoise pass is ffmpeg's, set from that floor.
  * - **The gaps** (`keptStretches`): every silence longer than `gapMostMs` is
  *   shortened to it from its middle, so each join lands in silence, faded:
  *   280 ms, except where a breath the cut would reach into is kept whole.
@@ -36,15 +41,29 @@
  */
 
 import type { Parsed, TimedWord } from "./cut-list"
+import { expand, spectralGate } from "./hiss"
 import {
   loudnessAt,
   planCondition,
   planLevel,
   planMeasure,
+  planRnnoise,
   readLoudness,
 } from "./plan"
 import type { Ports } from "./render"
+import { SAMPLE_RATE, wavOf } from "./synth"
 import { samplesOf } from "./wav"
+
+/**
+ * The RNNoise model a take is denoised with first (C1611): GregorR's
+ * `somnolent-hogwash` (speech, recorded noise), kept in `rnnoise/` beside
+ * this file (its README says where from), pinned by its sum. The path
+ * ffmpeg loads it from is the caller's (`rnnoiseModel` in `node.ts`).
+ */
+export const RNNOISE_MODEL = {
+  file: "rnnoise/sh.rnnn",
+  sha256: "70bb6685eb0c2a1d18e2918dca3fbfbd39317010b1802eb1b6ea73a92f3fdec0",
+} as const
 
 /**
  * How the owner's takes are conditioned: policy, moved with the story
@@ -385,17 +404,26 @@ export function retimed(
   words: ReadonlyArray<TimedWord>,
   kept: ReadonlyArray<Stretch>,
   tempo: number,
-  least: number = TAKE_POLICY.captionLeastMs
+  least: number = TAKE_POLICY.captionLeastMs,
+  /** The stretch of the played audio that was kept at last (the hiss's trim, HISS1); all of it when none is named. */
+  trim?: Stretch
 ): ReadonlyArray<TimedWord> {
-  const endOf = Math.round(
+  const played = Math.round(
     kept.reduce((ms, s) => ms + s.toMs - s.fromMs, 0) / tempo
   )
+  const window = trim ?? { fromMs: 0, toMs: played }
+  const endOf = window.toMs - window.fromMs
+  const on = (ms: number): number =>
+    Math.min(
+      endOf,
+      Math.max(0, Math.round(playedAt(ms, kept, tempo) - window.fromMs))
+    )
   const placed = words.map((w) => {
-    const startMs = Math.round(playedAt(w.startMs, kept, tempo))
+    const startMs = on(w.startMs)
     return {
       text: w.text,
       startMs,
-      endMs: Math.max(startMs, Math.round(playedAt(w.endMs, kept, tempo))),
+      endMs: Math.max(startMs, on(w.endMs)),
     }
   })
   // Forward: each at least `least`, starting no sooner than the last ends.
@@ -708,21 +736,25 @@ export const DEFAULT_CONDITIONING: TakeConditioning = {
 export type ConditionedTake = {
   readonly screened: Screened
   readonly kept: ReadonlyArray<Stretch>
+  /** The stretch of the cut, sped-up audio the hiss's trim kept (HISS1). */
+  readonly trim: Stretch
   readonly words: ReadonlyArray<TimedWord> | null
 }
 
 /**
- * One turn's take conditioned into `out`: screened, bounded to its span,
- * its long silences shortened, denoised, sped up and brought to its
- * loudness, in three ffmpeg calls (cut, measure, level) whose bytes depend
- * only on the take and the conditioning. `wav` is the take's bytes, read
- * by the caller; `work` holds the step's own file.
+ * One turn's take conditioned into `out`: denoised by RNNoise, screened,
+ * bounded to its span, its long silences shortened, sped up and brought to
+ * its loudness, then through the spectral gate, the expander and the trim
+ * (HISS1). Four ffmpeg calls (RNNoise, cut, measure, level) and the gate in
+ * code, whose bytes depend only on the take, the conditioning and the
+ * model, on one render image (its ffmpeg and Node pinned). `model` is the
+ * path ffmpeg loads `RNNOISE_MODEL` from; `work` holds the step's own files.
  */
 export async function conditionTake(
-  ports: Pick<Ports, "ffmpeg">,
+  ports: Pick<Ports, "ffmpeg"> &
+    Required<Pick<Ports, "readBytes" | "writeBytes">>,
   take: {
     readonly file: string
-    readonly wav: Uint8Array
     readonly span?: Stretch
     readonly words?: ReadonlyArray<TimedWord>
   },
@@ -730,28 +762,39 @@ export async function conditionTake(
   work: string,
   out: string,
   /** The folder relative paths are read from (ffmpeg's working folder). */
-  cwd: string
+  cwd: string,
+  model: string
 ): Promise<Parsed<ConditionedTake>> {
+  const denoised = `${work}/rnnoise.wav`
   const raw = `${work}/conditioned.wav`
+  const levelledFile = `${work}/levelled.wav`
   // The owner's take is the record: nothing this step writes lands on it.
-  if ([out, raw].some((file) => samePath(file, take.file, cwd)))
+  if (
+    [out, denoised, raw, levelledFile].some((file) =>
+      samePath(file, take.file, cwd)
+    )
+  )
     return {
       ok: false,
       problems: [`${take.file}: conditioning would write over the take itself`],
     }
-  const read = samplesOf(take.wav)
-  if (read === null)
-    return { ok: false, problems: [`${take.file}: it isn't a 16-bit PCM WAV`] }
+  const failed = (why: string): Parsed<ConditionedTake> => ({
+    ok: false,
+    problems: [`${take.file}: ${why}`],
+  })
+  const rnn = await ports.ffmpeg(planRnnoise(take.file, model, denoised))
+  if (!rnn.ok) return failed(rnn.stderr)
+  const read = samplesOf((await ports.readBytes(denoised)) ?? new Uint8Array())
+  if (read === null) return failed("it couldn't be read once denoised")
   const policy = { ...TAKE_POLICY, gapMostMs: conditioning.gapMostMs }
   const screened = screenEdges(framesOf(read.samples, read.rate), policy)
   const within = boundedTo(screened, take.span, policy)
-  if (within.toMs <= within.fromMs)
-    return { ok: false, problems: [`${take.file}: nothing in it is voiced`] }
+  if (within.toMs <= within.fromMs) return failed("nothing in it is voiced")
   const kept = keptStretches(screened, within, policy)
   const target = loudnessAt(conditioning.loudnessLufs)
   const cut = await ports.ffmpeg(
     planCondition(
-      take.file,
+      denoised,
       {
         kept,
         floorDb: screened.floorDb,
@@ -761,26 +804,52 @@ export async function conditionTake(
       raw
     )
   )
-  if (!cut.ok) return { ok: false, problems: [`${take.file}: ${cut.stderr}`] }
+  if (!cut.ok) return failed(cut.stderr)
   const measured = await ports.ffmpeg(planMeasure(raw, target))
   const loudness = readLoudness(measured.stderr)
   if (!measured.ok || loudness === null)
-    return {
-      ok: false,
-      problems: [`${take.file}: its loudness wasn't measured`],
-    }
-  const levelled = await ports.ffmpeg(planLevel(raw, loudness, out, target))
-  if (!levelled.ok)
-    return { ok: false, problems: [`${take.file}: ${levelled.stderr}`] }
+    return failed("its loudness wasn't measured")
+  const levelled = await ports.ffmpeg(
+    planLevel(raw, loudness, levelledFile, target)
+  )
+  if (!levelled.ok) return failed(levelled.stderr)
+  const level = samplesOf(
+    (await ports.readBytes(levelledFile)) ?? new Uint8Array()
+  )
+  if (level?.rate !== SAMPLE_RATE)
+    return failed("it couldn't be read once levelled")
+  const gated = spectralGate(Float64Array.from(level.samples), level.rate)
+  const trimmed = expand(gated, level.rate)
+  if (trimmed === null) return failed("nothing in it is voiced once denoised")
+  await ports.writeBytes(
+    out,
+    wavOf(
+      Int16Array.from(trimmed.samples, (x) =>
+        Math.max(-32768, Math.min(32767, Math.round(x * 32767)))
+      )
+    )
+  )
+  const ms = (samples: number): number => (samples * 1000) / level.rate
+  const trim: Stretch = {
+    fromMs: ms(trimmed.fromSample),
+    toMs: ms(trimmed.fromSample + trimmed.samples.length),
+  }
   return {
     ok: true,
     value: {
       screened,
       kept,
+      trim,
       words:
         take.words === undefined
           ? null
-          : retimed(take.words, kept, conditioning.tempo),
+          : retimed(
+              take.words,
+              kept,
+              conditioning.tempo,
+              TAKE_POLICY.captionLeastMs,
+              trim
+            ),
     },
   }
 }
