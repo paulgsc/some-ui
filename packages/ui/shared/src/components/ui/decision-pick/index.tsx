@@ -30,6 +30,8 @@ export type DecisionOption = {
    * above its button and outside it, so watching it never picks.
    */
   readonly shows?: ReactNode
+  /** Held on its own, as a preview whose clip can't play yet is (HOST16). */
+  readonly disabled?: boolean
 }
 
 /** What is picked: a listed option, or the person's own. */
@@ -99,7 +101,7 @@ export const DecisionPick = ({
             key={option.id}
             type="button"
             aria-pressed={on}
-            disabled={disabled}
+            disabled={disabled || option.disabled === true}
             onClick={() => onPick({ kind: "option", option: option.id })}
             className={rowClass(on)}
           >

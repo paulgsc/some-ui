@@ -182,6 +182,11 @@ const HOME_LINK_CALLERS = new Set([
   // their lists as the screen opens or is asked again, and writes a mark or a
   // list's entry on a tap.
   "lib/idea-home/index.ts",
+  // LA8 (HOST16, #3558): Studio's Previews, which asks home for the
+  // conversations it keeps and each one's previews as the screen opens, on
+  // Try again and after a pick, and sends a pick as the record's approve
+  // event on a tap.
+  "lib/preview-home/index.ts",
   // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play;
@@ -256,6 +261,7 @@ const KEEPERS = new Set([
   "lib/home-link/kept-read.ts",
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
+  "lib/home-link/preview-reads.ts",
   "lib/home-link/takes-read.ts",
   "lib/home-link/attention.ts",
   "lib/home-link/call-videos.ts",
@@ -395,6 +401,13 @@ const IDEA_SENDS = [
   ['"PUT"', "path", "JSON.stringify({ furnishing: ask.furnishing })"],
   ['"PUT"', "path"],
   ['ask.listed ? "PUT" : "DELETE"', "path"],
+]
+
+/** LA8 (HOST16): Studio's Previews' requests, one per ask, and the ones it may send. */
+const PREVIEW_READS = "lib/home-link/preview-reads.ts"
+const PREVIEW_SENDS = [
+  ['"POST"', "path", "JSON.stringify(ask.event)"],
+  ['"GET"', "path"],
 ]
 
 /**
@@ -1103,6 +1116,19 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(callers).toEqual(["lib/idea-home/index.ts"])
+  })
+
+  it("sends nothing from Studio's Previews but its reads and a pick's approve event, and only it asks them (HOST16)", () => {
+    expect(sendCalls(PREVIEW_READS, read(PREVIEW_READS))).toEqual(PREVIEW_SENDS)
+    expect(read(PREVIEW_READS)).toContain("homeLink().keep(")
+    const callers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/preview-reads"|from "@\/lib\/home-link\/preview-reads"/.test(
+          read(f)
+        )
+      )
+    expect(callers).toEqual(["lib/preview-home/index.ts"])
   })
 
   it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention, My data, Rust Rounds' opening and Studio's Spoken read it (RR6, ST32, MD8, HEARD3, #3269, W5)", () => {
