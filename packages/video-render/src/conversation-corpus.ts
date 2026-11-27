@@ -38,14 +38,14 @@ import {
 export const CONVERSATION_CORPUS_SCHEMA = "some-ui.conversation-refusals/1"
 
 /** How many accepted events deep the walk goes past each seed. */
-export const CORPUS_DEPTH = 4
+const CORPUS_DEPTH = 4
 
 /**
  * Where the walk starts: a new record, and one green-lit, so the
  * signature's rules (offers, picks that move, rules set twice) are within
  * the depth without walking every order of the podcast before them.
  */
-export const CORPUS_SEEDS: ReadonlyArray<ReadonlyArray<string>> = [
+const CORPUS_SEEDS: ReadonlyArray<ReadonlyArray<string>> = [
   [],
   ["topic", "pointA", "v1", "heard1", "green1"],
 ]
@@ -316,7 +316,7 @@ export const CORPUS_ALPHABET: Readonly<Record<string, ConversationEvent>> = {
 }
 
 /** One case: from the state `path` reaches, what the step answers to `next`. */
-export type CorpusCase = {
+type CorpusCase = {
   /** The path and the event tried, as one name: `topic>v1|flagAgent`. */
   readonly id: string
   /** The alphabet's events the step took, in order. */
@@ -328,7 +328,7 @@ export type CorpusCase = {
 }
 
 /** An offer the schema is asked to read: whether it takes it. */
-export type OfferProbe = {
+type OfferProbe = {
   readonly id: string
   readonly event: unknown
   readonly takes: boolean
@@ -468,7 +468,7 @@ const OFFER_SHAPES: Readonly<Record<string, object>> = {
 }
 
 /** Each of `OFFER_SHAPES` as an offer event, and whether the schema takes it. */
-export const offerProbes = (): ReadonlyArray<OfferProbe> =>
+const offerProbes = (): ReadonlyArray<OfferProbe> =>
   Object.entries(OFFER_SHAPES).map(([id, offer]) => {
     const event = { event: "offer", by: "agent", at: AT, offer }
     return {
