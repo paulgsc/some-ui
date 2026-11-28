@@ -152,3 +152,13 @@ exists never draw this finding.
 When the reach call chose to build (rung 3) and names no part that is the owner's own, or links
 no evidence of a pain point that use of the rungs above left, raise that too, non-blocking:
 "generic story, built without evidence" (`CLAUDE.md`, "Reach before you build").
+
+## One job per file, one job per process
+
+A hunk that gives an existing process, service, file or module a second job (`CLAUDE.md`, "One
+job per file, one job per process") is a finding: work with a lifetime, schedule or failure mode
+of its own added to another's start, request path or loop, or a file taking on a concern
+unrelated to what it already does. It is **blocking** when the PR does not name the new job and
+give, as a call, why it cannot run on its own; **non-blocking** otherwise, naming the job. A
+change that adds to a file already holding several jobs without splitting it, or saying why
+not, draws a **non-blocking** finding. A change that splits a job out never draws it.
