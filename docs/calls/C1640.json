@@ -1,0 +1,20 @@
+{
+  "id": "C1640",
+  "made": "2026-11-28",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/conversation.ts",
+    "some-ui:packages/video-render/src/cues.ts",
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/game-card.ts"
+  ],
+  "chose": "Mochi's quiz (#3620) is built at rung 3, and only as members of closed unions that already exist. A round is a grouping of conversation/2's turns (the question, the owner's take, Tin Bird's verdict turn) whose outcome is a closed set (right, partly, wrong). Lives are a pure fold over the outcomes in order, never stored, and they never end the essay, since every round plays. The buzz is a buzzer member of SOUNDS, synthesised like the other cues. The lightning is a shock member of Mochi's CEREMONIES, played at most once a chapter, when a subject's last life goes. Lives and the round on screen are a tally template of the game-card burn-in. The question on screen is HOST15's question card (#3557). The landscape is one new ground design. The thumbnail is thumbnail.ts's template (C1028). What is ours: the answer of record comes from the repositories' code at a pinned commit (claims.ts), and the owner's answers are their own takes.",
+  "options": [
+    "Members of the existing unions: conversation/2's rounds, SOUNDS, CEREMONIES, game-card templates, the cards union, a ground design (chosen)",
+    "A quiz module of its own, with its own record, scoring, sounds and card",
+    "A hosted quiz or game-show tool, as is"
+  ],
+  "gray": "The owner asked for a game with lives, strikes, a buzz and a lightning strike, and each could be a module of its own; C830 asks for the family. A hosted quiz tool makes a live game, not a deterministic video built from the owner's takes and the repository's record, so none delivers the story. How lives, strikes and the strike's frequency read on screen is a taste the owner would notice, and the bank (https://claude.ai/artifact/WsHu7PEjNb6XiqyHMQ5Fsu) puts five questions on it to them (#3621).",
+  "undo": "Drop the quiz's members from those unions: no other kind depends on buzzer, shock, the tally template or a round grouping.",
+  "refs": ["#3620", "#3621", "#3521", "#3557"]
+}
