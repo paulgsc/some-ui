@@ -1,0 +1,24 @@
+{
+  "id": "C1640",
+  "made": "2026-11-28",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/conversation.ts",
+    "some-ui:packages/video-render/src/vocabulary.ts",
+    "some-ui:packages/some-styles/src/brand/host.ts",
+    "some-ui:packages/some-styles/src/brand/host-mochi.ts",
+    "some-ui:packages/ui/burn-ins/src/lib/game-card.ts",
+    "some-ui:packages/video-render/src/claims.ts",
+    "some-ui:packages/video-render/src/thumbnail.ts"
+  ],
+  "chose": "Rung 3, and each piece of Mochi's quiz (#3620) a new member of a closed union that already exists, where one does. A round groups conversation/2's turns (the question, the owner's take, Tin Bird's verdict-stance turn), with its outcome a closed set. The score is a pure fold over the outcomes in order, never stored. The buzz is a buzzer member of SOUNDS. The lightning is a shock member of Mochi's CEREMONIES. The score and round on screen are a tally template of the game-card burn-in. Answers of record name their sources through claims.ts, and the thumbnail is thumbnail.ts's template (C1028). Two pieces have no union yet: the question on screen is to be a question kind of the burn-ins' cards, proposed on #3557 and not built; the landscape's family is open, a series ground or a video-motion composition, decided when it is built. The game's rules (lives or strikes, whether they can end the essay, how often the lightning plays, whether partly is an outcome) are not chosen here: they are the owner's, put in #3621.",
+  "options": [
+    "Members of the existing unions, naming where none exists yet (chosen)",
+    "A quiz module of its own, with its own record, scoring, sounds and cards",
+    "Fold in a self-hosted quiz engine on home: it would own the game's state, which the conversation record already holds",
+    "A hosted quiz or game-show tool, as is: it makes a live game, not a deterministic video built from the owner's takes and the repository's record"
+  ],
+  "gray": "The owner asked for a game with lives, strikes, a buzz and a lightning strike, and each could be a module of its own; C830 asks for the family. How the game reads on screen is a taste the owner would notice, and its rules are put to them in #3621.",
+  "undo": "Remove the quiz's members (buzzer, shock, the tally template, the round grouping) and the quiz's records.",
+  "refs": ["#3620", "#3621", "#3521", "#3557"]
+}
