@@ -160,4 +160,5 @@ job per file, one job per process") is a finding: work with a lifetime, schedule
 of its own added to another's start, request path or loop, or a file taking on a concern
 unrelated to what it already does. It is **blocking** when the PR does not name the new job and
 give, as a call, why it cannot run on its own; **non-blocking** otherwise, naming the job. A
-change that splits a job out never draws it.
+change that adds to a file already holding several jobs without splitting it, or saying why
+not, draws a **non-blocking** finding. A change that splits a job out never draws it.

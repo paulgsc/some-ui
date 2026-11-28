@@ -60,8 +60,8 @@ apply to any agent working here, not only Claude.
   or no evidence of a pain point linked. Changes to an existing surface never do.
 - **One job per file, one job per process.** A hunk that gives an existing process,
   service, file or module a second job (work with a lifetime, schedule or failure mode of its
-  own in another's start, request path or loop, or an unrelated concern in a file) is blocking
-  unless the PR names the job and gives, as a call, why it cannot run on its own. Splitting a
-  job out never draws it.
+  own in another's start, request path or loop, or an unrelated concern in a file) is a
+  finding: blocking when the PR does not name the job and give, as a call, why it cannot run on
+  its own; non-blocking otherwise, naming the job. A change that splits a job out never draws it.
 
 Full text: `REVIEW.md`.
