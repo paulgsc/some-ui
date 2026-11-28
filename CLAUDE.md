@@ -526,6 +526,28 @@ agent, has a **Superseded** section. It says what the change made obsolete and r
 fixed body (Changesets, the Pages and Docker release PRs, extension releases, the route
 snapshot) are exempt: they carry generated content, not new implementations.
 
+## One job per file, one job per process
+
+The owner (2026-11-28, close paraphrase): "This should be a general standing rule: we cannot
+have any God file or any God process. File host drifted silently into becoming a database, a
+server and other things. That pattern is an anti-pattern." It came from home's deploy rolling
+back because file-host's own start copied and migrated the database before it could serve
+(paulgsc/server#1274; the fix runs backups and migrations on their own).
+
+- **A process or service has one job,** named in one sentence without "and". Work with a
+  lifetime, schedule or failure mode of its own (a backup, a migration, a poller, a render, a
+  scheduled pass) runs as its own process or step, which the one it serves waits on or reads
+  from, never inside another's start, request path or loop. A job that would ride an existing
+  process instead says why in its PR, as a call.
+- **A file or module has one job** the same way. A change that would give one a second job
+  splits it first; a file that already holds several is split when a change next grows it.
+- **The drift is silent, so say it.** A PR that adds a job to a process or a file names the job.
+  A solved problem is reached for, not rebuilt inside the nearest process ("Reach before you
+  build").
+
+Whether something is a second job is a judgment, so review holds it (`REVIEW.md`, "One job per
+file, one job per process").
+
 ## React is not the coordinator
 
 When a feature holds anything external with an async lifetime (a microphone, an `Audio`, a

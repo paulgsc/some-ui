@@ -58,5 +58,10 @@ apply to any agent working here, not only Claude.
   by it or its epic, and no reason given that none was owed, gets a non-blocking finding
   naming the machinery, as does a reach call that chose to build with no part of its own named
   or no evidence of a pain point linked. Changes to an existing surface never do.
+- **One job per file, one job per process.** A hunk that gives an existing process,
+  service, file or module a second job (work with a lifetime, schedule or failure mode of its
+  own in another's start, request path or loop, or an unrelated concern in a file) is blocking
+  unless the PR names the job and gives, as a call, why it cannot run on its own. Splitting a
+  job out never draws it.
 
 Full text: `REVIEW.md`.
