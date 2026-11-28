@@ -531,10 +531,10 @@ snapshot) are exempt: they carry generated content, not new implementations.
 The owner (2026-11-28, close paraphrase): "This should be a general standing rule: we cannot
 have any God file or any God process. File host drifted silently into becoming a database, a
 server and other things. That pattern is an anti-pattern." It came from home's deploy of
-release 186 rolling back: file-host's own start, with migrations pending, copied the whole
-database and checked the copy before it could serve, and that outran the health check's
-window. Moving the backup and the migration out of file-host's start is under way in
-paulgsc/server.
+release 186 rolling back: `file_host`'s own start, with migrations pending, copied the whole
+database and checked the copy before it could serve, and that outran the healthcheck's window.
+The owner chose on 2026-11-28 to move the backup and the migration out of its start
+(paulgsc/server#1276).
 
 - **A process or service has one job,** named in one sentence without "and". Work with a
   lifetime, schedule or failure mode of its own (a backup, a migration, a poller, a render, a

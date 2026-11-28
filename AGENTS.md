@@ -62,6 +62,8 @@ apply to any agent working here, not only Claude.
   service, file or module a second job (work with a lifetime, schedule or failure mode of its
   own in another's start, request path or loop, or an unrelated concern in a file) is a
   finding: blocking when the PR does not name the job and give, as a call, why it cannot run on
-  its own; non-blocking otherwise, naming the job. A change that splits a job out never draws it.
+  its own; non-blocking otherwise, naming the job. A change that adds to a file already holding
+  several jobs, without splitting it or saying why not, is non-blocking. A change that splits a
+  job out never draws it.
 
 Full text: `REVIEW.md`.
